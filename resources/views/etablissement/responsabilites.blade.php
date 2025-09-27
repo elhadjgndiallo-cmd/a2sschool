@@ -1,0 +1,1 @@
+@include('etablissement.responsabilites-view')
