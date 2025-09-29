@@ -284,23 +284,18 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('entrees.index') }}" data-menu="comptabilite">
+                            <a class="nav-link" href="{{ route('comptabilite.index') }}" data-menu="comptabilite">
                                 <i class="fas fa-calculator me-1"></i>Comptabilité
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('rapports.unifies') }}" data-menu="rapports">
-                                <i class="fas fa-chart-line me-1"></i>Rapports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('cartes-scolaires.index') }}" data-menu="cartes">
-                                <i class="fas fa-id-card me-1"></i>Cartes
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('admin.notifications.index') }}" data-menu="admin-messages">
                                 <i class="fas fa-envelope me-1"></i>Messages Parents
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('admin.permissions.index') }}" data-menu="permissions">
+                                <i class="fas fa-shield-alt me-1"></i>Permissions
                             </a>
                         </li>
                     @endif
@@ -471,7 +466,12 @@
                 'enseignants': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('enseignants')),
                 'eleves': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('eleves')),
                 'notes': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('notes')),
-                'comptabilite': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('comptabilite')),
+                'comptabilite': [
+                    { href: '{{ route("comptabilite.index") }}', icon: 'fas fa-tachometer-alt', text: 'Tableau de bord' },
+                    { href: '{{ route("comptabilite.rapports") }}', icon: 'fas fa-chart-line', text: 'Rapports' },
+                    { href: '{{ route("comptabilite.entrees") }}', icon: 'fas fa-arrow-up', text: 'Entrées' },
+                    { href: '{{ route("comptabilite.sorties") }}', icon: 'fas fa-arrow-down', text: 'Sorties' }
+                ],
                 'rapports': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('rapports')),
                 'cartes': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('cartes')),
                 'parametres': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('parametres')),

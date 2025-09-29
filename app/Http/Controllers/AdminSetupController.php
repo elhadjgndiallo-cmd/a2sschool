@@ -7,6 +7,7 @@ use App\Models\Utilisateur;
 use App\Models\Etablissement;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Models\PersonnelAdministration;
 
 class AdminSetupController extends Controller
 {
@@ -81,6 +82,18 @@ class AdminSetupController extends Controller
                 'actif' => true,
             ]);
 
+            // Créer le profil personnel d'administration avec toutes les permissions
+            $allPermissions = $this->getAllSystemPermissions();
+            PersonnelAdministration::create([
+                'utilisateur_id' => $utilisateur->id,
+                'poste' => 'Administrateur Principal',
+                'departement' => 'Direction',
+                'date_embauche' => now(),
+                'statut' => 'actif',
+                'permissions' => $allPermissions,
+                'observations' => 'Administrateur principal créé lors de la configuration initiale du système'
+            ]);
+
             DB::commit();
 
             return redirect()->route('login')->with('success', 'Compte administrateur principal créé avec succès. Vous pouvez maintenant vous connecter.');
@@ -89,5 +102,43 @@ class AdminSetupController extends Controller
             DB::rollBack();
             return back()->with('error', 'Erreur lors de la création du compte administrateur: ' . $e->getMessage())->withInput();
         }
+    }
+
+    /**
+     * Obtenir toutes les permissions du système
+     */
+    private function getAllSystemPermissions()
+    {
+        return [
+            // Permissions existantes (79 permissions)
+            'evenements.view', 'evenements.create', 'evenements.edit', 'evenements.delete', 'evenements.manage_all',
+            'notes.view', 'notes.create', 'notes.edit', 'notes.delete', 'notes.bulletins', 'notes.statistiques',
+            'enseignants.view', 'enseignants.create', 'enseignants.edit', 'enseignants.delete', 'enseignants.salaires',
+            'eleves.view', 'eleves.create', 'eleves.edit', 'eleves.delete', 'eleves.reinscription',
+            'classes.view', 'classes.create', 'classes.edit', 'classes.delete',
+            'matieres.view', 'matieres.create', 'matieres.edit', 'matieres.delete',
+            'absences.view', 'absences.create', 'absences.edit', 'absences.delete',
+            'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete',
+            'rapports.view', 'rapports.financiers', 'rapports.eleves', 'rapports.enseignants',
+            'cartes-scolaires.view', 'cartes-scolaires.create', 'cartes-scolaires.edit', 'cartes-scolaires.delete',
+            'cartes-enseignants.view', 'cartes-enseignants.create', 'cartes-enseignants.edit', 'cartes-enseignants.delete',
+            'entrees.view', 'entrees.create', 'entrees.edit', 'entrees.delete',
+            'depenses.view', 'depenses.create', 'depenses.edit', 'depenses.delete',
+            'admin.accounts.view', 'admin.accounts.create', 'admin.accounts.edit', 'admin.accounts.delete',
+            'etablissement.view', 'etablissement.edit',
+            'annees_scolaires.view', 'annees_scolaires.create', 'annees_scolaires.edit', 'annees_scolaires.delete',
+            'tarifs.view', 'tarifs.create', 'tarifs.edit', 'tarifs.delete',
+            'messages.view', 'messages.create', 'messages.edit', 'messages.delete',
+            'notifications.view', 'notifications.create', 'notifications.edit', 'notifications.delete',
+            
+            // Nouvelles permissions (38 permissions)
+            'utilisateurs.view', 'utilisateurs.create', 'utilisateurs.edit', 'utilisateurs.delete',
+            'eleves.notes',
+            'emploi_temps.view', 'emploi_temps.create', 'emploi_temps.edit', 'emploi_temps.delete',
+            'comptabilite.view', 'comptabilite.entrees', 'comptabilite.sorties', 'comptabilite.rapports',
+            'rapports.export',
+            'notifications.send',
+            'system.settings', 'system.backup', 'system.logs'
+        ];
     }
 }

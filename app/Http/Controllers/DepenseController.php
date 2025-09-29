@@ -89,7 +89,7 @@ class DepenseController extends Controller
      */
     public function edit(Depense $depense)
     {
-        $enseignants = Enseignant::orderBy('nom')->get();
+        $enseignants = Enseignant::with('utilisateur')->get()->sortBy('utilisateur.nom');
         return view('depenses.edit', compact('depense', 'enseignants'));
     }
 
@@ -231,12 +231,12 @@ class DepenseController extends Controller
         $enseignant = Enseignant::findOrFail($request->enseignant_id);
 
         $depense = Depense::create([
-            'libelle' => 'Salaire ' . $enseignant->nom . ' ' . $enseignant->prenom,
+            'libelle' => 'Salaire ' . $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom,
             'montant' => $request->montant,
             'date_depense' => $request->date_depense,
             'type_depense' => 'salaire_enseignant',
             'description' => $request->description ?? 'Salaire mensuel de l\'enseignant',
-            'beneficiaire' => $enseignant->nom . ' ' . $enseignant->prenom,
+            'beneficiaire' => $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom,
             'statut' => 'en_attente'
         ]);
 
