@@ -85,8 +85,8 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @foreach($data['notes'] as $note)
-                                        <span class="badge bg-{{ $note->note >= 16 ? 'success' : ($note->note >= 12 ? 'warning' : 'danger') }}">
-                                            {{ $note->note }}/20
+                                        <span class="badge bg-{{ ($note->note_finale ?? 0) >= 16 ? 'success' : (($note->note_finale ?? 0) >= 12 ? 'warning' : 'danger') }}">
+                                            {{ $note->note_finale ?? 'N/A' }}/20
                                         </span>
                                     @endforeach
                                 </div>

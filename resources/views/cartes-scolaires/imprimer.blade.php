@@ -298,7 +298,11 @@
             <div class="carte-left">
                 <div class="eleve-photo">
                     @if($cartes_scolaire->eleve->utilisateur->photo_profil)
-                        <img src="{{ asset('storage/' . $cartes_scolaire->eleve->utilisateur->photo_profil) }}" alt="Photo">
+                        @php
+                            $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
+                            $imagePath = 'images/profile_images/' . $imageName;
+                        @endphp
+                        <img src="{{ asset($imagePath) }}" alt="Photo">
                     @else
                         <div style="text-align: center;">
                             <div style="font-size: 8mm; margin-bottom: 1mm;">👤</div>

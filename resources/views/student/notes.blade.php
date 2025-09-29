@@ -49,7 +49,7 @@
         <div class="card bg-warning text-white">
             <div class="card-body text-center">
                 <i class="fas fa-clock fa-2x mb-2"></i>
-                <h4>{{ $statistiques['derniere_note']->note ?? 'N/A' }}</h4>
+                <h4>{{ $statistiques['derniere_note']->note_finale ?? 'N/A' }}</h4>
                 <p class="mb-0">Dernière Note</p>
             </div>
         </div>
@@ -93,8 +93,8 @@
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $note->note >= 16 ? 'success' : ($note->note >= 12 ? 'warning' : 'danger') }}">
-                                    {{ $note->note }}/20
+                                <span class="badge bg-{{ ($note->note_finale ?? 0) >= 16 ? 'success' : (($note->note_finale ?? 0) >= 12 ? 'warning' : 'danger') }}">
+                                    {{ $note->note_finale ?? 'N/A' }}/20
                                 </span>
                             </td>
                             <td>{{ $note->enseignant->utilisateur->name }}</td>

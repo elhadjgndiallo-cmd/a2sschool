@@ -59,7 +59,7 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             @if($utilisateur->photo_profil)
-                                                <img src="{{ asset('storage/' . $utilisateur->photo_profil) }}" alt="Photo de profil" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                                                <img src="{{ asset('images/profile_images/' . basename($utilisateur->photo_profi)) }}" alt="Photo de profil" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
                                             @else
                                                 <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 40px; height: 40px;">
                                                     {{ substr($utilisateur->prenom, 0, 1) }}{{ substr($utilisateur->nom, 0, 1) }}

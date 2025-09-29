@@ -127,11 +127,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/evenements-a-venir', [EvenementController::class, 'evenementsAVenir']);
     
     // Documents
+    // Routes Document temporairement désactivées - pas besoin de gérer les documents pour le moment
+    /*
     Route::apiResource('documents', DocumentController::class);
     Route::get('documents/telecharger/{id}', [DocumentController::class, 'telecharger'])->name('api.documents.telecharger');
     Route::get('documents/classe/{classeId}', [DocumentController::class, 'documentsClasse']);
     Route::get('documents/mes-documents', [DocumentController::class, 'mesDocuments']);
     Route::get('documents/recents', [DocumentController::class, 'documentsRecents']);
+    */
 
     // Configuration du système
     Route::get('configurations', [ConfigurationController::class, 'index']);

@@ -150,7 +150,7 @@
                                     
                                     @if($etablissement->cachet)
                                         <div class="text-center mb-3">
-                                            <img src="{{ asset('storage/' . $etablissement->cachet) }}" 
+                                            <img src="{{ asset('images/profile_images/' . basename($etablissement->cache)) }}" 
                                                  alt="Cachet" class="img-thumbnail" style="max-width: 120px; max-height: 120px;">
                                             <div class="mt-2">
                                                 <small class="text-muted">Cachet actuel</small>

@@ -80,7 +80,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     @if($note->eleve->utilisateur->photo)
-                                                        <img src="{{ asset('storage/' . $note->eleve->utilisateur->photo) }}" 
+                                                        <img src="{{ asset('images/profile_images/' . basename($note->eleve->utilisateur->phot)) }}" 
                                                              alt="Photo" class="rounded-circle me-2" 
                                                              style="width: 32px; height: 32px; object-fit: cover;">
                                                     @else
@@ -102,8 +102,8 @@
                                                 <span class="badge bg-info">{{ ucfirst($note->type_evaluation) }}</span>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge {{ $note->note >= 10 ? 'bg-success' : ($note->note >= 8 ? 'bg-warning' : 'bg-danger') }} fs-6">
-                                                    {{ number_format($note->note, 2) }}/20
+                                                <span class="badge {{ ($note->note_finale ?? 0) >= 10 ? 'bg-success' : (($note->note_finale ?? 0) >= 8 ? 'bg-warning' : 'bg-danger') }} fs-6">
+                                                    {{ number_format($note->note_finale ?? 0, 2) }}/20
                                                 </span>
                                             </td>
                                             <td>

@@ -89,7 +89,7 @@ use Illuminate\Support\Facades\Storage;
                         <td>
                             <div class="avatar-sm">
                                 @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil))
-                                    <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" 
+                                    <img src="{{ asset('images/profile_images/' . basename($enseignant->utilisateur->photo_profi)) }}" 
                                          alt="Photo de {{ $enseignant->utilisateur->nom }} {{ $enseignant->utilisateur->prenom }}" 
                                          class="rounded-circle" 
                                          style="width: 40px; height: 40px; object-fit: cover;">

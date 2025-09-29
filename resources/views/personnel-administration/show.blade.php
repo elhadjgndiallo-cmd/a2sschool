@@ -31,7 +31,7 @@
                             <div class="text-center mb-4">
                                 @php use Illuminate\Support\Facades\Storage; @endphp
                                 @if($personnelAdministration->utilisateur->photo_profil && Storage::disk('public')->exists($personnelAdministration->utilisateur->photo_profil))
-                                    <img src="{{ asset('storage/' . $personnelAdministration->utilisateur->photo_profil) }}" 
+                                    <img src="{{ asset('images/profile_images/' . basename($personnelAdministration->utilisateur->photo_profi)) }}" 
                                          alt="Photo" 
                                          class="img-thumbnail rounded-circle mb-3" 
                                          style="width: 200px; height: 200px; object-fit: cover;">

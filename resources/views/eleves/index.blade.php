@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Storage;
             width: 30px !important;
             height: 30px !important;
             font-size: 12px !important;
+            object-fit: cover !important;
         }
     }
     
@@ -118,15 +119,29 @@ use Illuminate\Support\Facades\Storage;
                     @forelse($eleves as $eleve)
                                     <tr>
                         <td>
-                            <div class="avatar-sm">
-                                @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil))
-                                    <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
-                                         alt="Photo de {{ $eleve->utilisateur->nom ?? 'élève' }}" 
-                                         class="rounded-circle avatar-responsive" 
-                                         style="object-fit: cover;">
+                            <div class="avatar-sm" style="width: 40px; height: 40px; border: 1px solid #ddd;">
+                                @if($eleve->utilisateur && $eleve->utilisateur->photo_profil)
+                                    @php
+                                        $imageName = basename($eleve->utilisateur->photo_profil);
+                                        $imagePath = 'images/profile_images/' . $imageName;
+                                        $fullPath = public_path($imagePath);
+                                        $imageExists = file_exists($fullPath);
+                                    @endphp
+                                    @if($imageExists)
+                                        <img src="{{ asset($imagePath) }}" 
+                                             alt="Photo de {{ $eleve->utilisateur->nom ?? 'élève' }}" 
+                                             class="rounded-circle" 
+                                             style="width: 40px; height: 40px; object-fit: cover; border: 1px solid green;"
+                                             onerror="console.log('Image error:', this.src); this.style.border='2px solid red';">
+                                    @else
+                                        <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center text-dark" 
+                                             style="font-size: 14px; width: 40px; height: 40px; border: 1px solid orange;">
+                                            ❌
+                                        </div>
+                                    @endif
                                 @else
-                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white avatar-responsive" 
-                                         style="font-size: 14px;">
+                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" 
+                                         style="font-size: 14px; width: 40px; height: 40px; border: 1px solid blue;">
                                         @if($eleve->utilisateur && $eleve->utilisateur->prenom && $eleve->utilisateur->nom)
                                             {{ substr($eleve->utilisateur->prenom, 0, 1) }}{{ substr($eleve->utilisateur->nom, 0, 1) }}
                                         @else

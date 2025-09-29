@@ -37,35 +37,22 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-12 text-center mb-4">
-                        @if($eleve->utilisateur && $eleve->utilisateur->photo_profil)
-                            <div class="mb-3">
-                                @php
-                                    $photoPath = $eleve->utilisateur->photo_profil;
-                                    // Vérifier si c'est un chemin absolu (URL complète) ou relatif
-                                    if (filter_var($photoPath, FILTER_VALIDATE_URL)) {
-                                        $photoUrl = $photoPath;
-                                    } elseif (file_exists(public_path('storage/' . $photoPath))) {
-                                        $photoUrl = asset('storage/' . $photoPath);
-                                    } elseif (file_exists(public_path($photoPath))) {
-                                        $photoUrl = asset($photoPath);
-                                    } else {
-                                        $photoUrl = null;
-                                    }
-                                @endphp
-                                
-                                @if($photoUrl)
-                                    <img src="{{ $photoUrl }}" alt="Photo de profil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-                                @else
-                                    <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center text-white mx-auto" style="width: 150px; height: 150px; font-size: 2rem;">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </div>
-                                    <small class="text-warning d-block mt-2">Photo introuvable</small>
-                                @endif
-                                
-                                <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
-                                        <i class="fas fa-camera me-1"></i> Changer la photo
-                                    </button>
+                        <div class="mb-3">
+                            @php
+                                use App\Helpers\ImageHelper;
+                                $photoPath = $eleve->utilisateur->photo_profil ?? null;
+                                $name = ($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '');
+                            @endphp
+                            {!! ImageHelper::profileImage($photoPath, $name, [
+                                'class' => 'img-thumbnail rounded-circle',
+                                'style' => 'width: 150px; height: 150px; object-fit: cover;'
+                            ]) !!}
+                            
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
+                                    <i class="fas fa-camera me-1"></i> Changer la photo
+                                </button>
+                                @if($photoPath)
                                     <form action="{{ route('eleves.delete-photo', $eleve->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
@@ -73,25 +60,8 @@
                                             <i class="fas fa-trash-alt me-1"></i> Supprimer
                                         </button>
                                     </form>
-                                </div>
+                                @endif
                             </div>
-                        @else
-                            <div class="mb-3">
-                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto" style="width: 150px; height: 150px; font-size: 3rem; font-weight: bold;">
-                                    @if($eleve->utilisateur && $eleve->utilisateur->prenom && $eleve->utilisateur->nom)
-                                        {{ strtoupper(substr($eleve->utilisateur->prenom, 0, 1)) }}{{ strtoupper(substr($eleve->utilisateur->nom, 0, 1)) }}
-                                    @elseif($eleve->utilisateur && $eleve->utilisateur->name)
-                                        {{ strtoupper(substr($eleve->utilisateur->name, 0, 2)) }}
-                                    @else
-                                        ??
-                                    @endif
-                                </div>
-                                <small class="text-muted d-block mt-2">Aucune photo de profil</small>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
-                                    <i class="fas fa-camera me-1"></i> Ajouter une photo
-                                </button>
-                            </div>
-                        @endif
                         <h4 class="mt-3">
                             @if($eleve->utilisateur)
                                 @if($eleve->utilisateur->nom && $eleve->utilisateur->prenom)

@@ -368,7 +368,7 @@ class NoteController extends Controller
 
         $statistiques = [
             'total_notes' => Note::count(),
-            'moyenne_generale' => Note::avg('note'),
+            'moyenne_generale' => Note::whereNotNull('note_finale')->avg('note_finale'),
             'notes_ce_mois' => Note::whereMonth('created_at', now()->month)->count(),
             'classes_actives' => $classes->count()
         ];

@@ -119,7 +119,7 @@ use Illuminate\Support\Facades\Storage;
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     @if($carte->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($carte->enseignant->utilisateur->photo_profil))
-                                                        <img src="{{ asset('storage/' . $carte->enseignant->utilisateur->photo_profil) }}" 
+                                                        <img src="{{ asset('images/profile_images/' . basename($carte->enseignant->utilisateur->photo_profi)) }}" 
                                                              alt="Photo enseignant" 
                                                              class="rounded-circle me-2" 
                                                              style="width: 40px; height: 40px; object-fit: cover;">

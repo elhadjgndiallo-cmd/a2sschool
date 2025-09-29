@@ -60,8 +60,8 @@ class StudentController extends Controller
         // Statistiques des notes
         $statistiques = [
             'total_notes' => $eleve->notes()->count(),
-            'moyenne_generale' => $eleve->notes()->avg('note'),
-            'meilleure_note' => $eleve->notes()->max('note'),
+            'moyenne_generale' => $eleve->notes()->whereNotNull('note_finale')->avg('note_finale'),
+            'meilleure_note' => $eleve->notes()->whereNotNull('note_finale')->max('note_finale'),
             'derniere_note' => $eleve->notes()->latest('date_evaluation')->first()
         ];
 

@@ -116,7 +116,11 @@
                                 </div>
                                 <div class="card-body text-center">
                                     @if($cartes_scolaire->eleve->utilisateur->photo_profil)
-                                        <img src="{{ asset('storage/' . $cartes_scolaire->eleve->utilisateur->photo_profil) }}" 
+                                        @php
+                                            $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
+                                            $imagePath = 'images/profile_images/' . $imageName;
+                                        @endphp
+                                        <img src="{{ asset($imagePath) }}" 
                                              class="rounded-circle mb-3" 
                                              width="120" height="120" 
                                              alt="Photo de l'élève">
@@ -189,7 +193,11 @@
                                                 <div style="width: 25mm; padding-right: 2mm; border-right: 1px solid #d4af37;">
                                                     <div style="width: 20mm; height: 25mm; border: 1px solid #d4af37; margin: 0 auto 2mm; background: #f8f9fa; display: flex; align-items: center; justify-content: center; font-size: 2.5mm; color: #666; overflow: hidden;">
                                                         @if($cartes_scolaire->eleve->utilisateur->photo_profil)
-                                                            <img src="{{ asset('storage/' . $cartes_scolaire->eleve->utilisateur->photo_profil) }}" alt="Photo" style="width: 100%; height: 100%; object-fit: cover;">
+                                                            @php
+                                                                $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
+                                                                $imagePath = 'images/profile_images/' . $imageName;
+                                                            @endphp
+                                                            <img src="{{ asset($imagePath) }}" alt="Photo" style="width: 100%; height: 100%; object-fit: cover;">
                                                         @else
                                                             <div style="text-align: center;">
                                                                 <div style="font-size: 8mm; margin-bottom: 1mm;">👤</div>

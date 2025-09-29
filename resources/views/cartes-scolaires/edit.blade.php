@@ -33,7 +33,11 @@
                                             <div class="form-control-plaintext">
                                                 <div class="d-flex align-items-center">
                                                     @if($cartes_scolaire->eleve->utilisateur->photo_profil)
-                                                        <img src="{{ asset('storage/' . $cartes_scolaire->eleve->utilisateur->photo_profil) }}" 
+                                                        @php
+                                                            $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
+                                                            $imagePath = 'images/profile_images/' . $imageName;
+                                                        @endphp
+                                                        <img src="{{ asset($imagePath) }}" 
                                                              class="rounded-circle me-2" 
                                                              width="40" height="40" 
                                                              alt="Photo">

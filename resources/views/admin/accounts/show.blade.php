@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Storage;
             </div>
             <div class="card-body text-center">
                 @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil))
-                    <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
+                    <img src="{{ asset('images/profile_images/' . basename($adminAccount->utilisateur->photo_profi)) }}" 
                          alt="Photo de {{ $adminAccount->utilisateur->nom }}" 
                          class="rounded-circle mb-3" 
                          style="width: 150px; height: 150px; object-fit: cover;">

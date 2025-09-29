@@ -179,7 +179,7 @@ class DashboardController extends Controller
             'total_absences' => $enfants->sum(function($enfant) {
                 return $enfant->absences->count();
             }),
-            'moyenne_generale' => $enfants->flatMap->notes->avg('note_sur_20'),
+            'moyenne_generale' => $enfants->flatMap->notes->whereNotNull('note_finale')->avg('note_finale'),
         ];
 
         // Dernières activités (notes et absences)
@@ -194,7 +194,7 @@ class DashboardController extends Controller
                     'enfant' => $enfant,
                     'contenu' => $note,
                     'icone' => 'fas fa-chart-line',
-                    'couleur' => $note->note_sur_20 >= 10 ? 'success' : 'danger'
+                    'couleur' => ($note->note_finale ?? 0) >= 10 ? 'success' : 'danger'
                 ]);
             }
             

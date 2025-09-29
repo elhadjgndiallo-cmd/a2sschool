@@ -105,7 +105,7 @@ class MatiereController extends Controller
         $statistiques = [
             'total_enseignants' => $matiere->enseignants->count(),
             'total_notes' => $matiere->notes->count(),
-            'moyenne_generale' => $matiere->notes->avg('note'),
+            'moyenne_generale' => $matiere->notes->whereNotNull('note_finale')->avg('note_finale'),
             'classes_enseignees' => $matiere->emploisTemps->unique('classe_id')->count()
         ];
         

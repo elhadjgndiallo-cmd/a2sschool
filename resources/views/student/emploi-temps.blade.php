@@ -24,7 +24,7 @@
             <div class="card-body">
                 <h5 class="card-title">
                     @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil))
-                        <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
+                        <img src="{{ asset('images/profile_images/' . basename($eleve->utilisateur->photo_profi)) }}" 
                              alt="Photo de {{ $eleve->nom_complet }}" 
                              class="rounded-circle me-2" 
                              style="width: 24px; height: 24px; object-fit: cover;">

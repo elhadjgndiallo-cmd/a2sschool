@@ -21,14 +21,15 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body text-center">
-                @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil))
-                    <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
-                         alt="Photo de {{ $eleve->nom_complet }}" 
-                         class="rounded-circle mb-3" 
-                         style="width: 80px; height: 80px; object-fit: cover;">
-                @else
-                    <i class="fas fa-user-graduate fa-3x text-primary mb-3"></i>
-                @endif
+                @php
+                    use App\Helpers\ImageHelper;
+                    $photoPath = $eleve->utilisateur->photo_profil ?? null;
+                    $name = $eleve->nom_complet;
+                @endphp
+                {!! ImageHelper::profileImage($photoPath, $name, [
+                    'class' => 'rounded-circle mb-3',
+                    'style' => 'width: 80px; height: 80px; object-fit: cover;'
+                ]) !!}
                 <h5>{{ $eleve->nom_complet }}</h5>
                 <p class="text-muted">{{ $eleve->numero_etudiant }}</p>
                 @if($eleve->classe)

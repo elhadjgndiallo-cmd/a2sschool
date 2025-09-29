@@ -195,7 +195,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Photo actuelle</label>
                                 <div>
-                                    <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
+                                    <img src="{{ asset('images/profile_images/' . basename($adminAccount->utilisateur->photo_profi)) }}" 
                                          alt="Photo actuelle" 
                                          class="rounded" 
                                          style="width: 100px; height: 100px; object-fit: cover;">

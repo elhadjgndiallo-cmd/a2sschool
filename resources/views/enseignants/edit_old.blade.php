@@ -93,7 +93,7 @@ use Illuminate\Support\Facades\Storage;
                     <div class="mb-3">
                         <div class="photo-preview-container" style="width: 150px; height: 150px; margin: 0 auto;">
                             @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil))
-                                <img id="photoPreview" src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" 
+                                <img id="photoPreview" src="{{ asset('images/profile_images/' . basename($enseignant->utilisateur->photo_profi)) }}" 
                                      alt="Photo de l'enseignant" class="img-thumbnail rounded-circle" 
                                      style="width: 150px; height: 150px; object-fit: cover;">
                             @else
