@@ -33,8 +33,17 @@ return new class extends Migration
     {
         if (Schema::hasTable('evenements')) {
             Schema::table('evenements', function (Blueprint $table) {
-                $table->dropForeign(['classe_id']);
-                $table->dropForeign(['createur_id']);
+                try {
+                    $table->dropForeign(['classe_id']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
+                
+                try {
+                    $table->dropForeign(['createur_id']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
             });
         }
     }

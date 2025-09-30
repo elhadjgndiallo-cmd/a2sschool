@@ -34,9 +34,23 @@ return new class extends Migration
     {
         if (Schema::hasTable('cartes_enseignants')) {
             Schema::table('cartes_enseignants', function (Blueprint $table) {
-                $table->dropForeign(['enseignant_id']);
-                $table->dropForeign(['emise_par']);
-                $table->dropForeign(['validee_par']);
+                try {
+                    $table->dropForeign(['enseignant_id']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
+                
+                try {
+                    $table->dropForeign(['emise_par']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
+                
+                try {
+                    $table->dropForeign(['validee_par']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
             });
         }
     }

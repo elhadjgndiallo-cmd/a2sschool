@@ -13,11 +13,20 @@ return new class extends Migration
     {
         // Vérifier si la table evenements existe
         if (Schema::hasTable('evenements')) {
-            // Supprimer les contraintes de clés étrangères existantes si elles existent
+            // Vérifier et supprimer les contraintes de clés étrangères existantes si elles existent
             Schema::table('evenements', function (Blueprint $table) {
-                // Supprimer les contraintes de clés étrangères
-                $table->dropForeign(['classe_id']);
-                $table->dropForeign(['createur_id']);
+                // Vérifier l'existence des clés étrangères avant de les supprimer
+                try {
+                    $table->dropForeign(['classe_id']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
+                
+                try {
+                    $table->dropForeign(['createur_id']);
+                } catch (Exception $e) {
+                    // La clé étrangère n'existe pas, continuer
+                }
             });
             
             // Recréer les contraintes de clés étrangères avec vérification d'existence des tables
