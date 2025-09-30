@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('source'); // Paiements scolaires, Dons, Subventions, etc.
             $table->string('mode_paiement')->default('especes'); // especes, virement, cheque
             $table->string('reference')->nullable(); // Numéro de chèque, référence virement
-            $table->foreignId('enregistre_par')->constrained('users');
+            $table->foreignId('enregistre_par')->constrained('utilisateurs');
             $table->timestamps();
         });
     }

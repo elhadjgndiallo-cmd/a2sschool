@@ -35,7 +35,7 @@ return new class extends Migration
                 $table->string('reference')->nullable()->after('mode_paiement');
             }
             if (!Schema::hasColumn('entrees', 'enregistre_par')) {
-                $table->foreignId('enregistre_par')->constrained('users')->after('reference');
+                $table->foreignId('enregistre_par')->constrained('utilisateurs')->after('reference');
             }
         });
     }
