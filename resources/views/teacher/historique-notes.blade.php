@@ -80,7 +80,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     @if($note->eleve->utilisateur->photo)
-                                                        <img src="{{ asset('images/profile_images/' . basename($note->eleve->utilisateur->phot)) }}" 
+                                                        <img src="{{ asset('storage/' . $note->eleve->utilisateur->photo_profil) }}" 
                                                              alt="Photo" class="rounded-circle me-2" 
                                                              style="width: 32px; height: 32px; object-fit: cover;">
                                                     @else

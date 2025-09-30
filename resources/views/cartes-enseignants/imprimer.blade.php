@@ -190,7 +190,7 @@
                             <!-- Photo de l'enseignant - Gauche -->
                             <div style="width: 40px; height: 50px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #d4af37; border-radius: 4px; overflow: hidden;">
                                 @if($cartes_enseignant->enseignant->utilisateur->photo_profil)
-                                    <img src="{{ asset('images/profile_images/' . basename($cartes_enseignant->enseignant->utilisateur->photo_profi)) }}" 
+                                    <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
                                          alt="Photo enseignant" 
                                          style="width: 100%; height: 100%; object-fit: cover;"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">

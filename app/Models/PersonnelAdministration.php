@@ -64,8 +64,21 @@ class PersonnelAdministration extends Model
         if (!is_array($permissions)) {
             return false;
         }
-        
-        return in_array($permission, $permissions);
+
+        // Support rétrocompatibilité: normaliser les anciennes clés vers les nouvelles
+        $normalizedPermissions = array_map(function (string $key): string {
+            // Anciennes clés admin_accounts.* -> admin.accounts.*
+            if (str_starts_with($key, 'admin_accounts.')) {
+                $key = str_replace('admin_accounts.', 'admin.accounts.', $key);
+            }
+            // Anciennes clés cartes_enseignants.* -> cartes-enseignants.*
+            if (str_starts_with($key, 'cartes_enseignants.')) {
+                $key = str_replace('cartes_enseignants.', 'cartes-enseignants.', $key);
+            }
+            return $key;
+        }, $permissions);
+
+        return in_array($permission, $normalizedPermissions, true);
     }
 
     /**

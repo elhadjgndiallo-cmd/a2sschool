@@ -195,7 +195,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Photo actuelle</label>
                                 <div>
-                                    <img src="{{ asset('images/profile_images/' . basename($adminAccount->utilisateur->photo_profi)) }}" 
+                                    <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
                                          alt="Photo actuelle" 
                                          class="rounded" 
                                          style="width: 100px; height: 100px; object-fit: cover;">
@@ -255,19 +255,44 @@
                     <i class="fas fa-info-circle me-2"></i>
                     Sélectionnez au moins une permission pour ce compte administrateur.
                 </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="selectAllPermissions()">
+                        <i class="fas fa-check-square me-1"></i>
+                        Tout sélectionner
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAllPermissions()">
+                        <i class="fas fa-square me-1"></i>
+                        Tout désélectionner
+                    </button>
+                </div>
                 
                 <div class="permissions-container" style="max-height: 400px; overflow-y: auto;">
-                    @foreach($permissions as $key => $label)
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" 
-                               name="permissions[]" value="{{ $key }}" 
-                               id="permission_{{ $loop->index }}"
-                               {{ in_array($key, old('permissions', $adminAccount->permissions ?? [])) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="permission_{{ $loop->index }}">
-                            {{ $label }}
-                        </label>
+                    <div class="row">
+                        @foreach($permissions as $category => $perms)
+                            <div class="col-md-6 mb-3">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">{{ $category }}</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        @foreach($perms as $key => $label)
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="permissions[]" 
+                                                       value="{{ $key }}" 
+                                                       id="permission_{{ $key }}"
+                                                       {{ in_array($key, old('permissions', $adminAccount->permissions ?? [])) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="permission_{{ $key }}">
+                                                    {{ $label }}
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                    @endforeach
                 </div>
                 
                 @error('permissions')
@@ -278,4 +303,19 @@
     </div>
 </div>
 @endif
+
+@section('scripts')
+<script>
+function selectAllPermissions() {
+    document.querySelectorAll('input[name="permissions[]"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllPermissions() {
+    document.querySelectorAll('input[name="permissions[]"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+</script>
 @endsection

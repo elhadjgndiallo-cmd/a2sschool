@@ -38,8 +38,8 @@
             </div>
             <div class="card-body">
                 <div class="text-center mb-3">
-                    @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil))
-                        <img src="{{ asset('images/profile_images/' . basename($adminAccount->utilisateur->photo_profi)) }}" 
+                    @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil)
+                        <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
                              alt="Photo de {{ $adminAccount->utilisateur->nom }}" 
                              class="rounded-circle mb-3" 
                              style="width: 80px; height: 80px; object-fit: cover;">

@@ -25,7 +25,6 @@ use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\EvenementController;
 use App\Http\Controllers\ComptabiliteController;
-use App\Http\Controllers\PermissionController;
 
 // Route d'accueil - redirection vers dashboard si connecté, sinon vers login ou setup
 Route::get('/', function () {
@@ -198,10 +197,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/statistiques-absences', [StatistiqueController::class, 'absences'])->name('statistiques.absences')->middleware('check.permission:statistiques.absences');
         Route::get('/api/statistiques/data', [StatistiqueController::class, 'apiData'])->name('statistiques.api.data')->middleware('check.permission:statistiques.view');
         
-        // Routes pour la gestion des permissions
-        Route::get('/permissions', [PermissionController::class, 'index'])->name('admin.permissions.index');
-        Route::get('/permissions/{utilisateur}', [PermissionController::class, 'show'])->name('admin.permissions.show');
-        Route::put('/permissions/{utilisateur}', [PermissionController::class, 'update'])->name('admin.permissions.update');
         
         // Route de test pour vérifier les permissions
         Route::get('/test-permissions', function() {
@@ -443,11 +438,11 @@ Route::middleware('auth')->group(function () {
     });
     
     // Routes pour la comptabilité (Admin seulement)
-    Route::middleware(['role:admin,personnel_admin', 'permission:comptabilite.view'])->group(function () {
+    Route::middleware(['role:admin,personnel_admin', 'check.permission:comptabilite.view'])->group(function () {
         Route::get('/comptabilite', [ComptabiliteController::class, 'index'])->name('comptabilite.index');
-        Route::get('/comptabilite/rapports', [ComptabiliteController::class, 'rapports'])->name('comptabilite.rapports')->middleware('permission:comptabilite.rapports');
-        Route::get('/comptabilite/entrees', [ComptabiliteController::class, 'entrees'])->name('comptabilite.entrees')->middleware('permission:comptabilite.entrees');
-        Route::get('/comptabilite/sorties', [ComptabiliteController::class, 'sorties'])->name('comptabilite.sorties')->middleware('permission:comptabilite.sorties');
+        Route::get('/comptabilite/rapports', [ComptabiliteController::class, 'rapports'])->name('comptabilite.rapports')->middleware('check.permission:comptabilite.rapports');
+        Route::get('/comptabilite/entrees', [ComptabiliteController::class, 'entrees'])->name('comptabilite.entrees')->middleware('check.permission:comptabilite.entrees');
+        Route::get('/comptabilite/sorties', [ComptabiliteController::class, 'sorties'])->name('comptabilite.sorties')->middleware('check.permission:comptabilite.sorties');
     });
     
     

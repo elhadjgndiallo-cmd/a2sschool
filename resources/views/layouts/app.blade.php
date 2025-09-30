@@ -293,11 +293,6 @@
                                 <i class="fas fa-envelope me-1"></i>Messages Parents
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.permissions.index') }}" data-menu="permissions">
-                                <i class="fas fa-shield-alt me-1"></i>Permissions
-                            </a>
-                        </li>
                     @endif
                     
                     

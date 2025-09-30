@@ -131,8 +131,8 @@ use Illuminate\Support\Facades\Storage;
                         </div>
                         <div class="card-body">
                             <div class="text-center mb-3">
-                                @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil))
-                                    <img src="{{ asset('images/profile_images/' . basename($cartes_enseignant->enseignant->utilisateur->photo_profi)) }}" 
+                                @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil)
+                                    <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
                                          alt="Photo enseignant" 
                                          class="img-thumbnail rounded-circle mb-3" 
                                          style="width: 100px; height: 100px; object-fit: cover;">
@@ -201,8 +201,8 @@ use Illuminate\Support\Facades\Storage;
                                                 <!-- Photo de l'enseignant -->
                                                 <div class="col-4">
                                                     <div class="text-center">
-                                                        @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil))
-                                                            <img src="{{ asset('images/profile_images/' . basename($cartes_enseignant->enseignant->utilisateur->photo_profi)) }}" 
+                                                        @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil)
+                                                            <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
                                                                  alt="Photo enseignant" 
                                                                  class="img-thumbnail rounded" 
                                                                  style="width: 80px; height: 100px; object-fit: cover;">

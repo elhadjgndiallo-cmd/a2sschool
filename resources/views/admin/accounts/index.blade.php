@@ -63,7 +63,7 @@ use Illuminate\Support\Facades\Storage;
                         <td>
                             <div class="avatar-sm">
                                 @if($account->utilisateur && $account->utilisateur->photo_profil && Storage::disk('public')->exists($account->utilisateur->photo_profil))
-                                    <img src="{{ asset('images/profile_images/' . basename($account->utilisateur->photo_profi)) }}" 
+                                    <img src="{{ asset('storage/' . $account->utilisateur->photo_profil) }}" 
                                          alt="Photo de {{ $account->utilisateur->nom }} {{ $account->utilisateur->prenom }}" 
                                          class="rounded-circle" 
                                          style="width: 40px; height: 40px; object-fit: cover;">
@@ -96,7 +96,22 @@ use Illuminate\Support\Facades\Storage;
                                 }
                                 $permissionsCount = is_array($permissions) ? count($permissions) : 0;
                             @endphp
-                            <span class="badge bg-info">{{ $permissionsCount }} permission(s)</span>
+                            <div class="d-flex flex-column">
+                                <span class="badge bg-info mb-1">{{ $permissionsCount }} permission(s)</span>
+                                @if($permissionsCount > 0)
+                                    <small class="text-muted">
+                                        @php
+                                            $firstThree = array_slice($permissions, 0, 3);
+                                        @endphp
+                                        @foreach($firstThree as $perm)
+                                            <span class="badge bg-light text-dark me-1 mb-1">{{ $perm }}</span>
+                                        @endforeach
+                                        @if($permissionsCount > 3)
+                                            <span class="badge bg-secondary">+{{ $permissionsCount - 3 }} autres</span>
+                                        @endif
+                                    </small>
+                                @endif
+                            </div>
                         </td>
                         <td>{{ \Carbon\Carbon::parse($account->date_embauche)->format('d/m/Y') }}</td>
                         <td>

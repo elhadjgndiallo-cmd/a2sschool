@@ -54,8 +54,8 @@ use Illuminate\Support\Facades\Storage;
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <div class="photo-preview-container" style="width: 150px; height: 150px; margin: 0 auto;">
-                            @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil))
-                                <img id="photoPreview" src="{{ asset('images/profile_images/' . basename($eleve->utilisateur->photo_profi)) }}" 
+                            @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil)
+                                <img id="photoPreview" src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
                                      alt="Photo de l'élève" class="img-thumbnail rounded-circle" 
                                      style="width: 150px; height: 150px; object-fit: cover;">
                             @else

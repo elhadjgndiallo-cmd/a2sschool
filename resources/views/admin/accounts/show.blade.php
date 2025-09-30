@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Storage;
             </div>
             <div class="card-body text-center">
                 @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil))
-                    <img src="{{ asset('images/profile_images/' . basename($adminAccount->utilisateur->photo_profi)) }}" 
+                    <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
                          alt="Photo de {{ $adminAccount->utilisateur->nom }}" 
                          class="rounded-circle mb-3" 
                          style="width: 150px; height: 150px; object-fit: cover;">
@@ -202,8 +202,22 @@ use Illuminate\Support\Facades\Storage;
                 <h5 class="mb-0">Permissions Accordées</h5>
             </div>
             <div class="card-body">
-                @if(count($adminAccount->permissions ?? []) > 0)
+                @php
+                    $permissions = $adminAccount->permissions ?? [];
+                    if (is_string($permissions)) {
+                        $permissions = json_decode($permissions, true) ?? [];
+                    }
+                @endphp
+                
+                @if(count($permissions) > 0)
                     <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Ce compte administrateur dispose de <strong>{{ count($permissions) }} permission(s)</strong>.
+                            </div>
+                        </div>
+                        
                         @php
                             $groupedPermissions = [
                                 'Gestion des élèves' => array_filter($permissions, function($key) {
@@ -256,23 +270,23 @@ use Illuminate\Support\Facades\Storage;
                                 }, ARRAY_FILTER_USE_KEY),
                                 'Gestion des années scolaires' => array_filter($permissions, function($key) {
                                     return str_starts_with($key, 'annees_scolaires.');
+                                }, ARRAY_FILTER_USE_KEY),
+                                'Comptabilité' => array_filter($permissions, function($key) {
+                                    return str_starts_with($key, 'comptabilite.');
                                 }, ARRAY_FILTER_USE_KEY)
                             ];
                         @endphp
                         
                         @foreach($groupedPermissions as $groupName => $groupPermissions)
-                        @php
-                            $userPermissionsInGroup = array_intersect_key($adminAccount->permissions ?? [], $groupPermissions);
-                        @endphp
-                        @if(count($userPermissionsInGroup) > 0)
+                        @if(count($groupPermissions) > 0)
                         <div class="col-md-6 mb-3">
                             <div class="card border-success">
                                 <div class="card-header bg-success text-white">
-                                    <h6 class="mb-0">{{ $groupName }}</h6>
+                                    <h6 class="mb-0">{{ $groupName }} ({{ count($groupPermissions) }})</h6>
                                 </div>
                                 <div class="card-body">
-                                    @foreach($userPermissionsInGroup as $permission)
-                                        <span class="badge bg-success me-1 mb-1">{{ $permissions[$permission] }}</span>
+                                    @foreach($groupPermissions as $permission)
+                                        <span class="badge bg-success me-1 mb-1">{{ $permission }}</span>
                                     @endforeach
                                 </div>
                             </div>

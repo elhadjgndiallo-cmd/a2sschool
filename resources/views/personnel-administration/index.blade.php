@@ -51,8 +51,8 @@
                                     <tr>
                                         <td>
                                             @php use Illuminate\Support\Facades\Storage; @endphp
-                                            @if($p->utilisateur->photo_profil && Storage::disk('public')->exists($p->utilisateur->photo_profil))
-                                                <img src="{{ asset('images/profile_images/' . basename($p->utilisateur->photo_profi)) }}" 
+                                            @if($p->utilisateur->photo_profil && Storage::disk('public')->exists($p->utilisateur->photo_profil)
+                                                <img src="{{ asset('storage/' . $p->utilisateur->photo_profil) }}" 
                                                      alt="Photo" 
                                                      class="rounded-circle" 
                                                      style="width: 40px; height: 40px; object-fit: cover;">

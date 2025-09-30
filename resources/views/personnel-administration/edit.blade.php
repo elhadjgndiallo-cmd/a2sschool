@@ -36,8 +36,8 @@
                                 <div class="text-center">
                                     <div id="photo-preview" class="mb-3">
                                         @php use Illuminate\Support\Facades\Storage; @endphp
-                                        @if($personnelAdministration->utilisateur->photo_profil && Storage::disk('public')->exists($personnelAdministration->utilisateur->photo_profil))
-                                            <img src="{{ asset('images/profile_images/' . basename($personnelAdministration->utilisateur->photo_profi)) }}" 
+                                        @if($personnelAdministration->utilisateur->photo_profil && Storage::disk('public')->exists($personnelAdministration->utilisateur->photo_profil)
+                                            <img src="{{ asset('storage/' . $personnelAdministration->utilisateur->photo_profil) }}" 
                                                  alt="Photo actuelle" 
                                                  class="img-thumbnail rounded-circle" 
                                                  style="width: 150px; height: 150px; object-fit: cover;">
