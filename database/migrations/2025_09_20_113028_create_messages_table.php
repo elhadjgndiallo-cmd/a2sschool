@@ -37,8 +37,10 @@ return new class extends Migration
                 $table->index(['priorite']);
 
                 // Clés étrangères
-                $table->foreign('expediteur_id')->references('id')->on('utilisateurs')->onDelete('cascade');
-                $table->foreign('destinataire_id')->references('id')->on('utilisateurs')->onDelete('cascade');
+                if (Schema::hasTable('utilisateurs')) {
+                    $table->foreign('expediteur_id')->references('id')->on('utilisateurs')->onDelete('cascade');
+                    $table->foreign('destinataire_id')->references('id')->on('utilisateurs')->onDelete('cascade');
+                }
                 $table->foreign('parent_id')->references('id')->on('messages')->onDelete('cascade');
             });
         }
