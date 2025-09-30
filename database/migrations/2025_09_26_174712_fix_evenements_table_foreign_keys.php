@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -13,21 +14,29 @@ return new class extends Migration
     {
         // Vérifier si la table evenements existe
         if (Schema::hasTable('evenements')) {
-            // Vérifier et supprimer les contraintes de clés étrangères existantes si elles existent
-            Schema::table('evenements', function (Blueprint $table) {
-                // Vérifier l'existence des clés étrangères avant de les supprimer
-                try {
-                    $table->dropForeign(['classe_id']);
-                } catch (Exception $e) {
-                    // La clé étrangère n'existe pas, continuer
-                }
-                
-                try {
-                    $table->dropForeign(['createur_id']);
-                } catch (Exception $e) {
-                    // La clé étrangère n'existe pas, continuer
-                }
-            });
+            // Vérifier l'existence des clés étrangères avant de les supprimer
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'evenements' 
+                AND CONSTRAINT_NAME LIKE '%_foreign'
+            ");
+            
+            $existingForeignKeys = array_column($foreignKeys, 'CONSTRAINT_NAME');
+            
+            // Supprimer seulement les clés étrangères qui existent
+            if (!empty($existingForeignKeys)) {
+                Schema::table('evenements', function (Blueprint $table) use ($existingForeignKeys) {
+                    if (in_array('evenements_classe_id_foreign', $existingForeignKeys)) {
+                        $table->dropForeign(['classe_id']);
+                    }
+                    
+                    if (in_array('evenements_createur_id_foreign', $existingForeignKeys)) {
+                        $table->dropForeign(['createur_id']);
+                    }
+                });
+            }
             
             // Recréer les contraintes de clés étrangères avec vérification d'existence des tables
             Schema::table('evenements', function (Blueprint $table) {

@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -33,25 +34,33 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('cartes_enseignants')) {
-            Schema::table('cartes_enseignants', function (Blueprint $table) {
-                try {
-                    $table->dropForeign(['enseignant_id']);
-                } catch (Exception $e) {
-                    // La clé étrangère n'existe pas, continuer
-                }
-                
-                try {
-                    $table->dropForeign(['emise_par']);
-                } catch (Exception $e) {
-                    // La clé étrangère n'existe pas, continuer
-                }
-                
-                try {
-                    $table->dropForeign(['validee_par']);
-                } catch (Exception $e) {
-                    // La clé étrangère n'existe pas, continuer
-                }
-            });
+            // Vérifier l'existence des clés étrangères avant de les supprimer
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'cartes_enseignants' 
+                AND CONSTRAINT_NAME LIKE '%_foreign'
+            ");
+            
+            $existingForeignKeys = array_column($foreignKeys, 'CONSTRAINT_NAME');
+            
+            // Supprimer seulement les clés étrangères qui existent
+            if (!empty($existingForeignKeys)) {
+                Schema::table('cartes_enseignants', function (Blueprint $table) use ($existingForeignKeys) {
+                    if (in_array('cartes_enseignants_enseignant_id_foreign', $existingForeignKeys)) {
+                        $table->dropForeign(['enseignant_id']);
+                    }
+                    
+                    if (in_array('cartes_enseignants_emise_par_foreign', $existingForeignKeys)) {
+                        $table->dropForeign(['emise_par']);
+                    }
+                    
+                    if (in_array('cartes_enseignants_validee_par_foreign', $existingForeignKeys)) {
+                        $table->dropForeign(['validee_par']);
+                    }
+                });
+            }
         }
     }
 };
