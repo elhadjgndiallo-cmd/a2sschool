@@ -14,13 +14,24 @@ return new class extends Migration
     {
         // Vérifier que la table evenements existe
         if (Schema::hasTable('evenements')) {
-            Schema::table('evenements', function (Blueprint $table) {
-                // Ajouter les contraintes de clés étrangères seulement si les tables référencées existent
-                if (Schema::hasTable('classes')) {
+            // Vérifier l'existence des clés étrangères avant de les créer
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'evenements' 
+                AND CONSTRAINT_NAME LIKE '%_foreign'
+            ");
+            
+            $existingForeignKeys = array_column($foreignKeys, 'CONSTRAINT_NAME');
+            
+            Schema::table('evenements', function (Blueprint $table) use ($existingForeignKeys) {
+                // Ajouter les contraintes de clés étrangères seulement si elles n'existent pas déjà
+                if (Schema::hasTable('classes') && !in_array('evenements_classe_id_foreign', $existingForeignKeys)) {
                     $table->foreign('classe_id')->references('id')->on('classes')->onDelete('cascade');
                 }
                 
-                if (Schema::hasTable('utilisateurs')) {
+                if (Schema::hasTable('utilisateurs') && !in_array('evenements_createur_id_foreign', $existingForeignKeys)) {
                     $table->foreign('createur_id')->references('id')->on('utilisateurs')->onDelete('cascade');
                 }
             });
