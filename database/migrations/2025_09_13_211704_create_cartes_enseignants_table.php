@@ -23,7 +23,7 @@ return new class extends Migration
                 $table->string('photo_path')->nullable();
                 $table->text('qr_code')->nullable();
                 $table->text('observations')->nullable();
-                $table->unsignedBigInteger('emise_par');
+                $table->unsignedBigInteger('emise_par')->nullable();
                 $table->unsignedBigInteger('validee_par')->nullable();
                 $table->timestamps();
             });

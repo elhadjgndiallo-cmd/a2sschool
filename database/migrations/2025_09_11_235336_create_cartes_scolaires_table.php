@@ -23,7 +23,7 @@ return new class extends Migration
                 $table->string('photo_path')->nullable();
                 $table->text('qr_code')->nullable();
                 $table->text('observations')->nullable();
-                $table->foreignId('emise_par')->constrained('utilisateurs')->onDelete('set null');
+                $table->foreignId('emise_par')->nullable()->constrained('utilisateurs')->onDelete('set null');
                 $table->foreignId('validee_par')->nullable()->constrained('utilisateurs')->onDelete('set null');
                 $table->timestamps();
             });
