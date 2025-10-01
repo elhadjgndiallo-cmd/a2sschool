@@ -97,8 +97,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/notifications/compteur-non-lues', [NotificationController::class, 'compteurNonLues'])->name('notifications.compteur-non-lues');
     Route::get('/api/notifications/dernieres', [NotificationController::class, 'dernieres'])->name('notifications.dernieres');
         
-    // Routes pour la gestion des notes (Admin et Enseignants)
-    Route::middleware('role:admin,teacher')->group(function () {
+    // Routes pour la gestion des notes (Admin, Enseignants et Personnel Admin)
+    Route::middleware('role:admin,teacher,personnel_admin')->group(function () {
         Route::get('/notes', [NoteController::class, 'index'])->name('notes.index')->middleware('check.permission:notes.view');
         Route::get('/notes/classe/{classe}', [NoteController::class, 'saisir'])->name('notes.saisir')->middleware('check.permission:notes.create');
         Route::get('/teacher/notes/classe/{classe}', [NoteController::class, 'teacherSaisir'])->name('teacher.notes.saisir')->middleware('role:teacher');
@@ -295,22 +295,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/matiere/{matiere}/coefficient', [MatiereController::class, 'getCoefficient'])->name('api.matiere.coefficient')->middleware('check.permission:matieres.view');
     });
     
-    // Routes pour la gestion des notes (Admin et Personnel Admin)
-    Route::middleware('role:admin,personnel_admin')->group(function () {
-        Route::get('/notes', [\App\Http\Controllers\NoteController::class, 'index'])->name('notes.index')->middleware('check.permission:notes.view');
-        Route::get('/notes/create', [\App\Http\Controllers\NoteController::class, 'create'])->name('notes.create')->middleware('check.permission:notes.create');
-        Route::post('/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store')->middleware('check.permission:notes.create');
-        Route::get('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'show'])->name('notes.show')->middleware('check.permission:notes.view');
-        Route::get('/notes/{note}/edit', [\App\Http\Controllers\NoteController::class, 'edit'])->name('notes.edit')->middleware('check.permission:notes.edit');
-        Route::put('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'update'])->name('notes.update')->middleware('check.permission:notes.edit');
-        Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy')->middleware('check.permission:notes.delete');
-        
-        // Routes spécifiques pour la saisie des notes
-        Route::get('/notes/classe/{classe}', [\App\Http\Controllers\NoteController::class, 'saisirNotes'])->name('notes.classe')->middleware('check.permission:notes.create');
-        Route::get('/notes/classe/{classe}/matiere/{matiere}', [\App\Http\Controllers\NoteController::class, 'saisirNotesMatiere'])->name('notes.classe.matiere')->middleware('check.permission:notes.create');
-        Route::get('/notes/classe/{classe}/historique', [\App\Http\Controllers\NoteController::class, 'historiqueNotes'])->name('notes.historique')->middleware('check.permission:notes.view');
-        Route::get('/notes/classe/{classe}/matiere/{matiere}/historique', [\App\Http\Controllers\NoteController::class, 'historiqueNotesMatiere'])->name('notes.historique.matiere')->middleware('check.permission:notes.view');
-    });
     
     // Routes pour la gestion des classes (Admin seulement)
     Route::middleware('role:admin,personnel_admin')->group(function () {

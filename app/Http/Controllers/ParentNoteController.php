@@ -80,7 +80,7 @@ class ParentNoteController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
@@ -117,17 +117,17 @@ class ParentNoteController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
         $eleve->load(['classe', 'utilisateur']);
         
-        $periode = $request->get('periode', 'trimestre_1');
+        $periode = $request->get('periode', 'trimestre1');
         
         // Récupérer les notes de la période
         $notes = $eleve->notes()
-            ->where('periode_scolaire', $periode)
+            ->where('periode', $periode)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get();
 
@@ -141,9 +141,12 @@ class ParentNoteController extends Controller
         });
 
         // Moyenne générale pondérée
-        $moyenneGenerale = $moyennesParMatiere->sum(function($matiere) {
-            return $matiere['moyenne'] * $matiere['coefficient'];
-        }) / $moyennesParMatiere->sum('coefficient');
+        $totalCoefficient = $moyennesParMatiere->sum('coefficient');
+        $moyenneGenerale = $totalCoefficient > 0 
+            ? $moyennesParMatiere->sum(function($matiere) {
+                return $matiere['moyenne'] * $matiere['coefficient'];
+            }) / $totalCoefficient
+            : 0;
 
         return view('parent.notes.bulletin', compact('eleve', 'notes', 'moyennesParMatiere', 'moyenneGenerale', 'periode'));
     }
@@ -157,7 +160,7 @@ class ParentNoteController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 

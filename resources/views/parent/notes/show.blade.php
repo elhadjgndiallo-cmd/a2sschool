@@ -137,19 +137,19 @@
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-12 col-sm-6 col-md-3">
-                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre_1']) }}" class="btn btn-primary w-100">
+                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre1']) }}" class="btn btn-primary w-100">
                                         <i class="fas fa-file-alt me-2"></i>
                                         Bulletin T1
                                     </a>
                                 </div>
                                 <div class="col-12 col-sm-6 col-md-3">
-                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre_2']) }}" class="btn btn-primary w-100">
+                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre2']) }}" class="btn btn-primary w-100">
                                         <i class="fas fa-file-alt me-2"></i>
                                         Bulletin T2
                                     </a>
                                 </div>
                                 <div class="col-12 col-sm-6 col-md-3">
-                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre_3']) }}" class="btn btn-primary w-100">
+                                    <a href="{{ route('parent.notes.bulletin', ['eleve' => $eleve, 'periode' => 'trimestre3']) }}" class="btn btn-primary w-100">
                                         <i class="fas fa-file-alt me-2"></i>
                                         Bulletin T3
                                     </a>

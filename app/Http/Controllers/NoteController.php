@@ -23,8 +23,8 @@ class NoteController extends Controller
         }
         $user = auth()->user();
         
-        if ($user->isAdmin()) {
-            // Admin voit toutes les classes
+        if ($user->isAdmin() || $user->role === 'personnel_admin') {
+            // Admin et Personnel Admin voient toutes les classes
             $classes = Classe::actif()->with('eleves')->get();
         } else if ($user->isTeacher()) {
             // Enseignant voit seulement ses classes (via emplois du temps)
@@ -70,13 +70,15 @@ class NoteController extends Controller
                 $enseignant->nom_complet = $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
                 return $enseignant;
             });
-        } else {
-            // Admin voit toutes les matières et enseignants
+        } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
+            // Admin et Personnel Admin voient toutes les matières et enseignants
             $matieres = Matiere::actif()->get();
             $enseignants = Enseignant::with('utilisateur')->get()->map(function($enseignant) {
                 $enseignant->nom_complet = $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
                 return $enseignant;
             });
+        } else {
+            abort(403, 'Vous n\'avez pas accès à cette fonctionnalité.');
         }
         
         // Récupérer les notes existantes pour cette classe
@@ -183,7 +185,7 @@ class NoteController extends Controller
                         'note_cours' => $noteCours,
                         'note_composition' => $noteComposition,
                         'note_finale' => $noteFinale,
-                        'note_sur' => 20,
+                        'note_sur' => $noteFinale,
                         'type_evaluation' => $noteData['type_evaluation'],
                         'titre' => $noteData['titre'] ?? null,
                         'commentaire' => $noteData['commentaire'] ?? null,

@@ -254,6 +254,9 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     Sélectionnez au moins une permission pour ce compte administrateur.
+                    @if(isset($existingPermissions))
+                        <br><small>Permissions existantes: {{ count($existingPermissions) }} permissions</small>
+                    @endif
                 </div>
                 <div class="d-flex justify-content-end mb-3">
                     <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="selectAllPermissions()">
@@ -282,7 +285,7 @@
                                                        name="permissions[]" 
                                                        value="{{ $key }}" 
                                                        id="permission_{{ $key }}"
-                                                       {{ in_array($key, old('permissions', $adminAccount->permissions ?? [])) ? 'checked' : '' }}>
+                                                       {{ in_array($key, old('permissions', $existingPermissions ?? [])) ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="permission_{{ $key }}">
                                                     {{ $label }}
                                                 </label>
