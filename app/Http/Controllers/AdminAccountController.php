@@ -311,6 +311,15 @@ class AdminAccountController extends Controller
                 'enseignants.delete' => 'Supprimer les enseignants',
                 'enseignants.salaires' => 'Gérer les salaires des enseignants',
             ],
+            'Gestion des salaires' => [
+                'salaires.view' => 'Voir les salaires',
+                'salaires.create' => 'Créer des salaires',
+                'salaires.edit' => 'Modifier les salaires',
+                'salaires.delete' => 'Supprimer les salaires',
+                'salaires.valider' => 'Valider les salaires',
+                'salaires.payer' => 'Payer les salaires',
+                'salaires.rapports' => 'Voir les rapports de salaires',
+            ],
             'Gestion des classes' => [
                 'classes.view' => 'Voir les classes',
                 'classes.create' => 'Créer des classes',

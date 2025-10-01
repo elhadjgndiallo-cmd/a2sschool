@@ -55,11 +55,12 @@ class ParentNoteController extends Controller
         $notes = $query->paginate(20);
 
         // Statistiques
+        $allNotes = Note::whereIn('eleve_id', $enfantsIds)->get();
         $stats = [
-            'total_notes' => $notes->total(),
-            'moyenne_generale' => $notes->avg('note_sur'),
-            'notes_sup_10' => $notes->where('note_sur', '>=', 10)->count(),
-            'notes_inf_10' => $notes->where('note_sur', '<', 10)->count(),
+            'total_notes' => $allNotes->count(),
+            'moyenne_generale' => $allNotes->avg('note_sur'),
+            'notes_sup_10' => $allNotes->where('note_sur', '>=', 10)->count(),
+            'notes_inf_10' => $allNotes->where('note_sur', '<', 10)->count(),
         ];
 
         // Données pour les filtres

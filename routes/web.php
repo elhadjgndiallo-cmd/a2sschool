@@ -295,6 +295,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/matiere/{matiere}/coefficient', [MatiereController::class, 'getCoefficient'])->name('api.matiere.coefficient')->middleware('check.permission:matieres.view');
     });
     
+    // Routes pour la gestion des notes (Admin et Personnel Admin)
+    Route::middleware('role:admin,personnel_admin')->group(function () {
+        Route::get('/notes', [\App\Http\Controllers\NoteController::class, 'index'])->name('notes.index')->middleware('check.permission:notes.view');
+        Route::get('/notes/create', [\App\Http\Controllers\NoteController::class, 'create'])->name('notes.create')->middleware('check.permission:notes.create');
+        Route::post('/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store')->middleware('check.permission:notes.create');
+        Route::get('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'show'])->name('notes.show')->middleware('check.permission:notes.view');
+        Route::get('/notes/{note}/edit', [\App\Http\Controllers\NoteController::class, 'edit'])->name('notes.edit')->middleware('check.permission:notes.edit');
+        Route::put('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'update'])->name('notes.update')->middleware('check.permission:notes.edit');
+        Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy')->middleware('check.permission:notes.delete');
+        
+        // Routes spécifiques pour la saisie des notes
+        Route::get('/notes/classe/{classe}', [\App\Http\Controllers\NoteController::class, 'saisirNotes'])->name('notes.classe')->middleware('check.permission:notes.create');
+        Route::get('/notes/classe/{classe}/matiere/{matiere}', [\App\Http\Controllers\NoteController::class, 'saisirNotesMatiere'])->name('notes.classe.matiere')->middleware('check.permission:notes.create');
+        Route::get('/notes/classe/{classe}/historique', [\App\Http\Controllers\NoteController::class, 'historiqueNotes'])->name('notes.historique')->middleware('check.permission:notes.view');
+        Route::get('/notes/classe/{classe}/matiere/{matiere}/historique', [\App\Http\Controllers\NoteController::class, 'historiqueNotesMatiere'])->name('notes.historique.matiere')->middleware('check.permission:notes.view');
+    });
+    
     // Routes pour la gestion des classes (Admin seulement)
     Route::middleware('role:admin,personnel_admin')->group(function () {
         Route::get('classes', [ClasseController::class, 'index'])->name('classes.index')->middleware('check.permission:classes.view');
@@ -406,20 +423,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/rapports/detaille', [RapportController::class, 'detaille'])->name('rapports.detaille');
     });
     
-    // Routes pour la gestion des salaires des enseignants (Admin seulement)
+    // Routes pour la gestion des salaires des enseignants (Admin et Personnel Admin)
     Route::middleware('role:admin,personnel_admin')->group(function () {
-        Route::get('/salaires', [SalaireEnseignantController::class, 'index'])->name('salaires.index');
-        Route::get('/salaires/create', [SalaireEnseignantController::class, 'create'])->name('salaires.create');
-        Route::post('/salaires', [SalaireEnseignantController::class, 'store'])->name('salaires.store');
-        Route::get('/salaires/{salaire}', [SalaireEnseignantController::class, 'show'])->name('salaires.show');
-        Route::get('/salaires/{salaire}/edit', [SalaireEnseignantController::class, 'edit'])->name('salaires.edit');
-        Route::put('/salaires/{salaire}', [SalaireEnseignantController::class, 'update'])->name('salaires.update');
-        Route::delete('/salaires/{salaire}', [SalaireEnseignantController::class, 'destroy'])->name('salaires.destroy');
-        Route::post('/salaires/{salaire}/valider', [SalaireEnseignantController::class, 'valider'])->name('salaires.valider');
-        Route::get('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payerForm'])->name('salaires.payer.form');
-        Route::post('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payer'])->name('salaires.payer');
-        Route::post('/salaires/calculer-periode', [SalaireEnseignantController::class, 'calculerSalairesPeriode'])->name('salaires.calculer-periode');
-        Route::get('/salaires/rapports', [SalaireEnseignantController::class, 'rapports'])->name('salaires.rapports')->middleware('check.permission:salaires.view');
+        Route::get('/salaires', [SalaireEnseignantController::class, 'index'])->name('salaires.index')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/create', [SalaireEnseignantController::class, 'create'])->name('salaires.create')->middleware('check.permission:salaires.create');
+        Route::post('/salaires', [SalaireEnseignantController::class, 'store'])->name('salaires.store')->middleware('check.permission:salaires.create');
+        Route::get('/salaires/{salaire}', [SalaireEnseignantController::class, 'show'])->name('salaires.show')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/{salaire}/edit', [SalaireEnseignantController::class, 'edit'])->name('salaires.edit')->middleware('check.permission:salaires.edit');
+        Route::put('/salaires/{salaire}', [SalaireEnseignantController::class, 'update'])->name('salaires.update')->middleware('check.permission:salaires.edit');
+        Route::delete('/salaires/{salaire}', [SalaireEnseignantController::class, 'destroy'])->name('salaires.destroy')->middleware('check.permission:salaires.delete');
+        Route::post('/salaires/{salaire}/valider', [SalaireEnseignantController::class, 'valider'])->name('salaires.valider')->middleware('check.permission:salaires.valider');
+        Route::get('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payerForm'])->name('salaires.payer.form')->middleware('check.permission:salaires.payer');
+        Route::post('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payer'])->name('salaires.payer')->middleware('check.permission:salaires.payer');
+        Route::post('/salaires/calculer-periode', [SalaireEnseignantController::class, 'calculerSalairesPeriode'])->name('salaires.calculer-periode')->middleware('check.permission:salaires.create');
+        Route::get('/salaires/rapports', [SalaireEnseignantController::class, 'rapports'])->name('salaires.rapports')->middleware('check.permission:salaires.rapports');
     });
     
     // Routes pour la gestion des tarifs (Admin seulement)
