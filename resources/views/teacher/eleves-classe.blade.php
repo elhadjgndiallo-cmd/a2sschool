@@ -194,9 +194,36 @@
 @push('scripts')
 <script>
 function voirProfil(eleveId) {
-    // Ici vous pouvez ajouter une requête AJAX pour charger les détails de l'élève
+    // Afficher le modal avec un indicateur de chargement
     document.getElementById('profilContent').innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
     new bootstrap.Modal(document.getElementById('profilModal')).show();
+    
+    // Faire une requête AJAX pour charger les détails de l'élève
+    fetch(`/teacher/eleves/${eleveId}/profil`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erreur lors du chargement du profil');
+        }
+        return response.text();
+    })
+    .then(html => {
+        document.getElementById('profilContent').innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        document.getElementById('profilContent').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Erreur lors du chargement du profil: ${error.message}
+            </div>
+        `;
+    });
 }
 
 function marquerAbsence(eleveId) {

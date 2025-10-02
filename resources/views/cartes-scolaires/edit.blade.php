@@ -35,7 +35,7 @@
                                                     @if($cartes_scolaire->eleve->utilisateur->photo_profil)
                                                         @php
                                                             $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
-                                                            $imagePath = 'images/profile_images/' . $imageName;
+                                                            $imagePath = 'storage/' . $carte->eleve->utilisateur->photo_profil;
                                                         @endphp
                                                         <img src="{{ asset($imagePath) }}" 
                                                              class="rounded-circle me-2" 

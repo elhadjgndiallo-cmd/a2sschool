@@ -12,6 +12,12 @@
     @endphp
     <style>
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
             body { margin: 0; }
             .no-print { display: none !important; }
             .card-container { 

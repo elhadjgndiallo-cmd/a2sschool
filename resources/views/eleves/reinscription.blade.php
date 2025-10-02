@@ -139,23 +139,10 @@ use Illuminate\Support\Facades\Storage;
                                        name="eleves_ids[]" value="{{ $eleve->id }}">
                             </td>
                             <td>
-                                <div class="avatar-sm">
-                                    @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil))
-                                        <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
-                                             alt="Photo de {{ $eleve->utilisateur->nom_complet ?? 'élève' }}" 
-                                             class="rounded-circle" 
-                                             style="width: 40px; height: 40px; object-fit: cover;">
-                                    @else
-                                        <div class="bg-info rounded-circle d-flex align-items-center justify-content-center text-white" 
-                                             style="width: 40px; height: 40px;">
-                                            @if($eleve->utilisateur && $eleve->utilisateur->prenom && $eleve->utilisateur->nom)
-                                                {{ substr($eleve->utilisateur->prenom, 0, 1) }}{{ substr($eleve->utilisateur->nom, 0, 1) }}
-                                            @else
-                                                ??
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
+                                <x-profile-image 
+                                    :photo-path="$eleve->utilisateur->photo_profil ?? null"
+                                    :name="($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '')"
+                                    size="sm" />
                             </td>
                             <td>
                                 <div>

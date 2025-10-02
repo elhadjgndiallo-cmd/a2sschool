@@ -243,6 +243,12 @@
         }
         
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
             body { margin: 0; }
             .no-print { display: none; }
             .carte-container {
@@ -300,7 +306,7 @@
                     @if($cartes_scolaire->eleve->utilisateur->photo_profil)
                         @php
                             $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
-                            $imagePath = 'images/profile_images/' . $imageName;
+                            $imagePath = 'storage/' . $cartes_scolaire->eleve->utilisateur->photo_profil;
                         @endphp
                         <img src="{{ asset($imagePath) }}" alt="Photo">
                     @else

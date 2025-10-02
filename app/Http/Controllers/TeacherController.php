@@ -314,4 +314,46 @@ class TeacherController extends Controller
                 ->withInput();
         }
     }
+
+    /**
+     * Afficher le profil d'un élève (pour modal AJAX)
+     */
+    public function profilEleve($eleveId)
+    {
+        $user = Auth::user();
+        $enseignant = $user->enseignant;
+        
+        if (!$enseignant) {
+            abort(403, 'Profil enseignant non trouvé');
+        }
+
+        // Récupérer l'élève avec ses informations
+        $eleve = Eleve::with(['utilisateur', 'classe', 'notes.matiere', 'absences'])
+            ->findOrFail($eleveId);
+
+        // Vérifier que l'enseignant a accès à cet élève
+        $hasAccess = Classe::whereHas('emploisTemps', function($query) use ($enseignant) {
+            $query->where('enseignant_id', $enseignant->id);
+        })->whereHas('eleves', function($query) use ($eleveId) {
+            $query->where('id', $eleveId);
+        })->exists();
+
+        if (!$hasAccess) {
+            abort(403, 'Vous n\'avez pas accès à ce profil d\'élève');
+        }
+
+        // Récupérer les statistiques de l'élève
+        $statistiques = [
+            'notes_count' => $eleve->notes->count(),
+            'absences_count' => $eleve->absences->count(),
+            'moyenne_generale' => $eleve->notes->avg('note') ?? 0,
+            'derniere_absence' => $eleve->absences->sortByDesc('date_absence')->first()
+        ];
+
+        if (request()->ajax()) {
+            return view('teacher.partials.profil-eleve', compact('eleve', 'statistiques'));
+        }
+
+        return view('teacher.profil-eleve', compact('eleve', 'statistiques'));
+    }
 }

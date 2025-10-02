@@ -41,7 +41,7 @@ use Illuminate\Support\Facades\Storage;
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-12 text-center mb-4">
-                        @if($enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil)
+                        @if($enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil))
                             <div class="mb-3">
                                 <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" alt="Photo de profil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                                 <form action="{{ route('enseignants.delete-photo', $enseignant->id) }}" method="POST" class="mt-2">

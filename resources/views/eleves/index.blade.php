@@ -119,37 +119,10 @@ use Illuminate\Support\Facades\Storage;
                     @forelse($eleves as $eleve)
                                     <tr>
                         <td>
-                            <div class="avatar-sm" style="width: 40px; height: 40px; border: 1px solid #ddd;">
-                                @if($eleve->utilisateur && $eleve->utilisateur->photo_profil)
-                                    @php
-                                        $imageName = basename($eleve->utilisateur->photo_profil);
-                                        $imagePath = 'images/profile_images/' . $imageName;
-                                        $fullPath = public_path($imagePath);
-                                        $imageExists = file_exists($fullPath);
-                                    @endphp
-                                    @if($imageExists)
-                                        <img src="{{ asset($imagePath) }}" 
-                                             alt="Photo de {{ $eleve->utilisateur->nom ?? 'élève' }}" 
-                                             class="rounded-circle" 
-                                             style="width: 40px; height: 40px; object-fit: cover; border: 1px solid green;"
-                                             onerror="console.log('Image error:', this.src); this.style.border='2px solid red';">
-                                    @else
-                                        <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center text-dark" 
-                                             style="font-size: 14px; width: 40px; height: 40px; border: 1px solid orange;">
-                                            ❌
-                                        </div>
-                                    @endif
-                                @else
-                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" 
-                                         style="font-size: 14px; width: 40px; height: 40px; border: 1px solid blue;">
-                                        @if($eleve->utilisateur && $eleve->utilisateur->prenom && $eleve->utilisateur->nom)
-                                            {{ substr($eleve->utilisateur->prenom, 0, 1) }}{{ substr($eleve->utilisateur->nom, 0, 1) }}
-                                        @else
-                                            ??
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
+                            <x-profile-image 
+                                :photo-path="$eleve->utilisateur->photo_profil ?? null"
+                                :name="($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '')"
+                                size="sm" />
                         </td>
                         <td>
                                             <span class="badge bg-info">{{ $eleve->numero_etudiant ?? 'N/A' }}</span>
@@ -197,12 +170,14 @@ use Illuminate\Support\Facades\Storage;
                                             <div class="btn-group" role="group">
                                                 <a href="{{ route('eleves.show', $eleve) }}" 
                                                    class="btn btn-sm btn-info" 
-                                                   title="Voir détails">
+                                                   title="Voir détails"
+                                                   onclick="return testButton('eleve', {{ $eleve->id }})">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                                 <a href="{{ route('eleves.edit', $eleve) }}" 
                                                    class="btn btn-sm btn-warning" 
-                                                   title="Modifier">
+                                                   title="Modifier"
+                                                   onclick="return testEditButton('eleve', {{ $eleve->id }})">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                     @if($eleve->exempte_frais)
@@ -348,3 +323,85 @@ function updateResultsCount() {
 }
 </script>
 @endsection
+
+@push('scripts')
+<script>
+function testButton(type, id) {
+    console.log(`Test du bouton ${type} avec ID: ${id}`);
+    
+    // Afficher un message de test
+    const message = `Test du bouton "Voir ${type}" pour l'ID: ${id}`;
+    console.log(message);
+    
+    // Optionnel: Afficher une alerte pour confirmer que le bouton fonctionne
+    // alert(message);
+    
+    // Retourner true pour permettre la navigation normale
+    return true;
+}
+
+function testEditButton(type, id) {
+    console.log(`Test du bouton modifier ${type} avec ID: ${id}`);
+    
+    // Afficher un message de test
+    const message = `Test du bouton "Modifier ${type}" pour l'ID: ${id}`;
+    console.log(message);
+    
+    // Vérifier les permissions avant la navigation
+    checkEditPermissions(type, id);
+    
+    // Retourner true pour permettre la navigation normale
+    return true;
+}
+
+function checkEditPermissions(type, id) {
+    const permission = type === 'enseignant' ? 'enseignants.edit' : 'eleves.edit';
+    
+    fetch('/test-permissions', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Permissions actuelles:', data);
+        
+        if (data.permissions && data.permissions[permission]) {
+            console.log(`✅ Permission ${permission} accordée`);
+        } else {
+            console.log(`❌ Permission ${permission} refusée`);
+            alert(`Vous n'avez pas la permission de modifier les ${type}s. Contactez l'administrateur.`);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors de la vérification des permissions:', error);
+    });
+}
+
+// Fonction pour tester les permissions
+function testPermissions() {
+    fetch('/test-permissions', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Permissions testées:', data);
+    })
+    .catch(error => {
+        console.error('Erreur lors du test des permissions:', error);
+    });
+}
+
+// Tester les permissions au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page chargée, test des boutons "Voir" activé');
+    testPermissions();
+});
+</script>
+@endpush

@@ -531,6 +531,9 @@ class EleveController extends Controller
                     
                     $eleve->utilisateur->photo_profil = $photoPath;
                     $eleve->utilisateur->save();
+                    
+                    // Synchroniser l'image pour XAMPP
+                    \App\Helpers\ImageSyncHelper::syncImage($photoPath);
                 }
 
                 // Mettre à jour l'élève

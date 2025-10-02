@@ -38,21 +38,17 @@
                 <div class="row mb-3">
                     <div class="col-md-12 text-center mb-4">
                         <div class="mb-3">
-                            @php
-                                use App\Helpers\ImageHelper;
-                                $photoPath = $eleve->utilisateur->photo_profil ?? null;
-                                $name = ($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '');
-                            @endphp
-                            {!! ImageHelper::profileImage($photoPath, $name, [
-                                'class' => 'img-thumbnail rounded-circle',
-                                'style' => 'width: 150px; height: 150px; object-fit: cover;'
-                            ]) !!}
+                            <x-profile-image 
+                                :photo-path="$eleve->utilisateur->photo_profil ?? null"
+                                :name="($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '')"
+                                size="lg" 
+                                class="img-thumbnail" />
                             
                             <div class="mt-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
                                     <i class="fas fa-camera me-1"></i> Changer la photo
                                 </button>
-                                @if($photoPath)
+                                @if($eleve->utilisateur->photo_profil)
                                     <form action="{{ route('eleves.delete-photo', $eleve->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')

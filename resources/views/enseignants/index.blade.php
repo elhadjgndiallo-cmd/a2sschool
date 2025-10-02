@@ -119,11 +119,13 @@ use Illuminate\Support\Facades\Storage;
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ route('enseignants.show', $enseignant->id) }}" 
-                                   class="btn btn-outline-info" title="Voir détails">
+                                   class="btn btn-outline-info" title="Voir détails"
+                                   onclick="return testButton('enseignant', {{ $enseignant->id }})">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <a href="{{ route('enseignants.edit', $enseignant->id) }}" 
-                                   class="btn btn-outline-warning" title="Modifier">
+                                   class="btn btn-outline-warning" title="Modifier"
+                                   onclick="return testEditButton('enseignant', {{ $enseignant->id }})">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <button type="button" 
@@ -233,3 +235,85 @@ function resetPassword(id) {
 </script>
 @endpush
 @endsection
+
+@push('scripts')
+<script>
+function testButton(type, id) {
+    console.log(`Test du bouton ${type} avec ID: ${id}`);
+    
+    // Afficher un message de test
+    const message = `Test du bouton "Voir ${type}" pour l'ID: ${id}`;
+    console.log(message);
+    
+    // Optionnel: Afficher une alerte pour confirmer que le bouton fonctionne
+    // alert(message);
+    
+    // Retourner true pour permettre la navigation normale
+    return true;
+}
+
+function testEditButton(type, id) {
+    console.log(`Test du bouton modifier ${type} avec ID: ${id}`);
+    
+    // Afficher un message de test
+    const message = `Test du bouton "Modifier ${type}" pour l'ID: ${id}`;
+    console.log(message);
+    
+    // Vérifier les permissions avant la navigation
+    checkEditPermissions(type, id);
+    
+    // Retourner true pour permettre la navigation normale
+    return true;
+}
+
+function checkEditPermissions(type, id) {
+    const permission = type === 'enseignant' ? 'enseignants.edit' : 'eleves.edit';
+    
+    fetch('/test-permissions', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Permissions actuelles:', data);
+        
+        if (data.permissions && data.permissions[permission]) {
+            console.log(`✅ Permission ${permission} accordée`);
+        } else {
+            console.log(`❌ Permission ${permission} refusée`);
+            alert(`Vous n'avez pas la permission de modifier les ${type}s. Contactez l'administrateur.`);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors de la vérification des permissions:', error);
+    });
+}
+
+// Fonction pour tester les permissions
+function testPermissions() {
+    fetch('/test-permissions', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Permissions testées:', data);
+    })
+    .catch(error => {
+        console.error('Erreur lors du test des permissions:', error);
+    });
+}
+
+// Tester les permissions au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page chargée, test des boutons "Voir" activé');
+    testPermissions();
+});
+</script>
+@endpush

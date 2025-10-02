@@ -130,7 +130,18 @@ class AdminAccountController extends Controller
     {
         $adminAccount->load('utilisateur');
         $permissions = $this->getAvailablePermissions();
-        return view('admin.accounts.edit', compact('adminAccount', 'permissions'));
+        
+        // Décoder les permissions existantes
+        $existingPermissions = $adminAccount->permissions;
+        if (is_string($existingPermissions)) {
+            $existingPermissions = json_decode($existingPermissions, true);
+        }
+        if (!is_array($existingPermissions)) {
+            $existingPermissions = [];
+        }
+        
+        
+        return view('admin.accounts.edit', compact('adminAccount', 'permissions', 'existingPermissions'));
     }
 
     /**
@@ -138,6 +149,7 @@ class AdminAccountController extends Controller
      */
     public function update(Request $request, PersonnelAdministration $adminAccount)
     {
+        
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -179,6 +191,9 @@ class AdminAccountController extends Controller
                 
                 $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
                 $adminAccount->utilisateur->update(['photo_profil' => $photoPath]);
+                
+                // Synchroniser l'image pour XAMPP
+                \App\Helpers\ImageSyncHelper::syncImage($photoPath);
             }
 
             // Mettre à jour le profil personnel d'administration

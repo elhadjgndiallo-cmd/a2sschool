@@ -113,11 +113,7 @@
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 @if($carte->eleve->utilisateur->photo_profil)
-                                                    @php
-                                                        $imageName = basename($carte->eleve->utilisateur->photo_profil);
-                                                        $imagePath = 'images/profile_images/' . $imageName;
-                                                    @endphp
-                                                    <img src="{{ asset($imagePath) }}" 
+                                                    <img src="{{ asset('storage/' . $carte->eleve->utilisateur->photo_profil) }}" 
                                                          class="rounded-circle me-2" 
                                                          width="30" height="30" 
                                                          alt="Photo">

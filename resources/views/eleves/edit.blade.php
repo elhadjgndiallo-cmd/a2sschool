@@ -54,21 +54,18 @@ use Illuminate\Support\Facades\Storage;
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <div class="photo-preview-container" style="width: 150px; height: 150px; margin: 0 auto;">
-                            @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil)
-                                <img id="photoPreview" src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
-                                     alt="Photo de l'élève" class="img-thumbnail rounded-circle" 
-                                     style="width: 150px; height: 150px; object-fit: cover;">
-                            @else
-                                <div id="photoPreview" class="bg-light border rounded-circle d-flex align-items-center justify-content-center" 
-                                     style="width: 150px; height: 150px;">
-                                    <i class="fas fa-user fa-3x text-muted"></i>
-                                </div>
-                            @endif
+                            <div id="photoPreview">
+                                <x-profile-image 
+                                    :photo-path="$eleve->utilisateur->photo_profil ?? null"
+                                    :name="($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '')"
+                                    size="lg" 
+                                    class="img-thumbnail" />
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <input type="file" class="form-control @error('photo_profil') is-invalid @enderror" 
-                               id="photo_profil" name="photo_profil" accept="image/*">
+                               id="photo_profil" name="photo_profil" accept="image/*" onchange="handleImageUpload(this)">
                         <small class="text-muted">Formats acceptés: JPG, PNG, GIF. Taille max: 2MB</small>
                         @error('photo_profil')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -668,6 +665,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Fonction pour gérer l'upload d'images
+function handleImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Vérifier la taille du fichier (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Le fichier est trop volumineux. Taille maximale: 2MB');
+        input.value = '';
+        return;
+    }
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+        alert('Veuillez sélectionner un fichier image valide.');
+        input.value = '';
+        return;
+    }
+
+    // Afficher la prévisualisation
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        updateImagePreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateImagePreview(imageSrc) {
+    const previewContainer = document.getElementById('photoPreview');
+    if (!previewContainer) return;
+
+    // Créer l'image de prévisualisation
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.className = 'img-thumbnail rounded-circle';
+    img.style.cssText = 'width: 150px; height: 150px; object-fit: cover;';
+    img.alt = 'Photo de profil';
+
+    // Remplacer le contenu du conteneur
+    previewContainer.innerHTML = '';
+    previewContainer.appendChild(img);
+}
 </script>
 @endpush
 @endsection

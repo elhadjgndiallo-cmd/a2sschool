@@ -79,7 +79,8 @@ class ImageHelper
         $defaultAttributes = [
             'alt' => $alt,
             'class' => 'img-thumbnail',
-            'style' => 'object-fit: cover;'
+            'style' => 'object-fit: cover;',
+            'onerror' => 'this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';'
         ];
 
         $attributes = array_merge($defaultAttributes, $attributes);
@@ -89,7 +90,18 @@ class ImageHelper
             $attrString .= " {$key}=\"{$value}\"";
         }
 
-        return "<img src=\"{$url}\" {$attrString}>";
+        // Ajouter un fallback avec initiales
+        $fallback = '';
+        if (!empty($alt) && $alt !== 'Image') {
+            $initials = self::getInitials($alt);
+            $bgColor = self::getColorFromName($alt);
+            $style = $attributes['style'] ?? '';
+            $class = $attributes['class'] ?? '';
+            
+            $fallback = "<div style=\"display: none; {$style} background-color: {$bgColor}; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;\" class=\"{$class}\">{$initials}</div>";
+        }
+
+        return "<img src=\"{$url}\" {$attrString}>{$fallback}";
     }
 
     /**
@@ -120,7 +132,23 @@ class ImageHelper
         $style = $attributes['style'] ?? '';
         $class = $attributes['class'] ?? '';
         
-        return "<div class=\"{$class}\" style=\"{$style} background-color: {$bgColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 2rem;\">{$initials}</div>";
+        // Ajuster la taille de la police selon la taille de l'image
+        $fontSize = '2rem';
+        if (strpos($style, 'width:') !== false) {
+            preg_match('/width:\s*(\d+)px/', $style, $matches);
+            if (isset($matches[1])) {
+                $width = (int)$matches[1];
+                if ($width <= 40) {
+                    $fontSize = '0.8rem';
+                } elseif ($width <= 80) {
+                    $fontSize = '1.2rem';
+                } elseif ($width <= 120) {
+                    $fontSize = '1.6rem';
+                }
+            }
+        }
+        
+        return "<div class=\"{$class}\" style=\"{$style} background-color: {$bgColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: {$fontSize};\">{$initials}</div>";
     }
 
     /**

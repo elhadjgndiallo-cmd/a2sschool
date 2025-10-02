@@ -272,6 +272,9 @@ class EnseignantController extends Controller
                     $photoPath = $request->file('photo_profil')->store('profile_images', 'public');
                     $enseignant->utilisateur->photo_profil = $photoPath;
                     $enseignant->utilisateur->save();
+                    
+                    // Synchroniser l'image pour XAMPP
+                    \App\Helpers\ImageSyncHelper::syncImage($photoPath);
                 }
 
                 // Synchroniser les matières
