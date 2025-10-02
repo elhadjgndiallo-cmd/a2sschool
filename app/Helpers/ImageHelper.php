@@ -24,14 +24,25 @@ class ImageHelper
             return $path;
         }
 
-        // Vérifier si le fichier existe dans le storage public
+        // Vérifier si le fichier existe dans le storage public (lien symbolique)
         if (Storage::disk('public')->exists($path)) {
+            return asset('storage/' . $path);
+        }
+
+        // Vérifier si le fichier existe dans public/storage (copie manuelle)
+        if (file_exists(public_path('storage/' . $path))) {
             return asset('storage/' . $path);
         }
 
         // Vérifier si le fichier existe dans le dossier public
         if (file_exists(public_path($path))) {
             return asset($path);
+        }
+
+        // Vérifier si le fichier existe dans storage/app/public (accès direct)
+        if (file_exists(storage_path('app/public/' . $path))) {
+            // Pour le serveur LWS, utiliser une route spéciale pour les images
+            return route('image.show', ['path' => $path]);
         }
 
         // Retourner l'image par défaut

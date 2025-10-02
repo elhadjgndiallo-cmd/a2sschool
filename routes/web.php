@@ -107,6 +107,25 @@ Route::get('/debug/emploi-temps', function() {
     return response()->json($data);
 })->middleware('auth');
 
+// Route spéciale pour servir les images sur le serveur LWS
+Route::get('/image/{path}', function($path) {
+    $imagePath = storage_path('app/public/' . $path);
+    
+    if (!file_exists($imagePath)) {
+        abort(404, 'Image non trouvée');
+    }
+    
+    $mimeType = mime_content_type($imagePath);
+    $fileSize = filesize($imagePath);
+    
+    return response()->file($imagePath, [
+        'Content-Type' => $mimeType,
+        'Content-Length' => $fileSize,
+        'Cache-Control' => 'public, max-age=31536000',
+        'Expires' => 'Thu, 31 Dec 2025 23:59:59 GMT'
+    ]);
+})->where('path', '.*')->name('image.show');
+
 // Routes d'authentification
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
