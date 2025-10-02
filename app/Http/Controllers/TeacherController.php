@@ -99,22 +99,40 @@ class TeacherController extends Controller
      */
     public function emploiTemps()
     {
-        $user = Auth::user();
-        $enseignant = $user->enseignant;
-        
-        if (!$enseignant) {
-            abort(403, 'Profil enseignant non trouvé');
+        try {
+            $user = Auth::user();
+            $enseignant = $user->enseignant;
+            
+            if (!$enseignant) {
+                \Log::error('Profil enseignant non trouvé', ['user_id' => $user->id]);
+                abort(403, 'Profil enseignant non trouvé');
+            }
+
+            // Récupérer l'emploi du temps de l'enseignant
+            $emploisTemps = $enseignant->emploisTemps()
+                ->with(['classe', 'matiere'])
+                ->actif()
+                ->orderBy('jour_semaine')
+                ->orderBy('heure_debut')
+                ->get();
+
+            \Log::info('Emploi du temps enseignant chargé', [
+                'enseignant_id' => $enseignant->id,
+                'emplois_count' => $emploisTemps->count()
+            ]);
+
+            return view('teacher.emploi-temps', compact('emploisTemps'));
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement de l\'emploi du temps enseignant', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return view('teacher.emploi-temps', ['emploisTemps' => collect()])
+                ->with('error', 'Erreur lors du chargement de l\'emploi du temps. Veuillez contacter l\'administrateur.');
         }
-
-        // Récupérer l'emploi du temps de l'enseignant
-        $emploisTemps = $enseignant->emploisTemps()
-            ->with(['classe', 'matiere'])
-            ->actif()
-            ->orderBy('jour_semaine')
-            ->orderBy('heure_debut')
-            ->get();
-
-        return view('teacher.emploi-temps', compact('emploisTemps'));
     }
 
     /**

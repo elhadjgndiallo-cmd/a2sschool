@@ -583,7 +583,7 @@ use Illuminate\Support\Facades\Storage;
         <a href="{{ route('eleves.index') }}" class="btn btn-outline-secondary me-md-2">
             <i class="fas fa-times me-1"></i>Annuler
         </a>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary" onclick="return handleFormSubmit(this);">
             <i class="fas fa-save me-1"></i>Enregistrer les modifications
         </button>
     </div>
@@ -591,7 +591,70 @@ use Illuminate\Support\Facades\Storage;
 
 @push('scripts')
 <script>
+function handleFormSubmit(button) {
+    console.log('🔍 Début de la soumission du formulaire élève');
+    
+    // Désactiver le bouton pour éviter les double-clics
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
+    
+    // Récupérer le formulaire
+    const form = button.closest('form');
+    if (!form) {
+        console.error('❌ Formulaire non trouvé');
+        alert('Erreur: Formulaire non trouvé');
+        return false;
+    }
+    
+    console.log('📋 Formulaire trouvé:', form);
+    console.log('📋 Action:', form.action);
+    console.log('📋 Méthode:', form.method);
+    
+    // Vérifier les champs requis
+    const requiredFields = form.querySelectorAll('[required]');
+    let missingFields = [];
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            missingFields.push(field.name || field.id);
+        }
+    });
+    
+    if (missingFields.length > 0) {
+        console.error('❌ Champs requis manquants:', missingFields);
+        alert('Veuillez remplir tous les champs requis: ' + missingFields.join(', '));
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer les modifications';
+        return false;
+    }
+    
+    console.log('✅ Validation des champs réussie');
+    
+    // Ajouter un indicateur de chargement
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'alert alert-info';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...';
+    form.parentNode.insertBefore(loadingDiv, form);
+    
+    // Soumettre le formulaire
+    console.log('🚀 Soumission du formulaire...');
+    form.submit();
+    
+    return true;
+}
+
+// Ajouter un gestionnaire d'événement sur le formulaire
 document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action*="eleves"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('📤 Événement submit déclenché');
+            console.log('📤 Action:', this.action);
+            console.log('📤 Méthode:', this.method);
+        });
+    }
+    
+    // Fonction existante...
     // Gestion du lien de parenté "autre"
     const lienParenteSelect = document.getElementById('lien_parente');
     const autreLienSection = document.getElementById('autre-lien-section');

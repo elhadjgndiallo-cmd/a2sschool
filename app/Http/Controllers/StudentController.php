@@ -16,27 +16,47 @@ class StudentController extends Controller
      */
     public function emploiTemps()
     {
-        $user = Auth::user();
-        $eleve = $user->eleve;
-        
-        if (!$eleve) {
-            abort(403, 'Profil élève non trouvé');
+        try {
+            $user = Auth::user();
+            $eleve = $user->eleve;
+            
+            if (!$eleve) {
+                \Log::error('Profil élève non trouvé', ['user_id' => $user->id]);
+                abort(403, 'Profil élève non trouvé');
+            }
+
+            if (!$eleve->classe) {
+                \Log::warning('Élève sans classe', ['eleve_id' => $eleve->id]);
+                return view('student.emploi-temps', compact('eleve'))
+                    ->with('error', 'Vous n\'êtes pas assigné à une classe.');
+            }
+
+            // Récupérer l'emploi du temps de la classe de l'élève
+            $emploisTemps = $eleve->classe->emploisTemps()
+                ->with(['matiere', 'enseignant.utilisateur'])
+                ->actif()
+                ->orderBy('jour_semaine')
+                ->orderBy('heure_debut')
+                ->get();
+
+            \Log::info('Emploi du temps chargé', [
+                'eleve_id' => $eleve->id,
+                'classe_id' => $eleve->classe->id,
+                'emplois_count' => $emploisTemps->count()
+            ]);
+
+            return view('student.emploi-temps', compact('eleve', 'emploisTemps'));
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement de l\'emploi du temps élève', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return view('student.emploi-temps', ['eleve' => null, 'emploisTemps' => collect()])
+                ->with('error', 'Erreur lors du chargement de l\'emploi du temps. Veuillez contacter l\'administrateur.');
         }
-
-        if (!$eleve->classe) {
-            return view('student.emploi-temps', compact('eleve'))
-                ->with('error', 'Vous n\'êtes pas assigné à une classe.');
-        }
-
-        // Récupérer l'emploi du temps de la classe de l'élève
-        $emploisTemps = $eleve->classe->emploisTemps()
-            ->with(['matiere', 'enseignant.utilisateur'])
-            ->actif()
-            ->orderBy('jour_semaine')
-            ->orderBy('heure_debut')
-            ->get();
-
-        return view('student.emploi-temps', compact('eleve', 'emploisTemps'));
     }
 
     /**

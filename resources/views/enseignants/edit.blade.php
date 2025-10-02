@@ -258,7 +258,7 @@ use Illuminate\Support\Facades\Storage;
                             <i class="fas fa-arrow-left me-2"></i>
                             Retour à la liste
                         </a>
-                        <button type="submit" class="btn btn-success btn-lg" onclick="alert('Bouton cliqué - soumission du formulaire');">
+                        <button type="submit" class="btn btn-success btn-lg" onclick="return handleFormSubmit(this);">
                             <i class="fas fa-save me-2"></i>
                             Mettre à jour l'enseignant
                         </button>
@@ -269,3 +269,71 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </form>
 @endsection
+
+@push('scripts')
+<script>
+function handleFormSubmit(button) {
+    console.log('🔍 Début de la soumission du formulaire enseignant');
+    
+    // Désactiver le bouton pour éviter les double-clics
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
+    
+    // Récupérer le formulaire
+    const form = button.closest('form');
+    if (!form) {
+        console.error('❌ Formulaire non trouvé');
+        alert('Erreur: Formulaire non trouvé');
+        return false;
+    }
+    
+    console.log('📋 Formulaire trouvé:', form);
+    console.log('📋 Action:', form.action);
+    console.log('📋 Méthode:', form.method);
+    
+    // Vérifier les champs requis
+    const requiredFields = form.querySelectorAll('[required]');
+    let missingFields = [];
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            missingFields.push(field.name || field.id);
+        }
+    });
+    
+    if (missingFields.length > 0) {
+        console.error('❌ Champs requis manquants:', missingFields);
+        alert('Veuillez remplir tous les champs requis: ' + missingFields.join(', '));
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-save me-2"></i>Mettre à jour l\'enseignant';
+        return false;
+    }
+    
+    console.log('✅ Validation des champs réussie');
+    
+    // Ajouter un indicateur de chargement
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'alert alert-info';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...';
+    form.parentNode.insertBefore(loadingDiv, form);
+    
+    // Soumettre le formulaire
+    console.log('🚀 Soumission du formulaire...');
+    form.submit();
+    
+    return true;
+}
+
+// Ajouter un gestionnaire d'événement sur le formulaire
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action*="enseignants"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('📤 Événement submit déclenché');
+            console.log('📤 Action:', this.action);
+            console.log('📤 Méthode:', this.method);
+        });
+    }
+});
+</script>
+@endpush

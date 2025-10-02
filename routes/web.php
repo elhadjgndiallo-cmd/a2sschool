@@ -67,6 +67,46 @@ Route::get('/test-permissions', function() {
     ]);
 })->middleware('auth');
 
+// Routes de diagnostic pour l'emploi du temps
+Route::get('/debug/emploi-temps', function() {
+    $user = auth()->user();
+    if (!$user) {
+        return response()->json(['error' => 'Non connecté']);
+    }
+    
+    $data = [
+        'user' => $user->nom . ' ' . $user->prenom,
+        'role' => $user->role,
+        'routes' => [
+            'student.emploi-temps' => route('student.emploi-temps'),
+            'teacher.emploi-temps' => route('teacher.emploi-temps'),
+            'emplois-temps.index' => route('emplois-temps.index')
+        ],
+        'permissions' => [
+            'emplois-temps.view' => $user->hasPermission('emplois-temps.view'),
+            'emplois-temps.create' => $user->hasPermission('emplois-temps.create'),
+            'emplois-temps.delete' => $user->hasPermission('emplois-temps.delete')
+        ]
+    ];
+    
+    if ($user->role === 'student' && $user->eleve) {
+        $data['eleve'] = [
+            'id' => $user->eleve->id,
+            'classe' => $user->eleve->classe ? $user->eleve->classe->nom : 'Aucune classe',
+            'emplois_count' => $user->eleve->classe ? $user->eleve->classe->emploisTemps()->count() : 0
+        ];
+    }
+    
+    if ($user->role === 'teacher' && $user->enseignant) {
+        $data['enseignant'] = [
+            'id' => $user->enseignant->id,
+            'emplois_count' => $user->enseignant->emploisTemps()->count()
+        ];
+    }
+    
+    return response()->json($data);
+})->middleware('auth');
+
 // Routes d'authentification
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
