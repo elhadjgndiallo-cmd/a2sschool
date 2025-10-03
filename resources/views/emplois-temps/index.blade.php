@@ -308,6 +308,22 @@ function loadEmploiTemps(classeId, element) {
         })
         .then(data => {
             console.log('Données reçues:', data);
+            
+            // Vérifier que les données sont valides
+            if (!data || typeof data !== 'object') {
+                throw new Error('Données invalides reçues du serveur');
+            }
+            
+            if (!data.classe) {
+                console.error('Propriété "classe" manquante dans la réponse:', data);
+                throw new Error('Données de classe manquantes dans la réponse du serveur');
+            }
+            
+            if (!data.emplois) {
+                console.error('Propriété "emplois" manquante dans la réponse:', data);
+                throw new Error('Données d\'emploi du temps manquantes dans la réponse du serveur');
+            }
+            
             document.getElementById('classe-name').textContent = data.classe.nom;
             generateEmploiTempsTable(data.emplois);
             document.getElementById('emploi-temps-container').style.display = 'block';
