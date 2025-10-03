@@ -270,6 +270,28 @@ Route::get('/debug-emploi-temps-permissions', function() {
         'personnel_admin_permissions' => $user->personnelAdministration ? $user->personnelAdministration->permissions : null
     ]);
 })->middleware('auth');
+
+// Route de test simple pour vérifier que la route fonctionne
+Route::get('/test-route-emploi-temps', function() {
+    return response()->json([
+        'message' => 'Route de test fonctionne',
+        'timestamp' => now(),
+        'user_authenticated' => auth()->check(),
+        'user_role' => auth()->user() ? auth()->user()->role : null
+    ]);
+})->middleware('auth');
+
+// Route de test pour simuler l'appel AJAX exact
+Route::get('/test-emploi-temps-ajax/{classe}', function(App\Models\Classe $classe) {
+    return response()->json([
+        'message' => 'Test AJAX réussi',
+        'classe_id' => $classe->id,
+        'classe_nom' => $classe->nom,
+        'user_authenticated' => auth()->check(),
+        'user_role' => auth()->user() ? auth()->user()->role : null,
+        'timestamp' => now()
+    ]);
+})->middleware('auth');
     
     // Route de test simple pour vérifier l'utilisateur
     Route::get('/test-user', function() {
@@ -437,16 +459,42 @@ Route::get('/debug-emploi-temps-permissions', function() {
         Route::post('/annees-scolaires/{anneesScolaire}/activer', [\App\Http\Controllers\AnneeScolaireController::class, 'activer'])->name('annees-scolaires.activer')->middleware('check.permission:annees_scolaires.edit');
     });
     
+    // Route pour récupérer les données d'emploi du temps (accessible à tous les utilisateurs authentifiés)
+    Route::get('/emplois-temps/classe/{classe}/data', function(App\Models\Classe $classe) {
+        // Vérifier que l'utilisateur a accès aux emplois du temps
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+        
+        // Vérifier les permissions selon le rôle
+        $canAccess = false;
+        if ($user->role === 'admin') {
+            $canAccess = true;
+        } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
+            $canAccess = true;
+        } elseif ($user->role === 'teacher') {
+            // Les enseignants peuvent voir l'emploi du temps des classes où ils enseignent
+            $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+        } elseif ($user->role === 'student' && $user->eleve) {
+            // Les élèves peuvent voir l'emploi du temps de leur classe
+            $canAccess = $user->eleve->classe_id == $classe->id;
+        }
+        
+        if (!$canAccess) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
+        }
+        
+        $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+            ->with(['matiere', 'enseignant.utilisateur'])
+            ->get();
+        return response()->json(['classe' => $classe, 'emplois' => $emplois]);
+    })->middleware('auth');
+
     // Routes pour la gestion des emplois du temps (Admin seulement)
     Route::middleware('role:admin,personnel_admin')->group(function () {
         Route::get('/emplois-temps', [EmploiTempsController::class, 'index'])->name('emplois-temps.index')->middleware('check.permission:emplois-temps.view');
         Route::get('/emplois-temps/classe/{classe}', [EmploiTempsController::class, 'show'])->name('emplois-temps.show')->middleware('check.permission:emplois-temps.view');
-        Route::get('/emplois-temps/classe/{classe}/data', function(App\Models\Classe $classe) {
-            $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
-                ->with(['matiere', 'enseignant.utilisateur'])
-                ->get();
-            return response()->json(['classe' => $classe, 'emplois' => $emplois]);
-        }); // Temporairement sans middleware de permission
         Route::post('/emplois-temps', [EmploiTempsController::class, 'store'])->name('emplois-temps.store')->middleware('check.permission:emplois-temps.create');
         Route::delete('/emplois-temps/{emploiTemps}', [EmploiTempsController::class, 'destroy'])->name('emplois-temps.destroy')->middleware('check.permission:emplois-temps.delete');
         Route::post('/emplois-temps/duplicate', [EmploiTempsController::class, 'duplicate'])->name('emplois-temps.duplicate')->middleware('check.permission:emplois-temps.create');

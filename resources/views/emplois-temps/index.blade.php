@@ -263,26 +263,36 @@ function loadEmploiTemps(classeId, element) {
     }
     
     // Charger l'emploi du temps
+    console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
+    
     fetch(`/emplois-temps/classe/${classeId}/data`, {
         credentials: 'same-origin', // Inclure les cookies de session
         headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
         .then(response => {
+            console.log('Réponse reçue:', response.status, response.statusText);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Essayer de récupérer le message d'erreur du serveur
+                return response.json().then(err => {
+                    throw new Error(`Erreur ${response.status}: ${err.error || response.statusText}`);
+                }).catch(() => {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                });
             }
             return response.json();
         })
         .then(data => {
+            console.log('Données reçues:', data);
             document.getElementById('classe-name').textContent = data.classe.nom;
             generateEmploiTempsTable(data.emplois);
             document.getElementById('emploi-temps-container').style.display = 'block';
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors du chargement de l\'emploi du temps: ' + error.message);
+            console.error('Erreur détaillée:', error);
+            alert('Erreur lors du chargement de l\'emploi du temps: ' + error.message + '\n\nVérifiez la console pour plus de détails.');
         });
 }
 
