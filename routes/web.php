@@ -552,6 +552,51 @@ Route::post('/add-emploi-temps', function() {
     }
 })->middleware('auth');
 
+// Route alternative pour supprimer un créneau d'emploi du temps (compatible LWS)
+Route::delete('/delete-emploi-temps/{id}', function($id) {
+    try {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+        
+        // Vérifier les permissions
+        $canDelete = false;
+        if ($user->hasRole('admin') || $user->hasRole('personnel_admin')) {
+            $canDelete = true;
+        } elseif ($user->hasRole('teacher')) {
+            // Les enseignants peuvent supprimer leurs propres créneaux
+            $emploi = App\Models\EmploiTemps::find($id);
+            if ($emploi && $emploi->enseignant_id == $user->enseignant->id) {
+                $canDelete = true;
+            }
+        }
+        
+        if (!$canDelete) {
+            return response()->json(['error' => 'Permission refusée'], 403);
+        }
+        
+        $emploi = App\Models\EmploiTemps::find($id);
+        if (!$emploi) {
+            return response()->json(['error' => 'Créneau non trouvé'], 404);
+        }
+        
+        $emploi->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Créneau supprimé avec succès'
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Erreur lors de la suppression d\'emploi du temps: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la suppression du créneau: ' . $e->getMessage()
+        ], 500);
+    }
+})->middleware('auth');
+
     // Routes de test pour les statistiques (sans préfixe admin)
     Route::middleware(['auth', 'role:admin,personnel_admin'])->group(function () {
         Route::get('/test-statistiques-financieres', [StatistiqueController::class, 'financieres'])->name('test.statistiques.financieres')->middleware('check.permission:statistiques.financieres');

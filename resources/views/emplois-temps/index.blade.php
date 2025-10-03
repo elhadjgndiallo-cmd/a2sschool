@@ -591,28 +591,68 @@ function saveCreneauModal() {
 
 function deleteCreneau(emploiId) {
     if (confirm('Supprimer ce créneau ?')) {
-        fetch(`/emplois-temps/${emploiId}`, {
-            method: 'DELETE',
-            credentials: 'same-origin', // Inclure les cookies de session
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
+        console.log('Suppression du créneau:', emploiId);
+        
+        // Adapter l'URL pour LWS
+        const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
+        const urls = [
+            `${baseUrl}/delete-emploi-temps/${emploiId}`,
+            `${baseUrl}/emplois-temps/${emploiId}`
+        ];
+        
+        let currentUrlIndex = 0;
+        
+        function tryDeleteCreneau() {
+            if (currentUrlIndex >= urls.length) {
+                throw new Error('Toutes les routes de suppression ont échoué');
             }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                loadEmploiTemps(currentClasseId);
-                showToast(data.message, 'success');
-            }
-        })
+            
+            const url = urls[currentUrlIndex];
+            console.log(`Tentative de suppression avec l'URL: ${url}`);
+            
+            return fetch(url, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Réponse suppression:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    if (response.status === 404 && currentUrlIndex < urls.length - 1) {
+                        console.log('Route de suppression non trouvée, essai de la route suivante...');
+                        currentUrlIndex++;
+                        return tryDeleteCreneau();
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('Données suppression reçues:', data);
+                
+                if (data.success) {
+                    console.log('Créneau supprimé avec succès');
+                    showToast(data.message || 'Créneau supprimé avec succès', 'success');
+                    
+                    // Recharger l'emploi du temps
+                    setTimeout(() => {
+                        console.log('Rechargement de l\'emploi du temps après suppression...');
+                        loadEmploiTemps(currentClasseId);
+                    }, 500);
+                } else {
+                    throw new Error(data.message || 'Erreur lors de la suppression');
+                }
+            });
+        }
+        
+        tryDeleteCreneau()
         .catch(error => {
-            console.error('Erreur:', error);
+            console.error('Erreur suppression:', error);
             alert('Erreur lors de la suppression: ' + error.message);
         });
     }
