@@ -16,7 +16,7 @@ class EmploiTempsController extends Controller
      */
     public function index()
     {
-        if (!auth()->user()->hasPermission('emplois_temps.view')) {
+        if (!auth()->user()->hasPermission('emplois-temps.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les emplois du temps.');
         }
         

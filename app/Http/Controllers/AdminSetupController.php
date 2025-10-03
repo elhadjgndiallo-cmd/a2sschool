@@ -134,7 +134,7 @@ class AdminSetupController extends Controller
             // Nouvelles permissions (38 permissions)
             'utilisateurs.view', 'utilisateurs.create', 'utilisateurs.edit', 'utilisateurs.delete',
             'eleves.notes',
-            'emploi_temps.view', 'emploi_temps.create', 'emploi_temps.edit', 'emploi_temps.delete',
+            'emplois-temps.view', 'emplois-temps.create', 'emplois-temps.edit', 'emplois-temps.delete',
             'comptabilite.view', 'comptabilite.entrees', 'comptabilite.sorties', 'comptabilite.rapports',
             'rapports.export',
             'notifications.send',
