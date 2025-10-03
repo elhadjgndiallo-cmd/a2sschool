@@ -348,6 +348,9 @@ function loadEmploiTemps(classeId, element) {
             document.getElementById('classe-name').textContent = data.classe.nom;
             generateEmploiTempsTable(data.emplois);
             document.getElementById('emploi-temps-container').style.display = 'block';
+            
+            // Vérifier que les données ont été rechargées
+            console.log('Emploi du temps rechargé avec', data.emplois.length, 'créneaux');
         })
         .catch(error => {
             console.error('Erreur détaillée:', error);
@@ -530,7 +533,23 @@ function saveCreneauModal() {
         if (data.success === true) {
             console.log('Créneau ajouté avec succès');
             bootstrap.Modal.getInstance(document.getElementById('addCreneauModal')).hide();
-            loadEmploiTemps(currentClasseId);
+            
+            // Recharger l'emploi du temps avec un délai pour s'assurer que les données sont sauvegardées
+            setTimeout(() => {
+                console.log('Rechargement de l\'emploi du temps pour la classe:', currentClasseId);
+                loadEmploiTemps(currentClasseId);
+                
+                // Si le rechargement ne fonctionne pas, forcer un rechargement complet de la page
+                setTimeout(() => {
+                    console.log('Vérification si l\'emploi du temps s\'est rechargé...');
+                    const emploiContainer = document.getElementById('emploi-temps-container');
+                    if (emploiContainer && emploiContainer.style.display === 'none') {
+                        console.log('Rechargement de la page pour forcer l\'affichage...');
+                        location.reload();
+                    }
+                }, 1000);
+            }, 500);
+            
             showToast(data.message || 'Créneau ajouté avec succès', 'success');
         } else if (data.success === false) {
             console.error('Erreur signalée par le serveur:', data.message);
