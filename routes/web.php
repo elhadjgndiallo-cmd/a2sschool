@@ -597,6 +597,35 @@ Route::delete('/delete-emploi-temps/{id}', function($id) {
     }
 })->middleware('auth');
 
+// Route de test simple pour la suppression (sans middleware complexe)
+Route::post('/test-delete-emploi-temps/{id}', function($id) {
+    try {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+        
+        $emploi = App\Models\EmploiTemps::find($id);
+        if (!$emploi) {
+            return response()->json(['error' => 'Créneau non trouvé'], 404);
+        }
+        
+        $emploi->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Créneau supprimé avec succès (test)'
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Erreur lors de la suppression test: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la suppression: ' . $e->getMessage()
+        ], 500);
+    }
+})->middleware('auth');
+
     // Routes de test pour les statistiques (sans préfixe admin)
     Route::middleware(['auth', 'role:admin,personnel_admin'])->group(function () {
         Route::get('/test-statistiques-financieres', [StatistiqueController::class, 'financieres'])->name('test.statistiques.financieres')->middleware('check.permission:statistiques.financieres');

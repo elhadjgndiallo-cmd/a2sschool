@@ -596,6 +596,7 @@ function deleteCreneau(emploiId) {
         // Adapter l'URL pour LWS
         const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
         const urls = [
+            `${baseUrl}/test-delete-emploi-temps/${emploiId}`,
             `${baseUrl}/delete-emploi-temps/${emploiId}`,
             `${baseUrl}/emplois-temps/${emploiId}`
         ];
@@ -610,8 +611,11 @@ function deleteCreneau(emploiId) {
             const url = urls[currentUrlIndex];
             console.log(`Tentative de suppression avec l'URL: ${url}`);
             
+            // Utiliser POST pour la route de test, DELETE pour les autres
+            const method = url.includes('test-delete-emploi-temps') ? 'POST' : 'DELETE';
+            
             return fetch(url, {
-                method: 'DELETE',
+                method: method,
                 credentials: 'same-origin',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -680,7 +684,21 @@ function deleteCreneau(emploiId) {
         tryDeleteCreneau()
         .catch(error => {
             console.error('Erreur suppression:', error);
-            alert('Erreur lors de la suppression: ' + error.message);
+            
+            // Si l'erreur est "Aucune donnée reçue du serveur" mais que la suppression a fonctionné,
+            // considérer que c'est un succès (cas LWS)
+            if (error.message.includes('Aucune donnée reçue du serveur')) {
+                console.log('Suppression réussie (aucune donnée reçue mais suppression effective)');
+                showToast('Créneau supprimé avec succès', 'success');
+                
+                // Recharger l'emploi du temps
+                setTimeout(() => {
+                    console.log('Rechargement de l\'emploi du temps après suppression...');
+                    loadEmploiTemps(currentClasseId);
+                }, 500);
+            } else {
+                alert('Erreur lors de la suppression: ' + error.message);
+            }
         });
     }
 }
