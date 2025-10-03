@@ -307,14 +307,31 @@ function loadEmploiTemps(classeId, element) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 });
             }
+            
+            // Vérifier le type de contenu de la réponse
+            const contentType = response.headers.get('content-type');
+            console.log('Content-Type de la réponse:', contentType);
+            
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Réponse non-JSON reçue:', contentType);
+                throw new Error('Réponse non-JSON reçue du serveur (Content-Type: ' + contentType + ')');
+            }
+            
             return response.json();
         })
         .then(data => {
             console.log('Données reçues:', data);
+            console.log('Type de données:', typeof data);
+            console.log('Contenu brut:', JSON.stringify(data));
             
             // Vérifier que les données sont valides
-            if (!data || typeof data !== 'object') {
-                throw new Error('Données invalides reçues du serveur');
+            if (!data) {
+                throw new Error('Aucune donnée reçue du serveur');
+            }
+            
+            if (typeof data !== 'object') {
+                console.error('Type de données incorrect:', typeof data, data);
+                throw new Error('Format de données incorrect - JSON attendu, reçu: ' + typeof data);
             }
             
             if (!data.classe) {
@@ -327,6 +344,7 @@ function loadEmploiTemps(classeId, element) {
                 throw new Error('Données d\'emploi du temps manquantes dans la réponse du serveur');
             }
             
+            console.log('Données validées avec succès');
             document.getElementById('classe-name').textContent = data.classe.nom;
             generateEmploiTempsTable(data.emplois);
             document.getElementById('emploi-temps-container').style.display = 'block';
@@ -440,20 +458,43 @@ function saveCreneauModal() {
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
     saveButton.disabled = true;
     
-    fetch('/emplois-temps', {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin', // Inclure les cookies de session
-        headers: {
-            'X-CSRF-TOKEN': csrfToken.content,
-            'Accept': 'application/json'
+    // Adapter l'URL pour LWS
+    const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
+    const urls = [
+        `${baseUrl}/add-emploi-temps`,
+        `${baseUrl}/emplois-temps`
+    ];
+    
+    let currentUrlIndex = 0;
+    
+    function trySaveCreneau() {
+        if (currentUrlIndex >= urls.length) {
+            throw new Error('Toutes les routes d\'ajout ont échoué');
         }
-    })
+        
+        const url = urls[currentUrlIndex];
+        console.log(`Tentative d'ajout avec l'URL: ${url}`);
+        
+        return fetch(url, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin', // Inclure les cookies de session
+            headers: {
+                'X-CSRF-TOKEN': csrfToken.content,
+                'Accept': 'application/json'
+            }
+        })
     .then(response => {
         console.log('Réponse reçue:', response.status, response.statusText);
         
         // Vérifier si la réponse est OK
         if (!response.ok) {
+            // Si c'est une erreur 404 et qu'il y a d'autres URLs à essayer
+            if (response.status === 404 && currentUrlIndex < urls.length - 1) {
+                console.log('Route d\'ajout non trouvée, essai de la route suivante...');
+                currentUrlIndex++;
+                return trySaveCreneau();
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
@@ -489,6 +530,10 @@ function saveCreneauModal() {
         saveButton.innerHTML = originalText;
         saveButton.disabled = false;
     });
+    }
+    
+    // Commencer avec la première URL
+    trySaveCreneau();
 }
 
 function deleteCreneau(emploiId) {

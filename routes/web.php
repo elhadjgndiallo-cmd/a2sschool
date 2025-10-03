@@ -418,24 +418,127 @@ Route::get('/get-emploi-temps', function() {
     }
 })->middleware('auth');
     
-    // Route de test simple pour vérifier l'utilisateur
-    Route::get('/test-user', function() {
-        if (!auth()->check()) {
-            return response()->json(['error' => 'Non connecté']);
-        }
+// Route de test simple pour vérifier l'utilisateur
+Route::get('/test-user', function() {
+    if (!auth()->check()) {
+        return response()->json(['error' => 'Non connecté']);
+    }
+    $user = auth()->user();
+    return response()->json([
+        'user_id' => $user->id,
+        'user_role' => $user->role,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'is_admin' => $user->role === 'admin',
+        'is_personnel_admin' => $user->role === 'personnel_admin',
+        'can_access_admin' => $user->role === 'admin' || $user->role === 'personnel_admin',
+        'has_enseignants_edit_permission' => $user->hasPermission('enseignants.edit'),
+        'personnel_admin_permissions' => $user->personnelAdministration ? $user->personnelAdministration->permissions : null
+    ]);
+})->name('test.user');
+
+// Route de test simple pour LWS
+Route::get('/test-lws', function() {
+    return response()->json([
+        'message' => 'Test LWS réussi',
+        'timestamp' => now(),
+        'user_authenticated' => auth()->check(),
+        'user_role' => auth()->user() ? auth()->user()->role : null,
+        'server' => 'LWS'
+    ]);
+})->middleware('auth');
+
+// Route alternative pour ajouter un créneau d'emploi du temps (compatible LWS)
+Route::post('/add-emploi-temps', function() {
+    try {
         $user = auth()->user();
-        return response()->json([
-            'user_id' => $user->id,
-            'user_role' => $user->role,
-            'user_name' => $user->name,
-            'user_email' => $user->email,
-            'is_admin' => $user->role === 'admin',
-            'is_personnel_admin' => $user->role === 'personnel_admin',
-            'can_access_admin' => $user->role === 'admin' || $user->role === 'personnel_admin',
-            'has_enseignants_edit_permission' => $user->hasPermission('enseignants.edit'),
-            'personnel_admin_permissions' => $user->personnelAdministration ? $user->personnelAdministration->permissions : null
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+        
+        // Vérifier les permissions
+        $canAdd = false;
+        if ($user->role === 'admin') {
+            $canAdd = true;
+        } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.create')) {
+            $canAdd = true;
+        }
+        
+        if (!$canAdd) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
+        }
+        
+        // Validation des données
+        $request = request();
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'classe_id' => 'required|exists:classes,id',
+            'matiere_id' => 'required|exists:matieres,id',
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'jour' => 'required|in:lundi,mardi,mercredi,jeudi,vendredi,samedi',
+            'heure_debut' => 'required|date_format:H:i',
+            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+            'salle' => 'nullable|string|max:50'
         ]);
-    })->name('test.user');
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        // Vérifier les conflits d'horaires (sauf si on force)
+        if (!$request->has('force') || !$request->force) {
+            $conflit = App\Models\EmploiTemps::where('classe_id', $request->classe_id)
+                ->where('jour_semaine', $request->jour)
+                ->where('matiere_id', '!=', $request->matiere_id)
+                ->where(function($query) use ($request) {
+                    $query->where(function($q) use ($request) {
+                        $q->where('heure_debut', '<=', $request->heure_debut)
+                          ->where('heure_fin', '>', $request->heure_debut);
+                    })->orWhere(function($q) use ($request) {
+                        $q->where('heure_debut', '<', $request->heure_fin)
+                          ->where('heure_fin', '>=', $request->heure_fin);
+                    });
+                })
+                ->exists();
+
+            if ($conflit) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Conflit d\'horaire détecté pour cette classe'
+                ], 422);
+            }
+        }
+
+        // Créer l'emploi du temps
+        $data = [
+            'classe_id' => $request->classe_id,
+            'matiere_id' => $request->matiere_id,
+            'enseignant_id' => $request->enseignant_id,
+            'jour_semaine' => $request->jour,
+            'heure_debut' => $request->heure_debut,
+            'heure_fin' => $request->heure_fin,
+            'salle' => $request->salle,
+            'type_cours' => 'cours',
+            'date_debut' => now()->startOfYear(),
+            'date_fin' => now()->endOfYear(),
+            'actif' => true
+        ];
+
+        $emploiTemps = App\Models\EmploiTemps::create($data);
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Créneau ajouté avec succès',
+            'emploi' => $emploiTemps->load(['matiere', 'enseignant.utilisateur'])
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Erreur lors de l\'ajout d\'emploi du temps: ' . $e->getMessage());
+        return response()->json([
+            'success' => false, 
+            'message' => 'Erreur lors de l\'ajout du créneau: ' . $e->getMessage()
+        ], 500);
+    }
+})->middleware('auth');
 
     // Routes de test pour les statistiques (sans préfixe admin)
     Route::middleware(['auth', 'role:admin,personnel_admin'])->group(function () {
