@@ -363,7 +363,15 @@ function loadEmploiTemps(classeId, element) {
 }
 
 function generateEmploiTempsTable(emplois) {
+    console.log('Génération du tableau avec', emplois.length, 'créneaux');
+    console.log('Créneaux reçus:', emplois);
+    
     const tbody = document.getElementById('emploi-temps-body');
+    if (!tbody) {
+        console.error('Élément tbody non trouvé');
+        return;
+    }
+    
     const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
     const heures = ['08:00', '10:10', '12:10', '14:30'];
     
@@ -392,12 +400,19 @@ function generateEmploiTempsTable(emplois) {
                 const heureDebut = e.heure_debut.substring(0, 5);
                 const heureFin = e.heure_fin.substring(0, 5);
                 
-                return e.jour_semaine === jour && 
+                const match = e.jour_semaine === jour && 
                        heureDebut <= heure && 
                        heureFin > heure;
+                
+                if (match) {
+                    console.log('Créneau trouvé:', e, 'pour', jour, heure);
+                }
+                
+                return match;
             });
             
             if (emploi) {
+                console.log('Affichage du créneau:', emploi.matiere.nom, 'pour', jour, heure);
                 cell.innerHTML = `
                     <div class="creneau" style="background-color: ${emploi.matiere.couleur}; color: white; padding: 5px; border-radius: 3px; position: relative;">
                         <strong>${emploi.matiere.nom}</strong><br>
@@ -464,9 +479,9 @@ function saveCreneauModal() {
     // Adapter l'URL pour LWS
     const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
     const urls = [
-        `${baseUrl}/test-add-emploi-temps`,
         `${baseUrl}/add-emploi-temps`,
-        `${baseUrl}/emplois-temps`
+        `${baseUrl}/emplois-temps`,
+        `${baseUrl}/test-add-emploi-temps`
     ];
     
     let currentUrlIndex = 0;
