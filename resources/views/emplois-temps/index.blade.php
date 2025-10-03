@@ -265,16 +265,38 @@ function loadEmploiTemps(classeId, element) {
     // Charger l'emploi du temps
     console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
     
-    fetch(`/emplois-temps/classe/${classeId}/data`, {
-        credentials: 'same-origin', // Inclure les cookies de session
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+    // Essayer d'abord la route alternative, puis la route originale
+    const urls = [
+        `/api/emploi-temps/${classeId}`,
+        `/emplois-temps/classe/${classeId}/data`
+    ];
+    
+    let currentUrlIndex = 0;
+    
+    function tryNextUrl() {
+        if (currentUrlIndex >= urls.length) {
+            throw new Error('Toutes les routes ont échoué');
         }
-    })
+        
+        const url = urls[currentUrlIndex];
+        console.log(`Tentative avec l'URL: ${url}`);
+        
+        return fetch(url, {
+            credentials: 'same-origin', // Inclure les cookies de session
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
         .then(response => {
             console.log('Réponse reçue:', response.status, response.statusText);
             if (!response.ok) {
+                // Si c'est une erreur 404 et qu'il y a d'autres URLs à essayer
+                if (response.status === 404 && currentUrlIndex < urls.length - 1) {
+                    console.log('Route non trouvée, essai de la route suivante...');
+                    currentUrlIndex++;
+                    return tryNextUrl();
+                }
                 // Essayer de récupérer le message d'erreur du serveur
                 return response.json().then(err => {
                     throw new Error(`Erreur ${response.status}: ${err.error || response.statusText}`);
@@ -294,6 +316,10 @@ function loadEmploiTemps(classeId, element) {
             console.error('Erreur détaillée:', error);
             alert('Erreur lors du chargement de l\'emploi du temps: ' + error.message + '\n\nVérifiez la console pour plus de détails.');
         });
+    }
+    
+    // Commencer avec la première URL
+    tryNextUrl();
 }
 
 function generateEmploiTempsTable(emplois) {

@@ -250,6 +250,38 @@ Route::get('/test-emploi-temps/{classe}', function(App\Models\Classe $classe) {
     return response()->json(['classe' => $classe, 'emplois' => $emplois]);
 })->middleware('auth');
 
+// Route alternative pour l'emploi du temps (solution de contournement)
+Route::get('/api/emploi-temps/{classe}', function(App\Models\Classe $classe) {
+    // Vérifier que l'utilisateur a accès aux emplois du temps
+    $user = auth()->user();
+    if (!$user) {
+        return response()->json(['error' => 'Non authentifié'], 401);
+    }
+    
+    // Vérifier les permissions selon le rôle
+    $canAccess = false;
+    if ($user->role === 'admin') {
+        $canAccess = true;
+    } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
+        $canAccess = true;
+    } elseif ($user->role === 'teacher') {
+        // Les enseignants peuvent voir l'emploi du temps des classes où ils enseignent
+        $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+    } elseif ($user->role === 'student' && $user->eleve) {
+        // Les élèves peuvent voir l'emploi du temps de leur classe
+        $canAccess = $user->eleve->classe_id == $classe->id;
+    }
+    
+    if (!$canAccess) {
+        return response()->json(['error' => 'Accès non autorisé'], 403);
+    }
+    
+    $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+        ->with(['matiere', 'enseignant.utilisateur'])
+        ->get();
+    return response()->json(['classe' => $classe, 'emplois' => $emplois]);
+})->middleware('auth');
+
 // Route de diagnostic pour les permissions emploi du temps
 Route::get('/debug-emploi-temps-permissions', function() {
     $user = auth()->user();
