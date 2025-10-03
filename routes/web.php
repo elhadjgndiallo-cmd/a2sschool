@@ -448,6 +448,18 @@ Route::get('/test-lws', function() {
     ]);
 })->middleware('auth');
 
+// Route de test pour l'ajout d'emploi du temps
+Route::post('/test-add-emploi-temps', function() {
+    return response()->json([
+        'success' => true,
+        'message' => 'Test d\'ajout réussi',
+        'timestamp' => now(),
+        'user_authenticated' => auth()->check(),
+        'user_role' => auth()->user() ? auth()->user()->role : null,
+        'data_received' => request()->all()
+    ]);
+})->middleware('auth');
+
 // Route alternative pour ajouter un créneau d'emploi du temps (compatible LWS)
 Route::post('/add-emploi-temps', function() {
     try {

@@ -461,6 +461,7 @@ function saveCreneauModal() {
     // Adapter l'URL pour LWS
     const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
     const urls = [
+        `${baseUrl}/test-add-emploi-temps`,
         `${baseUrl}/add-emploi-temps`,
         `${baseUrl}/emplois-temps`
     ];
@@ -513,12 +514,30 @@ function saveCreneauModal() {
     })
     .then(data => {
         console.log('Données reçues:', data);
-        if (data.success) {
+        console.log('Type de données:', typeof data);
+        console.log('Contenu brut:', JSON.stringify(data));
+        
+        // Vérifier que les données sont valides
+        if (!data) {
+            throw new Error('Aucune donnée reçue du serveur');
+        }
+        
+        if (typeof data !== 'object') {
+            console.error('Type de données incorrect:', typeof data, data);
+            throw new Error('Format de données incorrect - JSON attendu, reçu: ' + typeof data);
+        }
+        
+        if (data.success === true) {
+            console.log('Créneau ajouté avec succès');
             bootstrap.Modal.getInstance(document.getElementById('addCreneauModal')).hide();
             loadEmploiTemps(currentClasseId);
             showToast(data.message || 'Créneau ajouté avec succès', 'success');
-        } else {
+        } else if (data.success === false) {
+            console.error('Erreur signalée par le serveur:', data.message);
             alert(data.message || 'Erreur lors de l\'ajout');
+        } else {
+            console.error('Propriété "success" manquante dans la réponse:', data);
+            throw new Error('Réponse du serveur invalide - propriété "success" manquante');
         }
     })
     .catch(error => {
