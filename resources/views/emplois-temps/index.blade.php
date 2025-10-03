@@ -630,12 +630,35 @@ function deleteCreneau(emploiId) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                return response.json();
+                // Vérifier le type de contenu
+                const contentType = response.headers.get('content-type');
+                console.log('Type de contenu suppression:', contentType);
+                
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    return response.text().then(text => {
+                        console.log('Réponse non-JSON suppression:', text);
+                        throw new Error('Réponse non-JSON reçue: ' + text.substring(0, 100));
+                    });
+                }
             })
             .then(data => {
                 console.log('Données suppression reçues:', data);
+                console.log('Type de données:', typeof data);
+                console.log('Contenu brut:', JSON.stringify(data));
                 
-                if (data.success) {
+                // Vérifier que les données sont valides
+                if (!data) {
+                    throw new Error('Aucune donnée reçue du serveur');
+                }
+                
+                if (typeof data !== 'object') {
+                    console.error('Type de données incorrect:', typeof data, data);
+                    throw new Error('Format de données incorrect - JSON attendu, reçu: ' + typeof data);
+                }
+                
+                if (data.success === true) {
                     console.log('Créneau supprimé avec succès');
                     showToast(data.message || 'Créneau supprimé avec succès', 'success');
                     
@@ -644,8 +667,12 @@ function deleteCreneau(emploiId) {
                         console.log('Rechargement de l\'emploi du temps après suppression...');
                         loadEmploiTemps(currentClasseId);
                     }, 500);
-                } else {
+                } else if (data.success === false) {
+                    console.error('Erreur signalée par le serveur:', data.message);
                     throw new Error(data.message || 'Erreur lors de la suppression');
+                } else {
+                    console.error('Propriété "success" manquante dans la réponse:', data);
+                    throw new Error('Réponse du serveur invalide - propriété "success" manquante');
                 }
             });
         }
