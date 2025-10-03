@@ -363,6 +363,60 @@ Route::get('/test-emploi-temps-format/{classe}', function($classeId) {
         'test' => 'Format de données correct'
     ]);
 })->middleware('auth');
+
+// Route de contournement pour LWS - route simple sans paramètres complexes
+Route::get('/get-emploi-temps', function() {
+    try {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+        
+        $classeId = request()->get('classe_id');
+        if (!$classeId) {
+            return response()->json(['error' => 'ID de classe requis'], 400);
+        }
+        
+        $classe = App\Models\Classe::find($classeId);
+        if (!$classe) {
+            return response()->json(['error' => 'Classe non trouvée'], 404);
+        }
+        
+        // Vérifier les permissions selon le rôle
+        $canAccess = false;
+        if ($user->role === 'admin') {
+            $canAccess = true;
+        } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
+            $canAccess = true;
+        } elseif ($user->role === 'teacher') {
+            $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+        } elseif ($user->role === 'student' && $user->eleve) {
+            $canAccess = $user->eleve->classe_id == $classe->id;
+        }
+        
+        if (!$canAccess) {
+            return response()->json(['error' => 'Accès non autorisé'], 403);
+        }
+        
+        $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+            ->with(['matiere', 'enseignant.utilisateur'])
+            ->get();
+            
+        return response()->json([
+            'classe' => $classe,
+            'emplois' => $emplois,
+            'debug' => [
+                'classe_id' => $classe->id,
+                'classe_nom' => $classe->nom,
+                'emplois_count' => $emplois->count(),
+                'route' => 'lws-simple'
+            ]
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Erreur dans la route LWS emploi du temps: ' . $e->getMessage());
+        return response()->json(['error' => 'Erreur serveur: ' . $e->getMessage()], 500);
+    }
+})->middleware('auth');
     
     // Route de test simple pour vérifier l'utilisateur
     Route::get('/test-user', function() {

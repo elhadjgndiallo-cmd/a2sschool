@@ -265,10 +265,13 @@ function loadEmploiTemps(classeId, element) {
     // Charger l'emploi du temps
     console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
     
-    // Essayer d'abord la route alternative, puis la route originale
+    // Essayer d'abord la route simple pour LWS, puis les autres routes
+    // Adapter les URLs pour LWS avec le chemin complet
+    const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
     const urls = [
-        `/api/emploi-temps/${classeId}`,
-        `/emplois-temps/classe/${classeId}/data`
+        `${baseUrl}/get-emploi-temps?classe_id=${classeId}`,
+        `${baseUrl}/api/emploi-temps/${classeId}`,
+        `${baseUrl}/emplois-temps/classe/${classeId}/data`
     ];
     
     let currentUrlIndex = 0;
