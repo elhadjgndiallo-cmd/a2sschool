@@ -18,7 +18,7 @@ class MatiereController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les matières.');
         }
         
-        $matieres = Matiere::with(['enseignants'])
+        $matieres = Matiere::with(['enseignants.utilisateur'])
             ->orderBy('nom')
             ->paginate(20);
             

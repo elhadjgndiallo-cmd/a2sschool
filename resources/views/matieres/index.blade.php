@@ -142,7 +142,7 @@
                         <td>
                             @if($matiere->enseignants->count() > 0)
                                 @foreach($matiere->enseignants->take(2) as $enseignant)
-                                <span class="badge bg-info me-1">{{ $enseignant->nom }}</span>
+                                <span class="badge bg-info me-1">{{ $enseignant->utilisateur->name }}</span>
                                 @endforeach
                                 @if($matiere->enseignants->count() > 2)
                                 <span class="badge bg-light text-dark">+{{ $matiere->enseignants->count() - 2 }}</span>
