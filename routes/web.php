@@ -224,6 +224,7 @@ Route::middleware('auth')->group(function () {
         Route::get('enseignants/{enseignant}', [EnseignantController::class, 'show'])->name('enseignants.show')->middleware('check.permission:enseignants.view');
         Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
         Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware('check.permission:enseignants.edit');
+        Route::put('enseignants/{enseignant}/simple', [\App\Http\Controllers\EnseignantControllerSimple::class, 'updateSimple'])->name('enseignants.update-simple');
         
         // Route de test temporaire sans middleware
         Route::put('enseignants/{enseignant}/test-update', [EnseignantController::class, 'update'])->name('enseignants.test-update');
@@ -716,11 +717,13 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('eleves/{eleve}', [EleveController::class, 'show'])->name('eleves.show')->middleware('check.permission:eleves.view');
         Route::get('eleves/{eleve}/edit', [EleveController::class, 'edit'])->name('eleves.edit')->middleware('check.permission:eleves.edit');
         Route::put('eleves/{eleve}', [EleveController::class, 'update'])->name('eleves.update')->middleware('check.permission:eleves.edit');
+        Route::put('eleves/{eleve}/simple', [\App\Http\Controllers\EleveControllerSimple::class, 'updateSimple'])->name('eleves.update-simple');
         Route::delete('eleves/{eleve}', [EleveController::class, 'destroy'])->name('eleves.destroy')->middleware('check.permission:eleves.delete');
         Route::post('/eleves/{eleve}/reset-password', [EleveController::class, 'resetPassword'])->name('eleves.reset-password')->middleware('check.permission:eleves.edit');
         Route::post('/eleves/{eleve}/add-parent', [EleveController::class, 'addParent'])->name('eleves.add-parent')->middleware('check.permission:eleves.edit');
         Route::delete('/eleves/{eleve}/photo', [EleveController::class, 'deletePhoto'])->name('eleves.delete-photo');
         Route::patch('/eleves/{eleve}/reactivate', [EleveController::class, 'reactivate'])->name('eleves.reactivate');
+        Route::patch('/eleves/{eleve}/deactivate', [EleveController::class, 'deactivate'])->name('eleves.deactivate');
         Route::post('/eleves/store-step', [EleveController::class, 'storeStep'])->name('eleves.store-step');
         Route::post('/eleves/generate-matricule', [EleveController::class, 'generateMatricule'])->name('eleves.generate-matricule');
         

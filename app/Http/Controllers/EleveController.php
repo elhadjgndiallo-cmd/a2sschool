@@ -41,8 +41,9 @@ class EleveController extends Controller
         if (!auth()->user()->hasPermission('eleves.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
-        // Vider le cache de requête pour forcer le rechargement des données
+        // Vider tous les caches pour forcer le rechargement des données
         \DB::flushQueryLog();
+        \Cache::flush();
         
         // Construction de la requête avec filtres
         $query = Eleve::select('*')->with([
@@ -105,10 +106,20 @@ class EleveController extends Controller
         
         // S'assurer que les relations sont bien chargées et fraîches
         foreach ($eleves as $eleve) {
+            // Forcer le rechargement de l'élève et de ses relations
+            $eleve->refresh();
+            
             if (!$eleve->relationLoaded('utilisateur')) {
                 $eleve->load('utilisateur');
+            } else {
+                // Recharger l'utilisateur même si la relation est chargée
+                $eleve->utilisateur->refresh();
             }
+            
             if (!$eleve->relationLoaded('parents')) {
+                $eleve->load('parents.utilisateur');
+            } else {
+                // Recharger les parents même si la relation est chargée
                 $eleve->load('parents.utilisateur');
             }
             
@@ -492,16 +503,34 @@ class EleveController extends Controller
 
         \Log::info('Validation des données de l\'élève...', [
             'eleve_id' => $eleve->id,
-            'rules_count' => count($rules)
+            'rules_count' => count($rules),
+            'request_data' => $request->all()
         ]);
 
-        $request->validate($rules);
-
-        \Log::info('Validation réussie, début de la mise à jour...');
+        try {
+            $request->validate($rules);
+            \Log::info('Validation réussie, début de la mise à jour...');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Erreur de validation:', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         try {
             DB::transaction(function() use ($request, $eleve) {
+                \Log::info('Début de la transaction de mise à jour...');
+                
                 // Mettre à jour l'utilisateur élève
+                \Log::info('Mise à jour de l\'utilisateur...', [
+                    'utilisateur_id' => $eleve->utilisateur->id,
+                    'ancien_nom' => $eleve->utilisateur->nom,
+                    'nouveau_nom' => $request->nom
+                ]);
+                
                 $eleve->utilisateur->update([
                     'nom' => $request->nom,
                     'prenom' => $request->prenom,
@@ -513,6 +542,8 @@ class EleveController extends Controller
                     'lieu_naissance' => $request->lieu_naissance,
                     'sexe' => $request->sexe,
                 ]);
+                
+                \Log::info('Utilisateur mis à jour avec succès');
 
                 // Gérer l'upload de la photo de profil
                 if ($request->hasFile('photo_profil')) {
@@ -663,6 +694,11 @@ class EleveController extends Controller
                 
                 // Vider tous les caches potentiels
                 \Cache::flush();
+                
+                \Log::info('Transaction terminée avec succès', [
+                    'eleve_id' => $eleve->id,
+                    'nouveau_nom' => $eleve->utilisateur->nom
+                ]);
             });
 
             // S'assurer que la transaction est bien terminée
@@ -670,6 +706,10 @@ class EleveController extends Controller
                 \DB::commit();
             }
 
+            // Vider tous les caches pour s'assurer que les données sont fraîches
+            \Cache::flush();
+            \DB::flushQueryLog();
+            
             // Redirection avec plusieurs options de fallback
             try {
                 return redirect()->route('eleves.index')

@@ -60,7 +60,7 @@ use Illuminate\Support\Facades\Storage;
 </div>
 @endif
 
-<form method="POST" action="{{ route('enseignants.update', $enseignant->id) }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('enseignants.update-simple', $enseignant->id) }}" enctype="multipart/form-data">
     @csrf
     @method('PUT')
     

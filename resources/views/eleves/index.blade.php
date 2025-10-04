@@ -180,6 +180,24 @@ use Illuminate\Support\Facades\Storage;
                                                    onclick="return testEditButton('eleve', {{ $eleve->id }})">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                                
+                                                @if($eleve->actif)
+                                                    <button type="button" class="btn btn-sm btn-danger" 
+                                                            title="Désactiver l'élève"
+                                                            onclick="confirmDeactivate({{ $eleve->id }}, '{{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }}')">
+                                                        <i class="fas fa-pause"></i>
+                                                    </button>
+                                                @else
+                                                    <form method="POST" action="{{ route('eleves.reactivate', $eleve) }}" class="d-inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                                title="Réactiver l'élève">
+                                                            <i class="fas fa-play"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                                
                                     @if($eleve->exempte_frais)
                                         <button class="btn btn-sm btn-secondary" 
                                                 title="Élève exempté des frais de scolarité" 
@@ -229,6 +247,33 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                 @endif
             </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de désactivation -->
+<div class="modal fade" id="deactivateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Désactiver l'élève</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action importante</h6>
+                    <p class="mb-0">Êtes-vous sûr de vouloir désactiver l'élève <strong id="deactivate-eleve-name"></strong> ?</p>
+                </div>
+                <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Cette action rendra l'élève inactif et il ne pourra plus accéder à son compte.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deactivate-form" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Désactiver l'élève</button>
+                </form>
             </div>
         </div>
     </div>
@@ -403,5 +448,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Page chargée, test des boutons "Voir" activé');
     testPermissions();
 });
+
+// Fonction pour confirmer la désactivation d'un élève
+function confirmDeactivate(eleveId, eleveName) {
+    document.getElementById('deactivate-eleve-name').textContent = eleveName;
+    document.getElementById('deactivate-form').action = `/eleves/${eleveId}`;
+    new bootstrap.Modal(document.getElementById('deactivateModal')).show();
+}
 </script>
 @endpush

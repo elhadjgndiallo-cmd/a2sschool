@@ -131,7 +131,7 @@ use Illuminate\Support\Facades\Storage;
                         </div>
                         <div class="card-body">
                             <div class="text-center mb-3">
-                                @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil)
+                                @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil))
                                     <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
                                          alt="Photo enseignant" 
                                          class="img-thumbnail rounded-circle mb-3" 
@@ -201,7 +201,7 @@ use Illuminate\Support\Facades\Storage;
                                                 <!-- Photo de l'enseignant -->
                                                 <div class="col-4">
                                                     <div class="text-center">
-                                                        @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil)
+                                                        @if($cartes_enseignant->enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($cartes_enseignant->enseignant->utilisateur->photo_profil))
                                                             <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
                                                                  alt="Photo enseignant" 
                                                                  class="img-thumbnail rounded" 
@@ -235,7 +235,7 @@ use Illuminate\Support\Facades\Storage;
                                                     </div>
                                                     <div class="mb-1">
                                                         <small class="fw-bold text-dark">N° Employé:</small>
-                                                        <small class="ms-1">{{ $cartes_enseignant->enseignant->numero_employe }}</small>
+                                                        <small class="ms-1">{{ $cartes_enseignant->enseignant->numero_employe ?? 'Non renseigné' }}</small>
                                                     </div>
                                                     <div class="mb-1">
                                                         <small class="fw-bold text-dark">Statut:</small>

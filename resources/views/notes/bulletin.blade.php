@@ -2,8 +2,12 @@
 
 @section('title', 'Bulletin de Notes - ' . $eleve->nom_complet)
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/print-bulletin.css') }}">
+@endsection
+
 @section('content')
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom no-print">
     <h1 class="h2">
         <i class="fas fa-file-alt me-2"></i>
         Bulletin de Notes - {{ $eleve->nom_complet }}
@@ -20,8 +24,22 @@
     </div>
 </div>
 
+<!-- En-tête du bulletin pour l'impression -->
+<div class="bulletin-header d-none d-print-block">
+    <div class="row">
+        <div class="col-6">
+            <h1>BULLETIN DE NOTES</h1>
+            <h2>{{ $eleve->classe->nom }}</h2>
+        </div>
+        <div class="col-6 text-end">
+            <h1>Année Scolaire {{ date('Y') }}-{{ date('Y') + 1 }}</h1>
+            <h2>{{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</h2>
+        </div>
+    </div>
+</div>
+
 <!-- Informations de l'élève -->
-<div class="card mb-4">
+<div class="card mb-4 d-print-none">
     <div class="card-header">
         <h5 class="mb-0">Informations de l'élève</h5>
     </div>
@@ -36,6 +54,23 @@
                 <p><strong>Période :</strong> {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</p>
                 <p><strong>Année scolaire :</strong> {{ date('Y') }}-{{ date('Y') + 1 }}</p>
                 <p><strong>Rang :</strong> {{ $rang }}ème sur {{ $eleve->classe->eleves->count() }} élèves</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Informations de l'élève pour l'impression -->
+<div class="student-info d-none d-print-block">
+    <div class="row">
+        <div class="col-6">
+            <p><strong>{{ $eleve->nom_complet }}</strong></p>
+            <p><strong>Numéro:</strong> {{ $eleve->numero_etudiant }}</p>
+            <p><strong>Date de naissance:</strong> {{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</p>
+        </div>
+        <div class="col-6">
+            <div class="summary-bar">
+                <div class="rank">Rang: {{ $rang }}/{{ $eleve->classe->eleves->count() }}</div>
+                <div class="average">Moyenne générale: {{ number_format($moyenneGenerale, 2) }}/20</div>
             </div>
         </div>
     </div>
@@ -295,4 +330,83 @@ function confirmDelete(noteId) {
 }
 </script>
 @endpush
+
+<!-- Section pour l'impression : Moyenne générale et observations -->
+<div class="d-none d-print-block">
+    <!-- Moyenne générale -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <table class="table table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Matière</th>
+                        <th>Coefficient</th>
+                        <th>Note Cours</th>
+                        <th>Note Composition</th>
+                        <th>Note Finale</th>
+                        <th>Points</th>
+                        <th>Appréciation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>MOYENNE GÉNÉRALE</strong></td>
+                        <td class="text-center">{{ $totalCoefficient ?? 0 }}</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">
+                            <span class="final-grade">{{ number_format($moyenneGenerale ?? 0, 2) }}/20</span>
+                        </td>
+                        <td class="text-center">{{ number_format($totalPoints ?? 0, 2) }}</td>
+                        <td class="text-center">
+                            <span class="appreciation">
+                                @if(($moyenneGenerale ?? 0) >= 16) Excellent
+                                @elseif(($moyenneGenerale ?? 0) >= 14) Très bien
+                                @elseif(($moyenneGenerale ?? 0) >= 12) Bien
+                                @elseif(($moyenneGenerale ?? 0) >= 10) Assez bien
+                                @else Insuffisant
+                                @endif
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Observations -->
+    <div class="row">
+        <div class="col-6">
+            <div class="observations">
+                <h6><strong>Observations du conseil de classe:</strong></h6>
+                <p class="text-danger">
+                    @if(($moyenneGenerale ?? 0) < 10)
+                        Résultats insuffisants. Un travail sérieux s'impose.
+                    @elseif(($moyenneGenerale ?? 0) < 12)
+                        Résultats moyens. Des efforts supplémentaires sont nécessaires.
+                    @else
+                        Résultats satisfaisants. Continuez dans cette voie.
+                    @endif
+                </p>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="signatures">
+                <h6><strong>Signatures:</strong></h6>
+                <div class="row">
+                    <div class="col-6">
+                        <p><strong>Le Directeur</strong></p>
+                        <div class="signature-line"></div>
+                        <p>Date: _______________</p>
+                    </div>
+                    <div class="col-6">
+                        <p><strong>Le Parent</strong></p>
+                        <div class="signature-line"></div>
+                        <p>Date: _______________</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

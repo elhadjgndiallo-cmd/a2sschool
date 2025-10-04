@@ -38,7 +38,26 @@ class EnseignantController extends Controller
         if (!auth()->user()->hasPermission('enseignants.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
+        
+        // Vider tous les caches pour forcer le rechargement des données
+        \DB::flushQueryLog();
+        \Cache::flush();
+        
         $enseignants = Enseignant::with('utilisateur')->paginate(20);
+        
+        // S'assurer que les relations sont bien chargées et fraîches
+        foreach ($enseignants as $enseignant) {
+            // Forcer le rechargement de l'enseignant et de ses relations
+            $enseignant->refresh();
+            
+            if (!$enseignant->relationLoaded('utilisateur')) {
+                $enseignant->load('utilisateur');
+            } else {
+                // Recharger l'utilisateur même si la relation est chargée
+                $enseignant->utilisateur->refresh();
+            }
+        }
+        
         return view('enseignants.index', compact('enseignants'));
     }
 
@@ -132,8 +151,38 @@ class EnseignantController extends Controller
      */
     public function show($id)
     {
-        $enseignant = Enseignant::with(['utilisateur', 'matieres', 'notes', 'emploisTemps'])->findOrFail($id);
-        return view('enseignants.show', compact('enseignant'));
+        try {
+            $enseignant = Enseignant::with([
+                'utilisateur', 
+                'matieres' => function($query) {
+                    $query->where('actif', true);
+                },
+                'notes' => function($query) {
+                    $query->with(['eleve.utilisateur', 'matiere']);
+                },
+                'emploisTemps' => function($query) {
+                    $query->with(['matiere', 'classe']);
+                }
+            ])->findOrFail($id);
+            
+            // Vérifier que l'enseignant a un utilisateur associé
+            if (!$enseignant->utilisateur) {
+                return redirect()->route('enseignants.index')
+                    ->with('error', 'Aucun utilisateur associé à cet enseignant.');
+            }
+            
+            return view('enseignants.show', compact('enseignant'));
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'affichage de l\'enseignant:', [
+                'enseignant_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('enseignants.index')
+                ->with('error', 'Erreur lors du chargement des détails de l\'enseignant.');
+        }
     }
 
     /**
@@ -289,6 +338,10 @@ class EnseignantController extends Controller
                 'enseignant_id' => $enseignant->id,
                 'user_id' => auth()->id()
             ]);
+            
+            // Vider tous les caches pour s'assurer que les données sont fraîches
+            \Cache::flush();
+            \DB::flushQueryLog();
             
             return redirect()->route('enseignants.index')
                 ->with('success', 'Enseignant mis à jour avec succès');

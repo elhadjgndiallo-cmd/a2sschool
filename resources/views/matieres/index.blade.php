@@ -60,7 +60,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4>{{ $matieres->where('statut', 'actif')->count() }}</h4>
+                        <h4>{{ $matieres->where('actif', true)->count() }}</h4>
                         <p class="mb-0">Matières Actives</p>
                     </div>
                     <div class="align-self-center">
@@ -75,7 +75,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4>{{ $matieres->where('statut', 'inactif')->count() }}</h4>
+                        <h4>{{ $matieres->where('actif', false)->count() }}</h4>
                         <p class="mb-0">Matières Inactives</p>
                     </div>
                     <div class="align-self-center">
@@ -155,7 +155,7 @@
                             <div class="color-preview" style="width: 30px; height: 20px; background-color: {{ $matiere->couleur }}; border: 1px solid #ddd; border-radius: 3px;"></div>
                         </td>
                         <td>
-                            @if($matiere->statut === 'actif')
+                            @if($matiere->actif)
                             <span class="badge bg-success">Actif</span>
                             @else
                             <span class="badge bg-secondary">Inactif</span>
@@ -171,7 +171,7 @@
                                    class="btn btn-outline-primary" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                @if($matiere->statut === 'actif')
+                                @if($matiere->actif)
                                 <button type="button" class="btn btn-outline-warning" 
                                         onclick="confirmDeactivate({{ $matiere->id }}, '{{ $matiere->nom }}')" 
                                         title="Désactiver">
@@ -247,6 +247,33 @@
     </div>
 </div>
 
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Supprimer la matière</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action irréversible</h6>
+                    <p class="mb-0">Êtes-vous sûr de vouloir supprimer définitivement la matière <strong id="delete-matiere-name"></strong> ?</p>
+                </div>
+                <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Cette action supprimera définitivement la matière et toutes ses données associées.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="delete-form" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de confirmation de suppression totale -->
 <div class="modal fade" id="deleteAllModal" tabindex="-1">
     <div class="modal-dialog">
@@ -288,27 +315,9 @@ function confirmDeactivate(matiereId, matiereName) {
 }
 
 function confirmDelete(matiereId, matiereName) {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement la matière "${matiereName}" ?`)) {
-        // Créer un formulaire de suppression
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/matieres/${matiereId}`;
-        
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = document.querySelector('meta[name="csrf-token"]').content;
-        
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        
-        form.appendChild(csrfToken);
-        form.appendChild(methodField);
-        document.body.appendChild(form);
-        form.submit();
-    }
+    document.getElementById('delete-matiere-name').textContent = matiereName;
+    document.getElementById('delete-form').action = `/matieres/${matiereId}`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 
 function confirmDeleteAll() {

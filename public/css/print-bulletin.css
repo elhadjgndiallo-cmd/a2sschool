@@ -1,0 +1,212 @@
+/* Styles spécifiques pour l'impression du bulletin */
+
+/* Masquer les éléments non nécessaires à l'impression */
+@media print {
+    .no-print,
+    .btn,
+    .navbar,
+    .sidebar,
+    .footer,
+    .breadcrumb {
+        display: none !important;
+    }
+    
+    /* Forcer les couleurs pour l'impression */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Styles pour le bulletin */
+    .bulletin-container {
+        background: white !important;
+        color: black !important;
+        font-family: Arial, sans-serif !important;
+    }
+    
+    /* En-tête du bulletin */
+    .bulletin-header {
+        background: #2c3e50 !important;
+        color: white !important;
+        padding: 15px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .bulletin-header h1 {
+        color: white !important;
+        font-size: 24px !important;
+        font-weight: bold !important;
+    }
+    
+    .bulletin-header h2 {
+        color: white !important;
+        font-size: 18px !important;
+    }
+    
+    /* Informations de l'élève */
+    .student-info {
+        background: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+        padding: 15px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    /* Barre de résumé */
+    .summary-bar {
+        background: #007bff !important;
+        color: white !important;
+        padding: 15px !important;
+        margin-bottom: 20px !important;
+        text-align: center !important;
+    }
+    
+    .summary-bar .rank {
+        font-size: 20px !important;
+        font-weight: bold !important;
+    }
+    
+    .summary-bar .average {
+        font-size: 18px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Tableau des notes */
+    .table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .table thead th {
+        background: #6c757d !important;
+        color: white !important;
+        border: 1px solid #495057 !important;
+        padding: 10px !important;
+        font-weight: bold !important;
+    }
+    
+    .table tbody td {
+        border: 1px solid #dee2e6 !important;
+        padding: 8px !important;
+        background: white !important;
+    }
+    
+    .table tbody tr:nth-child(even) {
+        background: #f8f9fa !important;
+    }
+    
+    /* Badges de notes */
+    .badge {
+        padding: 5px 10px !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+    }
+    
+    .badge.bg-success {
+        background: #28a745 !important;
+        color: white !important;
+    }
+    
+    .badge.bg-primary {
+        background: #007bff !important;
+        color: white !important;
+    }
+    
+    .badge.bg-info {
+        background: #17a2b8 !important;
+        color: white !important;
+    }
+    
+    .badge.bg-warning {
+        background: #ffc107 !important;
+        color: black !important;
+    }
+    
+    .badge.bg-danger {
+        background: #dc3545 !important;
+        color: white !important;
+    }
+    
+    /* Note finale et appréciation en rouge */
+    .final-grade {
+        background: #dc3545 !important;
+        color: white !important;
+        padding: 5px 10px !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+    }
+    
+    .appreciation {
+        background: #dc3545 !important;
+        color: white !important;
+        padding: 5px 10px !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Observations */
+    .observations {
+        background: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+        padding: 15px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .observations .text-danger {
+        color: #dc3545 !important;
+        font-weight: bold !important;
+    }
+    
+    /* Signatures */
+    .signatures {
+        background: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+        padding: 15px !important;
+    }
+    
+    .signature-line {
+        border-bottom: 1px solid black !important;
+        width: 200px !important;
+        display: inline-block !important;
+        margin-bottom: 5px !important;
+    }
+    
+    /* Forcer les couleurs des textes */
+    .text-success {
+        color: #28a745 !important;
+    }
+    
+    .text-primary {
+        color: #007bff !important;
+    }
+    
+    .text-info {
+        color: #17a2b8 !important;
+    }
+    
+    .text-warning {
+        color: #ffc107 !important;
+    }
+    
+    .text-danger {
+        color: #dc3545 !important;
+    }
+    
+    /* Masquer les icônes FontAwesome à l'impression */
+    .fas, .far, .fab {
+        display: none !important;
+    }
+    
+    /* Forcer la page entière */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .container, .container-fluid {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}

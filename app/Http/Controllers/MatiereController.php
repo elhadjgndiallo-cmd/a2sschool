@@ -83,7 +83,7 @@ class MatiereController extends Controller
             'coefficient' => $request->coefficient,
             'description' => $request->description,
             'couleur' => $request->couleur,
-            'statut' => 'actif'
+            'actif' => true
         ]);
 
         // Associer les enseignants
@@ -174,15 +174,21 @@ class MatiereController extends Controller
     }
 
     /**
-     * Désactiver une matière
+     * Supprimer définitivement une matière
      */
     public function destroy(Matiere $matiere)
     {
-        // Ne pas supprimer, juste désactiver
-        $matiere->update(['statut' => 'inactif']);
+        // Supprimer les relations d'abord
+        $matiere->enseignants()->detach();
+        $matiere->notes()->delete();
+        $matiere->emploisTemps()->delete();
+        $matiere->absences()->delete();
+        
+        // Supprimer la matière
+        $matiere->delete();
         
         return redirect()->route('matieres.index')
-            ->with('success', 'Matière désactivée avec succès');
+            ->with('success', 'Matière supprimée définitivement avec succès');
     }
 
     /**
@@ -190,7 +196,7 @@ class MatiereController extends Controller
      */
     public function reactivate(Matiere $matiere)
     {
-        $matiere->update(['statut' => 'actif']);
+        $matiere->update(['actif' => true]);
         
         return redirect()->route('matieres.index')
             ->with('success', 'Matière réactivée avec succès');
@@ -229,16 +235,16 @@ class MatiereController extends Controller
         
         // Créer les matières par défaut avec coefficient 1 (l'admin pourra les personnaliser)
         $matieres = [
-            ['nom' => 'Anglais', 'code' => 'ANG', 'coefficient' => 1, 'couleur' => '#FF6B6B', 'description' => 'Langue anglaise et littérature', 'statut' => 'actif'],
-            ['nom' => 'Français', 'code' => 'FR', 'coefficient' => 1, 'couleur' => '#4ECDC4', 'description' => 'Langue française et littérature', 'statut' => 'actif'],
-            ['nom' => 'Physique', 'code' => 'PHY', 'coefficient' => 1, 'couleur' => '#45B7D1', 'description' => 'Sciences physiques', 'statut' => 'actif'],
-            ['nom' => 'Chimie', 'code' => 'CHI', 'coefficient' => 1, 'couleur' => '#96CEB4', 'description' => 'Sciences chimiques', 'statut' => 'actif'],
-            ['nom' => 'Mathématique', 'code' => 'MATH', 'coefficient' => 1, 'couleur' => '#FFEAA7', 'description' => 'Mathématiques', 'statut' => 'actif'],
-            ['nom' => 'Philosophie', 'code' => 'PHILO', 'coefficient' => 1, 'couleur' => '#DDA0DD', 'description' => 'Philosophie et éthique', 'statut' => 'actif'],
-            ['nom' => 'Biologie', 'code' => 'BIO', 'coefficient' => 1, 'couleur' => '#98D8C8', 'description' => 'Sciences biologiques', 'statut' => 'actif'],
-            ['nom' => 'Géologie', 'code' => 'GEO', 'coefficient' => 1, 'couleur' => '#F7DC6F', 'description' => 'Sciences de la terre', 'statut' => 'actif'],
-            ['nom' => 'ECM', 'code' => 'ECM', 'coefficient' => 1, 'couleur' => '#BB8FCE', 'description' => 'Éducation Civique et Morale', 'statut' => 'actif'],
-            ['nom' => 'Économie', 'code' => 'ECO', 'coefficient' => 1, 'couleur' => '#F8C471', 'description' => 'Sciences économiques', 'statut' => 'actif']
+            ['nom' => 'Anglais', 'code' => 'ANG', 'coefficient' => 1, 'couleur' => '#FF6B6B', 'description' => 'Langue anglaise et littérature', 'actif' => true],
+            ['nom' => 'Français', 'code' => 'FR', 'coefficient' => 1, 'couleur' => '#4ECDC4', 'description' => 'Langue française et littérature', 'actif' => true],
+            ['nom' => 'Physique', 'code' => 'PHY', 'coefficient' => 1, 'couleur' => '#45B7D1', 'description' => 'Sciences physiques', 'actif' => true],
+            ['nom' => 'Chimie', 'code' => 'CHI', 'coefficient' => 1, 'couleur' => '#96CEB4', 'description' => 'Sciences chimiques', 'actif' => true],
+            ['nom' => 'Mathématique', 'code' => 'MATH', 'coefficient' => 1, 'couleur' => '#FFEAA7', 'description' => 'Mathématiques', 'actif' => true],
+            ['nom' => 'Philosophie', 'code' => 'PHILO', 'coefficient' => 1, 'couleur' => '#DDA0DD', 'description' => 'Philosophie et éthique', 'actif' => true],
+            ['nom' => 'Biologie', 'code' => 'BIO', 'coefficient' => 1, 'couleur' => '#98D8C8', 'description' => 'Sciences biologiques', 'actif' => true],
+            ['nom' => 'Géologie', 'code' => 'GEO', 'coefficient' => 1, 'couleur' => '#F7DC6F', 'description' => 'Sciences de la terre', 'actif' => true],
+            ['nom' => 'ECM', 'code' => 'ECM', 'coefficient' => 1, 'couleur' => '#BB8FCE', 'description' => 'Éducation Civique et Morale', 'actif' => true],
+            ['nom' => 'Économie', 'code' => 'ECO', 'coefficient' => 1, 'couleur' => '#F8C471', 'description' => 'Sciences économiques', 'actif' => true]
         ];
 
         foreach ($matieres as $matiere) {

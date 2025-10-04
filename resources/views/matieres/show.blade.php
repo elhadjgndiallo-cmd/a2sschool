@@ -113,7 +113,7 @@
                     <tr>
                         <td><strong>Statut:</strong></td>
                         <td>
-                            @if($matiere->statut === 'actif')
+                            @if($matiere->actif)
                             <span class="badge bg-success">Actif</span>
                             @else
                             <span class="badge bg-secondary">Inactif</span>

@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\Storage;
 @endif
 
 
-<form method="POST" action="{{ route('eleves.update', $eleve->id) }}" enctype="multipart/form-data" class="needs-validation" novalidate>
+<form method="POST" action="{{ route('eleves.update-simple', $eleve->id) }}" enctype="multipart/form-data" class="needs-validation" novalidate>
     @csrf
     @method('PUT')
 

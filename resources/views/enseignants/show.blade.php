@@ -91,17 +91,35 @@ use Illuminate\Support\Facades\Storage;
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Date de naissance:</div>
-                    <div class="col-md-8">{{ \Carbon\Carbon::parse($enseignant->utilisateur->date_naissance)->format('d/m/Y') }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->utilisateur->date_naissance)
+                            {{ \Carbon\Carbon::parse($enseignant->utilisateur->date_naissance)->format('d/m/Y') }}
+                        @else
+                            <span class="text-muted">Non renseignée</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Lieu de naissance:</div>
-                    <div class="col-md-8">{{ $enseignant->utilisateur->lieu_naissance }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->utilisateur->lieu_naissance)
+                            {{ $enseignant->utilisateur->lieu_naissance }}
+                        @else
+                            <span class="text-muted">Non renseigné</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Sexe:</div>
-                    <div class="col-md-8">{{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->utilisateur->sexe)
+                            {{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}
+                        @else
+                            <span class="text-muted">Non renseigné</span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -116,17 +134,35 @@ use Illuminate\Support\Facades\Storage;
             <div class="card-body">
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Spécialité:</div>
-                    <div class="col-md-8">{{ $enseignant->specialite }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->specialite)
+                            {{ $enseignant->specialite }}
+                        @else
+                            <span class="text-muted">Non renseignée</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Diplôme:</div>
-                    <div class="col-md-8">{{ $enseignant->diplome }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->diplome)
+                            {{ $enseignant->diplome }}
+                        @else
+                            <span class="text-muted">Non renseigné</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Date d'embauche:</div>
-                    <div class="col-md-8">{{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}</div>
+                    <div class="col-md-8">
+                        @if($enseignant->date_embauche)
+                            {{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}
+                        @else
+                            <span class="text-muted">Non renseignée</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
@@ -157,9 +193,9 @@ use Illuminate\Support\Facades\Storage;
                         <tbody>
                             @foreach($enseignant->matieres as $matiere)
                             <tr>
-                                <td>{{ $matiere->nom }}</td>
-                                <td>{{ $matiere->code }}</td>
-                                <td>{{ $matiere->coefficient }}</td>
+                                <td>{{ $matiere->nom ?? 'N/A' }}</td>
+                                <td>{{ $matiere->code ?? 'N/A' }}</td>
+                                <td>{{ $matiere->coefficient ?? 'N/A' }}</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -171,6 +207,52 @@ use Illuminate\Support\Facades\Storage;
                     Aucune matière assignée à cet enseignant.
                 </p>
                 @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">{{ $enseignant->matieres->count() }}</h5>
+                <p class="card-text">Matières</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                <h5 class="card-title">{{ $enseignant->emploisTemps->count() }}</h5>
+                <p class="card-text">Cours</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-graduation-cap fa-2x text-success mb-2"></i>
+                <h5 class="card-title">{{ $enseignant->notes->count() }}</h5>
+                <p class="card-text">Notes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
+                <h5 class="card-title">
+                    @if($enseignant->date_embauche)
+                        {{ \Carbon\Carbon::parse($enseignant->date_embauche)->diffInYears(now()) }} ans
+                    @else
+                        N/A
+                    @endif
+                </h5>
+                <p class="card-text">Ancienneté</p>
             </div>
         </div>
     </div>
@@ -198,12 +280,12 @@ use Illuminate\Support\Facades\Storage;
                 <tbody>
                     @foreach($enseignant->emploisTemps as $emploi)
                     <tr>
-                        <td>{{ ucfirst($emploi->jour_semaine) }}</td>
-                        <td>{{ $emploi->heure_debut }}</td>
-                        <td>{{ $emploi->heure_fin }}</td>
-                        <td>{{ $emploi->matiere->nom }}</td>
-                        <td>{{ $emploi->classe->nom }}</td>
-                        <td>{{ $emploi->salle }}</td>
+                        <td>{{ ucfirst($emploi->jour_semaine ?? 'N/A') }}</td>
+                        <td>{{ $emploi->heure_debut ?? 'N/A' }}</td>
+                        <td>{{ $emploi->heure_fin ?? 'N/A' }}</td>
+                        <td>{{ $emploi->matiere->nom ?? 'N/A' }}</td>
+                        <td>{{ $emploi->classe->nom ?? 'N/A' }}</td>
+                        <td>{{ $emploi->salle ?? 'N/A' }}</td>
                     </tr>
                     @endforeach
                 </tbody>

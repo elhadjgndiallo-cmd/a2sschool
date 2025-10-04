@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use App\Events\ImageUploaded;
 
 class ImageService
 {
@@ -62,6 +63,9 @@ class ImageService
         // Libérer la mémoire
         imagedestroy($sourceImage);
         imagedestroy($targetImage);
+        
+        // Déclencher l'événement de synchronisation
+        event(new ImageUploaded($fullPath));
         
         return $fullPath;
     }
@@ -143,5 +147,30 @@ class ImageService
         }
         
         return Storage::disk('public')->delete($path);
+    }
+    
+    /**
+     * Synchronise une image vers public/storage pour XAMPP
+     *
+     * @param string $path
+     * @return bool
+     */
+    private function syncImageToPublic(string $path): bool
+    {
+        $sourceFile = Storage::disk('public')->path($path);
+        $targetFile = public_path('storage/' . $path);
+        
+        // Créer le dossier cible s'il n'existe pas
+        $targetDir = dirname($targetFile);
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+        
+        // Copier le fichier
+        if (file_exists($sourceFile)) {
+            return copy($sourceFile, $targetFile);
+        }
+        
+        return false;
     }
 }

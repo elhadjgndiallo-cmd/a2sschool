@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use App\Helpers\SchoolHelper;
 use App\Helpers\PermissionHelper;
+use App\Events\ImageUploaded;
+use App\Listeners\SyncImageToPublic;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -36,5 +38,8 @@ class AppServiceProvider extends ServiceProvider
         if (!class_exists('PermissionHelper')) {
             class_alias(PermissionHelper::class, 'PermissionHelper');
         }
+        
+        // Enregistrer l'événement de synchronisation des images
+        $this->app['events']->listen(ImageUploaded::class, SyncImageToPublic::class);
     }
 }
