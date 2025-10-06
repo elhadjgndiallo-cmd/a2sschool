@@ -230,6 +230,9 @@ public function store(Request $request)
      */
     public function show(FraisScolarite $frais)
     {
+        // Assurer la cohérence: répartir tout paiement non encore affecté aux tranches
+        $this->repartirPaiementsSurTranches($frais);
+        
         $frais->load(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
         return view('paiements.show', compact('frais'));
     }
@@ -332,8 +335,12 @@ public function store(Request $request)
                 'encaisse_par' => auth()->id()
             ]);
 
-            // Vérifier si le frais est entièrement payé
-            if ($frais->montant_restant <= 0) {
+            // Répercuter le paiement direct sur les tranches séquentiellement
+            $this->repartirPaiementsSurTranches($frais, $request->date_paiement);
+
+            // Vérifier si le frais est entièrement payé (après répartition)
+            $frais->refresh();
+            if ($frais->montant_restant <= 0.00001) {
                 $frais->update(['statut' => 'paye']);
             }
 
@@ -347,6 +354,62 @@ public function store(Request $request)
             DB::rollback();
             return back()->withInput()
                 ->with('error', 'Erreur lors de l\'enregistrement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Répartit l'intégralité des paiements enregistrés sur les tranches restantes
+     * de manière séquentielle (Mois 1 -> n). Idempotent.
+     */
+    private function repartirPaiementsSurTranches(FraisScolarite $frais, $datePaiement = null): void
+    {
+        if (!$frais->paiement_par_tranches) {
+            return;
+        }
+
+        // Recharger pour disposer des totaux actuels
+        $frais->loadMissing(['tranchesPaiement', 'paiements']);
+
+        $totalPaye = (float) $frais->paiements->sum('montant_paye');
+        $montantAlloue = 0.0;
+
+        // Réinitialiser l'état calculé (sans perdre l'historique des paiements)
+        foreach ($frais->tranchesPaiement as $t) {
+            $montantAlloue += (float) $t->montant_paye;
+        }
+
+        $resteAAllouer = max(0.0, $totalPaye - $montantAlloue);
+        if ($resteAAllouer <= 0.0) {
+            return;
+        }
+
+        $tranches = $frais->tranchesPaiement->sortBy('numero_tranche');
+        foreach ($tranches as $tranche) {
+            if ($resteAAllouer <= 0) {
+                break;
+            }
+
+            $resteTranche = max(0.0, (float) $tranche->montant_tranche - (float) $tranche->montant_paye);
+            if ($resteTranche <= 0) {
+                continue;
+            }
+
+            $verse = min($resteTranche, $resteAAllouer);
+            $tranche->montant_paye = (float) $tranche->montant_paye + $verse;
+            if ($tranche->montant_paye + 0.00001 >= (float) $tranche->montant_tranche) {
+                $tranche->statut = 'paye';
+                if ($datePaiement) {
+                    $tranche->date_paiement = $datePaiement;
+                }
+            }
+            $tranche->save();
+            $resteAAllouer -= $verse;
+        }
+
+        // Mettre à jour le statut global si tout est payé
+        $frais->refresh();
+        if ($frais->montant_restant <= 0.00001) {
+            $frais->update(['statut' => 'paye']);
         }
     }
 
