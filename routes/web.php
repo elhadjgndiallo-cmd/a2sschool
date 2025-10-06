@@ -846,6 +846,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/paiements/tranche/{tranche}/enregistrer', [PaiementController::class, 'enregistrerPaiementTranche'])->name('paiements.enregistrer-tranche')->middleware('check.permission:paiements.enregistrer');
         Route::get('/paiements/rapports', [PaiementController::class, 'rapports'])->name('paiements.rapports')->middleware('check.permission:paiements.view');
         Route::get('/paiements/{frais}/recu/{paiement?}', [PaiementController::class, 'genererRecu'])->name('paiements.recu')->middleware('check.permission:paiements.view');
+        Route::post('/paiements/{frais}/annuler-dernier-paiement', [PaiementController::class, 'annulerDernierPaiement'])->name('paiements.annuler-dernier-paiement')->middleware('check.permission:paiements.edit');
         
         // Routes pour la gestion des entrées
         Route::get('/entrees', [\App\Http\Controllers\EntreeController::class, 'index'])->name('entrees.index');

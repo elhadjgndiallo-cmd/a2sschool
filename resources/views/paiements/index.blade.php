@@ -190,10 +190,16 @@
                                                                 ->first();
                                                         @endphp
                                                         @if($prochaineTranche)
-                                                            <a href="{{ route('paiements.payer-tranche', $prochaineTranche) }}" 
-                                                               class="btn btn-sm btn-warning" title="Payer mois">
-                                                                <i class="fas fa-credit-card"></i>
-                                                            </a>
+                                                            <div class="btn-group" role="group">
+                                                                <a href="{{ route('paiements.payer-tranche', $prochaineTranche) }}" 
+                                                                   class="btn btn-sm btn-warning" title="Payer mois">
+                                                                    <i class="fas fa-credit-card"></i>
+                                                                </a>
+                                                                <a href="{{ route('paiements.payer-direct', $frais) }}" 
+                                                                   class="btn btn-sm btn-success" title="Payer tout">
+                                                                    <i class="fas fa-money-bill-wave"></i>
+                                                                </a>
+                                                            </div>
                                                         @else
                                                             <button class="btn btn-sm btn-secondary" disabled title="Toutes les tranches sont payées">
                                                                 <i class="fas fa-check"></i>
@@ -205,6 +211,14 @@
                                                             <i class="fas fa-money-bill-wave"></i>
                                                         </a>
                                                     @endif
+                                                @endif
+                                                @if($frais->paiements()->count() > 0)
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-danger" 
+                                                            title="Annuler le dernier paiement"
+                                                            onclick="confirmAnnulerPaiement({{ $frais->id }}, '{{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }}')">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
                                                 @endif
                                             </div>
                                         </td>
@@ -238,4 +252,56 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de confirmation pour annuler le dernier paiement -->
+<div class="modal fade" id="annulerPaiementModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Annuler le dernier paiement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action irréversible</h6>
+                    <p class="mb-0">Êtes-vous sûr de vouloir annuler le dernier paiement de <strong id="eleve-nom"></strong> ?</p>
+                </div>
+                <p class="text-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Cette action supprimera définitivement le dernier paiement et recalculera le montant restant.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <form id="annuler-paiement-form" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-undo me-1"></i>Annuler le paiement
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function confirmAnnulerPaiement(fraisId, eleveNom) {
+    // Mettre à jour le contenu du modal
+    document.getElementById('eleve-nom').textContent = eleveNom;
+    
+    // Mettre à jour l'action du formulaire
+    document.getElementById('annuler-paiement-form').action = `/paiements/${fraisId}/annuler-dernier-paiement`;
+    
+    // Afficher le modal
+    new bootstrap.Modal(document.getElementById('annulerPaiementModal')).show();
+}
+</script>
+@endpush
+
 @endsection

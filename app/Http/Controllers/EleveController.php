@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Services\ImageService;
+use App\Http\Controllers\PaiementController;
 
 class EleveController extends Controller
 {
@@ -1037,6 +1038,10 @@ class EleveController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Créer automatiquement les frais d'inscription et de scolarité
+                $paiementController = new PaiementController();
+                $paiementController->creerFraisAutomatiques($eleve);
             });
 
             // Nettoyer la session
@@ -1209,6 +1214,10 @@ class EleveController extends Controller
                         ]);
                     }
                     
+                    // Créer automatiquement les frais de réinscription
+                    $paiementController = new PaiementController();
+                    $paiementController->creerFraisAutomatiques($nouvelEleve);
+                    
                     $elevesReinscris++;
                     
                 } catch (\Exception $e) {
@@ -1240,8 +1249,8 @@ class EleveController extends Controller
             ->pluck('utilisateur_id')
             ->toArray();
         
-        // Récupérer les élèves des années passées qui ne sont pas inscrits cette année
-        // Inclure aussi les élèves sans année scolaire (anciens élèves)
+        // Récupérer SEULEMENT les élèves des années passées qui ne sont pas inscrits cette année
+        // Exclure les élèves sans année scolaire (ils ne sont pas des anciens élèves)
         return Eleve::with([
                 'utilisateur', 
                 'classe', 
@@ -1250,11 +1259,8 @@ class EleveController extends Controller
                     $query->with('utilisateur');
                 }
             ])
-            ->where(function($query) use ($anneeScolaireActive) {
-                // Élèves d'années passées OU élèves sans année assignée (anciens élèves)
-                $query->where('annee_scolaire_id', '!=', $anneeScolaireActive->id)
-                      ->orWhereNull('annee_scolaire_id');
-            })
+            ->where('annee_scolaire_id', '!=', $anneeScolaireActive->id)
+            ->whereNotNull('annee_scolaire_id') // Seulement les élèves avec une année scolaire assignée
             ->whereNotIn('utilisateur_id', $utilisateursInscritsThisYear)
             ->orderBy('updated_at', 'desc')
             ->get()
@@ -1467,6 +1473,10 @@ class EleveController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Créer automatiquement les frais d'inscription et de scolarité
+                $paiementController = new PaiementController();
+                $paiementController->creerFraisAutomatiques($eleve);
             });
 
             // Nettoyer la session

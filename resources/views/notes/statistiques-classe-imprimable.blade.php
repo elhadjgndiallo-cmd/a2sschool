@@ -196,23 +196,22 @@
                         </span>
                     </td>
                     <td>
-                        <span class="appreciation 
-                            @if($stat['moyenne'] >= 16) excellent
-                            @elseif($stat['moyenne'] >= 14) very-good
-                            @elseif($stat['moyenne'] >= 12) good
-                            @elseif($stat['moyenne'] >= 10) fair
-                            @else poor
-                            @endif">
-                            @if($stat['moyenne'] >= 16)
-                                ⭐ Excellent
-                            @elseif($stat['moyenne'] >= 14)
-                                👍 Très bien
-                            @elseif($stat['moyenne'] >= 12)
-                                ✅ Bien
-                            @elseif($stat['moyenne'] >= 10)
-                                ⚠️ Assez bien
+                        @php
+                            $appreciation = $classe->getAppreciation($stat['moyenne']);
+                        @endphp
+                        <span class="appreciation {{ $appreciation['color'] }}">
+                            @if($appreciation['label'] == 'Excellent')
+                                ⭐ {{ $appreciation['label'] }}
+                            @elseif($appreciation['label'] == 'Très bien')
+                                👍 {{ $appreciation['label'] }}
+                            @elseif($appreciation['label'] == 'Bien')
+                                ✅ {{ $appreciation['label'] }}
+                            @elseif($appreciation['label'] == 'Assez bien')
+                                ⚠️ {{ $appreciation['label'] }}
+                            @elseif($appreciation['label'] == 'Passable')
+                                ➖ {{ $appreciation['label'] }}
                             @else
-                                ❌ Insuffisant
+                                ❌ {{ $appreciation['label'] }}
                             @endif
                         </span>
                     </td>

@@ -149,17 +149,25 @@
                             @endif
                         </td>
                         <td>
-                            @if($stat['moyenne'] >= 16)
-                                <span class="text-success"><i class="fas fa-star me-1"></i>Excellent</span>
-                            @elseif($stat['moyenne'] >= 14)
-                                <span class="text-primary"><i class="fas fa-thumbs-up me-1"></i>Très bien</span>
-                            @elseif($stat['moyenne'] >= 12)
-                                <span class="text-info"><i class="fas fa-check me-1"></i>Bien</span>
-                            @elseif($stat['moyenne'] >= 10)
-                                <span class="text-warning"><i class="fas fa-exclamation me-1"></i>Assez bien</span>
-                            @else
-                                <span class="text-danger"><i class="fas fa-times me-1"></i>Insuffisant</span>
-                            @endif
+                            @php
+                                $appreciation = $classe->getAppreciation($stat['moyenne']);
+                            @endphp
+                            <span class="text-{{ $appreciation['color'] }}">
+                                @if($appreciation['label'] == 'Excellent')
+                                    <i class="fas fa-star me-1"></i>
+                                @elseif($appreciation['label'] == 'Très bien')
+                                    <i class="fas fa-thumbs-up me-1"></i>
+                                @elseif($appreciation['label'] == 'Bien')
+                                    <i class="fas fa-check me-1"></i>
+                                @elseif($appreciation['label'] == 'Assez bien')
+                                    <i class="fas fa-exclamation me-1"></i>
+                                @elseif($appreciation['label'] == 'Passable')
+                                    <i class="fas fa-minus me-1"></i>
+                                @else
+                                    <i class="fas fa-times me-1"></i>
+                                @endif
+                                {{ $appreciation['label'] }}
+                            </span>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
@@ -204,43 +212,50 @@
         </h5>
     </div>
     <div class="card-body">
+        @php
+            $seuils = $classe->seuils_appreciation;
+        @endphp
+        
         <div class="row">
-            <div class="col-md-3 text-center">
-                <div class="border rounded p-3">
-                    <h4 class="text-success">{{ $statistiques->where('moyenne', '>=', 16)->count() }}</h4>
-                    <small>Excellent (≥16)</small>
+            @foreach(['excellent', 'tres_bien', 'bien', 'assez_bien'] as $key)
+                @php
+                    $seuil = $seuils[$key];
+                    $count = $statistiques->whereBetween('moyenne', [$seuil['min'], $seuil['max']])->count();
+                @endphp
+                <div class="col-md-3 text-center">
+                    <div class="border rounded p-3">
+                        <h4 class="text-{{ $seuil['color'] }}">{{ $count }}</h4>
+                        <small>{{ $seuil['label'] }} ({{ $seuil['min'] }}-{{ $seuil['max'] }})</small>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3 text-center">
-                <div class="border rounded p-3">
-                    <h4 class="text-primary">{{ $statistiques->whereBetween('moyenne', [14, 15.99])->count() }}</h4>
-                    <small>Très bien (14-16)</small>
-                </div>
-            </div>
-            <div class="col-md-3 text-center">
-                <div class="border rounded p-3">
-                    <h4 class="text-info">{{ $statistiques->whereBetween('moyenne', [12, 13.99])->count() }}</h4>
-                    <small>Bien (12-14)</small>
-                </div>
-            </div>
-            <div class="col-md-3 text-center">
-                <div class="border rounded p-3">
-                    <h4 class="text-warning">{{ $statistiques->whereBetween('moyenne', [10, 11.99])->count() }}</h4>
-                    <small>Assez bien (10-12)</small>
-                </div>
-            </div>
+            @endforeach
         </div>
+        
         <div class="row mt-3">
-            <div class="col-md-6 text-center">
+            @php
+                $seuilPassable = $seuils['passable'];
+                $seuilInsuffisant = $seuils['insuffisant'];
+                $countPassable = $statistiques->whereBetween('moyenne', [$seuilPassable['min'], $seuilPassable['max']])->count();
+                $countInsuffisant = $statistiques->whereBetween('moyenne', [$seuilInsuffisant['min'], $seuilInsuffisant['max']])->count();
+                $countAdmis = $statistiques->where('moyenne', '>=', $classe->seuil_reussite)->count();
+            @endphp
+            
+            <div class="col-md-4 text-center">
                 <div class="border rounded p-3">
-                    <h4 class="text-danger">{{ $statistiques->where('moyenne', '<', 10)->count() }}</h4>
-                    <small>Insuffisant (<10)</small>
+                    <h4 class="text-{{ $seuilPassable['color'] }}">{{ $countPassable }}</h4>
+                    <small>{{ $seuilPassable['label'] }} ({{ $seuilPassable['min'] }}-{{ $seuilPassable['max'] }})</small>
                 </div>
             </div>
-            <div class="col-md-6 text-center">
+            <div class="col-md-4 text-center">
                 <div class="border rounded p-3">
-                    <h4 class="text-success">{{ $statistiques->where('moyenne', '>=', 10)->count() }}</h4>
-                    <small>Admis (≥10)</small>
+                    <h4 class="text-{{ $seuilInsuffisant['color'] }}">{{ $countInsuffisant }}</h4>
+                    <small>{{ $seuilInsuffisant['label'] }} ({{ $seuilInsuffisant['min'] }}-{{ $seuilInsuffisant['max'] }})</small>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="border rounded p-3">
+                    <h4 class="text-success">{{ $countAdmis }}</h4>
+                    <small>Admis (≥{{ $classe->seuil_reussite }})</small>
                 </div>
             </div>
         </div>

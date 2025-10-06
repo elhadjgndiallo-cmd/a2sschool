@@ -14,6 +14,78 @@ use Illuminate\Support\Facades\DB;
 class PaiementController extends Controller
 {
     /**
+     * Annuler le dernier paiement d'un frais de scolarité
+     */
+    public function annulerDernierPaiement(Request $request, FraisScolarite $frais)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('paiements.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à annuler des paiements.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Récupérer le dernier paiement
+            $dernierPaiement = $frais->paiements()
+                ->orderBy('date_paiement', 'desc')
+                ->first();
+
+            if (!$dernierPaiement) {
+                return redirect()->back()->with('error', 'Aucun paiement trouvé pour ce frais de scolarité.');
+            }
+
+            // Supprimer l'entrée comptable associée
+            $entree = Entree::where('reference', $dernierPaiement->reference_paiement)
+                ->where('montant', $dernierPaiement->montant_paye)
+                ->where('date_entree', $dernierPaiement->date_paiement)
+                ->where('enregistre_par', $dernierPaiement->encaisse_par)
+                ->first();
+            
+            if ($entree) {
+                $entree->delete();
+            }
+
+            // Si le paiement est lié à une tranche, remettre la tranche en attente
+            if ($dernierPaiement->tranche_paiement_id) {
+                $tranche = $dernierPaiement->tranchePaiement;
+                if ($tranche) {
+                    $tranche->statut = 'en_attente';
+                    $tranche->montant_paye = 0;
+                    $tranche->date_paiement = null;
+                    $tranche->save();
+                }
+            }
+
+            // Supprimer le paiement
+            $dernierPaiement->delete();
+
+            // Recalculer le montant restant (calcul dynamique)
+            $montantPaye = $frais->paiements()->sum('montant_paye');
+            $montantRestant = $frais->montant - $montantPaye;
+            
+            // Mettre à jour le statut
+            if ($montantRestant <= 0) {
+                $frais->statut = 'paye';
+            } elseif ($frais->date_echeance < now()) {
+                $frais->statut = 'en_retard';
+            } else {
+                $frais->statut = 'en_attente';
+            }
+
+            $frais->save();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Le dernier paiement a été annulé avec succès. L\'entrée comptable associée a également été supprimée.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Erreur lors de l\'annulation du paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Afficher la liste des frais de scolarité
      */
     public function index(Request $request)
@@ -23,7 +95,7 @@ class PaiementController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
         
-        $query = FraisScolarite::with(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement']);
+        $query = FraisScolarite::with(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements']);
         
         // Filtre par classe
         if ($request->filled('classe_id')) {
@@ -68,9 +140,12 @@ class PaiementController extends Controller
         if (!auth()->user()->hasPermission('paiements.create')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
-        // Récupérer seulement les élèves non exemptés des frais de scolarité
+        // Récupérer les élèves éligibles: non exemptés ET sans frais de scolarité existants pour l'année en cours
         $eleves = Eleve::with(['utilisateur', 'classe'])
             ->where('exempte_frais', false)
+            ->whereDoesntHave('fraisScolarite', function($q) {
+                $q->where('type_frais', 'scolarite');
+            })
             ->get()
             ->sortBy(function($eleve) {
                 return $eleve->utilisateur->nom . ' ' . $eleve->utilisateur->prenom;
@@ -90,7 +165,7 @@ class PaiementController extends Controller
     /**
      * Enregistrer un nouveau frais de scolarité
      */
-    public function store(Request $request)
+public function store(Request $request)
     {
         $request->validate([
             'eleve_id' => 'required|exists:eleves,id',
@@ -98,10 +173,11 @@ class PaiementController extends Controller
             'montant' => 'required|numeric|min:0',
             'date_echeance' => 'required|date',
             'type_frais' => 'required|in:inscription,scolarite,cantine,transport,activites,autre',
+            'type_paiement' => 'required|in:unique,tranches',
             'paiement_par_tranches' => 'boolean',
-            'nombre_tranches' => 'required_if:paiement_par_tranches,true|integer|min:2|max:12',
-            'periode_tranche' => 'required_if:paiement_par_tranches,true|in:mensuel,trimestriel,semestriel,annuel',
-            'date_debut_tranches' => 'required_if:paiement_par_tranches,true|date'
+            'nombre_tranches' => 'required_if:type_paiement,tranches|nullable|integer|min:2|max:12',
+            'periode_tranche' => 'required_if:type_paiement,tranches|nullable|in:mensuel,trimestriel,semestriel,annuel',
+            'date_debut_tranches' => 'required_if:type_paiement,tranches|nullable|date'
         ]);
 
         // Vérifier que l'élève n'est pas exempté des frais de scolarité
@@ -112,29 +188,36 @@ class PaiementController extends Controller
                 ->with('error', 'Impossible de créer des frais de scolarité pour un élève exempté.');
         }
 
-        // Vérifier qu'il n'existe pas déjà des frais de scolarité pour cet élève
+        // Vérifier qu'il n'existe pas déjà des frais de ce type pour cet élève
         $fraisExistants = FraisScolarite::where('eleve_id', $request->eleve_id)
-            ->where('type_frais', 'scolarite')
+            ->where('type_frais', $request->type_frais)
             ->count();
         
         if ($fraisExistants > 0) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Des frais de scolarité existent déjà pour cet élève.');
+                ->with('error', "Des frais de {$request->type_frais} existent déjà pour cet élève.");
         }
 
         DB::beginTransaction();
         try {
-            $frais = FraisScolarite::create($request->all());
+            // Déterminer le type de paiement
+            $paiementParTranches = $request->type_paiement === 'tranches';
+            
+            // Créer les données pour le frais
+            $fraisData = $request->all();
+            $fraisData['paiement_par_tranches'] = $paiementParTranches;
+            
+            $frais = FraisScolarite::create($fraisData);
 
             // Si paiement par tranches, créer les tranches
-            if ($request->paiement_par_tranches) {
+            if ($paiementParTranches) {
                 $frais->creerTranchesPaiement();
             }
 
             DB::commit();
             return redirect()->route('paiements.show', $frais)
-                ->with('success', 'Frais de scolarité créé avec succès.');
+                ->with('success', 'Frais créé avec succès.');
         } catch (\Exception $e) {
             DB::rollback();
             return back()->withInput()
@@ -287,6 +370,64 @@ class PaiementController extends Controller
             ->get();
 
         return view('paiements.rapports', compact('stats', 'paiementsRecents'));
+    }
+
+    /**
+     * Créer automatiquement les frais d'inscription et de scolarité pour un élève
+     */
+    public function creerFraisAutomatiques(Eleve $eleve)
+    {
+        // Vérifier si l'élève est exempté des frais
+        if ($eleve->exempte_frais) {
+            return;
+        }
+
+        // Récupérer le tarif de la classe
+        $tarif = TarifClasse::where('classe_id', $eleve->classe_id)
+            ->where('actif', true)
+            ->first();
+
+        if (!$tarif) {
+            return; // Pas de tarif configuré pour cette classe
+        }
+
+        DB::beginTransaction();
+        try {
+            // 1. Créer les frais d'inscription ou de réinscription
+            if ($eleve->type_inscription === 'nouvelle' && $tarif->frais_inscription > 0) {
+                // Frais d'inscription pour nouvelle inscription
+                FraisScolarite::create([
+                    'eleve_id' => $eleve->id,
+                    'libelle' => 'Frais d\'inscription',
+                    'montant' => $tarif->frais_inscription,
+                    'date_echeance' => now()->addDays(30), // 30 jours pour payer
+                    'statut' => 'en_attente',
+                    'type_frais' => 'inscription',
+                    'description' => 'Frais d\'inscription pour l\'année scolaire',
+                    'paiement_par_tranches' => false
+                ]);
+            } elseif ($eleve->type_inscription === 'reinscription' && $tarif->frais_reinscription > 0) {
+                // Frais de réinscription
+                FraisScolarite::create([
+                    'eleve_id' => $eleve->id,
+                    'libelle' => 'Frais de réinscription',
+                    'montant' => $tarif->frais_reinscription,
+                    'date_echeance' => now()->addDays(30), // 30 jours pour payer
+                    'statut' => 'en_attente',
+                    'type_frais' => 'reinscription',
+                    'description' => 'Frais de réinscription pour l\'année scolaire',
+                    'paiement_par_tranches' => false
+                ]);
+            }
+
+            // Note: Les frais de scolarité, cantine et transport doivent être créés manuellement
+            // par l'utilisateur ou le comptable via l'interface de gestion des paiements
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     }
 
     /**

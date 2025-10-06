@@ -828,6 +828,7 @@ class NoteController extends Controller
         ]);
     }
 
+
     /**
      * Supprimer une période scolaire
      */

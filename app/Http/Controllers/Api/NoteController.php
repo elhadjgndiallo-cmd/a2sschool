@@ -432,20 +432,27 @@ class NoteController extends Controller
                 'annee_scolaire' => $anneeScolaire ?? $eleve->classe->annee_scolaire,
                 'matieres' => array_values($notesByMatiere),
                 'moyenne_generale' => round($moyenneGenerale, 2),
-                'appreciation_generale' => $this->getAppreciationFromMoyenne($moyenneGenerale)
+                'appreciation_generale' => $this->getAppreciationFromMoyenne($moyenneGenerale, $eleve->classe)
             ],
             'message' => 'Bulletin de l\'élève récupéré avec succès'
         ]);
     }
     
     /**
-     * Obtenir une appréciation en fonction de la moyenne
+     * Obtenir une appréciation en fonction de la moyenne et de la classe
      *
      * @param  float  $moyenne
+     * @param  \App\Models\Classe  $classe
      * @return string
      */
-    private function getAppreciationFromMoyenne($moyenne)
+    private function getAppreciationFromMoyenne($moyenne, $classe = null)
     {
+        if ($classe) {
+            $appreciation = $classe->getAppreciation($moyenne);
+            return $appreciation['label'];
+        }
+        
+        // Fallback pour les anciens appels sans classe
         if ($moyenne >= 16) {
             return 'Excellent';
         } elseif ($moyenne >= 14) {

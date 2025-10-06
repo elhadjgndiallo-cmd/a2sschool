@@ -73,12 +73,12 @@ class PermissionHelper
                 ['href' => route('paiements.index'), 'icon' => 'fas fa-money-bill-wave', 'text' => 'Frais', 'permission' => 'paiements.view'],
                 ['href' => route('cartes-scolaires.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes scolaires', 'permission' => 'cartes-scolaires.view']
             ],
-            'notes' => [
-                ['href' => route('notes.index'), 'icon' => 'fas fa-edit', 'text' => 'Saisir Notes', 'permission' => 'notes.view'],
-                ['href' => route('notes.bulletins'), 'icon' => 'fas fa-chart-line', 'text' => 'Bulletins', 'permission' => 'notes.view'],
-                ['href' => route('notes.statistiques'), 'icon' => 'fas fa-chart-bar', 'text' => 'Statistiques', 'permission' => 'notes.view'],
-                ['href' => route('notes.parametres'), 'icon' => 'fas fa-cog', 'text' => 'Paramètres', 'permission' => 'notes.edit']
-            ],
+        'notes' => [
+            ['href' => route('notes.index'), 'icon' => 'fas fa-edit', 'text' => 'Saisir Notes', 'permission' => 'notes.view'],
+            ['href' => route('notes.bulletins'), 'icon' => 'fas fa-chart-line', 'text' => 'Bulletins', 'permission' => 'notes.view'],
+            ['href' => route('notes.statistiques'), 'icon' => 'fas fa-chart-bar', 'text' => 'Statistiques', 'permission' => 'notes.view'],
+            ['href' => route('notes.parametres'), 'icon' => 'fas fa-cog', 'text' => 'Paramètres', 'permission' => 'notes.edit']
+        ],
             'comptabilite' => [
                 ['href' => route('entrees.index'), 'icon' => 'fas fa-arrow-up', 'text' => 'Entrée', 'permission' => 'entrees.view'],
                 ['href' => route('depenses.index'), 'icon' => 'fas fa-arrow-down', 'text' => 'Sortie', 'permission' => 'depenses.view']

@@ -204,7 +204,7 @@ use Illuminate\Support\Facades\Storage;
                                                 disabled>
                                             <i class="fas fa-gift"></i>
                                         </button>
-                                    @elseif($eleve->fraisScolarite->count() > 0)
+                                    @elseif($eleve->fraisScolarite->where('type_frais', 'scolarite')->count() > 0)
                                         <button class="btn btn-sm btn-warning" 
                                                 title="Frais de scolarité déjà créés pour cet élève" 
                                                 disabled>

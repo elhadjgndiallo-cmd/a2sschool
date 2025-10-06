@@ -90,14 +90,14 @@
                                            name="note_cours" 
                                            value="{{ old('note_cours', $note->note_cours) }}"
                                            min="0" 
-                                           max="20" 
+                                           max="{{ $note->eleve->classe->note_max }}" 
                                            step="0.1"
                                            placeholder="Ex: 15.5">
                                     @error('note_cours')
                                         <div class="invalid-feedback">{{ $error }}</div>
                                     @enderror
                                     <small class="form-text text-muted">
-                                        Note sur 20. Laissez vide pour une note par défaut de 2/20.
+                                        Note sur {{ $note->eleve->classe->note_max }}. Laissez vide pour une note par défaut de 2/{{ $note->eleve->classe->note_max }}.
                                     </small>
                                 </div>
                             </div>
@@ -116,14 +116,14 @@
                                            name="note_composition" 
                                            value="{{ old('note_composition', $note->note_composition) }}"
                                            min="0" 
-                                           max="20" 
+                                           max="{{ $note->eleve->classe->note_max }}" 
                                            step="0.1"
                                            placeholder="Ex: 16.0">
                                     @error('note_composition')
                                         <div class="invalid-feedback">{{ $error }}</div>
                                     @enderror
                                     <small class="form-text text-muted">
-                                        Note sur 20. Laissez vide pour une note par défaut de 2/20.
+                                        Note sur {{ $note->eleve->classe->note_max }}. Laissez vide pour une note par défaut de 2/{{ $note->eleve->classe->note_max }}.
                                     </small>
                                 </div>
                             </div>

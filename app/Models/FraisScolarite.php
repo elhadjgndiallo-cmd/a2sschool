@@ -85,7 +85,13 @@ class FraisScolarite extends Model
      */
     public function getMontantRestantAttribute()
     {
-        return $this->montant - $this->montant_paye;
+        // Utiliser les relations déjà chargées si disponibles
+        if ($this->relationLoaded('paiements')) {
+            $montantPaye = $this->paiements->sum('montant_paye');
+        } else {
+            $montantPaye = $this->paiements()->sum('montant_paye');
+        }
+        return $this->montant - $montantPaye;
     }
 
     /**

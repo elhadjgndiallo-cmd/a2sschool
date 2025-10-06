@@ -1,106 +1,293 @@
-/* Styles spécifiques pour l'impression du bulletin */
+/* Styles ultra-compacts pour l'impression A4 - EN-TÊTE COMPLÈTEMENT MASQUÉ */
 
-/* Masquer les éléments non nécessaires à l'impression */
 @media print {
+    @page {
+        size: A4;
+        margin: 0.5cm;
+    }
+    
+    /* MASQUER ABSOLUMENT TOUT L'EN-TÊTE ET LA NAVIGATION */
     .no-print,
     .btn,
     .navbar,
     .sidebar,
     .footer,
-    .breadcrumb {
+    .breadcrumb,
+    .btn-toolbar,
+    .border-bottom,
+    .card-header,
+    .card-body,
+    .d-print-none,
+    header,
+    .header,
+    .navbar-brand,
+    .navbar-nav,
+    .navbar-toggler,
+    .container-fluid,
+    .container,
+    nav,
+    .nav,
+    .navbar,
+    .navbar-expand,
+    .navbar-light,
+    .bg-gradient,
+    .navbar-dark,
+    .fixed-top,
+    .sticky-top,
+    .navbar-collapse,
+    .navbar-nav .nav-link,
+    .navbar-text,
+    .dropdown-menu,
+    .navbar-toggler-icon,
+    .navbar-toggler,
+    .navbar-toggler:focus,
+    .navbar-toggler:hover,
+    .navbar-toggler:active,
+    .navbar-toggler:focus-visible,
+    .navbar-toggler:focus-within,
+    .navbar-toggler:target,
+    .navbar-toggler[aria-expanded="true"],
+    .navbar-toggler[aria-expanded="false"],
+    /* Masquer tous les éléments d'en-tête possibles */
+    .top-bar,
+    .header-bar,
+    .main-header,
+    .page-header,
+    .site-header,
+    .app-header,
+    .main-nav,
+    .top-nav,
+    .navigation,
+    .menu,
+    .menu-bar,
+    .toolbar,
+    .action-bar,
+    .status-bar,
+    .info-bar,
+    .title-bar,
+    .brand-bar,
+    .logo-bar,
+    .user-bar,
+    .admin-bar,
+    .control-bar,
+    .button-bar,
+    .icon-bar,
+    .breadcrumb-bar,
+    .tab-bar,
+    .ribbon,
+    .banner,
+    .strip,
+    .band,
+    .bar,
+    .row:first-child,
+    .container:first-child,
+    .container-fluid:first-child,
+    .row:first-of-type,
+    .container:first-of-type,
+    .container-fluid:first-of-type,
+    /* Masquer les éléments avec des classes spécifiques */
+    [class*="header"],
+    [class*="navbar"],
+    [class*="nav-"],
+    [class*="menu"],
+    [class*="toolbar"],
+    [class*="bar"],
+    [class*="strip"],
+    [class*="banner"],
+    [class*="ribbon"],
+    [class*="top"],
+    [class*="main-nav"],
+    [class*="site-nav"],
+    [class*="page-nav"],
+    [class*="app-nav"],
+    [class*="user-nav"],
+    [class*="admin-nav"],
+    [class*="control-nav"],
+    [class*="button-nav"],
+    [class*="icon-nav"],
+    [class*="breadcrumb-nav"],
+    [class*="tab-nav"],
+    [class*="nav-"],
+    [class*="menu-"],
+    [class*="toolbar-"],
+    [class*="bar-"],
+    [class*="strip-"],
+    [class*="banner-"],
+    [class*="ribbon-"],
+    [class*="top-"],
+    [class*="main-"],
+    [class*="site-"],
+    [class*="page-"],
+    [class*="app-"],
+    [class*="user-"],
+    [class*="admin-"],
+    [class*="control-"],
+    [class*="button-"],
+    [class*="icon-"],
+    [class*="breadcrumb-"],
+    [class*="tab-"],
+    [class*="nav"],
+    [class*="menu"],
+    [class*="toolbar"],
+    [class*="bar"],
+    [class*="strip"],
+    [class*="banner"],
+    [class*="ribbon"],
+    [class*="top"],
+    [class*="main"],
+    [class*="site"],
+    [class*="page"],
+    [class*="app"],
+    [class*="user"],
+    [class*="admin"],
+    [class*="control"],
+    [class*="button"],
+    [class*="icon"],
+    [class*="breadcrumb"],
+    [class*="tab"] {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
     }
     
-    /* Forcer les couleurs pour l'impression */
+    /* Configuration générale ultra-compacte */
     * {
         -webkit-print-color-adjust: exact !important;
         color-adjust: exact !important;
         print-color-adjust: exact !important;
+        box-sizing: border-box !important;
     }
     
-    /* Styles pour le bulletin */
-    .bulletin-container {
-        background: white !important;
-        color: black !important;
+    body {
         font-family: Arial, sans-serif !important;
+        font-size: 8px !important;
+        line-height: 1.1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: black !important;
+        background: white !important;
     }
     
-    /* En-tête du bulletin */
+    .container, .container-fluid {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* En-tête du bulletin ultra-compact */
     .bulletin-header {
         background: #2c3e50 !important;
         color: white !important;
-        padding: 15px !important;
-        margin-bottom: 20px !important;
+        padding: 4px 6px !important;
+        margin-bottom: 4px !important;
+        border-radius: 2px !important;
     }
     
     .bulletin-header h1 {
-        color: white !important;
-        font-size: 24px !important;
+        font-size: 10px !important;
         font-weight: bold !important;
+        margin: 0 !important;
+        color: white !important;
     }
     
     .bulletin-header h2 {
+        font-size: 8px !important;
+        margin: 1px 0 0 0 !important;
         color: white !important;
-        font-size: 18px !important;
     }
     
-    /* Informations de l'élève */
+    /* Informations de l'élève ultra-compactes */
     .student-info {
         background: #f8f9fa !important;
-        border: 1px solid #dee2e6 !important;
-        padding: 15px !important;
-        margin-bottom: 20px !important;
+        border: 1px solid #333 !important;
+        padding: 3px 4px !important;
+        margin-bottom: 4px !important;
+        font-size: 7px !important;
     }
     
-    /* Barre de résumé */
+    .student-info p {
+        margin: 1px 0 !important;
+        font-size: 7px !important;
+    }
+    
+    /* Barre de résumé ultra-compacte */
     .summary-bar {
         background: #007bff !important;
         color: white !important;
-        padding: 15px !important;
-        margin-bottom: 20px !important;
+        padding: 2px 3px !important;
+        margin-bottom: 4px !important;
         text-align: center !important;
+        border-radius: 2px !important;
     }
     
     .summary-bar .rank {
-        font-size: 20px !important;
+        font-size: 7px !important;
         font-weight: bold !important;
+        margin: 0 !important;
     }
     
     .summary-bar .average {
-        font-size: 18px !important;
+        font-size: 6px !important;
         font-weight: bold !important;
+        margin: 0 !important;
     }
     
-    /* Tableau des notes */
+    /* Tableau principal ultra-compact */
     .table {
         border-collapse: collapse !important;
         width: 100% !important;
-        margin-bottom: 20px !important;
+        margin-bottom: 4px !important;
+        font-size: 6px !important;
     }
     
     .table thead th {
         background: #6c757d !important;
         color: white !important;
-        border: 1px solid #495057 !important;
-        padding: 10px !important;
+        border: 1px solid #333 !important;
+        padding: 2px 1px !important;
         font-weight: bold !important;
+        font-size: 6px !important;
+        text-align: center !important;
     }
     
     .table tbody td {
-        border: 1px solid #dee2e6 !important;
-        padding: 8px !important;
+        border: 1px solid #333 !important;
+        padding: 1px 2px !important;
         background: white !important;
+        font-size: 6px !important;
+        vertical-align: middle !important;
     }
     
     .table tbody tr:nth-child(even) {
         background: #f8f9fa !important;
     }
     
-    /* Badges de notes */
-    .badge {
-        padding: 5px 10px !important;
-        border-radius: 4px !important;
+    .table tfoot th {
+        background: #343a40 !important;
+        color: white !important;
+        border: 1px solid #333 !important;
+        padding: 2px 1px !important;
         font-weight: bold !important;
+        font-size: 6px !important;
+        text-align: center !important;
+    }
+    
+    /* Badges de notes ultra-compacts */
+    .badge {
+        padding: 1px 2px !important;
+        border-radius: 1px !important;
+        font-weight: bold !important;
+        font-size: 5px !important;
+        display: inline-block !important;
     }
     
     .badge.bg-success {
@@ -128,29 +315,43 @@
         color: white !important;
     }
     
-    /* Note finale et appréciation en rouge */
+    /* Note finale et appréciation ultra-compactes */
     .final-grade {
         background: #dc3545 !important;
         color: white !important;
-        padding: 5px 10px !important;
-        border-radius: 4px !important;
+        padding: 1px 2px !important;
+        border-radius: 1px !important;
         font-weight: bold !important;
+        font-size: 6px !important;
     }
     
     .appreciation {
         background: #dc3545 !important;
         color: white !important;
-        padding: 5px 10px !important;
-        border-radius: 4px !important;
+        padding: 1px 2px !important;
+        border-radius: 1px !important;
         font-weight: bold !important;
+        font-size: 5px !important;
     }
     
-    /* Observations */
+    /* Observations ultra-compactes */
     .observations {
         background: #f8f9fa !important;
-        border: 1px solid #dee2e6 !important;
-        padding: 15px !important;
-        margin-bottom: 20px !important;
+        border: 1px solid #333 !important;
+        padding: 2px 3px !important;
+        margin-bottom: 3px !important;
+        font-size: 6px !important;
+    }
+    
+    .observations h6 {
+        font-size: 6px !important;
+        font-weight: bold !important;
+        margin: 0 0 1px 0 !important;
+    }
+    
+    .observations p {
+        font-size: 5px !important;
+        margin: 0 !important;
     }
     
     .observations .text-danger {
@@ -158,21 +359,33 @@
         font-weight: bold !important;
     }
     
-    /* Signatures */
+    /* Signatures ultra-compactes */
     .signatures {
         background: #f8f9fa !important;
-        border: 1px solid #dee2e6 !important;
-        padding: 15px !important;
+        border: 1px solid #333 !important;
+        padding: 2px 3px !important;
+        font-size: 6px !important;
+    }
+    
+    .signatures h6 {
+        font-size: 6px !important;
+        font-weight: bold !important;
+        margin: 0 0 1px 0 !important;
+    }
+    
+    .signatures p {
+        font-size: 5px !important;
+        margin: 0 !important;
     }
     
     .signature-line {
         border-bottom: 1px solid black !important;
-        width: 200px !important;
+        width: 60px !important;
         display: inline-block !important;
-        margin-bottom: 5px !important;
+        margin-bottom: 1px !important;
     }
     
-    /* Forcer les couleurs des textes */
+    /* Couleurs de texte */
     .text-success {
         color: #28a745 !important;
     }
@@ -193,20 +406,87 @@
         color: #dc3545 !important;
     }
     
-    /* Masquer les icônes FontAwesome à l'impression */
+    /* Masquer les icônes */
     .fas, .far, .fab {
         display: none !important;
     }
     
-    /* Forcer la page entière */
-    body {
-        margin: 0 !important;
-        padding: 0 !important;
+    /* Éviter les sauts de page */
+    .table {
+        page-break-inside: avoid !important;
     }
     
-    .container, .container-fluid {
-        max-width: none !important;
-        padding: 0 !important;
+    .bulletin-container {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Optimisation des espaces */
+    .row {
         margin: 0 !important;
+    }
+    
+    .col-6, .col-12 {
+        padding: 0 1px !important;
+    }
+    
+    /* FORCER LE BULLETIN À COMMENCER DÈS LE DÉBUT DE LA PAGE */
+    .bulletin-container {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+    
+    /* Forcer le bulletin à commencer dès le début de la page */
+    .bulletin-header {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    /* MASQUER COMPLÈTEMENT TOUT SAUF LE BULLETIN */
+    body > *:not(.bulletin-container) {
+        display: none !important;
+    }
+    
+    /* Forcer le contenu sur une seule page */
+    .bulletin-container * {
+        max-height: 100vh !important;
+    }
+}
+
+/* Styles pour l'écran (non-impression) */
+.bulletin-container {
+    max-width: 100%;
+}
+
+@media screen {
+    .bulletin-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+    
+    .student-info {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+    
+    .summary-bar {
+        background: #007bff;
+        color: white;
+        padding: 15px;
+        margin-bottom: 20px;
+        text-align: center;
+        border-radius: 8px;
     }
 }

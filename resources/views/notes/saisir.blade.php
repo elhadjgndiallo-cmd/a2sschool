@@ -195,20 +195,22 @@
                                        class="form-control note-cours-input" 
                                        name="notes[{{ $index }}][note_cours]" 
                                        min="0" 
-                                       max="20" 
+                                       max="{{ $classe->note_max }}" 
                                        step="0.25"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
+                                <small class="text-muted">Sur {{ $classe->note_max }}</small>
                             </td>
                             <td>
                                 <input type="number" 
                                        class="form-control note-composition-input" 
                                        name="notes[{{ $index }}][note_composition]" 
                                        min="0" 
-                                       max="20" 
+                                       max="{{ $classe->note_max }}" 
                                        step="0.25"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
+                                <small class="text-muted">Sur {{ $classe->note_max }}</small>
                             </td>
                             <td>
                                 <input type="number" 
