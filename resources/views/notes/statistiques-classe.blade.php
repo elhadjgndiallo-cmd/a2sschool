@@ -27,7 +27,7 @@
         <h5 class="mb-0">Filtres</h5>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('notes.statistiques', $classe->id) }}" class="row g-3">
+        <form method="GET" action="{{ route('notes.statistiques.classe', $classe->id) }}" class="row g-3">
             <div class="col-md-4">
                 <label for="periode" class="form-label">Période</label>
                 <select class="form-select" id="periode" name="periode" onchange="this.form.submit()">

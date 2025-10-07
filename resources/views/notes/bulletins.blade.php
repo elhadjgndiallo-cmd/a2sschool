@@ -20,7 +20,19 @@
                             <h4 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Sélectionner une classe</h4>
                         </div>
                         <div class="card-body">
-                            <p class="text-muted mb-4">Choisissez une classe pour générer les bulletins de notes de ses élèves.</p>
+                            <p class="text-muted mb-4">Choisissez une classe et une période pour générer les bulletins de notes de ses élèves.</p>
+
+                            <div class="row mb-4">
+                                <div class="col-12 col-md-6">
+                                    <label for="periode-global" class="form-label">Période</label>
+                                    <select id="periode-global" class="form-select">
+                                        <option value="trimestre1">Trimestre 1</option>
+                                        <option value="trimestre2">Trimestre 2</option>
+                                        <option value="trimestre3">Trimestre 3</option>
+                                    </select>
+                                    <small class="text-muted">Ce choix sera appliqué à tous les boutons "Générer les bulletins".</small>
+                                </div>
+                            </div>
                             
                             @if($classes->count() > 0)
                                 <div class="row">
@@ -39,8 +51,17 @@
                                                             {{ $classe->eleves->count() }} élève(s)
                                                         </small>
                                                     </p>
+                                                    <div class="mb-2">
+                                                        <label class="form-label small mb-1">Période</label>
+                                                        <select class="form-select form-select-sm periode-select" style="max-width: 220px; margin: 0 auto;">
+                                                            <option value="trimestre1">Trimestre 1</option>
+                                                            <option value="trimestre2">Trimestre 2</option>
+                                                            <option value="trimestre3">Trimestre 3</option>
+                                                        </select>
+                                                    </div>
                                                     <a href="{{ route('notes.bulletins.classe', $classe->id) }}" 
-                                                       class="btn btn-primary btn-sm">
+                                                       class="btn btn-primary btn-sm generate-bulletins"
+                                                       data-base-url="{{ route('notes.bulletins.classe', $classe->id) }}">
                                                         <i class="fas fa-file-alt me-1"></i>Générer les bulletins
                                                     </a>
                                                 </div>
@@ -65,6 +86,23 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const periodeSelect = document.getElementById('periode-global');
+    document.querySelectorAll('.generate-bulletins').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const base = this.getAttribute('data-base-url');
+            const card = this.closest('.card-body');
+            const localSelect = card ? card.querySelector('.periode-select') : null;
+            const periode = localSelect && localSelect.value ? localSelect.value : (periodeSelect ? periodeSelect.value : 'trimestre1');
+            window.location.href = base + '?periode=' + encodeURIComponent(periode);
+        });
+    });
+});
+</script>
+@endpush
 @endsection
 
 

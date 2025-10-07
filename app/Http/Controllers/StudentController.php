@@ -123,7 +123,7 @@ class StudentController extends Controller
     /**
      * Afficher le bulletin de l'élève
      */
-    public function bulletin()
+    public function bulletin(Request $request)
     {
         $user = Auth::user();
         $eleve = $user->eleve;
@@ -132,8 +132,12 @@ class StudentController extends Controller
             abort(403, 'Profil élève non trouvé');
         }
 
-        // Récupérer les notes par matière
+        // Période (trimestre) sélectionnée
+        $periode = $request->input('periode', 'trimestre1');
+
+        // Récupérer les notes par matière pour la période choisie
         $notesParMatiere = $eleve->notes()
+            ->where('periode', $periode)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get()
             ->groupBy('matiere.nom');
@@ -142,13 +146,13 @@ class StudentController extends Controller
         $moyennesParMatiere = [];
         foreach ($notesParMatiere as $matiere => $notes) {
             $moyennesParMatiere[$matiere] = [
-                'moyenne' => $notes->avg('note'),
+                'moyenne' => $notes->avg('note_finale'),
                 'total_notes' => $notes->count(),
                 'notes' => $notes
             ];
         }
 
-        return view('student.bulletin', compact('eleve', 'moyennesParMatiere'));
+        return view('student.bulletin', compact('eleve', 'moyennesParMatiere', 'periode'));
     }
 }
 

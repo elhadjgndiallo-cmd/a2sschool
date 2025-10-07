@@ -329,15 +329,18 @@ class NoteController extends Controller
     /**
      * Générer les bulletins de notes pour une classe
      */
-    public function genererBulletins($classeId)
+    public function genererBulletins(Request $request, $classeId)
     {
-        $classe = Classe::with(['eleves.utilisateur', 'eleves.notes.matiere'])->findOrFail($classeId);
+        $periode = $request->input('periode', 'trimestre1');
+        $classe = Classe::with(['eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
+            $q->where('periode', $periode)->with('matiere');
+        }])->findOrFail($classeId);
         
         // Logique de génération des bulletins
         $bulletins = [];
         foreach ($classe->eleves as $eleve) {
-            $notesDetaillees = $this->getNotesDetailleesEleve($eleve->id);
-            $moyenneGenerale = $this->calculerMoyenneGenerale($eleve->id);
+            $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
+            $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
             $bulletins[] = [
                 'eleve' => $eleve,
                 'notes' => $notesDetaillees,
@@ -346,7 +349,7 @@ class NoteController extends Controller
             ];
         }
         
-        return view('notes.bulletins-classe', compact('classe', 'bulletins'));
+        return view('notes.bulletins-classe', compact('classe', 'bulletins', 'periode'));
     }
 
     /**
@@ -471,9 +474,10 @@ class NoteController extends Controller
     /**
      * Récupérer les notes détaillées d'un élève par matière
      */
-    private function getNotesDetailleesEleve($eleveId)
+    private function getNotesDetailleesElevePeriode($eleveId, $periode)
     {
         $notes = Note::where('eleve_id', $eleveId)
+            ->where('periode', $periode)
             ->with('matiere')
             ->get()
             ->groupBy('matiere_id');
@@ -529,9 +533,10 @@ class NoteController extends Controller
     /**
      * Calculer la moyenne générale d'un élève
      */
-    private function calculerMoyenneGenerale($eleveId)
+    private function calculerMoyenneGeneralePeriode($eleveId, $periode)
     {
         $notes = Note::where('eleve_id', $eleveId)
+            ->where('periode', $periode)
             ->with('matiere')
             ->get()
             ->groupBy('matiere_id');
@@ -648,9 +653,10 @@ class NoteController extends Controller
         return view('notes.statistiques', compact('classes'));
     }
 
-    public function statistiquesClasse($classeId, $periode = 'trimestre1')
+    public function statistiquesClasse(Request $request, $classeId)
     {
         $classe = Classe::findOrFail($classeId);
+        $periode = $request->input('periode', 'trimestre1');
         
         // Récupérer toutes les moyennes des élèves de la classe
         $eleves = Eleve::where('classe_id', $classeId)->with('utilisateur')->get();

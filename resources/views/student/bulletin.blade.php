@@ -40,9 +40,22 @@
                     <i class="fas fa-info-circle me-2"></i>
                     Période
                 </h5>
-                <p><strong>Année scolaire :</strong> {{ now()->year }}-{{ now()->year + 1 }}</p>
-                <p><strong>Trimestre :</strong> {{ now()->month <= 3 ? '1er' : (now()->month <= 6 ? '2ème' : '3ème') }}</p>
-                <p><strong>Date d'édition :</strong> {{ now()->format('d/m/Y') }}</p>
+                <form method="GET" action="{{ route('student.bulletin') }}" class="row g-2 align-items-end">
+                    <div class="col-12 col-sm-6">
+                        <label for="periode" class="form-label">Choisir la période</label>
+                        <select id="periode" name="periode" class="form-select" onchange="this.form.submit()">
+                            <option value="trimestre1" {{ ($periode ?? 'trimestre1') == 'trimestre1' ? 'selected' : '' }}>Trimestre 1</option>
+                            <option value="trimestre2" {{ ($periode ?? 'trimestre1') == 'trimestre2' ? 'selected' : '' }}>Trimestre 2</option>
+                            <option value="trimestre3" {{ ($periode ?? 'trimestre1') == 'trimestre3' ? 'selected' : '' }}>Trimestre 3</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Infos</label>
+                        <div>
+                            <small class="text-muted d-block"><strong>Date d'édition :</strong> {{ now()->format('d/m/Y') }}</small>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
