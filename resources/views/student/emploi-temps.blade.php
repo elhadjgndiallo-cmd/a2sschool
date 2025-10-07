@@ -23,7 +23,13 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">
-                    @if($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil)
+                    @php
+                        $hasPhoto = false;
+                        if ($eleve->utilisateur && $eleve->utilisateur->photo_profil && Storage::disk('public')->exists($eleve->utilisateur->photo_profil)) {
+                            $hasPhoto = true;
+                        }
+                    @endphp
+                    @if($hasPhoto)
                         <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" 
                              alt="Photo de {{ $eleve->nom_complet }}" 
                              class="rounded-circle me-2" 

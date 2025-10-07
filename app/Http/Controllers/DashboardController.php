@@ -13,6 +13,7 @@ use App\Models\Matiere;
 use App\Models\Paiement;
 use App\Models\Absence;
 use App\Models\Note;
+use App\Models\Evenement;
 
 class DashboardController extends Controller
 {
@@ -123,7 +124,23 @@ class DashboardController extends Controller
             ->orderBy('heure_debut')
             ->get();
 
-        return view('dashboards.teacher', compact('enseignant', 'emploisDuJour'));
+        // Récupérer les événements pour l'enseignant
+        $classeIds = $enseignant->emploisTemps()->pluck('classe_id')->unique()->filter();
+        $evenements = Evenement::where(function($q) use ($classeIds) {
+            // Événements publics
+            $q->where('public', true);
+            
+            // Événements spécifiques aux classes où l'enseignant enseigne
+            if ($classeIds->isNotEmpty()) {
+                $q->orWhereIn('classe_id', $classeIds);
+            }
+        })
+        ->where('date_debut', '>=', now()->startOfDay())
+        ->orderBy('date_debut', 'asc')
+        ->limit(5)
+        ->get();
+
+        return view('dashboards.teacher', compact('enseignant', 'emploisDuJour', 'evenements'));
     }
 
     /**
@@ -148,12 +165,27 @@ class DashboardController extends Controller
         }
 
         $dernieresNotes = $eleve->notes()
-            ->with(['matiere', 'enseignant'])
+            ->with(['matiere', 'enseignant.utilisateur'])
             ->orderBy('date_evaluation', 'desc')
             ->limit(5)
             ->get();
 
-        return view('dashboards.student', compact('eleve', 'emploisDuJour', 'dernieresNotes'));
+        // Récupérer les événements pour l'élève
+        $evenements = Evenement::where(function($q) use ($eleve) {
+            // Événements publics
+            $q->where('public', true);
+            
+            // Événements spécifiques à la classe de l'élève
+            if ($eleve->classe_id) {
+                $q->orWhere('classe_id', $eleve->classe_id);
+            }
+        })
+        ->where('date_debut', '>=', now()->startOfDay())
+        ->orderBy('date_debut', 'asc')
+        ->limit(5)
+        ->get();
+
+        return view('dashboards.student', compact('eleve', 'emploisDuJour', 'dernieresNotes', 'evenements'));
     }
 
     /**
@@ -188,13 +220,16 @@ class DashboardController extends Controller
         foreach ($enfants as $enfant) {
             // Ajouter les dernières notes
             foreach ($enfant->notes->take(3) as $note) {
+                $noteFinale = $note->note_finale ?? 0;
+                $appreciation = $enfant->classe->getAppreciation($noteFinale);
+                
                 $dernieresActivites->push([
                     'type' => 'note',
                     'date' => $note->date_evaluation,
                     'enfant' => $enfant,
                     'contenu' => $note,
                     'icone' => 'fas fa-chart-line',
-                    'couleur' => ($note->note_finale ?? 0) >= 10 ? 'success' : 'danger'
+                    'couleur' => $appreciation['color']
                 ]);
             }
             
@@ -214,6 +249,27 @@ class DashboardController extends Controller
         // Trier par date décroissante et prendre les 10 plus récentes
         $dernieresActivites = $dernieresActivites->sortByDesc('date')->take(10);
 
-        return view('dashboards.parent', compact('parent', 'enfants', 'stats', 'dernieresActivites'));
+        // Récupérer les notifications réelles du parent
+        $notifications = \App\Models\Notification::where('utilisateur_id', $parent->utilisateur_id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Récupérer les événements pour les parents (publics et pour les classes de leurs enfants)
+        $classeIds = $enfants->pluck('classe_id')->filter()->unique();
+        $evenements = Evenement::where(function($q) use ($classeIds) {
+            // Événements publics
+            $q->where('public', true);
+            
+            // Événements spécifiques aux classes des enfants
+            if ($classeIds->isNotEmpty()) {
+                $q->orWhereIn('classe_id', $classeIds);
+            }
+        })
+        ->where('date_debut', '>=', now()->startOfDay())
+        ->orderBy('date_debut', 'asc')
+        ->limit(5)
+        ->get();
+
+        return view('dashboards.parent', compact('parent', 'enfants', 'stats', 'dernieresActivites', 'notifications', 'evenements'));
     }
 }

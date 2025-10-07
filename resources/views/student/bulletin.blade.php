@@ -78,15 +78,21 @@
                                 <span class="badge bg-info">{{ $data['total_notes'] }}</span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $data['moyenne'] >= 16 ? 'success' : ($data['moyenne'] >= 12 ? 'warning' : 'danger') }}">
-                                    {{ number_format($data['moyenne'], 2) }}/20
+                                @php
+                                    $appreciation = $eleve->classe->getAppreciation($data['moyenne']);
+                                @endphp
+                                <span class="badge bg-{{ $appreciation['color'] }}">
+                                    {{ number_format($data['moyenne'], 2) }}/{{ $eleve->classe->note_max }}
                                 </span>
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @foreach($data['notes'] as $note)
-                                        <span class="badge bg-{{ ($note->note_finale ?? 0) >= 16 ? 'success' : (($note->note_finale ?? 0) >= 12 ? 'warning' : 'danger') }}">
-                                            {{ $note->note_finale ?? 'N/A' }}/20
+                                        @php
+                                            $noteAppreciation = $eleve->classe->getAppreciation($note->note_finale ?? 0);
+                                        @endphp
+                                        <span class="badge bg-{{ $noteAppreciation['color'] }}">
+                                            {{ $note->note_finale ?? 'N/A' }}/{{ $eleve->classe->note_max }}
                                         </span>
                                     @endforeach
                                 </div>
@@ -109,7 +115,7 @@
                         @php
                             $moyenneGenerale = collect($moyennesParMatiere)->avg('moyenne');
                         @endphp
-                        {{ number_format($moyenneGenerale, 2) }}/20
+                        {{ number_format($moyenneGenerale, 2) }}/{{ $eleve->classe->note_max }}
                     </h3>
                     <p class="mb-0">Moyenne Générale</p>
                 </div>

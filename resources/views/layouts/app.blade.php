@@ -24,7 +24,7 @@
     <style>
         /* Menu horizontal en haut */
         .top-navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu horizontal */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 1000;
         }
@@ -51,7 +51,7 @@
         /* Menu latéral pour sous-menus */
         .sidebar {
             min-height: calc(100vh - 70px);
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); /* couleur de fond du menu latéral */
             border-right: 2px solid #e9ecef;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
@@ -75,7 +75,7 @@
         }
         
         .sidebar .nav-link:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu latéral */
             color: white !important;
             transform: translateX(10px);
             border-left: 4px solid #ffffff;

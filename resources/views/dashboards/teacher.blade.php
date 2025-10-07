@@ -85,6 +85,71 @@
     </div>
 </div>
 
+<!-- Événements à venir -->
+@if($evenements->count() > 0)
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    Événements à venir
+                </h6>
+                <a href="{{ route('evenements.index') }}" class="btn btn-sm btn-outline-primary">
+                    Voir tous les événements
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach($evenements as $evenement)
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-left-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">{{ $evenement->titre }}</h6>
+                                    <span class="badge" style="background-color: {{ $evenement->couleur ?? '#3788d8' }}">
+                                        {{ ucfirst($evenement->type) }}
+                                    </span>
+                                </div>
+                                @if($evenement->description)
+                                    <p class="card-text text-muted small">{{ Str::limit($evenement->description, 100) }}</p>
+                                @endif
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
+                                            {{ \Carbon\Carbon::parse($evenement->date_debut)->format('d/m/Y') }}
+                                        </small>
+                                        @if($evenement->heure_debut)
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                {{ \Carbon\Carbon::parse($evenement->heure_debut)->format('H:i') }}
+                                            </small>
+                                        @endif
+                                        @if($evenement->lieu)
+                                            <br>
+                                            <small class="text-info">
+                                                <i class="fas fa-map-marker-alt me-1"></i>
+                                                {{ $evenement->lieu }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                    @if($evenement->classe)
+                                        <span class="badge bg-secondary">{{ $evenement->classe->nom }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Actions rapides -->
 <div class="row">
     <div class="col-lg-6 mb-4">

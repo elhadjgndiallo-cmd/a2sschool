@@ -115,6 +115,6 @@ class Eleve extends Model
      */
     public function getNomCompletAttribute()
     {
-        return $this->utilisateur->name;
+        return $this->utilisateur->nom_complet ?? ($this->utilisateur->prenom . ' ' . $this->utilisateur->nom);
     }
 }

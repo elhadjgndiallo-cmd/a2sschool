@@ -58,9 +58,9 @@ class ParentNoteController extends Controller
         $allNotes = Note::whereIn('eleve_id', $enfantsIds)->get();
         $stats = [
             'total_notes' => $allNotes->count(),
-            'moyenne_generale' => $allNotes->avg('note_sur'),
-            'notes_sup_10' => $allNotes->where('note_sur', '>=', 10)->count(),
-            'notes_inf_10' => $allNotes->where('note_sur', '<', 10)->count(),
+            'moyenne_generale' => $allNotes->avg('note_finale'),
+            'notes_sup_10' => $allNotes->where('note_finale', '>=', 10)->count(),
+            'notes_inf_10' => $allNotes->where('note_finale', '<', 10)->count(),
         ];
 
         // Données pour les filtres
@@ -95,11 +95,11 @@ class ParentNoteController extends Controller
         // Statistiques de l'enfant
         $stats = [
             'total_notes' => $notes->count(),
-            'moyenne_generale' => $notes->avg('note_sur'),
-            'notes_sup_10' => $notes->where('note_sur', '>=', 10)->count(),
-            'notes_inf_10' => $notes->where('note_sur', '<', 10)->count(),
-            'meilleure_note' => $notes->max('note_sur'),
-            'moins_bonne_note' => $notes->min('note_sur'),
+            'moyenne_generale' => $notes->avg('note_finale'),
+            'notes_sup_10' => $notes->where('note_finale', '>=', 10)->count(),
+            'notes_inf_10' => $notes->where('note_finale', '<', 10)->count(),
+            'meilleure_note' => $notes->max('note_finale'),
+            'moins_bonne_note' => $notes->min('note_finale'),
         ];
 
         // Notes par matière

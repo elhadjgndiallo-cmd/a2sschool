@@ -145,7 +145,9 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Matière</th>
-                                            <th>Note</th>
+                                            <th>Note Cours</th>
+                                            <th>Note Comp.</th>
+                                            <th>Note Finale</th>
                                             <th>Type</th>
                                         </tr>
                                     </thead>
@@ -154,9 +156,37 @@
                                         <tr>
                                             <td>{{ $note->date_evaluation->format('d/m') }}</td>
                                             <td>{{ $note->matiere->nom }}</td>
-                                            <td>
-                                                <span class="badge {{ $note->note_sur >= 10 ? 'bg-success' : 'bg-danger' }}">
-                                                    {{ number_format($note->note_sur, 2) }}/20
+                                            <td class="text-center">
+                                                @if($note->note_cours !== null)
+                                                    @php
+                                                        $appreciationCours = $note->eleve->classe->getAppreciation($note->note_cours);
+                                                    @endphp
+                                                    <span class="badge bg-{{ $appreciationCours['color'] }}">
+                                                        {{ number_format($note->note_cours, 2) }}/{{ $note->eleve->classe->note_max }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($note->note_composition !== null)
+                                                    @php
+                                                        $appreciationComposition = $note->eleve->classe->getAppreciation($note->note_composition);
+                                                    @endphp
+                                                    <span class="badge bg-{{ $appreciationComposition['color'] }}">
+                                                        {{ number_format($note->note_composition, 2) }}/{{ $note->eleve->classe->note_max }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @php
+                                                    $noteFinale = $note->note_finale ?? 0;
+                                                    $appreciation = $note->eleve->classe->getAppreciation($noteFinale);
+                                                @endphp
+                                                <span class="badge bg-{{ $appreciation['color'] }}">
+                                                    {{ number_format($noteFinale, 2) }}/{{ $note->eleve->classe->note_max }}
                                                 </span>
                                             </td>
                                             <td>{{ ucfirst($note->type_evaluation) }}</td>
@@ -180,17 +210,26 @@
                         @if($enfant->absences->count() > 0)
                             <div class="list-group">
                                 @foreach($enfant->absences->take(3) as $absence)
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ $absence->date_absence->format('d/m/Y') }}</strong>
-                                        <br>
-                                        <small class="text-muted">
-                                            {{ $absence->matiere->nom ?? 'Journée complète' }}
-                                        </small>
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <strong>{{ $absence->date_absence->format('d/m/Y') }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ $absence->matiere->nom ?? 'Journée complète' }}
+                                            </small>
+                                            @if($absence->motif_absence)
+                                                <br>
+                                                <small class="text-info">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    {{ Str::limit($absence->motif_absence, 50) }}
+                                                </small>
+                                            @endif
+                                        </div>
+                                        <span class="badge {{ $absence->statut == 'justifiee' ? 'bg-success' : ($absence->statut == 'non_justifiee' ? 'bg-danger' : 'bg-warning') }}">
+                                            {{ ucfirst(str_replace('_', ' ', $absence->statut)) }}
+                                        </span>
                                     </div>
-                                    <span class="badge {{ $absence->statut == 'justifiee' ? 'bg-success' : ($absence->statut == 'non_justifiee' ? 'bg-danger' : 'bg-warning') }}">
-                                        {{ ucfirst(str_replace('_', ' ', $absence->statut)) }}
-                                    </span>
                                 </div>
                                 @endforeach
                             </div>
@@ -243,9 +282,19 @@
                                             {{ $activite['enfant']->utilisateur->nom }} {{ $activite['enfant']->utilisateur->prenom }}
                                             - {{ $activite['enfant']->classe->nom ?? 'N/A' }}
                                         </p>
+                                        @if($activite['type'] == 'absence' && $activite['contenu']->motif_absence)
+                                            <p class="mb-1 text-info small">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                {{ Str::limit($activite['contenu']->motif_absence, 60) }}
+                                            </p>
+                                        @endif
                                         @if($activite['type'] == 'note')
-                                            <span class="badge bg-{{ $activite['contenu']->note_sur >= 10 ? 'success' : 'danger' }}">
-                                                {{ number_format($activite['contenu']->note_sur, 2) }}/20
+                                            @php
+                                                $noteFinale = $activite['contenu']->note_finale ?? 0;
+                                                $appreciation = $activite['enfant']->classe->getAppreciation($noteFinale);
+                                            @endphp
+                                            <span class="badge bg-{{ $appreciation['color'] }}">
+                                                {{ number_format($noteFinale, 2) }}/{{ $activite['enfant']->classe->note_max }}
                                             </span>
                                         @else
                                             <span class="badge bg-{{ $activite['contenu']->statut == 'justifiee' ? 'success' : 'warning' }}">
@@ -259,6 +308,122 @@
                                 </div>
                             </div>
                         </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+<!-- Notifications réelles -->
+@if(isset($notifications) && $notifications->count() > 0)
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-bell me-2"></i>
+                    Notifications
+                </h6>
+                <div>
+                    <span class="badge bg-primary">{{ $notifications->count() }}</span>
+                    <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary ms-2">
+                        Voir toutes
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    @foreach($notifications->take(5) as $notification)
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-{{ $notification->icone ?? 'bell' }} text-{{ $notification->type }} me-2"></i>
+                                    <h6 class="mb-0">{{ $notification->titre }}</h6>
+                                    @if(!$notification->lue)
+                                        <span class="badge bg-danger ms-2">Nouveau</span>
+                                    @endif
+                                </div>
+                                <p class="mb-1 text-muted">{{ $notification->message }}</p>
+                                @if($notification->lien)
+                                    <a href="{{ $notification->lien }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i>
+                                        Voir plus
+                                    </a>
+                                @endif
+                            </div>
+                            <small class="text-muted">
+                                {{ $notification->created_at->diffForHumans() }}
+                            </small>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+<!-- Événements à venir -->
+@if($evenements->count() > 0)
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    Événements à venir
+                </h6>
+                <a href="{{ route('evenements.index') }}" class="btn btn-sm btn-outline-primary">
+                    Voir tous les événements
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach($evenements as $evenement)
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-left-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">{{ $evenement->titre }}</h6>
+                                    <span class="badge" style="background-color: {{ $evenement->couleur ?? '#3788d8' }}">
+                                        {{ ucfirst($evenement->type) }}
+                                    </span>
+                                </div>
+                                @if($evenement->description)
+                                    <p class="card-text text-muted small">{{ Str::limit($evenement->description, 100) }}</p>
+                                @endif
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
+                                            {{ \Carbon\Carbon::parse($evenement->date_debut)->format('d/m/Y') }}
+                                        </small>
+                                        @if($evenement->heure_debut)
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                {{ \Carbon\Carbon::parse($evenement->heure_debut)->format('H:i') }}
+                                            </small>
+                                        @endif
+                                        @if($evenement->lieu)
+                                            <br>
+                                            <small class="text-info">
+                                                <i class="fas fa-map-marker-alt me-1"></i>
+                                                {{ $evenement->lieu }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                    @if($evenement->classe)
+                                        <span class="badge bg-secondary">{{ $evenement->classe->nom }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     @endforeach
                 </div>
             </div>

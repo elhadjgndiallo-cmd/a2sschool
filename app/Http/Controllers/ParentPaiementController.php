@@ -72,7 +72,7 @@ class ParentPaiementController extends Controller
         $user = auth()->user();
         $parent = $user->parent;
         
-        if (!$parent || !$parent->eleves()->where('id', $frais->eleve_id)->exists()) {
+        if (!$parent || !$parent->eleves()->where('eleves.id', $frais->eleve_id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 

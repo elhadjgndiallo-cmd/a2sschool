@@ -98,6 +98,14 @@
         .grade-fair { background: #ffc107; color: #000; }
         .grade-poor { background: #dc3545; color: white; }
         
+        /* Classes dynamiques pour les couleurs d'appréciation */
+        .grade-success { background: #28a745; color: white; }
+        .grade-primary { background: #007bff; color: white; }
+        .grade-info { background: #17a2b8; color: white; }
+        .grade-warning { background: #ffc107; color: #000; }
+        .grade-secondary { background: #6c757d; color: white; }
+        .grade-danger { background: #dc3545; color: white; }
+        
         .appreciation {
             font-weight: 500;
         }
@@ -175,14 +183,11 @@
                     <td><strong>{{ $stat['eleve']->utilisateur->nom }}</strong></td>
                     <td><strong>{{ $stat['eleve']->utilisateur->prenom }}</strong></td>
                     <td>
-                        <span class="grade-badge 
-                            @if($stat['moyenne'] >= 16) grade-excellent
-                            @elseif($stat['moyenne'] >= 14) grade-very-good
-                            @elseif($stat['moyenne'] >= 12) grade-good
-                            @elseif($stat['moyenne'] >= 10) grade-fair
-                            @else grade-poor
-                            @endif">
-                            {{ number_format($stat['moyenne'], 2) }}/20
+                        @php
+                            $appreciation = $classe->getAppreciation($stat['moyenne']);
+                        @endphp
+                        <span class="grade-badge grade-{{ $appreciation['color'] }}">
+                            {{ number_format($stat['moyenne'], 2) }}/{{ $classe->note_max }}
                         </span>
                     </td>
                     <td>

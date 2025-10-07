@@ -121,14 +121,11 @@
                             <strong>{{ $stat['eleve']->utilisateur->prenom }}</strong>
                         </td>
                         <td class="text-center">
-                            <span class="badge 
-                                @if($stat['moyenne'] >= 16) bg-success
-                                @elseif($stat['moyenne'] >= 14) bg-primary
-                                @elseif($stat['moyenne'] >= 12) bg-info
-                                @elseif($stat['moyenne'] >= 10) bg-warning
-                                @else bg-danger
-                                @endif fs-6">
-                                {{ number_format($stat['moyenne'], 2) }}/20
+                            @php
+                                $appreciation = $classe->getAppreciation($stat['moyenne']);
+                            @endphp
+                            <span class="badge bg-{{ $appreciation['color'] }} fs-6">
+                                {{ number_format($stat['moyenne'], 2) }}/{{ $classe->note_max }}
                             </span>
                         </td>
                         <td class="text-center">

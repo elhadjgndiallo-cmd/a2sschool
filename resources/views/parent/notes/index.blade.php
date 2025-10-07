@@ -141,7 +141,9 @@
                                         <th>Enfant</th>
                                         <th>Matière</th>
                                         <th>Type</th>
-                                        <th>Note</th>
+                                        <th>Note Cours</th>
+                                        <th>Note Comp.</th>
+                                        <th>Note Finale</th>
                                         <th>Enseignant</th>
                                         <th>Actions</th>
                                     </tr>
@@ -159,9 +161,37 @@
                                             <td>
                                                 <span class="badge bg-info">{{ ucfirst($note->type_evaluation) }}</span>
                                             </td>
-                                            <td>
-                                                <span class="badge {{ $note->note_sur >= 10 ? 'bg-success' : 'bg-danger' }}">
-                                                    {{ number_format($note->note_sur, 2) }}/20
+                                            <td class="text-center">
+                                                @if($note->note_cours !== null)
+                                                    @php
+                                                        $appreciationCours = $note->eleve->classe->getAppreciation($note->note_cours);
+                                                    @endphp
+                                                    <span class="badge bg-{{ $appreciationCours['color'] }}">
+                                                        {{ number_format($note->note_cours, 2) }}/{{ $note->eleve->classe->note_max }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($note->note_composition !== null)
+                                                    @php
+                                                        $appreciationComposition = $note->eleve->classe->getAppreciation($note->note_composition);
+                                                    @endphp
+                                                    <span class="badge bg-{{ $appreciationComposition['color'] }}">
+                                                        {{ number_format($note->note_composition, 2) }}/{{ $note->eleve->classe->note_max }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @php
+                                                    $noteFinale = $note->note_finale ?? 0;
+                                                    $appreciation = $note->eleve->classe->getAppreciation($noteFinale);
+                                                @endphp
+                                                <span class="badge bg-{{ $appreciation['color'] }}">
+                                                    {{ number_format($noteFinale, 2) }}/{{ $note->eleve->classe->note_max }}
                                                 </span>
                                             </td>
                                             <td>{{ $note->enseignant->utilisateur->nom ?? 'N/A' }}</td>

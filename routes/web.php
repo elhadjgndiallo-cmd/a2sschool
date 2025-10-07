@@ -1036,23 +1036,27 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher'])
     Route::middleware('auth')->group(function () {
         // Routes de consultation (tous les utilisateurs authentifiés)
         Route::get('/evenements', [EvenementController::class, 'index'])->name('evenements.index');
-        Route::get('/evenements/{evenement}', [EvenementController::class, 'show'])->name('evenements.show');
         Route::get('/evenements-calendrier', [EvenementController::class, 'calendrier'])->name('evenements.calendrier');
-        
-        // Routes de création (permission requise)
+
+        // Routes de création (permission requise) - doivent être avant la route dynamique {evenement}
         Route::middleware('check.permission:evenements.create')->group(function () {
             Route::get('/evenements/create', [EvenementController::class, 'create'])->name('evenements.create');
             Route::post('/evenements', [EvenementController::class, 'store'])->name('evenements.store');
         });
-        
+
         // Routes de modification (permission requise)
         Route::middleware('check.permission:evenements.edit')->group(function () {
             Route::get('/evenements/{evenement}/edit', [EvenementController::class, 'edit'])->name('evenements.edit');
             Route::put('/evenements/{evenement}', [EvenementController::class, 'update'])->name('evenements.update');
         });
-        
+
         // Routes de suppression (permission requise)
         Route::middleware('check.permission:evenements.delete')->group(function () {
             Route::delete('/evenements/{evenement}', [EvenementController::class, 'destroy'])->name('evenements.destroy');
         });
+
+        // Route de consultation d'un événement spécifique - après les routes statiques
+        Route::get('/evenements/{evenement}', [EvenementController::class, 'show'])
+            ->whereNumber('evenement')
+            ->name('evenements.show');
     });

@@ -96,6 +96,7 @@ class PermissionHelper
                 ['href' => route('classes.index'), 'icon' => 'fas fa-chalkboard-teacher', 'text' => 'Classes', 'permission' => 'classes.view'],
                 ['href' => route('tarifs.tableau'), 'icon' => 'fas fa-chart-line', 'text' => 'Tableau des Tarifs', 'permission' => 'tarifs.view'],
                 ['href' => route('evenements.index'), 'icon' => 'fas fa-calendar-check', 'text' => 'Événements', 'permission' => 'evenements.view'],
+                ['href' => route('evenements.create'), 'icon' => 'fas fa-plus', 'text' => 'Créer Événement', 'permission' => 'evenements.create'],
                 ['href' => route('admin.accounts.index'), 'icon' => 'fas fa-user-shield', 'text' => 'Comptes Administrateurs', 'permission' => 'admin.accounts.view']
             ]
         ];
