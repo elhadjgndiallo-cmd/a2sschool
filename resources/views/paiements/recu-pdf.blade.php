@@ -307,7 +307,7 @@
             </div>
             <div class="header-content">
                 <h1>REÇU DE PAIEMENT</h1>
-                <p>{{ $schoolInfo['school_name'] ?? 'École GSHFD' }}</p>
+                <p>{{ $schoolInfo['school_name'] ?? 'École' }}</p>
                 <div class="print-controls">
                     <button onclick="imprimerRecu()" class="btn-print">
                         <i class="fas fa-print"></i> Imprimer en PDF
@@ -460,7 +460,7 @@
         
         <!-- Pied de page -->
         <div class="footer">
-            <p><strong>{{ $schoolInfo['school_name'] ?? 'École GSHFD' }}</strong></p>
+            <p><strong>{{ $schoolInfo['school_name'] ?? 'École' }}</strong></p>
             <p>Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}</p>
             <p>Ce reçu fait foi de paiement. Conservez-le précieusement.</p>
         </div>

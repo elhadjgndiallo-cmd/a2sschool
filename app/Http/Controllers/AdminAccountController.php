@@ -58,7 +58,7 @@ class AdminAccountController extends Controller
             'departement' => 'nullable|string|max:255',
             'date_embauche' => 'required|date',
             'salaire' => 'nullable|numeric|min:0',
-            'permissions' => 'required|array|min:1',
+            'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', $this->getAllPermissionKeys()),
             'observations' => 'nullable|string|max:1000',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -129,19 +129,8 @@ class AdminAccountController extends Controller
     public function edit(PersonnelAdministration $adminAccount)
     {
         $adminAccount->load('utilisateur');
-        $permissions = $this->getAvailablePermissions();
         
-        // Décoder les permissions existantes
-        $existingPermissions = $adminAccount->permissions;
-        if (is_string($existingPermissions)) {
-            $existingPermissions = json_decode($existingPermissions, true);
-        }
-        if (!is_array($existingPermissions)) {
-            $existingPermissions = [];
-        }
-        
-        
-        return view('admin.accounts.edit', compact('adminAccount', 'permissions', 'existingPermissions'));
+        return view('admin.accounts.edit', compact('adminAccount'));
     }
 
     /**
@@ -163,8 +152,6 @@ class AdminAccountController extends Controller
             'date_embauche' => 'required|date',
             'salaire' => 'nullable|numeric|min:0',
             'statut' => 'required|in:actif,inactif,suspendu',
-            'permissions' => 'required|array|min:1',
-            'permissions.*' => 'string|in:' . implode(',', $this->getAllPermissionKeys()),
             'observations' => 'nullable|string|max:1000',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
@@ -203,7 +190,6 @@ class AdminAccountController extends Controller
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'statut' => $request->statut,
-                'permissions' => $request->permissions,
                 'observations' => $request->observations
             ]);
 
@@ -251,6 +237,16 @@ class AdminAccountController extends Controller
      */
     public function managePermissions(PersonnelAdministration $adminAccount)
     {
+        // Vérifier l'authentification
+        if (!auth()->check()) {
+            return redirect()->route('login')->with('error', 'Vous devez être connecté pour accéder à cette page.');
+        }
+        
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('admin.accounts.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à gérer les permissions.');
+        }
+        
         $adminAccount->load('utilisateur');
         $permissions = $this->getAvailablePermissions();
         return view('admin.accounts.permissions', compact('adminAccount', 'permissions'));
@@ -261,13 +257,60 @@ class AdminAccountController extends Controller
      */
     public function updatePermissions(Request $request, PersonnelAdministration $adminAccount)
     {
+        // Vérifier l'authentification
+        if (!auth()->check()) {
+            return redirect()->route('login')->with('error', 'Vous devez être connecté pour effectuer cette action.');
+        }
+        
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('admin.accounts.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à modifier les permissions.');
+        }
+        
+        // Gérer l'erreur CSRF 419
+        if ($request->session()->has('errors') && $request->session()->get('errors')->has('_token')) {
+            return redirect()->back()->with('error', 'Session expirée. Veuillez réessayer.');
+        }
+        
         $request->validate([
-            'permissions' => 'required|array|min:1',
+            'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', $this->getAllPermissionKeys())
         ]);
 
+        // Gérer les permissions
+        $permissions = $request->input('permissions', []);
+        
+        // Debug: voir ce qui est reçu
+        \Log::info('Permissions reçues dans updatePermissions:', [
+            'raw_permissions' => $request->input('permissions'),
+            'all_input' => $request->all(),
+            'permissions_count' => count($permissions),
+            'permissions_array' => $permissions
+        ]);
+        
+        // Nettoyer les permissions (enlever les valeurs vides)
+        $permissions = array_filter($permissions, function($value) {
+            return !empty($value) && $value !== '';
+        });
+        
+        \Log::info('Permissions après nettoyage dans updatePermissions:', [
+            'permissions' => $permissions,
+            'count' => count($permissions),
+            'is_empty' => empty($permissions)
+        ]);
+        
+        // Si aucune permission valide n'est trouvée, sauvegarder un tableau vide
+        if (empty($permissions)) {
+            $permissions = []; // Sauvegarder un tableau vide (aucune permission)
+            \Log::info('Aucune permission valide dans updatePermissions, sauvegarde d\'un tableau vide');
+        } else {
+            \Log::info('Permissions valides trouvées dans updatePermissions, utilisation des permissions sélectionnées');
+        }
+        
+        \Log::info('Permissions finales à sauvegarder dans updatePermissions:', $permissions);
+
         $adminAccount->update([
-            'permissions' => $request->permissions
+            'permissions' => $permissions
         ]);
 
         return redirect()->route('admin.accounts.index')

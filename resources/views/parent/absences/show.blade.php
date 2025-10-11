@@ -3,9 +3,8 @@
 @section('title', 'Absences de ' . $eleve->utilisateur->nom . ' ' . $eleve->utilisateur->prenom)
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
+<div class="row">
+    <div class="col-12">
             <!-- En-tête -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
                 <div>
@@ -263,5 +262,4 @@
             @endif
         </div>
     </div>
-</div>
 @endsection

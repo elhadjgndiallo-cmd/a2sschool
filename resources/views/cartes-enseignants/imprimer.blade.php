@@ -9,6 +9,9 @@
     
     @php
     use Illuminate\Support\Facades\Storage;
+    use App\Helpers\SchoolHelper;
+    
+    $schoolInfo = SchoolHelper::getDocumentInfo();
     @endphp
     <style>
         @media print {
@@ -167,7 +170,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <!-- Logo de l'école à gauche -->
                             <div style="width: 20px; height: 20px; background: #d4af37; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">
-                                GSHFD
+                                {{ substr($schoolInfo['school_name'], 0, 5) }}
                             </div>
                             
                             <!-- Drapeau au centre -->
@@ -187,7 +190,7 @@
                     <div class="card-body">
                         <!-- Nom de l'école -->
                         <div class="text-left mb-1">
-                            <div style="font-size: 6px; font-weight: bold; color: #d4af37;">ÉCOLE GSHFD</div>
+                            <div style="font-size: 6px; font-weight: bold; color: #d4af37;">{{ $schoolInfo['school_name'] }}</div>
                             <div style="font-size: 4px; color: #6c757d;">CARTE D'ENSEIGNANT</div>
                         </div>
                         

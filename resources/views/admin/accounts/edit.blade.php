@@ -24,7 +24,7 @@
 @endif
 
 <div class="row">
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">Informations du Compte</h5>
@@ -103,7 +103,7 @@
                             <div class="mb-3">
                                 <label for="date_naissance" class="form-label">Date de naissance <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" 
-                                       id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $adminAccount->utilisateur->date_naissance) }}" required>
+                                       id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $adminAccount->utilisateur->date_naissance->format('Y-m-d')) }}" required>
                                 @error('date_naissance')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -152,7 +152,7 @@
                             <div class="mb-3">
                                 <label for="date_embauche" class="form-label">Date d'embauche <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control @error('date_embauche') is-invalid @enderror" 
-                                       id="date_embauche" name="date_embauche" value="{{ old('date_embauche', $adminAccount->date_embauche) }}" required>
+                                       id="date_embauche" name="date_embauche" value="{{ old('date_embauche', $adminAccount->date_embauche->format('Y-m-d')) }}" required>
                                 @error('date_embauche')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -244,81 +244,6 @@
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Permissions</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Sélectionnez au moins une permission pour ce compte administrateur.
-                    @if(isset($existingPermissions))
-                        <br><small>Permissions existantes: {{ count($existingPermissions) }} permissions</small>
-                    @endif
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="selectAllPermissions()">
-                        <i class="fas fa-check-square me-1"></i>
-                        Tout sélectionner
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAllPermissions()">
-                        <i class="fas fa-square me-1"></i>
-                        Tout désélectionner
-                    </button>
-                </div>
-                
-                <div class="permissions-container" style="max-height: 400px; overflow-y: auto;">
-                    <div class="row">
-                        @foreach($permissions as $category => $perms)
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">{{ $category }}</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        @foreach($perms as $key => $label)
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" 
-                                                       type="checkbox" 
-                                                       name="permissions[]" 
-                                                       value="{{ $key }}" 
-                                                       id="permission_{{ $key }}"
-                                                       {{ in_array($key, old('permissions', $existingPermissions ?? [])) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="permission_{{ $key }}">
-                                                    {{ $label }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                
-                @error('permissions')
-                    <div class="text-danger mt-2">{{ $message }}</div>
-                @enderror
-            </div>
-        </div>
-    </div>
 </div>
 @endif
 
-@section('scripts')
-<script>
-function selectAllPermissions() {
-    document.querySelectorAll('input[name="permissions[]"]').forEach(checkbox => {
-        checkbox.checked = true;
-    });
-}
-
-function deselectAllPermissions() {
-    document.querySelectorAll('input[name="permissions[]"]').forEach(checkbox => {
-        checkbox.checked = false;
-    });
-}
-</script>
-@endsection

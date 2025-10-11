@@ -712,6 +712,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     // Routes pour la gestion des élèves (Admin seulement)
     Route::middleware('role:admin,personnel_admin')->group(function () {
         Route::get('eleves', [EleveController::class, 'index'])->name('eleves.index')->middleware('check.permission:eleves.view');
+        Route::get('eleves/print', [EleveController::class, 'print'])->name('eleves.print')->middleware('check.permission:eleves.view');
         Route::get('eleves/create', [EleveController::class, 'create'])->name('eleves.create')->middleware('check.permission:eleves.create');
         Route::post('eleves', [EleveController::class, 'store'])->name('eleves.store')->middleware('check.permission:eleves.create');
         Route::get('eleves/{eleve}', [EleveController::class, 'show'])->name('eleves.show')->middleware('check.permission:eleves.view');

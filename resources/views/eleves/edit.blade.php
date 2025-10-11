@@ -583,7 +583,7 @@ use Illuminate\Support\Facades\Storage;
         <a href="{{ route('eleves.index') }}" class="btn btn-outline-secondary me-md-2">
             <i class="fas fa-times me-1"></i>Annuler
         </a>
-        <button type="submit" class="btn btn-primary" onclick="return handleFormSubmit(this);">
+        <button type="submit" class="btn btn-primary">
             <i class="fas fa-save me-1"></i>Enregistrer les modifications
         </button>
     </div>
@@ -602,7 +602,6 @@ function handleFormSubmit(button) {
     const form = button.closest('form');
     if (!form) {
         console.error('❌ Formulaire non trouvé');
-        alert('Erreur: Formulaire non trouvé');
         return false;
     }
     

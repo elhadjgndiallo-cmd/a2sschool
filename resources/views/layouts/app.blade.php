@@ -20,22 +20,81 @@
     <link href="{{ asset('css/responsive.css') }}" rel="stylesheet">
     <!-- CSS pour l'affichage des images -->
     <link href="{{ asset('css/image-display.css') }}" rel="stylesheet">
+    <!-- CSS pour la pagination -->
+    <link href="{{ asset('css/pagination.css') }}" rel="stylesheet">
     
     <style>
+        /* Règles globales pour empêcher les gros chevrons */
+        .pagination i,
+        .pagination .fas,
+        .pagination .fa,
+        .pagination .fa-chevron-left,
+        .pagination .fa-chevron-right {
+            font-size: 0.75rem !important;
+            max-width: 0.75rem !important;
+            max-height: 0.75rem !important;
+            width: 0.75rem !important;
+            height: 0.75rem !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: none !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+        
+        /* Empêcher tout élément de pagination de devenir trop grand */
+        .pagination * {
+            max-width: 200px !important;
+            box-sizing: border-box !important;
+        }
+        
+        /* Règles ultra-strictes pour empêcher les gros chevrons */
+        .pagination i,
+        .pagination .fas,
+        .pagination .fa,
+        .pagination .fa-chevron-left,
+        .pagination .fa-chevron-right,
+        .pagination [class*="fa-"],
+        .pagination [class*="fas"],
+        .pagination [class*="fa "] {
+            font-size: 0.75rem !important;
+            width: 0.75rem !important;
+            height: 0.75rem !important;
+            max-width: 0.75rem !important;
+            max-height: 0.75rem !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: none !important;
+            box-shadow: none !important;
+            transform: none !important;
+            text-decoration: none !important;
+            overflow: hidden !important;
+        }
+        
         /* Menu horizontal en haut */
         .top-navbar {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu horizontal */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 1000;
+            min-height: 60px;
         }
         
         .top-navbar .nav-link {
             color: white !important;
             font-weight: 500;
-            padding: 1rem 1.5rem;
+            padding: 0.5rem 0.75rem;
             transition: all 0.3s ease;
             border-radius: 5px;
-            margin: 0 2px;
+            margin: 0 1px;
+            font-size: 0.9rem;
         }
         
         .top-navbar .nav-link:hover {
@@ -48,14 +107,21 @@
             font-weight: 600;
         }
         
+        .top-navbar .nav-link i {
+            font-size: 0.85rem;
+        }
+        
         /* Menu latéral pour sous-menus */
         .sidebar {
-            min-height: calc(100vh - 70px);
+            min-height: calc(100vh - 60px);
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); /* couleur de fond du menu latéral */
             border-right: 2px solid #e9ecef;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
             padding: 20px 0;
+            position: sticky;
+            top: 60px;
+            align-self: flex-start;
         }
         
         .sidebar.collapsed {
@@ -96,11 +162,11 @@
         
         /* Contenu principal */
         .main-content {
-            margin-top: 70px;
+            margin-top: 0;
             transition: all 0.3s ease;
-            padding: 0;
+            padding: 20px;
             background: #ffffff;
-            min-height: calc(100vh - 70px);
+            min-height: calc(100vh - 60px);
             margin-left: 0;
         }
         
@@ -144,8 +210,8 @@
         /* Responsive */
         @media (max-width: 768px) {
             .top-navbar .nav-link {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.85rem;
+                padding: 0.4rem 0.5rem;
+                font-size: 0.8rem;
                 margin: 0 1px;
             }
             
@@ -196,8 +262,8 @@
         
         @media (max-width: 576px) {
             .top-navbar .nav-link {
-                padding: 0.4rem 0.5rem;
-                font-size: 0.8rem;
+                padding: 0.3rem 0.4rem;
+                font-size: 0.75rem;
             }
             
             .top-navbar .navbar-brand {
@@ -458,6 +524,7 @@
                     }
                 });
             }
+            
             // Définition des sous-menus avec permissions
             const submenus = {
                 'dashboard': [

@@ -60,7 +60,7 @@ use Illuminate\Support\Facades\Storage;
 </div>
 @endif
 
-<form method="POST" action="{{ route('enseignants.update-simple', $enseignant->id) }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('enseignants.update', $enseignant->id) }}" enctype="multipart/form-data">
     @csrf
     @method('PUT')
     
@@ -152,7 +152,7 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-4 mb-3">
                             <label for="date_naissance" class="form-label">Date de naissance <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="date_naissance" name="date_naissance" 
-                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance) }}">
+                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance->format('Y-m-d')) }}">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="lieu_naissance" class="form-label">Lieu de naissance <span class="text-danger">*</span></label>
@@ -197,11 +197,11 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-6 mb-3">
                             <label for="date_embauche" class="form-label">Date d'embauche <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="date_embauche" name="date_embauche" 
-                                   value="{{ old('date_embauche', $enseignant->date_embauche) }}">
+                                   value="{{ old('date_embauche', $enseignant->date_embauche->format('Y-m-d')) }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="statut" class="form-label">Statut <span class="text-danger">*</span></label>
-                            <select class="form-select" id="statut" name="statut">
+                            <select class="form-select" id="statut" name="statut" required>
                                 <option value="">Sélectionner...</option>
                                 <option value="titulaire" {{ old('statut', $enseignant->statut) == 'titulaire' ? 'selected' : '' }}>Titulaire</option>
                                 <option value="contractuel" {{ old('statut', $enseignant->statut) == 'contractuel' ? 'selected' : '' }}>Contractuel</option>
@@ -272,66 +272,26 @@ use Illuminate\Support\Facades\Storage;
 
 @push('scripts')
 <script>
-function handleFormSubmit(button) {
-    console.log('🔍 Début de la soumission du formulaire enseignant');
-    
-    // Désactiver le bouton pour éviter les double-clics
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
-    
-    // Récupérer le formulaire
-    const form = button.closest('form');
-    if (!form) {
-        console.error('❌ Formulaire non trouvé');
-        alert('Erreur: Formulaire non trouvé');
-        return false;
-    }
-    
-    console.log('📋 Formulaire trouvé:', form);
-    console.log('📋 Action:', form.action);
-    console.log('📋 Méthode:', form.method);
-    
-    // Vérifier les champs requis
-    const requiredFields = form.querySelectorAll('[required]');
-    let missingFields = [];
-    
-    requiredFields.forEach(field => {
-        if (!field.value.trim()) {
-            missingFields.push(field.name || field.id);
-        }
-    });
-    
-    if (missingFields.length > 0) {
-        console.error('❌ Champs requis manquants:', missingFields);
-        alert('Veuillez remplir tous les champs requis: ' + missingFields.join(', '));
-        button.disabled = false;
-        button.innerHTML = '<i class="fas fa-save me-2"></i>Mettre à jour l\'enseignant';
-        return false;
-    }
-    
-    console.log('✅ Validation des champs réussie');
-    
-    // Ajouter un indicateur de chargement
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'alert alert-info';
-    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...';
-    form.parentNode.insertBefore(loadingDiv, form);
-    
-    // Soumettre le formulaire
-    console.log('🚀 Soumission du formulaire...');
-    form.submit();
-    
-    return true;
-}
-
-// Ajouter un gestionnaire d'événement sur le formulaire
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[action*="enseignants"]');
+    // Validation simple du formulaire
+    const form = document.querySelector('form');
     if (form) {
         form.addEventListener('submit', function(e) {
-            console.log('📤 Événement submit déclenché');
-            console.log('📤 Action:', this.action);
-            console.log('📤 Méthode:', this.method);
+            // Vérifier les champs requis
+            const requiredFields = form.querySelectorAll('[required]');
+            let missingFields = [];
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    missingFields.push(field.name || field.id);
+                }
+            });
+            
+            if (missingFields.length > 0) {
+                e.preventDefault();
+                alert('Veuillez remplir tous les champs requis: ' + missingFields.join(', '));
+                return false;
+            }
         });
     }
 });

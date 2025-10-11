@@ -2,6 +2,12 @@
 
 @section('title', 'Rapport des Absences - ' . $classe->nom)
 
+@php
+use App\Helpers\SchoolHelper;
+
+$schoolInfo = SchoolHelper::getDocumentInfo();
+@endphp
+
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
@@ -308,7 +314,7 @@
 <!-- Informations de l'école pour l'impression -->
 <div class="d-none d-print-block mt-4">
     <div class="text-center">
-        <h5>École GSHFD</h5>
+        <h5>{{ $schoolInfo['school_name'] }}</h5>
         <p class="text-muted">
             Rapport généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}
         </p>

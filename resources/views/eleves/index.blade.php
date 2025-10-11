@@ -49,11 +49,18 @@ use Illuminate\Support\Facades\Storage;
                         <i class="fas fa-user-graduate me-2"></i>
                         Liste des Élèves
                     </h3>
-                    <a href="{{ route('eleves.create') }}" class="btn btn-primary">
-                        <i class="fas fa-user-plus me-1"></i>
-                        <span class="d-none d-sm-inline">Nouvelle Inscription</span>
-                        <span class="d-sm-none">Nouveau</span>
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('eleves.print', request()->query()) }}" class="btn btn-success" target="_blank">
+                            <i class="fas fa-print me-1"></i>
+                            <span class="d-none d-sm-inline">Imprimer</span>
+                            <span class="d-sm-none">Print</span>
+                        </a>
+                        <a href="{{ route('eleves.create') }}" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-1"></i>
+                            <span class="d-none d-sm-inline">Nouvelle Inscription</span>
+                            <span class="d-sm-none">Nouveau</span>
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
 @if(session('success'))

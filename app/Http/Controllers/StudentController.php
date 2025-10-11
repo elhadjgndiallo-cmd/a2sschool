@@ -132,6 +132,9 @@ class StudentController extends Controller
             abort(403, 'Profil élève non trouvé');
         }
 
+        // Charger la relation utilisateur pour accéder à la date de naissance
+        $eleve->load('utilisateur');
+
         // Période (trimestre) sélectionnée
         $periode = $request->input('periode', 'trimestre1');
 

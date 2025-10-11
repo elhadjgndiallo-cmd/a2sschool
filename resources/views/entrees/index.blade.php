@@ -154,17 +154,13 @@
                                 </tbody>
                             </table>
                         </div>
+                        
                         <!-- Pagination des entrées manuelles -->
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div>
-                                <small class="text-muted">
-                                    Affichage de {{ $entrees->firstItem() ?? 0 }} à {{ $entrees->lastItem() ?? 0 }} sur {{ $entrees->total() }} entrée{{ $entrees->total() > 1 ? 's' : '' }}
-                                </small>
-                            </div>
-                            <div>
+                        @if($entrees->hasPages())
+                            <div class="mt-3">
                                 {{ $entrees->appends(request()->query())->links('vendor.pagination.custom') }}
                             </div>
-                        </div>
+                        @endif
                     @else
                         <div class="text-center py-4">
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -221,16 +217,11 @@
                             </table>
                         </div>
                         <!-- Pagination des paiements de frais de scolarité -->
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div>
-                                <small class="text-muted">
-                                    Affichage de {{ $paiementsFrais->firstItem() ?? 0 }} à {{ $paiementsFrais->lastItem() ?? 0 }} sur {{ $paiementsFrais->total() }} paiement{{ $paiementsFrais->total() > 1 ? 's' : '' }}
-                                </small>
-                            </div>
-                            <div>
+                        @if($paiementsFrais->hasPages())
+                            <div class="mt-3">
                                 {{ $paiementsFrais->appends(request()->query())->links('vendor.pagination.custom') }}
                             </div>
-                        </div>
+                        @endif
                     @else
                         <div class="text-center py-4">
                             <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
@@ -242,49 +233,4 @@
         </div>
     </div>
 </div>
-@endsection
-
-@section('styles')
-<style>
-.pagination {
-    margin-bottom: 0;
-    justify-content: center;
-}
-
-.pagination .page-link {
-    color: #007bff;
-    border: 1px solid #dee2e6;
-    padding: 0.5rem 0.75rem;
-    margin: 0 2px;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-
-.pagination .page-link:hover {
-    color: #0056b3;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-    text-decoration: none;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-}
-
-.pagination .page-item.disabled .page-link {
-    color: #6c757d;
-    background-color: #fff;
-    border-color: #dee2e6;
-    cursor: not-allowed;
-}
-
-.pagination .page-item.disabled .page-link:hover {
-    background-color: #fff;
-    border-color: #dee2e6;
-    color: #6c757d;
-}
-</style>
 @endsection

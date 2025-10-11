@@ -1492,4 +1492,90 @@ class EleveController extends Controller
                 ->withInput();
         }
     }
+
+    /**
+     * Afficher la liste des élèves pour impression
+     */
+    public function print(Request $request)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('eleves.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vider les caches pour s'assurer d'avoir les données les plus récentes
+        \Cache::flush();
+
+        // Construction de la requête avec filtres
+        $query = Eleve::with([
+            'utilisateur', 
+            'classe', 
+            'anneeScolaire',
+            'fraisScolarite' => function($query) {
+                $query->where('type_frais', 'scolarite');
+            },
+            'parents' => function($query) {
+                $query->with('utilisateur');
+            }
+        ]);
+
+        // Filtre par année scolaire
+        if ($request->filled('annee_scolaire_id')) {
+            $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+        }
+
+        // Filtre par classe
+        if ($request->filled('classe_id')) {
+            $query->where('classe_id', $request->classe_id);
+        }
+
+        // Filtre par statut
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->statut);
+        }
+
+        // Filtre par statut actif/inactif
+        if ($request->filled('actif')) {
+            $query->where('actif', $request->actif === '1');
+        }
+
+        // Filtre par matricule
+        if ($request->filled('matricule')) {
+            $query->where('numero_etudiant', 'LIKE', '%' . $request->matricule . '%');
+        }
+
+        // Filtre par nom complet (recherche dans nom et prénom)
+        if ($request->filled('nom_complet')) {
+            $nomComplet = $request->nom_complet;
+            $query->whereHas('utilisateur', function($q) use ($nomComplet) {
+                $q->where(function($subQuery) use ($nomComplet) {
+                    $subQuery->where('nom', 'LIKE', '%' . $nomComplet . '%')
+                            ->orWhere('prenom', 'LIKE', '%' . $nomComplet . '%')
+                            ->orWhereRaw("CONCAT(prenom, ' ', nom) LIKE ?", ['%' . $nomComplet . '%']);
+                });
+            });
+        }
+
+        // Tri par défaut
+        $query->orderBy('numero_etudiant', 'asc');
+
+        // Récupérer TOUS les élèves (sans pagination pour l'impression)
+        $eleves = $query->get();
+
+        // Données pour les filtres
+        $anneesScolarires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
+        $classes = \App\Models\Classe::actif()->orderBy('nom')->get();
+        $statutsEleves = ['inscrit', 'en_cours', 'diplome', 'abandonne'];
+        
+        // Informations de l'école
+        $schoolInfo = \App\Helpers\SchoolHelper::getDocumentInfo();
+
+        return view('eleves.print', compact(
+            'eleves', 
+            'anneesScolarires', 
+            'classes', 
+            'statutsEleves',
+            'schoolInfo'
+        ));
+    }
 }

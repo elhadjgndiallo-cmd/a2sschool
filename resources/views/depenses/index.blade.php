@@ -203,15 +203,8 @@
 
                     <!-- Pagination des dépenses -->
                     @if($depenses->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div>
-                                <small class="text-muted">
-                                    Affichage de {{ $depenses->firstItem() ?? 0 }} à {{ $depenses->lastItem() ?? 0 }} sur {{ $depenses->total() }} sortie{{ $depenses->total() > 1 ? 's' : '' }}
-                                </small>
-                            </div>
-                            <div>
-                                {{ $depenses->appends(request()->query())->links('vendor.pagination.custom') }}
-                            </div>
+                        <div class="mt-3">
+                            {{ $depenses->appends(request()->query())->links('vendor.pagination.custom') }}
                         </div>
                     @endif
                 </div>
@@ -221,47 +214,3 @@
 </div>
 @endsection
 
-@section('styles')
-<style>
-.pagination {
-    margin-bottom: 0;
-    justify-content: center;
-}
-
-.pagination .page-link {
-    color: #007bff;
-    border: 1px solid #dee2e6;
-    padding: 0.5rem 0.75rem;
-    margin: 0 2px;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-
-.pagination .page-link:hover {
-    color: #0056b3;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-    text-decoration: none;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-}
-
-.pagination .page-item.disabled .page-link {
-    color: #6c757d;
-    background-color: #fff;
-    border-color: #dee2e6;
-    cursor: not-allowed;
-}
-
-.pagination .page-item.disabled .page-link:hover {
-    background-color: #fff;
-    border-color: #dee2e6;
-    color: #6c757d;
-}
-</style>
-@endsection

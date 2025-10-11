@@ -258,58 +258,45 @@ class EnseignantController extends Controller
         $enseignant->load('utilisateur');
         
         $request->validate([
-            'nom' => 'nullable|string|max:255',
-            'prenom' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:191|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
+            'nom' => 'required|string|max:255',
+            'prenom' => 'required|string|max:255',
+            'email' => 'required|email|max:191|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
-            'date_naissance' => 'nullable|date',
+            'date_naissance' => 'required|date',
             'lieu_naissance' => 'nullable|string|max:255',
-            'sexe' => 'nullable|in:M,F',
+            'sexe' => 'required|in:M,F',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'numero_employe' => 'nullable|string|max:50|unique:enseignants,numero_employe,' . $enseignant->id,
             'specialite' => 'nullable|string|max:255',
             'date_embauche' => 'nullable|date',
-            'statut' => 'nullable|in:titulaire,contractuel,vacataire',
-            'matieres' => 'array',
+            'statut' => 'required|in:titulaire,contractuel,vacataire',
+            'matieres' => 'nullable|array',
             'matieres.*' => 'exists:matieres,id',
         ]);
 
         try {
             DB::transaction(function() use ($request, $enseignant) {
-                // Préparer les données utilisateur à mettre à jour
-                $userData = [];
-                if ($request->filled('nom') || $request->filled('prenom')) {
-                    $nom = $request->filled('nom') ? $request->nom : $enseignant->utilisateur->nom;
-                    $prenom = $request->filled('prenom') ? $request->prenom : $enseignant->utilisateur->prenom;
-                    $userData['name'] = $prenom . ' ' . $nom;
-                }
-                
-                if ($request->filled('nom')) $userData['nom'] = $request->nom;
-                if ($request->filled('prenom')) $userData['prenom'] = $request->prenom;
-                if ($request->filled('email')) $userData['email'] = $request->email;
-                if ($request->filled('telephone')) $userData['telephone'] = $request->telephone;
-                if ($request->filled('adresse')) $userData['adresse'] = $request->adresse;
-                if ($request->filled('date_naissance')) $userData['date_naissance'] = $request->date_naissance;
-                if ($request->filled('lieu_naissance')) $userData['lieu_naissance'] = $request->lieu_naissance;
-                if ($request->filled('sexe')) $userData['sexe'] = $request->sexe;
-                
-                // Mettre à jour l'utilisateur seulement si des données sont fournies
-                if (!empty($userData)) {
-                    $enseignant->utilisateur->update($userData);
-                }
+                // Mettre à jour l'utilisateur
+                $enseignant->utilisateur->update([
+                    'nom' => $request->nom,
+                    'prenom' => $request->prenom,
+                    'name' => $request->prenom . ' ' . $request->nom,
+                    'email' => $request->email,
+                    'telephone' => $request->telephone,
+                    'adresse' => $request->adresse,
+                    'date_naissance' => $request->date_naissance,
+                    'lieu_naissance' => $request->lieu_naissance,
+                    'sexe' => $request->sexe,
+                ]);
 
-                // Préparer les données enseignant à mettre à jour
-                $enseignantData = [];
-                if ($request->filled('numero_employe')) $enseignantData['numero_employe'] = $request->numero_employe;
-                if ($request->filled('specialite')) $enseignantData['specialite'] = $request->specialite;
-                if ($request->filled('date_embauche')) $enseignantData['date_embauche'] = $request->date_embauche;
-                if ($request->filled('statut')) $enseignantData['statut'] = $request->statut;
-                
-                // Mettre à jour l'enseignant seulement si des données sont fournies
-                if (!empty($enseignantData)) {
-                    $enseignant->update($enseignantData);
-                }
+                // Mettre à jour l'enseignant
+                $enseignant->update([
+                    'numero_employe' => $request->numero_employe,
+                    'specialite' => $request->specialite,
+                    'date_embauche' => $request->date_embauche,
+                    'statut' => $request->statut,
+                ]);
                 
                 // Gérer l'upload de la photo de profil
                 if ($request->hasFile('photo_profil')) {

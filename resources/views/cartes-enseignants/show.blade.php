@@ -4,6 +4,9 @@
 
 @php
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\SchoolHelper;
+
+$schoolInfo = SchoolHelper::getDocumentInfo();
 @endphp
 
 @section('content')
@@ -190,7 +193,7 @@ use Illuminate\Support\Facades\Storage;
                                             
                                             <!-- Nom de l'école -->
                                             <div class="text-center mb-2">
-                                                <h6 class="mb-0 fw-bold text-primary">ÉCOLE GSHFD</h6>
+                                                <h6 class="mb-0 fw-bold text-primary">{{ $schoolInfo['school_name'] }}</h6>
                                                 <small class="text-muted">CARTE D'ENSEIGNANT</small>
                                             </div>
                                             

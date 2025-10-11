@@ -116,8 +116,7 @@ class PersonnelAdministrationController extends Controller
     public function edit(PersonnelAdministration $personnelAdministration)
     {
         $personnelAdministration->load('utilisateur');
-        $permissions = $this->getAvailablePermissions();
-        return view('personnel-administration.edit', compact('personnelAdministration', 'permissions'));
+        return view('personnel-administration.edit', compact('personnelAdministration'));
     }
 
     /**
@@ -138,8 +137,6 @@ class PersonnelAdministrationController extends Controller
             'date_embauche' => 'required|date',
             'salaire' => 'nullable|numeric|min:0',
             'statut' => 'required|in:actif,inactif,suspendu',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:' . implode(',', array_keys($this->getAvailablePermissions())),
             'observations' => 'nullable|string|max:1000',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
@@ -174,7 +171,6 @@ class PersonnelAdministrationController extends Controller
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'statut' => $request->statut,
-                'permissions' => $request->permissions ?? [],
                 'observations' => $request->observations
             ]);
 
@@ -218,6 +214,15 @@ class PersonnelAdministrationController extends Controller
     {
         $personnelAdministration->load('utilisateur');
         $permissions = $this->getAvailablePermissions();
+        
+        // Debug: vérifier les permissions actuelles
+        \Log::info('Permissions du personnel:', [
+            'personnel_id' => $personnelAdministration->id,
+            'permissions_raw' => $personnelAdministration->permissions,
+            'permissions_type' => gettype($personnelAdministration->permissions),
+            'permissions_count' => is_array($personnelAdministration->permissions) ? count($personnelAdministration->permissions) : 'N/A'
+        ]);
+        
         return view('personnel-administration.permissions', compact('personnelAdministration', 'permissions'));
     }
 
@@ -226,17 +231,63 @@ class PersonnelAdministrationController extends Controller
      */
     public function updatePermissions(Request $request, PersonnelAdministration $personnelAdministration)
     {
-        $request->validate([
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:' . implode(',', array_keys($this->getAvailablePermissions()))
+        // Debug simple
+        \Log::info('=== UPDATE PERMISSIONS ===');
+        \Log::info('Données reçues:', $request->all());
+        
+        // Récupérer les permissions
+        $permissions = $request->input('permissions', []);
+        
+        // Debug: voir ce qui est reçu
+        \Log::info('Permissions reçues dans updatePermissions:', [
+            'raw_permissions' => $request->input('permissions'),
+            'all_input' => $request->all(),
+            'permissions_count' => count($permissions),
+            'permissions_array' => $permissions
         ]);
-
-        $personnelAdministration->update([
-            'permissions' => $request->permissions ?? []
+        
+        // Nettoyer les permissions (enlever les valeurs vides)
+        $permissions = array_filter($permissions, function($value) {
+            return !empty($value) && $value !== '';
+        });
+        
+        \Log::info('Permissions après nettoyage dans updatePermissions:', [
+            'permissions' => $permissions,
+            'count' => count($permissions),
+            'is_empty' => empty($permissions)
         ]);
-
-        return redirect()->route('personnel-administration.index')
-            ->with('success', 'Permissions mises à jour avec succès');
+        
+        // Si aucune permission valide n'est trouvée, sauvegarder un tableau vide
+        if (empty($permissions)) {
+            $permissions = []; // Sauvegarder un tableau vide (aucune permission)
+            \Log::info('Aucune permission valide dans updatePermissions, sauvegarde d\'un tableau vide');
+        } else {
+            \Log::info('Permissions valides trouvées dans updatePermissions, utilisation des permissions sélectionnées');
+        }
+        
+        \Log::info('Permissions finales à sauvegarder dans updatePermissions:', $permissions);
+        
+        \Log::info('Permissions finales:', $permissions);
+        
+        // Mettre à jour les permissions
+        try {
+            $personnelAdministration->update([
+                'permissions' => $permissions
+            ]);
+            
+            \Log::info('Permissions sauvegardées avec succès:', [
+                'personnel_id' => $personnelAdministration->id,
+                'permissions' => $permissions,
+                'permissions_count' => count($permissions)
+            ]);
+            
+            return redirect()->route('personnel-administration.index')
+                ->with('success', 'Permissions mises à jour avec succès (' . count($permissions) . ' permissions)');
+                
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la sauvegarde:', ['error' => $e->getMessage()]);
+            return back()->withErrors(['permissions' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()]);
+        }
     }
 
     /**

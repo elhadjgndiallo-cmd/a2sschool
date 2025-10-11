@@ -38,7 +38,7 @@
             </div>
             <div class="card-body">
                 <div class="text-center mb-3">
-                    @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil)
+                    @if($adminAccount->utilisateur->photo_profil && Storage::disk('public')->exists($adminAccount->utilisateur->photo_profil))
                         <img src="{{ asset('storage/' . $adminAccount->utilisateur->photo_profil) }}" 
                              alt="Photo de {{ $adminAccount->utilisateur->nom }}" 
                              class="rounded-circle mb-3" 
@@ -92,63 +92,7 @@
                     </div>
                     
                     <div class="row">
-                        @php
-                            $groupedPermissions = [
-                                'Gestion des élèves' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'eleves.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des enseignants' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'enseignants.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des classes' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'classes.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des matières' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'matieres.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des emplois du temps' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'emplois_temps.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des absences' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'absences.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des notes' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'notes.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des paiements' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'paiements.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des dépenses' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'depenses.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des salaires' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'salaires.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des tarifs' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'tarifs.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Statistiques et rapports' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'statistiques.') || str_starts_with($key, 'rapports.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Notifications' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'notifications.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Cartes' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'cartes_');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des comptes administrateurs' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'admin_accounts.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion de l\'établissement' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'etablissement.');
-                                }, ARRAY_FILTER_USE_KEY),
-                                'Gestion des années scolaires' => array_filter($permissions, function($key) {
-                                    return str_starts_with($key, 'annees_scolaires.');
-                                }, ARRAY_FILTER_USE_KEY)
-                            ];
-                        @endphp
-                        
-                        @foreach($groupedPermissions as $groupName => $groupPermissions)
+                        @foreach($permissions as $groupName => $groupPermissions)
                         @if(count($groupPermissions) > 0)
                         <div class="col-md-6 mb-4">
                             <div class="card border">
@@ -202,6 +146,96 @@ function toggleGroupPermissions(groupElement) {
         cb.checked = !allChecked;
     });
 }
+
+// Gestion automatique du token CSRF
+let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+// Fonction pour régénérer le token CSRF
+async function regenerateCsrfToken() {
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newToken = doc.querySelector('meta[name="csrf-token"]');
+            
+            if (newToken) {
+                csrfToken = newToken.getAttribute('content');
+                document.querySelector('input[name="_token"]').value = csrfToken;
+                console.log('Token CSRF régénéré:', csrfToken);
+                return true;
+            }
+        }
+    } catch (error) {
+        console.error('Erreur lors de la régénération du token:', error);
+    }
+    return false;
+}
+
+// Gestion des erreurs 419
+document.addEventListener('DOMContentLoaded', function() {
+    // Chercher le formulaire avec plusieurs sélecteurs
+    const form = document.querySelector('form[action*="update-permissions"]') || 
+                 document.querySelector('form[action*="permissions"]') ||
+                 document.querySelector('form[method="POST"]');
+    
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            formData.set('_token', csrfToken);
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    // Succès - recharger la page
+                    window.location.reload();
+                } else if (response.status === 419) {
+                    // Erreur 419 - régénérer le token et réessayer
+                    console.log('Erreur 419 détectée, régénération du token...');
+                    
+                    if (await regenerateCsrfToken()) {
+                        // Réessayer avec le nouveau token
+                        const newFormData = new FormData(form);
+                        newFormData.set('_token', csrfToken);
+                        
+                        const retryResponse = await fetch(form.action, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: newFormData
+                        });
+                        
+                        if (retryResponse.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Session expirée. Veuillez vous reconnecter.');
+                            window.location.href = '/login';
+                        }
+                    } else {
+                        alert('Session expirée. Veuillez vous reconnecter.');
+                        window.location.href = '/login';
+                    }
+                } else {
+                    alert('Erreur lors de la sauvegarde. Code: ' + response.status);
+                }
+            } catch (error) {
+                console.error('Erreur lors de la soumission:', error);
+                alert('Erreur de connexion. Veuillez réessayer.');
+            }
+        });
+    }
+});
 
 // Ajouter des boutons pour sélectionner/désélectionner tout un groupe
 document.addEventListener('DOMContentLoaded', function() {

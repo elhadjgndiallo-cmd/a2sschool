@@ -27,6 +27,7 @@
                 </h5>
                 <p><strong>Nom :</strong> {{ $eleve->nom_complet }}</p>
                 <p><strong>Matricule :</strong> {{ $eleve->numero_etudiant }}</p>
+                <p><strong>Date de naissance :</strong> {{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</p>
                 @if($eleve->classe)
                     <p><strong>Classe :</strong> <span class="badge bg-primary">{{ $eleve->classe->nom }}</span></p>
                 @endif

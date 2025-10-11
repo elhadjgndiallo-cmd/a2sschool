@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class UtilisateurController extends Controller
@@ -246,51 +247,104 @@ class UtilisateurController extends Controller
      */
     public function destroy(Utilisateur $utilisateur)
     {
-        // Vérifier si l'utilisateur a des relations qui empêchent sa suppression
-        if ($utilisateur->role === 'enseignant' && $utilisateur->enseignant) {
-            if ($utilisateur->enseignant->notes()->count() > 0 || $utilisateur->enseignant->absences()->count() > 0) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Impossible de supprimer cet utilisateur car il a des notes ou des absences associées'
-                ], 400);
+        try {
+            DB::beginTransaction();
+            
+            // Gérer les contraintes de clés étrangères avant suppression
+            // Mettre à jour les dépenses qui référencent cet utilisateur
+            DB::table('depenses')
+                ->where('approuve_par', $utilisateur->id)
+                ->update(['approuve_par' => null]);
+                
+            DB::table('depenses')
+                ->where('paye_par', $utilisateur->id)
+                ->update(['paye_par' => null]);
+            
+            // Mettre à jour les entrées qui référencent cet utilisateur
+            DB::table('entrees')
+                ->where('enregistre_par', $utilisateur->id)
+                ->update(['enregistre_par' => null]);
+            
+            // Mettre à jour les paiements qui référencent cet utilisateur
+            DB::table('paiements')
+                ->where('encaisse_par', $utilisateur->id)
+                ->update(['encaisse_par' => null]);
+            
+            // Mettre à jour les absences qui référencent cet utilisateur
+            DB::table('absences')
+                ->where('saisi_par', $utilisateur->id)
+                ->update(['saisi_par' => null]);
+            
+            // Mettre à jour les salaires qui référencent cet utilisateur
+            DB::table('salaires_enseignants')
+                ->where('calcule_par', $utilisateur->id)
+                ->update(['calcule_par' => null]);
+                
+            DB::table('salaires_enseignants')
+                ->where('valide_par', $utilisateur->id)
+                ->update(['valide_par' => null]);
+                
+            DB::table('salaires_enseignants')
+                ->where('paye_par', $utilisateur->id)
+                ->update(['paye_par' => null]);
+            
+            // Mettre à jour les cartes scolaires qui référencent cet utilisateur
+            DB::table('cartes_scolaires')
+                ->where('emise_par', $utilisateur->id)
+                ->update(['emise_par' => null]);
+                
+            DB::table('cartes_scolaires')
+                ->where('validee_par', $utilisateur->id)
+                ->update(['validee_par' => null]);
+            
+            // Supprimer les messages envoyés et reçus par cet utilisateur
+            DB::table('messages')
+                ->where('expediteur_id', $utilisateur->id)
+                ->orWhere('destinataire_id', $utilisateur->id)
+                ->delete();
+            
+            // Gérer les relations spécifiques selon le rôle
+            if ($utilisateur->role === 'enseignant' && $utilisateur->enseignant) {
+                // Détacher les matières et les classes avant de supprimer
+                $utilisateur->enseignant->matieres()->detach();
+                $utilisateur->enseignant->classes()->detach();
+                $utilisateur->enseignant->delete();
             }
             
-            // Détacher les matières et les classes avant de supprimer
-            $utilisateur->enseignant->matieres()->detach();
-            $utilisateur->enseignant->classes()->detach();
-            $utilisateur->enseignant->delete();
-        }
-        
-        if ($utilisateur->role === 'eleve' && $utilisateur->eleve) {
-            if ($utilisateur->eleve->notes()->count() > 0 || $utilisateur->eleve->absences()->count() > 0 || $utilisateur->eleve->paiements()->count() > 0) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Impossible de supprimer cet utilisateur car il a des notes, des absences ou des paiements associés'
-                ], 400);
+            if ($utilisateur->role === 'eleve' && $utilisateur->eleve) {
+                // Détacher les parents avant de supprimer
+                $utilisateur->eleve->parents()->detach();
+                $utilisateur->eleve->delete();
             }
             
-            // Détacher les parents avant de supprimer
-            $utilisateur->eleve->parents()->detach();
-            $utilisateur->eleve->delete();
-        }
-        
-        if ($utilisateur->role === 'parent' && $utilisateur->parent) {
-            // Détacher les élèves avant de supprimer
-            $utilisateur->parent->eleves()->detach();
-            $utilisateur->parent->delete();
-        }
-        
-        // Supprimer la photo de profil si elle existe
-        if ($utilisateur->photo_profile) {
-            Storage::delete('public/' . $utilisateur->photo_profile);
-        }
-        
-        $utilisateur->delete();
+            if ($utilisateur->role === 'parent' && $utilisateur->parent) {
+                // Détacher les élèves avant de supprimer
+                $utilisateur->parent->eleves()->detach();
+                $utilisateur->parent->delete();
+            }
+            
+            // Supprimer la photo de profil si elle existe
+            if ($utilisateur->photo_profile) {
+                Storage::delete('public/' . $utilisateur->photo_profile);
+            }
+            
+            $utilisateur->delete();
+            
+            DB::commit();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Utilisateur supprimé avec succès'
-        ]);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Utilisateur supprimé avec succès'
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la suppression : ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
