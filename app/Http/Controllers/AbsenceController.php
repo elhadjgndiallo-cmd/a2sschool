@@ -16,7 +16,21 @@ class AbsenceController extends Controller
      */
     public function index()
     {
-        $classes = Classe::actif()->with('eleves')->get();
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $classes = Classe::actif()
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                if ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                }
+            })
+            ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                if ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                }
+            }])
+            ->get();
         return view('absences.index', compact('classes'));
     }
 
@@ -25,12 +39,22 @@ class AbsenceController extends Controller
      */
     public function saisir($classeId)
     {
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
+        }, 'eleves.utilisateur'])->findOrFail($classeId);
         $matieres = Matiere::actif()->get();
         
-        // Récupérer les absences du jour
-        $absencesAujourdhui = Absence::whereHas('eleve', function($query) use ($classeId) {
+        // Récupérer les absences du jour pour l'année active
+        $absencesAujourdhui = Absence::whereHas('eleve', function($query) use ($classeId, $anneeScolaireActive) {
             $query->where('classe_id', $classeId);
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
         })->whereDate('date_absence', today())->with(['eleve', 'matiere'])->get();
 
         return view('absences.saisir', compact('classe', 'matieres', 'absencesAujourdhui'));
@@ -93,7 +117,16 @@ class AbsenceController extends Controller
      */
     public function eleveAbsences($eleveId)
     {
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+        
+        // Vérifier que l'élève appartient à l'année active
+        if ($anneeScolaireActive && $eleve->annee_scolaire_id != $anneeScolaireActive->id) {
+            abort(404, 'Élève non trouvé pour l\'année scolaire active.');
+        }
+        
         $absences = Absence::where('eleve_id', $eleveId)
             ->with(['matiere', 'saisiPar'])
             ->orderBy('date_absence', 'desc')

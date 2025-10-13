@@ -140,11 +140,19 @@
                         <div class="col-6">
                             <h6 class="text-success">Dernières Entrées</h6>
                             <ul class="list-unstyled">
-                                @forelse($dernieresEntrees as $entree)
+                                @forelse($toutesLesEntrees as $entree)
                                     <li class="mb-2">
-                                        <small class="text-muted">{{ $entree->date_entree->format('d/m/Y') }}</small><br>
-                                        <strong>{{ number_format($entree->montant, 0, ',', ' ') }} GNF</strong><br>
-                                        <small>{{ $entree->libelle }}</small>
+                                        @if(isset($entree->date_entree))
+                                            {{-- Entrée manuelle --}}
+                                            <small class="text-muted">{{ $entree->date_entree->format('d/m/Y') }}</small><br>
+                                            <strong>{{ number_format($entree->montant, 0, ',', ' ') }} GNF</strong><br>
+                                            <small>{{ $entree->libelle }}</small>
+                                        @else
+                                            {{-- Paiement de frais de scolarité --}}
+                                            <small class="text-muted">{{ $entree->date_paiement->format('d/m/Y') }}</small><br>
+                                            <strong>{{ number_format($entree->montant_paye, 0, ',', ' ') }} GNF</strong><br>
+                                            <small>{{ $entree->fraisScolarite->eleve->utilisateur->nom }} {{ $entree->fraisScolarite->eleve->utilisateur->prenom }} - {{ $entree->fraisScolarite->type_frais }}</small>
+                                        @endif
                                     </li>
                                 @empty
                                     <li class="text-muted">Aucune entrée récente</li>

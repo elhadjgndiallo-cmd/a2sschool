@@ -19,21 +19,48 @@ class ComptabiliteController extends Controller
      */
     public function index()
     {
-        // Statistiques générales
-        $stats = $this->getComptabiliteStats();
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
-        // Dernières transactions
-        $dernieresEntrees = Entree::with('enregistrePar')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        // Statistiques générales pour l'année active
+        $stats = $this->getComptabiliteStats($anneeScolaireActive);
+        
+        // Dernières transactions de l'année active
+        $dernieresEntrees = collect(); // Les entrées manuelles ne sont pas liées à une année scolaire
             
-        $dernieresDepenses = Depense::with(['approuvePar', 'payePar'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        // Ajouter les derniers paiements de frais de scolarité de l'année active
+        $derniersPaiements = collect();
+        if ($anneeScolaireActive) {
+            $derniersPaiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+                ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+                    $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
+                ->orderBy('date_paiement', 'desc')
+                ->limit(5)
+                ->get();
+        }
         
-        return view('comptabilite.index', compact('stats', 'dernieresEntrees', 'dernieresDepenses'));
+        // Combiner les entrées manuelles et les paiements
+        $toutesLesEntrees = $dernieresEntrees->concat($derniersPaiements)
+            ->sortByDesc(function($item) {
+                return $item->created_at ?? $item->date_paiement;
+            })
+            ->take(5);
+            
+        // Filtrer les dépenses par la période de l'année scolaire active
+        $dernieresDepenses = collect();
+        if ($anneeScolaireActive) {
+            $dernieresDepenses = Depense::with(['approuvePar', 'payePar'])
+                ->whereBetween('date_depense', [
+                    $anneeScolaireActive->date_debut,
+                    $anneeScolaireActive->date_fin
+                ])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+        }
+        
+        return view('comptabilite.index', compact('stats', 'toutesLesEntrees', 'dernieresDepenses'));
     }
 
     /**
@@ -71,6 +98,9 @@ class ComptabiliteController extends Controller
      */
     public function entrees(Request $request)
     {
+        // Récupérer l'année scolaire active (toujours filtrer par l'année active)
+        $anneeScolaire = \App\Models\AnneeScolaire::where('active', true)->first();
+        
         // Récupérer les entrées manuelles
         $query = Entree::with('enregistrePar');
         
@@ -89,9 +119,13 @@ class ComptabiliteController extends Controller
         
         $entrees = $query->orderBy('date_entree', 'desc')->get();
 
-        // Récupérer les paiements de frais de scolarité
+        // Récupérer les paiements de frais de scolarité de l'année sélectionnée seulement
         $paiementsFrais = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
-            ->whereHas('fraisScolarite')
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+                if ($anneeScolaire) {
+                    $q->where('annee_scolaire_id', $anneeScolaire->id);
+                }
+            })
             ->orderBy('date_paiement', 'desc')
             ->get();
 
@@ -193,7 +227,18 @@ class ComptabiliteController extends Controller
      */
     public function sorties(Request $request)
     {
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
         $query = Depense::with(['approuvePar', 'payePar']);
+        
+        // Filtrer par période de l'année scolaire active
+        if ($anneeScolaireActive) {
+            $query->whereBetween('date_depense', [
+                $anneeScolaireActive->date_debut,
+                $anneeScolaireActive->date_fin
+            ]);
+        }
         
         // Filtres
         if ($request->filled('date_debut')) {
@@ -211,7 +256,7 @@ class ComptabiliteController extends Controller
         $sorties = $query->orderBy('date_depense', 'desc')->paginate(20);
         
         // Statistiques des sorties
-        $statsSorties = $this->getStatsSorties($request);
+        $statsSorties = $this->getStatsSorties($request, $anneeScolaireActive);
         
         return view('comptabilite.sorties', compact('sorties', 'statsSorties'));
     }
@@ -219,25 +264,72 @@ class ComptabiliteController extends Controller
     /**
      * Obtenir les statistiques générales de la comptabilité
      */
-    private function getComptabiliteStats()
+    private function getComptabiliteStats($anneeScolaireActive = null)
     {
         $moisActuel = Carbon::now();
         
-        // Revenus du mois actuel
-        $revenusMois = Entree::whereMonth('date_entree', $moisActuel->month)
-            ->whereYear('date_entree', $moisActuel->year)
-            ->sum('montant');
+        // Revenus du mois actuel (entrées manuelles) - filtrer par période de l'année scolaire
+        $revenusMois = 0;
+        if ($anneeScolaireActive) {
+            $revenusMois = Entree::whereMonth('date_entree', $moisActuel->month)
+                ->whereYear('date_entree', $moisActuel->year)
+                ->whereBetween('date_entree', [
+                    $anneeScolaireActive->date_debut,
+                    $anneeScolaireActive->date_fin
+                ])
+                ->sum('montant');
+        }
             
-        // Dépenses du mois actuel
-        $depensesMois = Depense::whereMonth('date_depense', $moisActuel->month)
-            ->whereYear('date_depense', $moisActuel->year)
-            ->sum('montant');
+        // Ajouter les paiements de frais de scolarité du mois pour l'année active
+        if ($anneeScolaireActive) {
+            $paiementsMois = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->whereMonth('date_paiement', $moisActuel->month)
+            ->whereYear('date_paiement', $moisActuel->year)
+            ->sum('montant_paye');
             
-        // Revenus totaux
-        $revenusTotal = Entree::sum('montant');
+            $revenusMois += $paiementsMois;
+        }
+            
+        // Dépenses du mois actuel - filtrer par période de l'année scolaire
+        $depensesMois = 0;
+        if ($anneeScolaireActive) {
+            $depensesMois = Depense::whereMonth('date_depense', $moisActuel->month)
+                ->whereYear('date_depense', $moisActuel->year)
+                ->whereBetween('date_depense', [
+                    $anneeScolaireActive->date_debut,
+                    $anneeScolaireActive->date_fin
+                ])
+                ->sum('montant');
+        }
+            
+        // Revenus totaux (entrées manuelles) - filtrer par période de l'année scolaire
+        $revenusTotal = 0;
+        if ($anneeScolaireActive) {
+            $revenusTotal = Entree::whereBetween('date_entree', [
+                $anneeScolaireActive->date_debut,
+                $anneeScolaireActive->date_fin
+            ])->sum('montant');
+        }
         
-        // Dépenses totales
-        $depensesTotal = Depense::sum('montant');
+        // Ajouter les paiements de frais de scolarité totaux pour l'année active
+        if ($anneeScolaireActive) {
+            $paiementsTotal = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->sum('montant_paye');
+            
+            $revenusTotal += $paiementsTotal;
+        }
+        
+        // Dépenses totales - filtrer par période de l'année scolaire
+        $depensesTotal = 0;
+        if ($anneeScolaireActive) {
+            $depensesTotal = Depense::whereBetween('date_depense', [
+                $anneeScolaireActive->date_debut,
+                $anneeScolaireActive->date_fin
+            ])->sum('montant');
+        }
         
         // Bénéfice du mois
         $beneficeMois = $revenusMois - $depensesMois;
@@ -245,10 +337,16 @@ class ComptabiliteController extends Controller
         // Bénéfice total
         $beneficeTotal = $revenusTotal - $depensesTotal;
         
-        // Nombre d'élèves avec paiements en attente
-        $elevesEnAttente = FraisScolarite::where('statut', 'en_attente')
+        // Nombre d'élèves avec paiements en attente pour l'année active
+        $elevesEnAttente = 0;
+        if ($anneeScolaireActive) {
+            $elevesEnAttente = FraisScolarite::whereHas('eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->where('statut', 'en_attente')
             ->distinct('eleve_id')
             ->count();
+        }
             
         return [
             'revenus_mois' => $revenusMois,
@@ -378,9 +476,17 @@ class ComptabiliteController extends Controller
     /**
      * Obtenir les statistiques des sorties
      */
-    private function getStatsSorties($request)
+    private function getStatsSorties($request, $anneeScolaireActive = null)
     {
         $query = Depense::query();
+        
+        // Filtrer par période de l'année scolaire active
+        if ($anneeScolaireActive) {
+            $query->whereBetween('date_depense', [
+                $anneeScolaireActive->date_debut,
+                $anneeScolaireActive->date_fin
+            ]);
+        }
         
         if ($request->filled('date_debut')) {
             $query->whereDate('date_depense', '>=', $request->date_debut);

@@ -35,12 +35,25 @@ class EntreeController extends Controller
             $query->where('date_entree', '<=', $request->date_fin);
         }
 
-        // Récupérer les entrées manuelles
+        // Récupérer l'année scolaire active (toujours filtrer par l'année active)
+        $anneeScolaire = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        // Récupérer les entrées manuelles filtrées par période de l'année scolaire
+        if ($anneeScolaire) {
+            $query->whereBetween('date_entree', [
+                $anneeScolaire->date_debut,
+                $anneeScolaire->date_fin
+            ]);
+        }
         $entrees = $query->get();
 
-        // Récupérer les paiements de frais de scolarité
+        // Récupérer les paiements de frais de scolarité de l'année sélectionnée seulement
         $paiementsFrais = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
-            ->whereHas('fraisScolarite')
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+                if ($anneeScolaire) {
+                    $q->where('annee_scolaire_id', $anneeScolaire->id);
+                }
+            })
             ->orderBy('date_paiement', 'desc')
             ->get();
 
@@ -128,12 +141,24 @@ class EntreeController extends Controller
         // Ajouter les paramètres de requête à la pagination
         $paginatedEntries->appends(request()->query());
 
-        // Statistiques
+        // Statistiques pour l'année sélectionnée seulement
         // Entrées manuelles (exclure les entrées créées automatiquement par les paiements scolaires)
-        $totalEntreesManuelles = Entree::where('source', '!=', 'Paiements scolaires')->sum('montant');
+        $totalEntreesManuelles = 0;
+        if ($anneeScolaire) {
+            $totalEntreesManuelles = Entree::where('source', '!=', 'Paiements scolaires')
+                ->whereBetween('date_entree', [
+                    $anneeScolaire->date_debut,
+                    $anneeScolaire->date_fin
+                ])
+                ->sum('montant');
+        }
         
-        // Paiements de frais de scolarité
-        $totalPaiementsFrais = Paiement::whereHas('fraisScolarite')->sum('montant_paye');
+        // Paiements de frais de scolarité de l'année sélectionnée seulement
+        $totalPaiementsFrais = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+            if ($anneeScolaire) {
+                $q->where('annee_scolaire_id', $anneeScolaire->id);
+            }
+        })->sum('montant_paye');
         
         // Total général = entrées manuelles + paiements scolaires
         $totalGeneral = $totalEntreesManuelles + $totalPaiementsFrais;

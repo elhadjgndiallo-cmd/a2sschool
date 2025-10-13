@@ -335,6 +335,41 @@
                                         </label>
                                     </div>
                                 </div>
+
+                                {{-- Options pour les frais d'inscription/réinscription --}}
+                                <div class="mb-3" style="background-color: #d4edda; padding: 15px; border-radius: 8px; border: 2px solid #28a745;">
+                                    <h6 class="text-success mb-3">
+                                        <i class="fas fa-graduation-cap me-2"></i>
+                                        Frais d'Inscription/Réinscription
+                                    </h6>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check mb-3">
+                                                <input type="hidden" name="gratuit_inscription" value="0">
+                                                <input class="form-check-input" type="checkbox" name="gratuit_inscription" value="1" 
+                                                       id="gratuit_inscription" {{ old('gratuit_inscription') ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="gratuit_inscription">
+                                                    <i class="fas fa-gift me-1 text-success"></i>
+                                                    <strong>Inscription gratuite</strong>
+                                                    <br><small class="text-muted">Les frais d'inscription seront gratuits</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check mb-3">
+                                                <input type="hidden" name="gratuit_reinscription" value="0">
+                                                <input class="form-check-input" type="checkbox" name="gratuit_reinscription" value="1" 
+                                                       id="gratuit_reinscription" {{ old('gratuit_reinscription') ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="gratuit_reinscription">
+                                                    <i class="fas fa-gift me-1 text-success"></i>
+                                                    <strong>Réinscription gratuite</strong>
+                                                    <br><small class="text-muted">Les frais de réinscription seront gratuits</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

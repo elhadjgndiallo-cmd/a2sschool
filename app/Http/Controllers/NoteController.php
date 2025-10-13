@@ -23,17 +23,40 @@ class NoteController extends Controller
         }
         $user = auth()->user();
         
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
         if ($user->isAdmin() || $user->role === 'personnel_admin') {
-            // Admin et Personnel Admin voient toutes les classes
-            $classes = Classe::actif()->with('eleves')->get();
+            // Admin et Personnel Admin voient toutes les classes de l'année active
+            $classes = Classe::actif()
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                })
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                }])
+                ->get();
         } else if ($user->isTeacher()) {
-            // Enseignant voit seulement ses classes (via emplois du temps)
+            // Enseignant voit seulement ses classes de l'année active (via emplois du temps)
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id);
                 })
-                ->with('eleves')
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                })
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                }])
                 ->get();
         } else {
             $classes = collect();
@@ -48,7 +71,15 @@ class NoteController extends Controller
     public function saisir($classeId)
     {
         $user = auth()->user();
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
+        }, 'eleves.utilisateur'])->findOrFail($classeId);
         
         // Vérifier les permissions
         if ($user->isTeacher()) {
@@ -81,9 +112,12 @@ class NoteController extends Controller
             abort(403, 'Vous n\'avez pas accès à cette fonctionnalité.');
         }
         
-        // Récupérer les notes existantes pour cette classe
-        $notesExistantes = Note::whereHas('eleve', function($query) use ($classeId) {
+        // Récupérer les notes existantes pour cette classe de l'année active
+        $notesExistantes = Note::whereHas('eleve', function($query) use ($classeId, $anneeScolaireActive) {
             $query->where('classe_id', $classeId);
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
         })->with(['matiere', 'enseignant'])->get()->groupBy(['eleve_id', 'matiere_id']);
 
         return view('notes.saisir', compact('classe', 'matieres', 'enseignants', 'notesExistantes'));
@@ -95,7 +129,15 @@ class NoteController extends Controller
     public function teacherSaisir($classeId)
     {
         $user = auth()->user();
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
+        }, 'eleves.utilisateur'])->findOrFail($classeId);
         
         // Vérifier que l'enseignant enseigne dans cette classe
         $enseignant = $user->enseignant;

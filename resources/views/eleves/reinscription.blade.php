@@ -101,6 +101,43 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                 </div>
             </div>
+            
+            <!-- Options de frais -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <h6 class="mb-2">
+                            <i class="fas fa-money-bill-wave me-2"></i>Options de frais de réinscription
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="gratuit_reinscription" value="0">
+                                    <input class="form-check-input" type="checkbox" name="gratuit_reinscription" value="1" 
+                                           id="gratuit_reinscription" {{ old('gratuit_reinscription') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="gratuit_reinscription">
+                                        <i class="fas fa-gift me-1"></i>
+                                        <strong>Réinscription gratuite</strong>
+                                        <small class="text-muted d-block">Rendre les frais de réinscription gratuits pour tous les élèves sélectionnés.</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="exempte_frais" value="0">
+                                    <input class="form-check-input" type="checkbox" name="exempte_frais" value="1" 
+                                           id="exempte_frais" {{ old('exempte_frais') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="exempte_frais">
+                                        <i class="fas fa-user-shield me-1"></i>
+                                        <strong>Exempter des frais de scolarité</strong>
+                                        <small class="text-muted d-block">Exempter tous les élèves sélectionnés des frais de scolarité.</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

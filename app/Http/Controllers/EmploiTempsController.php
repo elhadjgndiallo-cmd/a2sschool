@@ -20,7 +20,17 @@ class EmploiTempsController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les emplois du temps.');
         }
         
-        $classes = Classe::actif()->orderBy('nom')->get();
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $classes = Classe::actif()
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                if ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                }
+            })
+            ->orderBy('nom')
+            ->get();
         $matieres = Matiere::actif()->orderBy('nom')->get();
         $enseignants = Enseignant::where('enseignants.actif', true)
             ->with('utilisateur')
@@ -37,6 +47,18 @@ class EmploiTempsController extends Controller
      */
     public function show(Classe $classe)
     {
+        // Récupérer l'année scolaire active pour filtrer les données
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        // Vérifier que la classe a des élèves de l'année active
+        $hasElevesActiveYear = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->exists();
+            
+        if ($anneeScolaireActive && !$hasElevesActiveYear) {
+            abort(404, 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.');
+        }
+        
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->orderBy('jour_semaine')

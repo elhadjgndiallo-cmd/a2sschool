@@ -438,8 +438,16 @@ public function store(Request $request)
     /**
      * Créer automatiquement les frais d'inscription et de scolarité pour un élève
      */
-    public function creerFraisAutomatiques(Eleve $eleve)
+    public function creerFraisAutomatiques(Eleve $eleve, $gratuitInscription = false, $gratuitReinscription = false)
     {
+        // Debug pour voir les valeurs reçues
+        \Log::info('creerFraisAutomatiques appelé avec:', [
+            'eleve_id' => $eleve->id,
+            'gratuitInscription' => $gratuitInscription,
+            'gratuitReinscription' => $gratuitReinscription,
+            'type_inscription' => $eleve->type_inscription
+        ]);
+        
         // Vérifier si l'élève est exempté des frais
         if ($eleve->exempte_frais) {
             return;
@@ -459,26 +467,32 @@ public function store(Request $request)
             // 1. Créer les frais d'inscription ou de réinscription
             if ($eleve->type_inscription === 'nouvelle' && $tarif->frais_inscription > 0) {
                 // Frais d'inscription pour nouvelle inscription
+                $montantInscription = $gratuitInscription ? 0 : $tarif->frais_inscription;
+                $statutInscription = $gratuitInscription ? 'paye' : 'en_attente';
+                
                 FraisScolarite::create([
                     'eleve_id' => $eleve->id,
-                    'libelle' => 'Frais d\'inscription',
-                    'montant' => $tarif->frais_inscription,
-                    'date_echeance' => now()->addDays(30), // 30 jours pour payer
-                    'statut' => 'en_attente',
+                    'libelle' => 'Frais d\'inscription' . ($gratuitInscription ? ' (GRATUIT)' : ''),
+                    'montant' => $montantInscription,
+                    'date_echeance' => $gratuitInscription ? now() : now()->addDays(30), // 30 jours pour payer
+                    'statut' => $statutInscription,
                     'type_frais' => 'inscription',
-                    'description' => 'Frais d\'inscription pour l\'année scolaire',
+                    'description' => $gratuitInscription ? 'Frais d\'inscription GRATUIT pour l\'année scolaire' : 'Frais d\'inscription pour l\'année scolaire',
                     'paiement_par_tranches' => false
                 ]);
             } elseif ($eleve->type_inscription === 'reinscription' && $tarif->frais_reinscription > 0) {
                 // Frais de réinscription
+                $montantReinscription = $gratuitReinscription ? 0 : $tarif->frais_reinscription;
+                $statutReinscription = $gratuitReinscription ? 'paye' : 'en_attente';
+                
                 FraisScolarite::create([
                     'eleve_id' => $eleve->id,
-                    'libelle' => 'Frais de réinscription',
-                    'montant' => $tarif->frais_reinscription,
-                    'date_echeance' => now()->addDays(30), // 30 jours pour payer
-                    'statut' => 'en_attente',
+                    'libelle' => 'Frais de réinscription' . ($gratuitReinscription ? ' (GRATUIT)' : ''),
+                    'montant' => $montantReinscription,
+                    'date_echeance' => $gratuitReinscription ? now() : now()->addDays(30), // 30 jours pour payer
+                    'statut' => $statutReinscription,
                     'type_frais' => 'reinscription',
-                    'description' => 'Frais de réinscription pour l\'année scolaire',
+                    'description' => $gratuitReinscription ? 'Frais de réinscription GRATUIT pour l\'année scolaire' : 'Frais de réinscription pour l\'année scolaire',
                     'paiement_par_tranches' => false
                 ]);
             }

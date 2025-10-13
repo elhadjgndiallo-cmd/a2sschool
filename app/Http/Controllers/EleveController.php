@@ -59,9 +59,15 @@ class EleveController extends Controller
             }
         ]);
 
-        // Filtre par année scolaire
+        // Filtre par année scolaire - par défaut, afficher seulement l'année active
         if ($request->filled('annee_scolaire_id')) {
             $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+        } else {
+            // Par défaut, afficher seulement les élèves de l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
         }
 
         // Filtre par classe
@@ -942,12 +948,15 @@ class EleveController extends Controller
             'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
             'exempte_frais' => 'boolean',
             'paiement_annuel' => 'boolean',
+            'gratuit_inscription' => 'boolean',
+            'gratuit_reinscription' => 'boolean',
         ]);
 
         // Sauvegarder les données finales
         $studentData = array_merge($studentData, $request->only([
             'date_inscription', 'type_inscription', 'ecole_origine', 'statut',
-            'classe_id', 'annee_scolaire_id', 'exempte_frais', 'paiement_annuel'
+            'classe_id', 'annee_scolaire_id', 'exempte_frais', 'paiement_annuel',
+            'gratuit_inscription', 'gratuit_reinscription'
         ]));
 
         try {
@@ -1041,7 +1050,9 @@ class EleveController extends Controller
 
                 // Créer automatiquement les frais d'inscription et de scolarité
                 $paiementController = new PaiementController();
-                $paiementController->creerFraisAutomatiques($eleve);
+                $gratuitInscription = $studentData['gratuit_inscription'] ?? false;
+                $gratuitReinscription = $studentData['gratuit_reinscription'] ?? false;
+                $paiementController->creerFraisAutomatiques($eleve, $gratuitInscription, $gratuitReinscription);
             });
 
             // Nettoyer la session
@@ -1155,6 +1166,8 @@ class EleveController extends Controller
             'eleves_ids' => 'required|array|min:1',
             'eleves_ids.*' => 'exists:eleves,id',
             'nouvelle_classe' => 'nullable|exists:classes,id',
+            'gratuit_reinscription' => 'boolean',
+            'exempte_frais' => 'boolean',
         ]);
         
         $anneeScolaireActive = AnneeScolaire::where('active', true)->first();
@@ -1182,21 +1195,37 @@ class EleveController extends Controller
                         continue;
                     }
                     
+                    // Vérifier si le matricule existe déjà dans l'année active
+                    $matriculeExiste = Eleve::where('numero_etudiant', $ancienEleve->numero_etudiant)
+                        ->where('annee_scolaire_id', $anneeScolaireActive->id)
+                        ->exists();
+                    
+                    if ($matriculeExiste) {
+                        $erreurs[] = "Le matricule {$ancienEleve->numero_etudiant} est déjà utilisé par un autre élève cette année.";
+                        continue;
+                    }
+                    
                     // Déterminer la nouvelle classe
                     $nouvelleClasseId = $request->nouvelle_classe ?: $ancienEleve->classe_id;
+                    
+                    // Générer un nouveau matricule pour éviter les conflits
+                    $nouveauMatricule = $this->generateNewMatricule();
+                    
+                    // Déterminer si l'élève doit être exempté des frais
+                    $exempteFrais = $request->boolean('exempte_frais') ? true : $ancienEleve->exempte_frais;
                     
                     // Créer la nouvelle inscription
                     $nouvelEleve = Eleve::create([
                         'utilisateur_id' => $ancienEleve->utilisateur_id,
                         'classe_id' => $nouvelleClasseId,
-                        'numero_etudiant' => $this->generateNewMatricule(),
+                        'numero_etudiant' => $nouveauMatricule, // Nouveau matricule pour éviter les conflits
                         'date_inscription' => now(),
                         'type_inscription' => 'reinscription',
                         'ecole_origine' => null,
-                        'statut' => 'en_cours', // Statut actif pour les élèves réinscrits 2024-2025
+                        'statut' => 'en_cours', // Statut actif pour les élèves réinscrits
                         'annee_scolaire_id' => $anneeScolaireActive->id,
                         'situation_matrimoniale' => $ancienEleve->situation_matrimoniale,
-                        'exempte_frais' => $ancienEleve->exempte_frais,
+                        'exempte_frais' => $exempteFrais, // Utiliser l'option du formulaire ou garder l'ancienne valeur
                         'paiement_annuel' => $ancienEleve->paiement_annuel,
                         'actif' => true,
                     ]);
@@ -1216,7 +1245,8 @@ class EleveController extends Controller
                     
                     // Créer automatiquement les frais de réinscription
                     $paiementController = new PaiementController();
-                    $paiementController->creerFraisAutomatiques($nouvelEleve);
+                    $gratuitReinscription = $request->boolean('gratuit_reinscription');
+                    $paiementController->creerFraisAutomatiques($nouvelEleve, false, $gratuitReinscription);
                     
                     $elevesReinscris++;
                     
@@ -1357,6 +1387,8 @@ class EleveController extends Controller
             'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
             'exempte_frais' => 'boolean',
             'paiement_annuel' => 'boolean',
+            'gratuit_inscription' => 'boolean',
+            'gratuit_reinscription' => 'boolean',
             
             // Données parent
             'parent_type' => 'required|in:existing,new',
@@ -1476,7 +1508,9 @@ class EleveController extends Controller
 
                 // Créer automatiquement les frais d'inscription et de scolarité
                 $paiementController = new PaiementController();
-                $paiementController->creerFraisAutomatiques($eleve);
+                $gratuitInscription = $request->boolean('gratuit_inscription');
+                $gratuitReinscription = $request->boolean('gratuit_reinscription');
+                $paiementController->creerFraisAutomatiques($eleve, $gratuitInscription, $gratuitReinscription);
             });
 
             // Nettoyer la session
@@ -1519,9 +1553,15 @@ class EleveController extends Controller
             }
         ]);
 
-        // Filtre par année scolaire
+        // Filtre par année scolaire - par défaut, afficher seulement l'année active
         if ($request->filled('annee_scolaire_id')) {
             $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+        } else {
+            // Par défaut, afficher seulement les élèves de l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+            if ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
         }
 
         // Filtre par classe
