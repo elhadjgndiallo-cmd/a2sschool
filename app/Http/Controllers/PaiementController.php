@@ -523,6 +523,26 @@ public function store(Request $request)
     }
 
     /**
+     * Générer un reçu à partir d'une entrée comptable
+     */
+    public function genererRecuFromEntree(Entree $entree)
+    {
+        // Trouver le paiement correspondant à cette entrée
+        $paiement = Paiement::where('reference_paiement', $entree->reference)
+            ->where('montant_paye', $entree->montant)
+            ->where('date_paiement', $entree->date_entree)
+            ->where('encaisse_par', $entree->enregistre_par)
+            ->first();
+        
+        if (!$paiement) {
+            return redirect()->back()->with('error', 'Aucun paiement correspondant trouvé pour cette entrée.');
+        }
+        
+        // Utiliser la méthode existante pour générer le reçu
+        return $this->genererRecu($paiement->fraisScolarite, $paiement);
+    }
+
+    /**
      * Créer automatiquement une entrée comptable pour un paiement
      */
     private function creerEntreeComptable(Paiement $paiement, FraisScolarite $frais)
@@ -530,13 +550,49 @@ public function store(Request $request)
         $eleve = $frais->eleve;
         $classe = $eleve->classe;
         
+        // Déterminer le type de frais
+        $typeFrais = ucfirst($frais->type_frais);
+        if ($frais->type_frais == 'scolarite') {
+            $typeFrais = 'Scolarité';
+        } elseif ($frais->type_frais == 'inscription') {
+            $typeFrais = 'Inscription';
+        } elseif ($frais->type_frais == 'reinscription') {
+            $typeFrais = 'Réinscription';
+        }
+        
+        // Créer le libellé simplifié
+        $libelle = "{$typeFrais} - {$eleve->numero_etudiant}";
+        if ($paiement->reference_paiement) {
+            $libelle .= " - Ref: {$paiement->reference_paiement}";
+        }
+        
+        // Déterminer la source selon le type de frais
+        $source = 'Paiements scolaires'; // Par défaut
+        if ($frais->type_frais == 'scolarite') {
+            $source = 'Scolarité';
+        } elseif ($frais->type_frais == 'inscription') {
+            $source = 'Inscription';
+        } elseif ($frais->type_frais == 'reinscription') {
+            $source = 'Réinscription';
+        } elseif ($frais->type_frais == 'transport') {
+            $source = 'Transport';
+        } elseif ($frais->type_frais == 'cantine') {
+            $source = 'Cantine';
+        } elseif ($frais->type_frais == 'uniforme') {
+            $source = 'Uniforme';
+        } elseif ($frais->type_frais == 'livres') {
+            $source = 'Livres';
+        } elseif ($frais->type_frais == 'autres') {
+            $source = 'Autres frais';
+        }
+        
         // Créer l'entrée comptable
         Entree::create([
-            'libelle' => "Paiement frais de scolarité - {$eleve->utilisateur->nom} ({$classe->nom})",
+            'libelle' => $libelle,
             'description' => "Paiement de {$paiement->montant_paye} GNF pour les frais de scolarité de l'élève {$eleve->utilisateur->nom} de la classe {$classe->nom}. Référence paiement: {$paiement->reference_paiement}",
             'montant' => $paiement->montant_paye,
             'date_entree' => $paiement->date_paiement,
-            'source' => 'Paiements scolaires',
+            'source' => $source,
             'mode_paiement' => $paiement->mode_paiement,
             'reference' => $paiement->reference_paiement,
             'enregistre_par' => $paiement->encaisse_par

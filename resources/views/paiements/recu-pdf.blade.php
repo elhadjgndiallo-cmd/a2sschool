@@ -328,6 +328,10 @@
                             <span class="info-value">{{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }}</span>
                         </div>
                         <div class="info-item">
+                            <span class="info-label">Matricule :</span>
+                            <span class="info-value"><strong>{{ $frais->eleve->numero_etudiant ?? 'N/A' }}</strong></span>
+                        </div>
+                        <div class="info-item">
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $frais->eleve->classe->nom ?? 'Non assignée' }}</span>
                         </div>

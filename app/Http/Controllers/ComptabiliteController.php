@@ -71,6 +71,7 @@ class ComptabiliteController extends Controller
      */
     public function entrees(Request $request)
     {
+        // Récupérer les entrées manuelles
         $query = Entree::with('enregistrePar');
         
         // Filtres
@@ -86,12 +87,105 @@ class ComptabiliteController extends Controller
             $query->where('source', $request->source);
         }
         
-        $entrees = $query->orderBy('date_entree', 'desc')->paginate(20);
+        $entrees = $query->orderBy('date_entree', 'desc')->get();
+
+        // Récupérer les paiements de frais de scolarité
+        $paiementsFrais = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+            ->whereHas('fraisScolarite')
+            ->orderBy('date_paiement', 'desc')
+            ->get();
+
+        // Combiner les deux collections et créer une pagination unifiée
+        $allEntries = collect();
+        
+        // Ajouter les entrées manuelles avec un type
+        foreach ($entrees as $entree) {
+            $allEntries->push((object) [
+                'id' => 'entree_' . $entree->id,
+                'type' => 'entree',
+                'date' => $entree->date_entree,
+                'description' => $entree->description,
+                'montant' => $entree->montant,
+                'source' => $entree->source,
+                'enregistre_par' => $entree->enregistrePar,
+                'data' => $entree
+            ]);
+        }
+        
+        // Ajouter les paiements de frais de scolarité avec un type
+        // MAIS seulement s'ils n'ont pas déjà d'entrée comptable correspondante
+        foreach ($paiementsFrais as $paiement) {
+            // Récupérer l'entrée comptable correspondante (plus flexible)
+            $entreeComptable = Entree::whereIn('source', ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'])
+                ->where('montant', $paiement->montant_paye)
+                ->where('date_entree', $paiement->date_paiement)
+                ->where('enregistre_par', $paiement->encaisse_par)
+                ->first();
+            
+            // Si pas trouvé par les critères stricts, essayer par référence
+            if (!$entreeComptable && $paiement->reference_paiement) {
+                $entreeComptable = Entree::where('reference', $paiement->reference_paiement)
+                    ->whereIn('source', ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'])
+                    ->where('montant', $paiement->montant_paye)
+                    ->first();
+            }
+            
+            // Si une entrée comptable existe déjà, ne pas ajouter le paiement pour éviter les doublons
+            if ($entreeComptable) {
+                continue;
+            }
+            
+            $description = 'Paiement de ' . number_format($paiement->montant_paye, 0, ',', ' ') . ' GNF pour les frais de scolarité';
+            $source = 'Frais de scolarité';
+            
+            // Appliquer le filtre de source si spécifié
+            if ($request->filled('source') && $source !== $request->source) {
+                continue; // Ignorer ce paiement s'il ne correspond pas au filtre
+            }
+            
+            $allEntries->push((object) [
+                'id' => 'paiement_' . $paiement->id,
+                'type' => 'paiement',
+                'date' => $paiement->date_paiement,
+                'description' => $description,
+                'montant' => $paiement->montant_paye,
+                'source' => $source,
+                'enregistre_par' => $paiement->encaissePar,
+                'data' => $paiement
+            ]);
+        }
+        
+        // Trier par date décroissante
+        $allEntries = $allEntries->sortByDesc('date');
+        
+        // Créer une pagination manuelle
+        $perPage = 20;
+        $currentPage = request()->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = $allEntries->slice($offset, $perPage);
+        
+        // Créer un objet de pagination personnalisé
+        $paginatedEntries = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $allEntries->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => request()->url(),
+                'pageName' => 'page',
+            ]
+        );
+        
+        // Ajouter les paramètres de requête à la pagination
+        $paginatedEntries->appends(request()->query());
         
         // Statistiques des entrées
         $statsEntrees = $this->getStatsEntrees($request);
         
-        return view('comptabilite.entrees', compact('entrees', 'statsEntrees'));
+        // Sources disponibles pour les filtres
+        $sources = Entree::select('source')->distinct()->orderBy('source')->pluck('source');
+        
+        return view('comptabilite.entrees', compact('paginatedEntries', 'statsEntrees', 'sources'));
     }
 
     /**

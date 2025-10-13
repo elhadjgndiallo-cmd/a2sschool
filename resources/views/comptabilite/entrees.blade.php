@@ -49,10 +49,11 @@
                                 <label for="source" class="form-label">Source</label>
                                 <select class="form-select" id="source" name="source">
                                     <option value="">Toutes les sources</option>
-                                    <option value="Paiements scolaires" {{ request('source') == 'Paiements scolaires' ? 'selected' : '' }}>Paiements scolaires</option>
-                                    <option value="Dons" {{ request('source') == 'Dons' ? 'selected' : '' }}>Dons</option>
-                                    <option value="Subventions" {{ request('source') == 'Subventions' ? 'selected' : '' }}>Subventions</option>
-                                    <option value="Autres" {{ request('source') == 'Autres' ? 'selected' : '' }}>Autres</option>
+                                    @foreach($sources as $source)
+                                        <option value="{{ $source }}" {{ request('source') == $source ? 'selected' : '' }}>
+                                            {{ $source }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3 d-flex align-items-end">
@@ -108,7 +109,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    @if($entrees->count() > 0)
+                    @if($paginatedEntries->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead>
@@ -116,38 +117,36 @@
                                         <th>Date</th>
                                         <th>Libellé</th>
                                         <th>Source</th>
-                                        <th class="text-end">Montant</th>
+                                        <th class="text-end" style="width: 150px;">Montant</th>
                                         <th>Enregistré par</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($entrees as $entree)
+                                    @foreach($paginatedEntries as $entry)
                                         <tr>
                                             <td>
                                                 <i class="fas fa-calendar text-muted me-1"></i>
-                                                {{ $entree->date_entree->format('d/m/Y') }}
+                                                {{ $entry->date->format('d/m/Y') }}
                                             </td>
                                             <td>
-                                                <strong>{{ $entree->libelle }}</strong>
-                                                @if($entree->description)
-                                                    <br><small class="text-muted">{{ Str::limit($entree->description, 50) }}</small>
-                                                @endif
+                                                <strong>{{ $entry->description }}</strong>
+                                                <br><small class="text-muted">{{ $entry->source }}</small>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ $entree->source == 'Paiements scolaires' ? 'primary' : ($entree->source == 'Dons' ? 'success' : 'info') }}">
-                                                    {{ $entree->source }}
+                                                <span class="badge bg-{{ $entry->type == 'entree' ? 'info' : 'primary' }}">
+                                                    {{ $entry->source }}
                                                 </span>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end" style="width: 150px;">
                                                 <strong class="text-success">
-                                                    {{ number_format($entree->montant, 0, ',', ' ') }} GNF
+                                                    {{ number_format($entry->montant, 0, ',', ' ') }} GNF
                                                 </strong>
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    @if($entree->enregistrePar->photo_profil)
-                                                        <img src="{{ asset('storage/' . $entree->enregistrePar->photo_profil) }}" 
+                                                    @if($entry->enregistre_par && $entry->enregistre_par->photo_profil)
+                                                        <img src="{{ asset('storage/' . $entry->enregistre_par->photo_profil) }}" 
                                                              alt="Photo" class="rounded-circle me-2" 
                                                              style="width: 30px; height: 30px; object-fit: cover;">
                                                     @else
@@ -157,28 +156,46 @@
                                                         </div>
                                                     @endif
                                                     <div>
-                                                        <div class="fw-bold">{{ $entree->enregistrePar->nom }} {{ $entree->enregistrePar->prenom }}</div>
-                                                        <small class="text-muted">{{ ucfirst($entree->enregistrePar->role) }}</small>
+                                                        <div class="fw-bold">{{ $entry->enregistre_par->nom ?? 'N/A' }} {{ $entry->enregistre_par->prenom ?? '' }}</div>
+                                                        <small class="text-muted">{{ ucfirst($entry->enregistre_par->role ?? 'Système') }}</small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <a href="{{ route('entrees.show', $entree) }}" class="btn btn-outline-primary" title="Voir">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('entrees.edit', $entree) }}" class="btn btn-outline-warning" title="Modifier">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <form method="POST" action="{{ route('entrees.destroy', $entree) }}" 
-                                                          style="display: inline;" 
-                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    @if($entry->type == 'entree' && !in_array($entry->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']))
+                                                        <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('entrees.edit', $entry->data) }}" class="btn btn-outline-warning" title="Modifier">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form method="POST" action="{{ route('entrees.destroy', $entry->data) }}" 
+                                                              style="display: inline;" 
+                                                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-outline-danger" title="Supprimer">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    @elseif($entry->type == 'paiement')
+                                                        <a href="{{ route('paiements.show', $entry->data->fraisScolarite) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('paiements.recu', $entry->data->fraisScolarite) }}" class="btn btn-outline-success" title="Reçu">
+                                                            <i class="fas fa-receipt"></i>
+                                                        </a>
+                                                    @else
+                                                        <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        @if(in_array($entry->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']))
+                                                            <a href="{{ route('entrees.recu', $entry->data) }}" class="btn btn-outline-success" title="Reçu">
+                                                                <i class="fas fa-receipt"></i>
+                                                            </a>
+                                                        @endif
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -187,16 +204,62 @@
                             </table>
                         </div>
 
-                        <!-- Pagination -->
+                        <!-- Pagination Simple -->
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <div>
                                 <small class="text-muted">
-                                    Affichage de {{ $entrees->firstItem() }} à {{ $entrees->lastItem() }} 
-                                    sur {{ $entrees->total() }} entrées
+                                    Affichage de {{ $paginatedEntries->firstItem() }} à {{ $paginatedEntries->lastItem() }} 
+                                    sur {{ $paginatedEntries->total() }} entrées
                                 </small>
                             </div>
                             <div>
-                                {{ $entrees->links() }}
+                                <nav aria-label="Pagination">
+                                    <ul class="pagination pagination-simple">
+                                        <!-- Bouton Précédent -->
+                                        @if($paginatedEntries->currentPage() > 1)
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $paginatedEntries->previousPageUrl() }}" aria-label="Précédent">
+                                                    <i class="fas fa-chevron-left"></i> Précédent
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="fas fa-chevron-left"></i> Précédent
+                                                </span>
+                                            </li>
+                                        @endif
+
+                                        <!-- Numéros de pages -->
+                                        @php
+                                            $currentPage = $paginatedEntries->currentPage();
+                                            $lastPage = $paginatedEntries->lastPage();
+                                            $start = max(1, $currentPage - 2);
+                                            $end = min($lastPage, $currentPage + 2);
+                                        @endphp
+
+                                        @for($i = $start; $i <= $end; $i++)
+                                            <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                                                <a class="page-link" href="{{ $paginatedEntries->url($i) }}">{{ $i }}</a>
+                                            </li>
+                                        @endfor
+
+                                        <!-- Bouton Suivant -->
+                                        @if($paginatedEntries->hasMorePages())
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $paginatedEntries->nextPageUrl() }}" aria-label="Suivant">
+                                                    Suivant <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Suivant <i class="fas fa-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     @else

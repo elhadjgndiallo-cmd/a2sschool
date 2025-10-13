@@ -22,6 +22,8 @@
     <link href="{{ asset('css/image-display.css') }}" rel="stylesheet">
     <!-- CSS pour la pagination -->
     <link href="{{ asset('css/pagination.css') }}" rel="stylesheet">
+    <!-- CSS pour la pagination simple -->
+    <link href="{{ asset('css/pagination-simple.css') }}" rel="stylesheet">
     
     <style>
         /* Règles globales pour empêcher les gros chevrons */
