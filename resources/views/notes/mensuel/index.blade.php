@@ -46,7 +46,7 @@
                                 </h6>
                                 <p class="card-text text-muted small">
                                     <i class="fas fa-users me-1"></i>
-                                    {{ $classe->effectif_actuel }} élèves
+                                    {{ $classe->eleves->count() }} élèves
                                 </p>
                                 <div class="mt-auto">
                                     <div class="btn-group w-100" role="group">

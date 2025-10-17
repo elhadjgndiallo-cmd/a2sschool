@@ -120,13 +120,15 @@ use Illuminate\Support\Facades\Storage;
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="nom" class="form-label">Nom <span class="text-danger">*</span></label>
-                             <input type="text" class="form-control" id="nom" name="nom" 
-                                    value="{{ old('nom', $enseignant->utilisateur->nom) }}">
+                            <input type="text" class="form-control" id="nom" name="nom" 
+                                   value="{{ old('nom', $enseignant->utilisateur->nom) }}" 
+                                   required minlength="2" maxlength="255">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="prenom" class="form-label">Prénom <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="prenom" name="prenom" 
-                                   value="{{ old('prenom', $enseignant->utilisateur->prenom) }}">
+                                   value="{{ old('prenom', $enseignant->utilisateur->prenom) }}" 
+                                   required minlength="2" maxlength="255">
                         </div>
                     </div>
                     
@@ -134,12 +136,14 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-6 mb-3">
                             <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control" id="email" name="email" 
-                                   value="{{ old('email', $enseignant->utilisateur->email) }}">
+                                   value="{{ old('email', $enseignant->utilisateur->email) }}" 
+                                   required maxlength="191">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="telephone" class="form-label">Téléphone <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="telephone" name="telephone" 
-                                   value="{{ old('telephone', $enseignant->utilisateur->telephone) }}">
+                            <input type="tel" class="form-control" id="telephone" name="telephone" 
+                                   value="{{ old('telephone', $enseignant->utilisateur->telephone) }}" 
+                                   maxlength="20" pattern="[0-9+\-\s()]+">
                         </div>
                     </div>
                     
@@ -152,7 +156,8 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-4 mb-3">
                             <label for="date_naissance" class="form-label">Date de naissance <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="date_naissance" name="date_naissance" 
-                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance->format('Y-m-d')) }}">
+                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance->format('Y-m-d')) }}" 
+                                   required max="{{ date('Y-m-d', strtotime('-1 day')) }}">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="lieu_naissance" class="form-label">Lieu de naissance <span class="text-danger">*</span></label>
@@ -161,7 +166,7 @@ use Illuminate\Support\Facades\Storage;
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="sexe" class="form-label">Sexe <span class="text-danger">*</span></label>
-                            <select class="form-select" id="sexe" name="sexe">
+                            <select class="form-select" id="sexe" name="sexe" required>
                                 <option value="">Sélectionner...</option>
                                 <option value="M" {{ old('sexe', $enseignant->utilisateur->sexe) == 'M' ? 'selected' : '' }}>Masculin</option>
                                 <option value="F" {{ old('sexe', $enseignant->utilisateur->sexe) == 'F' ? 'selected' : '' }}>Féminin</option>
@@ -197,7 +202,8 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-6 mb-3">
                             <label for="date_embauche" class="form-label">Date d'embauche <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="date_embauche" name="date_embauche" 
-                                   value="{{ old('date_embauche', $enseignant->date_embauche->format('Y-m-d')) }}">
+                                   value="{{ old('date_embauche', $enseignant->date_embauche->format('Y-m-d')) }}" 
+                                   max="{{ date('Y-m-d') }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="statut" class="form-label">Statut <span class="text-danger">*</span></label>
@@ -258,7 +264,7 @@ use Illuminate\Support\Facades\Storage;
                             <i class="fas fa-arrow-left me-2"></i>
                             Retour à la liste
                         </a>
-                        <button type="submit" class="btn btn-success btn-lg" onclick="return handleFormSubmit(this);">
+                        <button type="submit" class="btn btn-success btn-lg">
                             <i class="fas fa-save me-2"></i>
                             Mettre à jour l'enseignant
                         </button>
@@ -272,28 +278,6 @@ use Illuminate\Support\Facades\Storage;
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Validation simple du formulaire
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            // Vérifier les champs requis
-            const requiredFields = form.querySelectorAll('[required]');
-            let missingFields = [];
-            
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    missingFields.push(field.name || field.id);
-                }
-            });
-            
-            if (missingFields.length > 0) {
-                e.preventDefault();
-                alert('Veuillez remplir tous les champs requis: ' + missingFields.join(', '));
-                return false;
-            }
-        });
-    }
-});
+// JavaScript supprimé - le bouton fonctionne maintenant de manière normale
 </script>
 @endpush

@@ -907,33 +907,57 @@ class NoteController extends Controller
         // Récupérer l'année scolaire active
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+        
         if ($user->isAdmin() || $user->role === 'personnel_admin') {
-            // Admin et Personnel Admin voient toutes les classes
+            // Admin et Personnel Admin voient toutes les classes avec élèves de l'année active
             $classes = Classe::actif()
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                          ->where('actif', true);
+                })
                 ->with(['eleves' => function($query) use ($anneeScolaireActive) {
-                    if ($anneeScolaireActive) {
-                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-                    }
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                          ->where('actif', true)
+                          ->with('utilisateur')
+                          ->orderBy('id', 'asc');
                 }])
+                ->orderBy('id', 'asc')
                 ->get();
         } else if ($user->isTeacher()) {
-            // Enseignant voit seulement ses classes
+            // Enseignant voit seulement ses classes avec élèves de l'année active
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id);
                 })
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                          ->where('actif', true);
+                })
                 ->with(['eleves' => function($query) use ($anneeScolaireActive) {
-                    if ($anneeScolaireActive) {
-                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-                    }
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                          ->where('actif', true)
+                          ->with('utilisateur')
+                          ->orderBy('id', 'asc');
                 }])
+                ->orderBy('id', 'asc')
                 ->get();
         } else {
             $classes = collect();
         }
 
-        return view('notes.mensuel.index', compact('classes'));
+        // Mettre à jour l'effectif actuel de chaque classe
+        foreach ($classes as $classe) {
+            $classe->updateEffectifActuel();
+        }
+
+        // Vider le cache pour s'assurer d'avoir les données les plus récentes
+        \Cache::forget('classes_with_students_' . $anneeScolaireActive->id);
+
+        return view('notes.mensuel.index', compact('classes', 'anneeScolaireActive'));
     }
 
     /**
@@ -977,7 +1001,9 @@ class NoteController extends Controller
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         $eleves = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('actif', true)
             ->with('utilisateur')
+            ->orderBy('id', 'asc')
             ->get();
             
         // Mettre à jour l'effectif actuel de la classe
@@ -1026,7 +1052,9 @@ class NoteController extends Controller
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         $eleves = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('actif', true)
             ->with('utilisateur')
+            ->orderBy('id', 'asc')
             ->get();
             
         // Mettre à jour l'effectif actuel de la classe

@@ -235,12 +235,31 @@ class EnseignantController extends Controller
         \Log::info('=== DÉBUT MISE À JOUR ENSEIGNANT ===', [
             'enseignant_id' => $enseignant->id,
             'user_id' => auth()->id(),
-            'user_role' => auth()->user()->role,
-            'user_email' => auth()->user()->email,
+            'user_role' => auth()->user() ? auth()->user()->role : 'NULL',
+            'user_email' => auth()->user() ? auth()->user()->email : 'NULL',
             'request_method' => $request->method(),
             'request_url' => $request->url(),
-            'request_data' => $request->all()
+            'request_data' => $request->all(),
+            'session_id' => session()->getId(),
+            'auth_check' => auth()->check()
         ]);
+        
+        // Vérifier l'authentification
+        if (!auth()->check()) {
+            \Log::warning('Utilisateur non authentifié lors de la mise à jour enseignant', [
+                'enseignant_id' => $enseignant->id,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'session_id' => session()->getId()
+            ]);
+            
+            // Forcer la déconnexion
+            auth()->logout();
+            session()->invalidate();
+            session()->regenerateToken();
+            
+            return redirect()->route('enseignants.index')->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
+        }
         
         // Debug: Afficher un message dans la réponse
         session()->flash('debug', 'Méthode update appelée avec succès !');
@@ -252,27 +271,51 @@ class EnseignantController extends Controller
                 'user_id' => auth()->id(),
                 'user_role' => auth()->user()->role
             ]);
-            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+            return redirect()->route('enseignants.index')->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
         
         $enseignant->load('utilisateur');
         
         $request->validate([
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
+            'nom' => 'required|string|max:255|min:2',
+            'prenom' => 'required|string|max:255|min:2',
             'email' => 'required|email|max:191|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
-            'telephone' => 'nullable|string|max:20',
-            'adresse' => 'nullable|string',
-            'date_naissance' => 'required|date',
+            'telephone' => 'nullable|string|max:20|regex:/^[0-9+\-\s()]+$/',
+            'adresse' => 'nullable|string|max:500',
+            'date_naissance' => 'required|date|before:today',
             'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'required|in:M,F',
-            'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'numero_employe' => 'nullable|string|max:50|unique:enseignants,numero_employe,' . $enseignant->id,
             'specialite' => 'nullable|string|max:255',
-            'date_embauche' => 'nullable|date',
+            'date_embauche' => 'nullable|date|before_or_equal:today',
             'statut' => 'required|in:titulaire,contractuel,vacataire',
             'matieres' => 'nullable|array',
             'matieres.*' => 'exists:matieres,id',
+        ], [
+            'nom.required' => 'Le nom est obligatoire.',
+            'nom.min' => 'Le nom doit contenir au moins 2 caractères.',
+            'prenom.required' => 'Le prénom est obligatoire.',
+            'prenom.min' => 'Le prénom doit contenir au moins 2 caractères.',
+            'email.required' => 'L\'email est obligatoire.',
+            'email.email' => 'L\'email doit être valide.',
+            'email.unique' => 'Cet email est déjà utilisé.',
+            'telephone.regex' => 'Le numéro de téléphone n\'est pas valide.',
+            'date_naissance.required' => 'La date de naissance est obligatoire.',
+            'date_naissance.date' => 'La date de naissance doit être valide.',
+            'date_naissance.before' => 'La date de naissance doit être antérieure à aujourd\'hui.',
+            'sexe.required' => 'Le sexe est obligatoire.',
+            'sexe.in' => 'Le sexe doit être Masculin ou Féminin.',
+            'photo_profil.image' => 'Le fichier doit être une image.',
+            'photo_profil.mimes' => 'L\'image doit être au format jpeg, png, jpg, gif ou svg.',
+            'photo_profil.max' => 'L\'image ne doit pas dépasser 2MB.',
+            'numero_employe.unique' => 'Ce numéro d\'employé est déjà utilisé.',
+            'date_embauche.date' => 'La date d\'embauche doit être valide.',
+            'date_embauche.before_or_equal' => 'La date d\'embauche ne peut pas être future.',
+            'statut.required' => 'Le statut est obligatoire.',
+            'statut.in' => 'Le statut doit être titulaire, contractuel ou vacataire.',
+            'matieres.array' => 'Les matières doivent être sélectionnées correctement.',
+            'matieres.*.exists' => 'Une ou plusieurs matières sélectionnées n\'existent pas.',
         ]);
 
         try {
@@ -333,23 +376,27 @@ class EnseignantController extends Controller
             return redirect()->route('enseignants.index')
                 ->with('success', 'Enseignant mis à jour avec succès');
                 
-        } catch (\Exception $e) {
-            // Afficher l'erreur complète
-            $errorMessage = 'Erreur lors de la mise à jour: ' . $e->getMessage();
-            $errorMessage .= '<br><strong>Fichier:</strong> ' . $e->getFile();
-            $errorMessage .= '<br><strong>Ligne:</strong> ' . $e->getLine();
-            $errorMessage .= '<br><strong>Trace:</strong><br><pre>' . $e->getTraceAsString() . '</pre>';
-            
-            \Log::error('Erreur mise à jour enseignant', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Gestion spécifique des erreurs de validation
+            \Log::warning('Erreur de validation lors de la mise à jour enseignant', [
+                'enseignant_id' => $enseignant->id,
+                'errors' => $e->errors()
             ]);
             
             return redirect()->back()
-                ->with('error', $errorMessage)
+                ->withErrors($e->errors())
                 ->withInput();
+                
+        } catch (\Exception $e) {
+            // Gestion des autres erreurs
+            \Log::error('Erreur lors de la mise à jour enseignant', [
+                'enseignant_id' => $enseignant->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('enseignants.index')
+                ->with('error', 'Erreur lors de la mise à jour de l\'enseignant. Veuillez réessayer.');
         }
     }
 

@@ -279,7 +279,7 @@ Route::middleware('auth')->group(function () {
         // Routes génériques pour les enseignants
         Route::get('enseignants/{enseignant}', [EnseignantController::class, 'show'])->name('enseignants.show')->middleware('check.permission:enseignants.view');
         Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
-        Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware('check.permission:enseignants.edit');
+        Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware(['ensure.authenticated', 'check.permission:enseignants.edit']);
         Route::put('enseignants/{enseignant}/simple', [\App\Http\Controllers\EnseignantControllerSimple::class, 'updateSimple'])->name('enseignants.update-simple');
         
         // Route de test temporaire sans middleware
@@ -294,10 +294,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/enseignants/{enseignant}/reactivate', [EnseignantController::class, 'reactivate'])->name('enseignants.reactivate')->middleware('check.permission:enseignants.edit');
     });
     
-// Route de test complètement libre (en dehors de tout middleware)
-Route::put('test-update-simple/{enseignant}', [EnseignantController::class, 'update'])->name('test.update.simple');
-Route::post('test-update-simple/{enseignant}', [EnseignantController::class, 'update'])->name('test.update.simple.post');
-Route::get('test-update-simple/{enseignant}', [EnseignantController::class, 'update'])->name('test.update.simple.get');
+// Routes de test supprimées
 
 // Route de test pour l'emploi du temps (sans middleware de permission)
 Route::get('/test-emploi-temps/{classe}', function(App\Models\Classe $classe) {
