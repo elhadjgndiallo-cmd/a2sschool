@@ -36,6 +36,17 @@
                     <form method="GET" action="{{ route('comptabilite.sorties') }}">
                         <div class="row">
                             <div class="col-md-3 mb-3">
+                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
+                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
+                                    @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
+                                    @foreach($annees as $annee)
+                                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }}>
+                                            {{ $annee->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label for="date_debut" class="form-label">Date de début</label>
                                 <input type="date" class="form-control" id="date_debut" name="date_debut" 
                                        value="{{ request('date_debut') }}">

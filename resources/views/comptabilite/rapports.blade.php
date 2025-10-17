@@ -36,6 +36,17 @@
                     <form method="GET" action="{{ route('comptabilite.rapports') }}">
                         <div class="row">
                             <div class="col-md-4 mb-3">
+                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
+                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
+                                    @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
+                                    @foreach($annees as $annee)
+                                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }} data-start="{{ $annee->date_debut->format('Y-m-d') }}" data-end="{{ $annee->date_fin->format('Y-m-d') }}">
+                                            {{ $annee->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
                                 <label for="date_debut" class="form-label">Date de début</label>
                                 <input type="date" class="form-control" id="date_debut" name="date_debut" 
                                        value="{{ request('date_debut', $dateDebut->format('Y-m-d')) }}">
@@ -233,6 +244,22 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Synchroniser dates avec l'année scolaire choisie
+    document.addEventListener('DOMContentLoaded', function() {
+        const yearSelect = document.getElementById('annee_scolaire_id');
+        const start = document.getElementById('date_debut');
+        const end = document.getElementById('date_fin');
+        if (yearSelect && start && end) {
+            const applyRange = () => {
+                const opt = yearSelect.options[yearSelect.selectedIndex];
+                const s = opt.getAttribute('data-start');
+                const e = opt.getAttribute('data-end');
+                if (s) start.value = s;
+                if (e) end.value = e;
+            };
+            yearSelect.addEventListener('change', applyRange);
+        }
+    });
     // Graphique des revenus par type
     const revenusCtx = document.getElementById('revenusChart').getContext('2d');
     new Chart(revenusCtx, {

@@ -8,6 +8,7 @@ use App\Models\Eleve;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\Enseignant;
+use App\Models\TestMensuel;
 use Illuminate\Support\Facades\DB;
 
 class NoteController extends Controller
@@ -889,5 +890,519 @@ class NoteController extends Controller
             'success' => true,
             'message' => 'Période scolaire supprimée avec succès'
         ]);
+    }
+
+    /**
+     * Afficher la page d'accueil des tests mensuels
+     */
+    public function mensuelIndex()
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $user = auth()->user();
+        
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        if ($user->isAdmin() || $user->role === 'personnel_admin') {
+            // Admin et Personnel Admin voient toutes les classes
+            $classes = Classe::actif()
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                }])
+                ->get();
+        } else if ($user->isTeacher()) {
+            // Enseignant voit seulement ses classes
+            $enseignant = $user->enseignant;
+            $classes = Classe::actif()
+                ->whereHas('emploisTemps', function($query) use ($enseignant) {
+                    $query->where('enseignant_id', $enseignant->id);
+                })
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    }
+                }])
+                ->get();
+        } else {
+            $classes = collect();
+        }
+
+        return view('notes.mensuel.index', compact('classes'));
+    }
+
+    /**
+     * Afficher les tests mensuels d'une classe
+     */
+    public function mensuelClasse(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Vider le cache pour s'assurer que les données sont à jour
+        \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
+
+        // Récupérer les tests mensuels de la classe pour le mois/année sélectionnés
+        $tests = TestMensuel::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+            ->parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->orderBy('eleve_id')
+            ->orderBy('matiere_id')
+            ->get();
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+            
+        // Mettre à jour l'effectif actuel de la classe
+        $classe->updateEffectifActuel();
+
+        // Récupérer les matières de la classe
+        $matieres = $classe->matieres()->get();
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.classe', compact('classe', 'tests', 'eleves', 'matieres', 'mois', 'annee', 'moisListe'));
+    }
+
+    /**
+     * Afficher le formulaire de saisie des tests mensuels
+     */
+    public function mensuelSaisir(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+            
+        // Mettre à jour l'effectif actuel de la classe
+        $classe->updateEffectifActuel();
+
+        // Récupérer les enseignants selon le rôle de l'utilisateur
+        if ($user->isTeacher()) {
+            // Enseignant voit seulement lui-même
+            $enseignants = collect([$user->enseignant])->filter();
+        } else {
+            // Admin et Personnel Admin voient tous les enseignants de la classe
+            $enseignants = \App\Models\Enseignant::with(['utilisateur', 'emploisTemps.matiere'])
+                ->whereHas('emploisTemps', function($query) use ($classe) {
+                    $query->where('classe_id', $classe->id)
+                          ->where('actif', true);
+                })
+                ->get();
+        }
+
+        // Récupérer toutes les matières actives (pas seulement celles de la classe)
+        $matieres = \App\Models\Matiere::where('actif', true)->orderBy('nom')->get();
+
+        // Récupérer les tests existants pour éviter les doublons
+        $testsExistants = TestMensuel::parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->get()
+            ->keyBy(function($test) {
+                return $test->eleve_id . '_' . $test->matiere_id;
+            });
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.saisir', compact('classe', 'eleves', 'matieres', 'enseignants', 'mois', 'annee', 'moisListe', 'testsExistants'));
+    }
+
+    /**
+     * Enregistrer les tests mensuels
+     */
+    public function mensuelStore(Request $request)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $request->validate([
+            'classe_id' => 'required|exists:classes,id',
+            'mois' => 'required|integer|between:1,12',
+            'annee' => 'required|integer|min:2020|max:2030',
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'matiere_id' => 'required|exists:matieres,id',
+            'notes' => 'required|array',
+            'notes.*.eleve_id' => 'required|exists:eleves,id',
+            'notes.*.note' => 'required|numeric|min:0|max:20',
+            'notes.*.coefficient' => 'required|integer|min:1|max:10'
+        ]);
+
+        $classeId = $request->classe_id;
+        $enseignantId = $request->enseignant_id;
+        $matiereId = $request->matiere_id;
+        $mois = $request->mois;
+        $annee = $request->annee;
+        $createdBy = auth()->id();
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->notes as $noteData) {
+                // Vérifier si un test existe déjà
+                $testExistant = TestMensuel::where('eleve_id', $noteData['eleve_id'])
+                    ->where('matiere_id', $matiereId)
+                    ->where('mois', $mois)
+                    ->where('annee', $annee)
+                    ->first();
+
+                if ($testExistant) {
+                    // Mettre à jour le test existant
+                    $testExistant->update([
+                        'enseignant_id' => $enseignantId,
+                        'note' => $noteData['note'],
+                        'coefficient' => $noteData['coefficient']
+                    ]);
+                } else {
+                    // Créer un nouveau test
+                    TestMensuel::create([
+                        'eleve_id' => $noteData['eleve_id'],
+                        'classe_id' => $classeId,
+                        'matiere_id' => $matiereId,
+                        'enseignant_id' => $enseignantId,
+                        'mois' => $mois,
+                        'annee' => $annee,
+                        'note' => $noteData['note'],
+                        'coefficient' => $noteData['coefficient'],
+                        'created_by' => $createdBy
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Redirection différente selon le rôle
+            if (auth()->user()->isTeacher()) {
+                return redirect()->route('teacher.classes')
+                    ->with('success', 'Tests mensuels enregistrés avec succès');
+            } else {
+                return redirect()->route('notes.mensuel.classe', $classeId)
+                    ->with('success', 'Tests mensuels enregistrés avec succès')
+                    ->with('mois', $mois)
+                    ->with('annee', $annee);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Erreur lors de l\'enregistrement des tests mensuels: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Afficher les résultats des tests mensuels
+     */
+    public function mensuelResultats(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Vider le cache pour s'assurer que les données sont à jour
+        \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
+
+        // Récupérer les tests mensuels de la classe
+        $tests = TestMensuel::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+            ->parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->get();
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+            
+        // Mettre à jour l'effectif actuel de la classe
+        $classe->updateEffectifActuel();
+
+        // Calculer les moyennes et rangs
+        $resultats = [];
+        foreach ($eleves as $eleve) {
+            $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
+            if ($moyenne !== null) {
+                $resultats[] = [
+                    'eleve' => $eleve,
+                    'moyenne' => $moyenne
+                ];
+            }
+        }
+
+        // Trier par moyenne décroissante et calculer les rangs
+        usort($resultats, function($a, $b) {
+            return $b['moyenne'] <=> $a['moyenne'];
+        });
+
+        $rang = 1;
+        foreach ($resultats as &$resultat) {
+            $resultat['rang'] = $rang++;
+        }
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.resultats', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe'));
+    }
+
+    /**
+     * Afficher la version imprimable des résultats
+     */
+    public function mensuelResultatsImprimer(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Vider le cache pour s'assurer que les données sont à jour
+        \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
+
+        // Récupérer les tests mensuels de la classe
+        $tests = TestMensuel::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+            ->parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->get();
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+            
+        // Mettre à jour l'effectif actuel de la classe
+        $classe->updateEffectifActuel();
+
+        // Calculer les moyennes et rangs
+        $resultats = [];
+        foreach ($eleves as $eleve) {
+            $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
+            if ($moyenne !== null) {
+                $resultats[] = [
+                    'eleve' => $eleve,
+                    'moyenne' => $moyenne
+                ];
+            }
+        }
+
+        // Trier par moyenne décroissante et calculer les rangs
+        usort($resultats, function($a, $b) {
+            return $b['moyenne'] <=> $a['moyenne'];
+        });
+
+        $rang = 1;
+        foreach ($resultats as &$resultat) {
+            $resultat['rang'] = $rang++;
+        }
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.resultats-imprimer', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe'));
+    }
+
+    /**
+     * Afficher le formulaire de modification des tests mensuels
+     */
+    public function mensuelModifier(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Vider le cache pour s'assurer que les données sont à jour
+        \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
+
+        // Récupérer les tests mensuels de la classe pour le mois/année sélectionnés
+        $tests = TestMensuel::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+            ->parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->orderBy('eleve_id')
+            ->orderBy('matiere_id')
+            ->get();
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.modifier', compact('classe', 'tests', 'mois', 'annee', 'moisListe'));
+    }
+
+    /**
+     * Mettre à jour un test mensuel
+     */
+    public function mensuelUpdate(Request $request, TestMensuel $test)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $request->validate([
+            'note' => 'required|numeric|min:0|max:20',
+            'coefficient' => 'required|integer|min:1|max:10'
+        ]);
+
+        $test->update([
+            'note' => $request->note,
+            'coefficient' => $request->coefficient
+        ]);
+
+        // Rafraîchir le modèle pour s'assurer que les données sont à jour
+        $test->refresh();
+
+        return redirect()->route('notes.mensuel.modifier', [
+            'classe' => $test->classe_id,
+            'mois' => $test->mois,
+            'annee' => $test->annee
+        ])
+            ->with('success', 'Note modifiée avec succès');
+    }
+
+    /**
+     * Supprimer un test mensuel
+     */
+    public function mensuelDestroy(TestMensuel $test)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $classeId = $test->classe_id;
+        $mois = $test->mois;
+        $annee = $test->annee;
+
+        $test->delete();
+
+        return redirect()->route('notes.mensuel.modifier', [
+            'classe' => $classeId,
+            'mois' => $mois,
+            'annee' => $annee
+        ])
+            ->with('success', 'Note supprimée avec succès');
     }
 }

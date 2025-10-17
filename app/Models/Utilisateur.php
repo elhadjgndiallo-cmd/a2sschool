@@ -248,12 +248,36 @@ class Utilisateur extends Authenticatable
             return $this->personnelAdministration->hasPermission($permission);
         }
         
+        // Permissions pour les enseignants
+        if ($this->role === 'teacher') {
+            return $this->hasTeacherPermission($permission);
+        }
+        
         // Permissions basées sur les rôles pour les événements
         if (str_starts_with($permission, 'evenements.')) {
             return $this->hasEvenementPermission($permission);
         }
         
         return false;
+    }
+
+    /**
+     * Vérifier les permissions spécifiques aux enseignants
+     */
+    private function hasTeacherPermission($permission)
+    {
+        // Permissions de base pour les enseignants
+        $teacherPermissions = [
+            'notes.view',
+            'notes.create',
+            'notes.edit',
+            'eleves.view',
+            'absences.view',
+            'absences.create',
+            'absences.edit'
+        ];
+        
+        return in_array($permission, $teacherPermissions);
     }
 
     /**

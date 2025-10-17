@@ -85,12 +85,34 @@ class EleveController extends Controller
             $query->where('actif', $request->actif === '1');
         }
 
-        // Filtre par matricule
+        // Filtre intelligent par recherche (nom, prénom, matricule)
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            
+            // Si c'est un numéro (matricule), chercher dans numero_etudiant
+            if (is_numeric($searchTerm)) {
+                $query->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%');
+            } else {
+                // Sinon, chercher dans nom, prénom ou matricule
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%')
+                      ->orWhereHas('utilisateur', function($userQuery) use ($searchTerm) {
+                          $userQuery->where(function($subQuery) use ($searchTerm) {
+                              $subQuery->where('nom', 'LIKE', '%' . $searchTerm . '%')
+                                       ->orWhere('prenom', 'LIKE', '%' . $searchTerm . '%')
+                                       ->orWhere('name', 'LIKE', '%' . $searchTerm . '%');
+                          });
+                      });
+                });
+            }
+        }
+
+        // Filtre par matricule (pour compatibilité)
         if ($request->filled('matricule')) {
             $query->where('numero_etudiant', 'LIKE', '%' . $request->matricule . '%');
         }
 
-        // Filtre par nom complet (recherche dans nom et prénom)
+        // Filtre par nom complet (pour compatibilité)
         if ($request->filled('nom_complet')) {
             $searchTerm = $request->nom_complet;
             $query->whereHas('utilisateur', function($q) use ($searchTerm) {
@@ -1579,12 +1601,34 @@ class EleveController extends Controller
             $query->where('actif', $request->actif === '1');
         }
 
-        // Filtre par matricule
+        // Filtre intelligent par recherche (nom, prénom, matricule)
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            
+            // Si c'est un numéro (matricule), chercher dans numero_etudiant
+            if (is_numeric($searchTerm)) {
+                $query->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%');
+            } else {
+                // Sinon, chercher dans nom, prénom ou matricule
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%')
+                      ->orWhereHas('utilisateur', function($userQuery) use ($searchTerm) {
+                          $userQuery->where(function($subQuery) use ($searchTerm) {
+                              $subQuery->where('nom', 'LIKE', '%' . $searchTerm . '%')
+                                       ->orWhere('prenom', 'LIKE', '%' . $searchTerm . '%')
+                                       ->orWhere('name', 'LIKE', '%' . $searchTerm . '%');
+                          });
+                      });
+                });
+            }
+        }
+
+        // Filtre par matricule (pour compatibilité)
         if ($request->filled('matricule')) {
             $query->where('numero_etudiant', 'LIKE', '%' . $request->matricule . '%');
         }
 
-        // Filtre par nom complet (recherche dans nom et prénom)
+        // Filtre par nom complet (pour compatibilité)
         if ($request->filled('nom_complet')) {
             $nomComplet = $request->nom_complet;
             $query->whereHas('utilisateur', function($q) use ($nomComplet) {

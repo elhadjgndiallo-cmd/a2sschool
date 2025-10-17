@@ -16,6 +16,11 @@ class AbsenceController extends Controller
      */
     public function index()
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('absences.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les absences.');
+        }
+        
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
@@ -39,6 +44,11 @@ class AbsenceController extends Controller
      */
     public function saisir($classeId)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('absences.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à saisir des absences.');
+        }
+        
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
@@ -65,6 +75,11 @@ class AbsenceController extends Controller
      */
     public function store(Request $request)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('absences.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à enregistrer des absences.');
+        }
+        
         try {
             $request->validate([
                 'classe_id' => 'required|exists:classes,id',
@@ -117,6 +132,11 @@ class AbsenceController extends Controller
      */
     public function eleveAbsences($eleveId)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('absences.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les absences.');
+        }
+        
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
@@ -153,6 +173,11 @@ class AbsenceController extends Controller
      */
     public function justifier(Request $request, $absenceId)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('absences.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à justifier des absences.');
+        }
+        
         $request->validate([
             'motif' => 'required|string',
             'document_justificatif' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',

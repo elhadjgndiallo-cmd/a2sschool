@@ -142,7 +142,7 @@
                 <h5 class="mb-0">Matières et enseignants</h5>
             </div>
             <div class="card-body p-0">
-                @if(count($classe->emploiTemps) > 0)
+                @if(count($classe->emploisTemps) > 0)
                 <div class="table-responsive">
                     <table class="table table-hover table-striped align-middle mb-0">
                         <thead class="table-light">
@@ -155,7 +155,7 @@
                         <tbody>
                             @php
                                 $matieres = [];
-                                foreach($classe->emploiTemps as $cours) {
+                                foreach($classe->emploisTemps as $cours) {
                                     if (!isset($matieres[$cours->matiere_id])) {
                                         $matieres[$cours->matiere_id] = [
                                             'nom' => $cours->matiere->nom,

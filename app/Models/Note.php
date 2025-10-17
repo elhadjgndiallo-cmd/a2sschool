@@ -127,8 +127,9 @@ class Note extends Model
         foreach ($notes as $note) {
             $noteFinale = $note->calculerNoteFinale();
             if ($noteFinale !== null) {
-                $totalPoints += $noteFinale * $note->coefficient;
-                $totalCoefficients += $note->coefficient;
+                $coefMatiere = $note->matiere ? ($note->matiere->coefficient ?? 1) : 1;
+                $totalPoints += $noteFinale * $coefMatiere;
+                $totalCoefficients += $coefMatiere;
             }
         }
 

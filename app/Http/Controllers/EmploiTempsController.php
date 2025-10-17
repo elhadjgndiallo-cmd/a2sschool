@@ -16,6 +16,7 @@ class EmploiTempsController extends Controller
      */
     public function index()
     {
+        // Vérifier les permissions
         if (!auth()->user()->hasPermission('emplois-temps.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les emplois du temps.');
         }
@@ -47,6 +48,11 @@ class EmploiTempsController extends Controller
      */
     public function show(Classe $classe)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les emplois du temps.');
+        }
+        
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
@@ -76,11 +82,15 @@ class EmploiTempsController extends Controller
      */
     public function store(Request $request)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à créer des emplois du temps.');
+        }
         $validator = Validator::make($request->all(), [
             'classe_id' => 'required|exists:classes,id',
             'matiere_id' => 'required|exists:matieres,id',
             'enseignant_id' => 'required|exists:enseignants,id',
-            'jour' => 'required|in:lundi,mardi,mercredi,jeudi,vendredi,samedi',
+            'jour' => 'required|in:Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi,lundi,mardi,mercredi,jeudi,vendredi,samedi',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'salle' => 'nullable|string|max:50'
@@ -94,7 +104,7 @@ class EmploiTempsController extends Controller
         if (!$request->has('force') || !$request->force) {
             // D'abord, vérifier s'il y a un conflit avec la même matière (même horaire exact)
             $memeMatiereConflit = EmploiTemps::where('classe_id', $request->classe_id)
-                ->where('jour_semaine', $request->jour)
+                ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', $request->matiere_id)
                 ->where('heure_debut', $request->heure_debut)
                 ->where('heure_fin', $request->heure_fin)
@@ -109,7 +119,7 @@ class EmploiTempsController extends Controller
             
             // Vérifier s'il y a un conflit d'horaire avec une matière différente
             $conflit = EmploiTemps::where('classe_id', $request->classe_id)
-                ->where('jour_semaine', $request->jour)
+                ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
                     // Vérifier si le nouveau créneau chevauche avec un créneau existant
@@ -132,7 +142,7 @@ class EmploiTempsController extends Controller
             if ($conflit) {
             // Récupérer les créneaux en conflit pour donner plus d'informations
             $creneauxConflits = EmploiTemps::where('classe_id', $request->classe_id)
-                ->where('jour_semaine', $request->jour)
+                ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
                     $query->where(function($q) use ($request) {
@@ -169,7 +179,7 @@ class EmploiTempsController extends Controller
         if (!$request->has('force') || !$request->force) {
             // Vérifier si l'enseignant a déjà un cours avec une matière différente pendant ce créneau
             $enseignantOccupe = EmploiTemps::where('enseignant_id', $request->enseignant_id)
-                ->where('jour_semaine', $request->jour)
+                ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
                     // Vérifier si l'enseignant a déjà un cours pendant ce créneau
@@ -203,7 +213,7 @@ class EmploiTempsController extends Controller
                 'classe_id' => $request->classe_id,
                 'matiere_id' => $request->matiere_id,
                 'enseignant_id' => $request->enseignant_id,
-                'jour_semaine' => $request->jour, // Convertir 'jour' en 'jour_semaine'
+                'jour_semaine' => strtolower($request->jour), // Convertir 'jour' en 'jour_semaine' en minuscules
                 'heure_debut' => $request->heure_debut,
                 'heure_fin' => $request->heure_fin,
                 'salle' => $request->salle,
@@ -234,6 +244,11 @@ class EmploiTempsController extends Controller
      */
     public function destroy(EmploiTemps $emploiTemps)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.delete')) {
+            return response()->json(['error' => 'Vous n\'êtes pas autorisé à supprimer des emplois du temps.'], 403);
+        }
+        
         $emploiTemps->delete();
         
         return response()->json(['success' => true, 'message' => 'Créneau supprimé']);
@@ -244,6 +259,11 @@ class EmploiTempsController extends Controller
      */
     public function duplicate(Request $request)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à dupliquer des emplois du temps.');
+        }
+        
         $validator = Validator::make($request->all(), [
             'source_classe_id' => 'required|exists:classes,id',
             'target_classe_id' => 'required|exists:classes,id|different:source_classe_id'
@@ -282,6 +302,10 @@ class EmploiTempsController extends Controller
      */
     public function export(Classe $classe)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à exporter les emplois du temps.');
+        }
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->orderBy('jour_semaine')
@@ -350,6 +374,11 @@ class EmploiTempsController extends Controller
      */
     public function deleteAll()
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('emplois-temps.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer tous les emplois du temps.');
+        }
+        
         EmploiTemps::truncate();
         
         return redirect()->route('emplois-temps.index')

@@ -142,4 +142,16 @@ class Classe extends Model
         
         return $seuils['insuffisant']; // Par défaut
     }
+
+    /**
+     * Mettre à jour l'effectif actuel de la classe
+     */
+    public function updateEffectifActuel()
+    {
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        if ($anneeScolaireActive) {
+            $effectif = $this->eleves()->where('annee_scolaire_id', $anneeScolaireActive->id)->count();
+            $this->update(['effectif_actuel' => $effectif]);
+        }
+    }
 }

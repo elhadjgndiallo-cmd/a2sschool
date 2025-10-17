@@ -137,6 +137,11 @@
                                     <i class="fas fa-edit me-1"></i>
                                     Saisir notes
                                 </a>
+                                <a href="{{ route('notes.mensuel.saisir', $classe->id) }}" 
+                                   class="btn btn-outline-secondary btn-sm mb-2">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    Saisir Mensuel
+                                </a>
                                 <a href="{{ route('teacher.emploi-temps') }}" 
                                    class="btn btn-outline-info btn-sm">
                                     <i class="fas fa-calendar me-1"></i>

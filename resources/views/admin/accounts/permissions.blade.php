@@ -69,7 +69,7 @@
                 </div>
                 <div class="mb-2">
                     <strong>Permissions actuelles:</strong> 
-                    <span class="badge bg-info">{{ count($adminAccount->permissions ?? []) }} permission(s)</span>
+                    <span class="badge bg-info">{{ count(is_string($adminAccount->permissions) ? json_decode($adminAccount->permissions, true) ?? [] : $adminAccount->permissions ?? []) }} permission(s)</span>
                 </div>
             </div>
         </div>
@@ -105,7 +105,7 @@
                                         <input class="form-check-input" type="checkbox" 
                                                name="permissions[]" value="{{ $key }}" 
                                                id="permission_{{ $key }}"
-                                               {{ in_array($key, $adminAccount->permissions ?? []) ? 'checked' : '' }}>
+                                               {{ in_array($key, is_string($adminAccount->permissions) ? json_decode($adminAccount->permissions, true) ?? [] : $adminAccount->permissions ?? []) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="permission_{{ $key }}">
                                             {{ $label }}
                                         </label>

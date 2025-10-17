@@ -79,6 +79,10 @@ class PersonnelAdministration extends Model
             if (str_starts_with($key, 'emploi_temps.')) {
                 $key = str_replace('emploi_temps.', 'emplois-temps.', $key);
             }
+            // Anciennes clés emplois_temps.* -> emplois-temps.*
+            if (str_starts_with($key, 'emplois_temps.')) {
+                $key = str_replace('emplois_temps.', 'emplois-temps.', $key);
+            }
             return $key;
         }, $permissions);
 

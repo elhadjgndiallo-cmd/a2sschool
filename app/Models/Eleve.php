@@ -117,4 +117,28 @@ class Eleve extends Model
     {
         return $this->utilisateur->nom_complet ?? ($this->utilisateur->prenom . ' ' . $this->utilisateur->nom);
     }
+
+    /**
+     * Accessor pour le nom
+     */
+    public function getNomAttribute()
+    {
+        return $this->utilisateur->nom ?? '';
+    }
+
+    /**
+     * Accessor pour le prénom
+     */
+    public function getPrenomAttribute()
+    {
+        return $this->utilisateur->prenom ?? '';
+    }
+
+    /**
+     * Accessor pour le matricule
+     */
+    public function getMatriculeAttribute()
+    {
+        return $this->numero_etudiant ?? '';
+    }
 }

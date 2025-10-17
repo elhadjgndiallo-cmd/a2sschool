@@ -6,6 +6,11 @@
     <title>Classement des Élèves - {{ $classe->nom }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        /* Orientation portrait pour l'impression */
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
         @media print {
             * {
                 -webkit-print-color-adjust: exact !important;

@@ -72,38 +72,99 @@ use Illuminate\Support\Facades\Storage;
 </div>
 @endif
 
-                    <!-- Filtres simples -->
-                    <div class="row mb-3 g-2">
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <input type="text" class="form-control" placeholder="Rechercher par nom ou prénom..." id="searchInput">
+                    <!-- Filtres côté serveur -->
+                    <form method="GET" action="{{ route('eleves.index') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-4">
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="search" 
+                                       value="{{ request('search') }}"
+                                       placeholder="Rechercher par nom, prénom ou matricule...">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control" name="classe_id">
+                                    <option value="">Toutes les classes</option>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}" 
+                                                {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                            {{ $classe->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control" name="actif">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="1" {{ request('actif') === '1' ? 'selected' : '' }}>Actifs</option>
+                                    <option value="0" {{ request('actif') === '0' ? 'selected' : '' }}>Inactifs</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('eleves.index') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
-                            <select class="form-control" id="classeFilter">
-                                <option value="">Toutes les classes</option>
-                                @foreach($classes as $classe)
-                                    <option value="{{ $classe->id }}">{{ $classe->nom }}</option>
-                                @endforeach
-                            </select>
+                        
+                        <!-- Filtres avancés (cachés par défaut) -->
+                        <div class="row mt-2" id="advancedFilters" style="display: none;">
+                            <div class="col-12 col-sm-6 col-md-4">
+                                <select class="form-control" name="annee_scolaire_id">
+                                    <option value="">Toutes les années</option>
+                                    @foreach($anneesScolarires as $annee)
+                                        <option value="{{ $annee->id }}" 
+                                                {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
+                                            {{ $annee->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-4">
+                                <select class="form-control" name="statut">
+                                    <option value="">Tous les statuts</option>
+                                    @foreach($statutsEleves as $statut)
+                                        <option value="{{ $statut }}" 
+                                                {{ request('statut') == $statut ? 'selected' : '' }}>
+                                            {{ ucfirst(str_replace('_', ' ', $statut)) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-4">
+                                <select class="form-control" name="per_page">
+                                    <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20 par page</option>
+                                    <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 par page</option>
+                                    <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 par page</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
-                            <select class="form-control" id="statutFilter">
-                                <option value="">Tous les statuts</option>
-                                <option value="actif">Actifs</option>
-                                <option value="inactif">Inactifs</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-2">
-                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                                <i class="fas fa-times"></i> 
-                                <span class="d-none d-sm-inline">Effacer</span>
+                        
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleAdvancedFilters()">
+                                <i class="fas fa-cog"></i> Filtres avancés
                             </button>
                         </div>
-                    </div>
+                    </form>
 
                     <!-- Indicateur de résultats -->
                     <div class="mb-2">
                         <small class="text-muted">
-                            <span id="resultsCount">Chargement...</span>
+                            @if(request()->hasAny(['search', 'classe_id', 'actif', 'annee_scolaire_id', 'statut']))
+                                <i class="fas fa-filter me-1"></i>
+                                Filtres actifs - {{ $eleves->total() }} résultat(s) trouvé(s)
+                                <a href="{{ route('eleves.index') }}" class="text-danger ms-2">
+                                    <i class="fas fa-times"></i> Effacer les filtres
+                                </a>
+                            @else
+                                {{ $eleves->total() }} élève(s) au total
+                            @endif
                         </small>
                     </div>
 
@@ -287,90 +348,48 @@ use Illuminate\Support\Facades\Storage;
 </div>
 
 <script>
-// Filtres simples avec JavaScript
+// JavaScript pour les filtres côté serveur
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser le compteur au chargement
-    updateResultsCount();
+    // Auto-submit du formulaire quand on change les filtres principaux
+    const searchInput = document.querySelector('input[name="search"]');
+    const classeSelect = document.querySelector('select[name="classe_id"]');
+    const actifSelect = document.querySelector('select[name="actif"]');
     
-    // Ajouter les événements
-    document.getElementById('searchInput').addEventListener('keyup', filterTable);
-    document.getElementById('classeFilter').addEventListener('change', filterTable);
-    document.getElementById('statutFilter').addEventListener('change', filterTable);
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length >= 3 || this.value.length === 0) {
+                    this.form.submit();
+                }
+            }, 500);
+        });
+    }
+    
+    if (classeSelect) {
+        classeSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (actifSelect) {
+        actifSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
 });
 
-function filterTable() {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const classeFilter = document.getElementById('classeFilter');
-    const statutFilter = document.getElementById('statutFilter');
-    const table = document.getElementById('elevesTable');
-    const rows = table.getElementsByTagName('tr');
-
-    for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const nom = row.cells[2].textContent.toLowerCase(); // Colonne Nom (après Profil et Matricule)
-        const prenom = row.cells[3].textContent.toLowerCase(); // Colonne Prénom
-        const classe = row.cells[4].textContent.toLowerCase(); // Colonne Classe
-        const statut = row.cells[5].textContent.toLowerCase(); // Colonne Statut
-
-        let show = true;
-
-        // Recherche dans le nom ET le prénom
-        if (searchInput && !nom.includes(searchInput) && !prenom.includes(searchInput)) {
-            show = false;
-        }
-
-        // Filtre par classe - comparer avec le nom de la classe sélectionnée
-        if (classeFilter.value) {
-            const selectedClasseText = classeFilter.options[classeFilter.selectedIndex].text.toLowerCase();
-            if (!classe.includes(selectedClasseText)) {
-                show = false;
-            }
-        }
-
-        // Filtre par statut
-        if (statutFilter.value) {
-            if (statutFilter.value === 'actif' && !statut.includes('actif')) {
-                show = false;
-            } else if (statutFilter.value === 'inactif' && !statut.includes('inactif')) {
-                show = false;
-            }
-        }
-
-        row.style.display = show ? '' : 'none';
-    }
+function toggleAdvancedFilters() {
+    const advancedFilters = document.getElementById('advancedFilters');
+    const button = event.target;
     
-    // Mettre à jour le nombre de résultats
-    updateResultsCount();
-}
-
-function clearFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('classeFilter').value = '';
-    document.getElementById('statutFilter').value = '';
-    filterTable();
-}
-
-// Fonction pour afficher le nombre de résultats filtrés
-function updateResultsCount() {
-    const table = document.getElementById('elevesTable');
-    const rows = table.getElementsByTagName('tr');
-    let visibleCount = 0;
-    let totalCount = rows.length - 1; // -1 pour exclure l'en-tête
-    
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i].style.display !== 'none') {
-            visibleCount++;
-        }
-    }
-    
-    // Afficher le nombre de résultats dans l'interface
-    const resultsElement = document.getElementById('resultsCount');
-    if (resultsElement) {
-        if (visibleCount === totalCount) {
-            resultsElement.textContent = `${totalCount} élève(s) au total`;
-        } else {
-            resultsElement.textContent = `${visibleCount} élève(s) affiché(s) sur ${totalCount}`;
-        }
+    if (advancedFilters.style.display === 'none') {
+        advancedFilters.style.display = 'block';
+        button.innerHTML = '<i class="fas fa-cog"></i> Masquer les filtres avancés';
+    } else {
+        advancedFilters.style.display = 'none';
+        button.innerHTML = '<i class="fas fa-cog"></i> Filtres avancés';
     }
 }
 </script>

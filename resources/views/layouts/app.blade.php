@@ -328,51 +328,74 @@
                     </li>
                     
                     @if(auth()->user()->canAccessAdmin())
+                        @if(auth()->user()->hasPermission('enseignants.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('enseignants.index') }}" data-menu="enseignants">
                                 <i class="fas fa-chalkboard-teacher me-1"></i>Enseignants
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('classes.view'))
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('classes.index') }}" data-menu="classes">
+                                <i class="fas fa-school me-1"></i>Classes
+                            </a>
+                        </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('eleves.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('eleves.index') }}" data-menu="eleves">
                                 <i class="fas fa-user-graduate me-1"></i>Élèves
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('matieres.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('matieres.index') }}" data-menu="matieres">
                                 <i class="fas fa-book me-1"></i>Matières
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('emplois-temps.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('emplois-temps.index') }}" data-menu="emplois-temps">
                                 <i class="fas fa-calendar-alt me-1"></i>Emplois du Temps
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('notes.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('notes.index') }}" data-menu="notes">
                                 <i class="fas fa-edit me-1"></i>Gestion Notes
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('absences.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('absences.index') }}" data-menu="absences">
                                 <i class="fas fa-user-times me-1"></i>Absences
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('comptabilite.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('comptabilite.index') }}" data-menu="comptabilite">
                                 <i class="fas fa-calculator me-1"></i>Comptabilité
                             </a>
                         </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('messages.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('admin.notifications.index') }}" data-menu="admin-messages">
                                 <i class="fas fa-envelope me-1"></i>Messages Parents
                             </a>
                         </li>
+                        @endif
                     @endif
                     
                     
                     <!-- Menu Profil visible pour tous les utilisateurs avec permissions -->
-                    @if(auth()->user()->canAccessAdmin())
+                    @if(auth()->user()->canAccessAdmin() && auth()->user()->hasPermission('etablissement.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('etablissement.informations') }}" data-menu="parametres">
                                 <i class="fas fa-cog me-1"></i>Paramètres
@@ -666,6 +689,7 @@
                     const firstSubmenu = submenus[menuType][0];
                     if (firstSubmenu.href && firstSubmenu.href !== '#') {
                         window.location.href = firstSubmenu.href;
+                        
                     }
                 }
             }

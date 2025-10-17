@@ -44,6 +44,48 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Route de test pour vérifier l'accès aux absences
+Route::get('/test-absences-access', function () {
+    $user = auth()->user();
+    
+    if (!$user) {
+        return response()->json([
+            'error' => 'Utilisateur non connecté',
+            'connected' => false
+        ]);
+    }
+    
+    return response()->json([
+        'success' => true,
+        'user' => [
+            'id' => $user->id,
+            'nom' => $user->nom,
+            'prenom' => $user->prenom,
+            'email' => $user->email,
+            'role' => $user->role,
+            'actif' => $user->actif
+        ],
+        'permissions' => [
+            'isAdmin' => $user->isAdmin(),
+            'isPersonnelAdmin' => $user->isPersonnelAdmin(),
+            'canAccessAdmin' => $user->canAccessAdmin(),
+            'hasRole_admin' => $user->hasRole('admin'),
+            'hasRole_personnel_admin' => $user->hasRole('personnel_admin')
+        ],
+        'personnel_administration' => $user->personnelAdministration ? [
+            'exists' => true,
+            'statut' => $user->personnelAdministration->statut,
+            'poste' => $user->personnelAdministration->poste
+        ] : [
+            'exists' => false
+        ],
+        'absences_access' => [
+            'controller_accessible' => true,
+            'route_exists' => \Illuminate\Support\Facades\Route::getRoutes()->getByName('absences.index') ? true : false
+        ]
+    ]);
+})->name('test.absences.access');
+
 // Route de configuration initiale (sans middleware d'auth)
 Route::get('/admin/setup', [\App\Http\Controllers\AdminSetupController::class, 'index'])->name('admin.setup');
 Route::post('/admin/setup', [\App\Http\Controllers\AdminSetupController::class, 'store'])->name('admin.setup.store');
@@ -193,14 +235,28 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/rapport-global', [NoteController::class, 'rapportGlobal'])->name('notes.rapport-global')->middleware('check.permission:notes.view');
         Route::get('/notes/export', [NoteController::class, 'exporterNotes'])->name('notes.export')->middleware('check.permission:notes.view');
         Route::get('/notes/parametres', [NoteController::class, 'parametres'])->name('notes.parametres')->middleware('check.permission:notes.view');
+        Route::post('/notes/classes/periodes', [NoteController::class, 'createClassePeriode'])->name('notes.classes.periodes.create')->middleware('check.permission:notes.edit');
+        Route::put('/notes/classes/periodes/{id}', [NoteController::class, 'updateClassePeriode'])->name('notes.classes.periodes.update')->middleware('check.permission:notes.edit');
+        Route::delete('/notes/classes/periodes/{id}', [NoteController::class, 'deleteClassePeriode'])->name('notes.classes.periodes.delete')->middleware('check.permission:notes.delete');
         Route::post('/notes/periodes-scolaires', [NoteController::class, 'createPeriodeScolaire'])->name('notes.periodes.create')->middleware('check.permission:notes.create');
         Route::put('/notes/periodes-scolaires/{id}', [NoteController::class, 'updatePeriodeScolaire'])->name('notes.periodes.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/periodes-scolaires/{id}', [NoteController::class, 'deletePeriodeScolaire'])->name('notes.periodes.delete')->middleware('check.permission:notes.delete');
         Route::get('/api/matiere/{matiere}/coefficient', [NoteController::class, 'getCoefficientMatiere'])->name('api.matiere.coefficient');
+        
+        // Routes pour les tests mensuels
+        Route::get('/notes/mensuel', [NoteController::class, 'mensuelIndex'])->name('notes.mensuel.index')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/classe/{classe}', [NoteController::class, 'mensuelClasse'])->name('notes.mensuel.classe')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/saisir/{classe}', [NoteController::class, 'mensuelSaisir'])->name('notes.mensuel.saisir')->middleware('check.permission:notes.create');
+        Route::post('/notes/mensuel', [NoteController::class, 'mensuelStore'])->name('notes.mensuel.store')->middleware('check.permission:notes.create');
+        Route::get('/notes/mensuel/modifier/{classe}', [NoteController::class, 'mensuelModifier'])->name('notes.mensuel.modifier')->middleware('check.permission:notes.edit');
+        Route::put('/notes/mensuel/{test}', [NoteController::class, 'mensuelUpdate'])->name('notes.mensuel.update')->middleware('check.permission:notes.edit');
+        Route::delete('/notes/mensuel/{test}', [NoteController::class, 'mensuelDestroy'])->name('notes.mensuel.destroy')->middleware('check.permission:notes.delete');
+        Route::get('/notes/mensuel/resultats/{classe}', [NoteController::class, 'mensuelResultats'])->name('notes.mensuel.resultats')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/resultats/{classe}/imprimer', [NoteController::class, 'mensuelResultatsImprimer'])->name('notes.mensuel.resultats.imprimer')->middleware('check.permission:notes.view');
     });
     
-    // Routes pour la gestion des absences (Admin et Enseignants)
-    Route::middleware('role:admin,teacher')->group(function () {
+    // Routes pour la gestion des absences (Admin, Enseignants et Personnel Admin)
+    Route::middleware('role:admin,teacher,personnel_admin')->group(function () {
         Route::get('/absences', [AbsenceController::class, 'index'])->name('absences.index');
         Route::get('/absences/classe/{classe}', [AbsenceController::class, 'saisir'])->name('absences.saisir');
         Route::post('/absences', [AbsenceController::class, 'store'])->name('absences.store');
@@ -824,15 +880,15 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         }
     })->middleware('auth');
 
-    // Routes pour la gestion des emplois du temps (Admin seulement)
+    // Routes pour la gestion des emplois du temps (Admin et Personnel Admin)
     Route::middleware('role:admin,personnel_admin')->group(function () {
-        Route::get('/emplois-temps', [EmploiTempsController::class, 'index'])->name('emplois-temps.index')->middleware('check.permission:emplois-temps.view');
-        Route::get('/emplois-temps/classe/{classe}', [EmploiTempsController::class, 'show'])->name('emplois-temps.show')->middleware('check.permission:emplois-temps.view');
-        Route::post('/emplois-temps', [EmploiTempsController::class, 'store'])->name('emplois-temps.store')->middleware('check.permission:emplois-temps.create');
-        Route::delete('/emplois-temps/{emploiTemps}', [EmploiTempsController::class, 'destroy'])->name('emplois-temps.destroy')->middleware('check.permission:emplois-temps.delete');
-        Route::post('/emplois-temps/duplicate', [EmploiTempsController::class, 'duplicate'])->name('emplois-temps.duplicate')->middleware('check.permission:emplois-temps.create');
-        Route::get('/emplois-temps/classe/{classe}/export', [EmploiTempsController::class, 'export'])->name('emplois-temps.export')->middleware('check.permission:emplois-temps.view');
-        Route::post('/emplois-temps/delete-all', [EmploiTempsController::class, 'deleteAll'])->name('emplois-temps.delete-all')->middleware('check.permission:emplois-temps.delete');
+        Route::get('/emplois-temps', [EmploiTempsController::class, 'index'])->name('emplois-temps.index');
+        Route::get('/emplois-temps/classe/{classe}', [EmploiTempsController::class, 'show'])->name('emplois-temps.show');
+        Route::post('/emplois-temps', [EmploiTempsController::class, 'store'])->name('emplois-temps.store');
+        Route::delete('/emplois-temps/{emploiTemps}', [EmploiTempsController::class, 'destroy'])->name('emplois-temps.destroy');
+        Route::post('/emplois-temps/duplicate', [EmploiTempsController::class, 'duplicate'])->name('emplois-temps.duplicate');
+        Route::get('/emplois-temps/classe/{classe}/export', [EmploiTempsController::class, 'export'])->name('emplois-temps.export');
+        Route::post('/emplois-temps/delete-all', [EmploiTempsController::class, 'deleteAll'])->name('emplois-temps.delete-all');
     });
     
     // Routes pour la gestion des paiements (Admin seulement)
