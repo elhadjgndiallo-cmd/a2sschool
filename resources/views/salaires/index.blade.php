@@ -161,6 +161,18 @@
                                                         <i class="fas fa-eye"></i>
                                                     </a>
                                                     
+                                                    <!-- Boutons pour générer les documents -->
+                                                    <div class="btn-group" role="group">
+                                                        <a href="{{ route('salaires.bon-salaire.download', $salaire) }}" 
+                                                           class="btn btn-sm btn-outline-primary" title="Bon de salaire" target="_blank">
+                                                            <i class="fas fa-file-pdf"></i>
+                                                        </a>
+                                                        <a href="{{ route('salaires.bulletin-salaire.download', $salaire) }}" 
+                                                           class="btn btn-sm btn-outline-success" title="Bulletin de salaire" target="_blank">
+                                                            <i class="fas fa-file-alt"></i>
+                                                        </a>
+                                                    </div>
+                                                    
                                                     @if($salaire->statut === 'calculé')
                                                         <a href="{{ route('salaires.edit', $salaire) }}" 
                                                            class="btn btn-sm btn-warning" title="Modifier">

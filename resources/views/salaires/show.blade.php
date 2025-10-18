@@ -35,6 +35,31 @@
                             </a>
                         @endif
                         
+                        <!-- Boutons pour générer les documents -->
+                        <div class="btn-group mr-2">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-file-pdf mr-1"></i>
+                                    Documents PDF
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{{ route('salaires.bon-salaire.download', $salaire) }}" target="_blank">
+                                        <i class="fas fa-download mr-2"></i>Bon de Salaire (Télécharger)
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ route('salaires.bon-salaire.view', $salaire) }}" target="_blank">
+                                        <i class="fas fa-eye mr-2"></i>Bon de Salaire (Aperçu)
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ route('salaires.bulletin-salaire.download', $salaire) }}" target="_blank">
+                                        <i class="fas fa-download mr-2"></i>Bulletin de Salaire (Télécharger)
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ route('salaires.bulletin-salaire.view', $salaire) }}" target="_blank">
+                                        <i class="fas fa-eye mr-2"></i>Bulletin de Salaire (Aperçu)
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
                         <a href="{{ route('salaires.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour

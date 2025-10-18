@@ -45,6 +45,8 @@ class EleveControllerSimple extends Controller
                 'prenom' => 'required|string|max:255',
                 'numero_etudiant' => 'required|string|max:50',
                 'classe_id' => 'required|exists:classes,id',
+                'exempte_frais' => 'nullable|boolean',
+                'paiement_annuel' => 'nullable|boolean',
                 'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
             
@@ -105,13 +107,32 @@ class EleveControllerSimple extends Controller
             
             \Log::info('Mise à jour utilisateur:', ['success' => $updated]);
             
+            // Vérifier si l'élève devient exempté des frais
+            $etaitExempte = $eleve->exempte_frais;
+            $devientExempte = (bool) $request->exempte_frais;
+            
             // Mettre à jour l'élève
             $updatedEleve = $eleve->update([
                 'numero_etudiant' => $request->numero_etudiant,
                 'classe_id' => $request->classe_id,
+                'exempte_frais' => $devientExempte,
+                'paiement_annuel' => (bool) $request->paiement_annuel,
             ]);
             
-            \Log::info('Mise à jour élève:', ['success' => $updatedEleve]);
+            // Si l'élève devient exempté et qu'il avait des frais, les annuler
+            if (!$etaitExempte && $devientExempte) {
+                \App\Models\FraisScolarite::where('eleve_id', $eleve->id)
+                    ->where('statut', 'en_attente')
+                    ->update(['statut' => 'annule']);
+                    
+                \Log::info('Frais de scolarité annulés pour élève exempté:', ['eleve_id' => $eleve->id]);
+            }
+            
+            \Log::info('Mise à jour élève:', [
+                'success' => $updatedEleve,
+                'exempte_frais' => $request->exempte_frais,
+                'paiement_annuel' => $request->paiement_annuel
+            ]);
             
             // Recharger les données
             $eleve->refresh();

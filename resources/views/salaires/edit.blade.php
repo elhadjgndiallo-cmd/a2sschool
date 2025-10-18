@@ -86,11 +86,11 @@
                             
                             <div class="col-md-4">
                                 <div class="form-group">
-                                    <label for="salaire_base">Salaire de Base (GNF) <span class="text-danger">*</span></label>
+                                    <label for="salaire_base">Salaire de Base (GNF)</label>
                                     <input type="number" name="salaire_base" id="salaire_base" step="0.01" min="0"
                                            class="form-control @error('salaire_base') is-invalid @enderror" 
-                                           value="{{ old('salaire_base', $salaire->salaire_base) }}" required>
-                                    <small class="form-text text-muted">Salaire fixe de base</small>
+                                           value="{{ old('salaire_base', $salaire->salaire_base) }}">
+                                    <small class="form-text text-muted">Salaire fixe de base (optionnel)</small>
                                 </div>
                             </div>
                         </div>

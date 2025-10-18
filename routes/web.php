@@ -964,6 +964,10 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payer'])->name('salaires.payer')->middleware('check.permission:salaires.payer');
         Route::post('/salaires/calculer-periode', [SalaireEnseignantController::class, 'calculerSalairesPeriode'])->name('salaires.calculer-periode')->middleware('check.permission:salaires.create');
         Route::get('/salaires/rapports', [SalaireEnseignantController::class, 'rapports'])->name('salaires.rapports')->middleware('check.permission:salaires.rapports');
+        Route::get('/salaires/{salaire}/bon-salaire/download', [SalaireEnseignantController::class, 'genererBonSalaire'])->name('salaires.bon-salaire.download')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/{salaire}/bon-salaire/view', [SalaireEnseignantController::class, 'afficherBonSalaire'])->name('salaires.bon-salaire.view')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/{salaire}/bulletin-salaire/download', [SalaireEnseignantController::class, 'genererBulletinSalaire'])->name('salaires.bulletin-salaire.download')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/{salaire}/bulletin-salaire/view', [SalaireEnseignantController::class, 'afficherBulletinSalaire'])->name('salaires.bulletin-salaire.view')->middleware('check.permission:salaires.view');
     });
     
     // Routes pour la gestion des tarifs (Admin seulement)

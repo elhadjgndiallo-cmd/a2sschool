@@ -16,8 +16,8 @@
                 margin: 0;
                 padding: 0 0 60px 0;
                 font-family: Arial, sans-serif;
-                font-size: 11px;
-                line-height: 1.3;
+                font-size: 13px;
+                line-height: 1.4;
                 color: #000;
                 background: white;
             }
@@ -64,7 +64,7 @@
             
             .school-name {
                 margin: 0;
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: bold;
                 color: #000;
                 line-height: 1.2;
@@ -72,7 +72,7 @@
             
             .school-slogan {
                 margin: 5px 0 0 0;
-                font-size: 12px;
+                font-size: 14px;
                 color: #666;
                 font-style: italic;
             }
@@ -83,14 +83,14 @@
             
             .document-title h2 {
                 margin: 0;
-                font-size: 16px;
+                font-size: 20px;
                 font-weight: bold;
                 color: #000;
             }
             
             .class-title {
                 margin: 5px 0 0 0;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #007bff;
             }
@@ -101,13 +101,13 @@
             
             .generation-info {
                 margin: 0;
-                font-size: 10px;
+                font-size: 12px;
                 color: #666;
             }
             
             .info-section {
                 margin-bottom: 15px;
-                font-size: 11px;
+                font-size: 13px;
             }
             
             .info-section .label {
@@ -120,24 +120,24 @@
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 10px;
-                font-size: 9px;
+                font-size: 12px;
             }
             
             table th {
                 background-color: #f5f5f5;
                 border: 1px solid #000;
-                padding: 3px 4px;
+                padding: 5px 6px;
                 text-align: center;
                 font-weight: bold;
-                font-size: 8px;
+                font-size: 11px;
             }
             
             table td {
                 border: 1px solid #000;
-                padding: 2px 4px;
+                padding: 4px 6px;
                 text-align: left;
                 vertical-align: top;
-                font-size: 9px;
+                font-size: 11px;
             }
             
             .student-number {
@@ -160,7 +160,7 @@
             
             .fees-info {
                 text-align: center;
-                font-size: 9px;
+                font-size: 11px;
             }
             
             .footer {
@@ -168,7 +168,7 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                font-size: 9px;
+                font-size: 11px;
                 color: #666;
                 padding: 8px;
                 background-color: white;
@@ -197,13 +197,13 @@
             .school-address,
             .school-phone {
                 margin: 1px 0;
-                font-size: 8px;
-                line-height: 1.1;
+                font-size: 10px;
+                line-height: 1.2;
             }
             
             .footer-document-info p {
                 margin: 0;
-                font-size: 8px;
+                font-size: 10px;
                 color: #666;
                 font-style: italic;
             }
@@ -214,7 +214,7 @@
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 border-radius: 4px;
-                font-size: 10px;
+                font-size: 12px;
             }
             
             .summary-content {
@@ -233,7 +233,7 @@
                 padding: 4px 8px;
                 background-color: #e9ecef;
                 border-radius: 3px;
-                font-size: 11px;
+                font-size: 13px;
             }
             
             .class-section {
@@ -263,7 +263,7 @@
             }
             
             .class-name {
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 color: #495057;
             }
@@ -274,7 +274,7 @@
                 display: flex;
                 flex-wrap: wrap;
                 gap: 15px;
-                font-size: 11px;
+                font-size: 13px;
             }
             
             .stat-item {

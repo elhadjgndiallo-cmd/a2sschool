@@ -7,6 +7,7 @@ use App\Models\Enseignant;
 use App\Models\Depense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+// use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalaireEnseignantController extends Controller
 {
@@ -66,7 +67,7 @@ class SalaireEnseignantController extends Controller
             'periode_fin' => 'required|date|after:periode_debut',
             'nombre_heures' => 'required|integer|min:0',
             'taux_horaire' => 'required|numeric|min:0',
-            'salaire_base' => 'required|numeric|min:0',
+            'salaire_base' => 'nullable|numeric|min:0',
             'prime_anciennete' => 'nullable|numeric|min:0',
             'prime_performance' => 'nullable|numeric|min:0',
             'prime_heures_supplementaires' => 'nullable|numeric|min:0',
@@ -126,7 +127,7 @@ class SalaireEnseignantController extends Controller
             'periode_fin' => 'required|date|after:periode_debut',
             'nombre_heures' => 'required|integer|min:0',
             'taux_horaire' => 'required|numeric|min:0',
-            'salaire_base' => 'required|numeric|min:0',
+            'salaire_base' => 'nullable|numeric|min:0',
             'prime_anciennete' => 'nullable|numeric|min:0',
             'prime_performance' => 'nullable|numeric|min:0',
             'prime_heures_supplementaires' => 'nullable|numeric|min:0',
@@ -294,5 +295,61 @@ class SalaireEnseignantController extends Controller
             ->get();
 
         return view('salaires.rapports', compact('stats', 'salairesParEnseignant', 'dateDebut', 'dateFin'));
+    }
+
+    /**
+     * Générer le bon de salaire PDF
+     */
+    public function genererBonSalaire(SalaireEnseignant $salaire)
+    {
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::first();
+        
+        // Pour l'instant, retourner la vue HTML (temporaire)
+        return view('salaires.bon-salaire-pdf', compact('salaire', 'etablissement'));
+    }
+
+    /**
+     * Afficher le bon de salaire dans le navigateur
+     */
+    public function afficherBonSalaire(SalaireEnseignant $salaire)
+    {
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::first();
+        
+        // Pour l'instant, retourner la vue HTML (temporaire)
+        return view('salaires.bon-salaire-pdf', compact('salaire', 'etablissement'));
+    }
+
+    /**
+     * Générer le bulletin de salaire PDF
+     */
+    public function genererBulletinSalaire(SalaireEnseignant $salaire)
+    {
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::first();
+        
+        // Pour l'instant, retourner la vue HTML (temporaire)
+        return view('salaires.bulletin-salaire-pdf', compact('salaire', 'etablissement'));
+    }
+
+    /**
+     * Afficher le bulletin de salaire dans le navigateur
+     */
+    public function afficherBulletinSalaire(SalaireEnseignant $salaire)
+    {
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::first();
+        
+        // Pour l'instant, retourner la vue HTML (temporaire)
+        return view('salaires.bulletin-salaire-pdf', compact('salaire', 'etablissement'));
     }
 }
