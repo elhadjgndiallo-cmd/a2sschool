@@ -17,6 +17,10 @@
             <i class="fas fa-edit me-1"></i>
             Modifier
         </a>
+        <button type="button" class="btn btn-info ms-2 no-print" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>
+            Imprimer (A4)
+        </button>
     </div>
 </div>
 
@@ -26,6 +30,66 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
+
+@php
+    $parent = $eleve->parents->first();
+    $parentUser = $parent && isset($parent->utilisateur) ? $parent->utilisateur : null;
+@endphp
+
+<!-- Fiche d'impression compacte (une seule page A4) -->
+<div class="fiche-impression d-none d-print-block">
+    <div style="width:100%;">
+        <div style="text-align:center; margin-bottom:12px;">
+            <h3 style="margin:0;">Fiche Élève</h3>
+        </div>
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+            <div style="flex:0 0 120px; text-align:center;">
+                <div style="width:110px; height:110px; border:1px solid #ccc; border-radius:6px; overflow:hidden; display:inline-block;">
+                    @if($eleve->utilisateur && $eleve->utilisateur->photo_profil)
+                        <img src="{{ asset('storage/' . $eleve->utilisateur->photo_profil) }}" alt="Photo" style="width:110px; height:110px; object-fit:cover;">
+                    @else
+                        <img src="{{ asset('images/default-avatar.png') }}" alt="Photo" style="width:110px; height:110px; object-fit:cover;">
+                    @endif
+                </div>
+            </div>
+            <div style="flex:1 1 auto;">
+                <div style="display:grid; grid-template-columns:220px 1fr; column-gap:8px; row-gap:6px; font-size:14px;">
+                    <div><strong>Classe:</strong></div><div>{{ $eleve->classe->nom ?? 'N/A' }}</div>
+                    <div><strong>Matricule:</strong></div><div>{{ $eleve->numero_etudiant ?? 'N/A' }}</div>
+                    <div><strong>Nom:</strong></div><div>{{ $eleve->utilisateur->nom ?? 'N/A' }}</div>
+                    <div><strong>Prénom:</strong></div><div>{{ $eleve->utilisateur->prenom ?? 'N/A' }}</div>
+                    <div><strong>Gmail:</strong></div><div>{{ $eleve->utilisateur->email ?? 'N/A' }}</div>
+                    <div><strong>Téléphone:</strong></div><div>{{ $eleve->utilisateur->telephone ?? 'N/A' }}</div>
+                    <div><strong>Adresse:</strong></div><div>{{ $eleve->utilisateur->adresse ?? 'N/A' }}</div>
+                    <div><strong>Lieu de naissance:</strong></div><div>{{ $eleve->utilisateur->lieu_naissance ?? 'N/A' }}</div>
+                    <div><strong>Sexe:</strong></div><div>{{ ($eleve->utilisateur->sexe ?? '') === 'M' ? 'Masculin' : (($eleve->utilisateur->sexe ?? '') === 'F' ? 'Féminin' : 'N/A') }}</div>
+                    <div><strong>Nom et prénom du parent:</strong></div><div>
+                        @if($parentUser)
+                            {{ ($parentUser->nom ?? '') . ' ' . ($parentUser->prenom ?? '') }}
+                        @else
+                            N/A
+                        @endif
+                    </div>
+                    <div><strong>Gmail du parent:</strong></div><div>{{ $parentUser->email ?? 'N/A' }}</div>
+                    <div><strong>Numéro du parent:</strong></div><div>{{ $parentUser->telephone ?? 'N/A' }}</div>
+                    <div><strong>Mot de passe élève:</strong></div><div>student123</div>
+                    <div><strong>Mot de passe parent:</strong></div><div>parent123</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr style="margin:12px 0; border:0; border-top:1px solid #ccc;">
+</div>
+
+<!-- Mot de passe par défaut pour impression et rappel -->
+<div class="alert alert-info py-2 px-3 mb-3">
+    <i class="fas fa-key me-2"></i>
+    Mot de passe par défaut de l'élève: <strong>student123</strong>
+    <span class="text-muted">(à modifier après première connexion)</span>
+    <span class="d-inline d-print-inline ms-2"><i class="fas fa-info-circle me-1"></i>Cette information sera imprimée.</span>
+    <span class="d-inline d-print-none ms-2">Cette information sera incluse lors de l'impression.</span>
+    
+</div>
 
 <div class="row">
     <!-- Informations personnelles -->
@@ -355,5 +419,22 @@ document.getElementById('photo_profil').addEventListener('change', function(e) {
     }
 });
 </script>
+@endpush
+
+@push('styles')
+<style>
+/* Styles d'impression A4 pour la page Élève */
+@media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    .no-print, .top-navbar, .sidebar, .btn, .btn-toolbar, .navbar, .sidebar-overlay { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    .container-fluid { padding: 0 !important; }
+    /* N'afficher que la fiche d'impression */
+    .main-content .container-fluid > *:not(.fiche-impression) { display: none !important; }
+    .fiche-impression { display: block !important; }
+    /* Nettoyage visuel */
+    .card, .card-header { box-shadow: none !important; border: none !important; background: transparent !important; }
+}
+</style>
 @endpush
 @endsection

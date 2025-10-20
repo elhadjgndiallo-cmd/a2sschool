@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Storage;
             <i class="fas fa-edit me-1"></i>
             Modifier
         </a>
+        <button type="button" class="btn btn-info ms-2 no-print" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>
+            Imprimer (A4)
+        </button>
     </div>
 </div>
 
@@ -30,6 +34,87 @@ use Illuminate\Support\Facades\Storage;
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
+
+@php
+    $photo = $enseignant->utilisateur->photo_profil ?? null;
+@endphp
+
+<!-- Fiche d'impression compacte (une seule page A4) -->
+<div class="fiche-impression d-none d-print-block">
+    <div style="width:100%;">
+        <div style="text-align:center; margin-bottom:12px;">
+            <h3 style="margin:0;">Fiche Enseignant</h3>
+        </div>
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+            <div style="flex:0 0 120px; text-align:center;">
+                <div style="width:110px; height:110px; border:1px solid #ccc; border-radius:6px; overflow:hidden; display:inline-block;">
+                    @if($photo && Storage::disk('public')->exists($photo))
+                        <img src="{{ asset('storage/' . $photo) }}" alt="Photo" style="width:110px; height:110px; object-fit:cover;">
+                    @else
+                        <img src="{{ asset('images/default-avatar.png') }}" alt="Photo" style="width:110px; height:110px; object-fit:cover;">
+                    @endif
+                </div>
+            </div>
+            <div style="flex:1 1 auto;">
+                <div style="display:grid; grid-template-columns:220px 1fr; column-gap:8px; row-gap:6px; font-size:14px;">
+                    <div><strong>Numéro Employé:</strong></div><div>{{ $enseignant->numero_employe ?? 'N/A' }}</div>
+                    <div><strong>Nom:</strong></div><div>{{ $enseignant->utilisateur->nom ?? 'N/A' }}</div>
+                    <div><strong>Prénom:</strong></div><div>{{ $enseignant->utilisateur->prenom ?? 'N/A' }}</div>
+                    <div><strong>Email:</strong></div><div>{{ $enseignant->utilisateur->email ?? 'N/A' }}</div>
+                    <div><strong>Téléphone:</strong></div><div>{{ $enseignant->utilisateur->telephone ?? 'N/A' }}</div>
+                    <div><strong>Adresse:</strong></div><div>{{ $enseignant->utilisateur->adresse ?? 'N/A' }}</div>
+                    <div><strong>Date de naissance:</strong></div><div>
+                        @if($enseignant->utilisateur->date_naissance)
+                            {{ \Carbon\Carbon::parse($enseignant->utilisateur->date_naissance)->format('d/m/Y') }}
+                        @else
+                            N/A
+                        @endif
+                    </div>
+                    <div><strong>Lieu de naissance:</strong></div><div>{{ $enseignant->utilisateur->lieu_naissance ?? 'N/A' }}</div>
+                    <div><strong>Sexe:</strong></div><div>
+                        @if($enseignant->utilisateur->sexe)
+                            {{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}
+                        @else
+                            N/A
+                        @endif
+                    </div>
+                    <div><strong>Spécialité:</strong></div><div>{{ $enseignant->specialite ?? 'N/A' }}</div>
+                    <div><strong>Diplôme:</strong></div><div>{{ $enseignant->diplome ?? 'N/A' }}</div>
+                    <div><strong>Date d'embauche:</strong></div><div>
+                        @if($enseignant->date_embauche)
+                            {{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}
+                        @else
+                            N/A
+                        @endif
+                    </div>
+                    <div><strong>Statut:</strong></div><div>{{ ucfirst($enseignant->statut ?? 'N/A') }}</div>
+                    <div><strong>Mot de passe enseignant:</strong></div><div>password1234</div>
+                </div>
+                <div style="margin-top:10px;">
+                    <div><strong>Matières enseignées:</strong></div>
+                    @if($enseignant->matieres && $enseignant->matieres->count() > 0)
+                        <ul style="margin:4px 0 0 16px; padding:0;">
+                            @foreach($enseignant->matieres as $matiere)
+                                <li style="margin:2px 0;">{{ $matiere->nom ?? 'N/A' }} @if(!empty($matiere->code))<span style="color:#666;">({{ $matiere->code }})</span>@endif</li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div>N/A</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr style="margin:12px 0; border:0; border-top:1px solid #ccc;">
+</div>
+<!-- Mot de passe par défaut pour impression et rappel -->
+<div class="alert alert-info py-2 px-3 mb-3">
+    <i class="fas fa-key me-2"></i>
+    Mot de passe par défaut de l'enseignant: <strong>password1234</strong>
+    <span class="text-muted">(à modifier après première connexion)</span>
+    <span class="d-inline d-print-inline ms-2"><i class="fas fa-info-circle me-1"></i>Cette information sera imprimée.</span>
+    <span class="d-inline d-print-none ms-2">Cette information sera incluse lors de l'impression.</span>
+</div>
 
 <div class="row">
     <!-- Informations personnelles -->
@@ -299,4 +384,20 @@ use Illuminate\Support\Facades\Storage;
         @endif
     </div>
 </div>
+@push('styles')
+<style>
+/* Styles d'impression A4 pour la page Enseignant */
+@media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    .no-print, .top-navbar, .sidebar, .btn, .btn-toolbar, .navbar, .sidebar-overlay { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    .container-fluid { padding: 0 !important; }
+    /* N'afficher que la fiche d'impression */
+    .main-content .container-fluid > *:not(.fiche-impression) { display: none !important; }
+    .fiche-impression { display: block !important; }
+    /* Nettoyage visuel */
+    .card, .card-header { box-shadow: none !important; border: none !important; background: transparent !important; }
+}
+</style>
+@endpush
 @endsection
