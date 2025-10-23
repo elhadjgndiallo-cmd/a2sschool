@@ -9,14 +9,14 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 1cm;
+                margin: 0.8cm;
             }
             
             body {
                 margin: 0;
-                padding: 0 0 60px 0;
+                padding: 0 0 40px 0;
                 font-family: Arial, sans-serif;
-                font-size: 13px;
+                font-size: 14px;
                 line-height: 1.4;
                 color: #000;
                 background: white;
@@ -31,9 +31,9 @@
             }
             
             .header {
-                margin-bottom: 15px;
-                border-bottom: 2px solid #000;
-                padding-bottom: 10px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #000;
+                padding-bottom: 5px;
             }
             
             .header-content {
@@ -44,8 +44,8 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin-bottom: 15px;
-                gap: 15px;
+                margin-bottom: 8px;
+                gap: 10px;
             }
             
             .school-logo {
@@ -53,8 +53,8 @@
             }
             
             .logo-image {
-                max-width: 60px;
-                max-height: 60px;
+                max-width: 45px;
+                max-height: 45px;
                 object-fit: contain;
             }
             
@@ -67,18 +67,18 @@
                 font-size: 22px;
                 font-weight: bold;
                 color: #000;
-                line-height: 1.2;
+                line-height: 1.1;
             }
             
             .school-slogan {
-                margin: 5px 0 0 0;
-                font-size: 14px;
+                margin: 2px 0 0 0;
+                font-size: 13px;
                 color: #666;
                 font-style: italic;
             }
             
             .document-title {
-                margin-bottom: 10px;
+                margin-bottom: 5px;
             }
             
             .document-title h2 {
@@ -89,14 +89,14 @@
             }
             
             .class-title {
-                margin: 5px 0 0 0;
+                margin: 2px 0 0 0;
                 font-size: 18px;
                 font-weight: bold;
                 color: #007bff;
             }
             
             .document-info {
-                margin-top: 8px;
+                margin-top: 3px;
             }
             
             .generation-info {
@@ -106,8 +106,8 @@
             }
             
             .info-section {
-                margin-bottom: 15px;
-                font-size: 13px;
+                margin-bottom: 8px;
+                font-size: 14px;
             }
             
             .info-section .label {
@@ -119,25 +119,25 @@
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 10px;
-                font-size: 12px;
+                margin-top: 5px;
+                font-size: 13px;
             }
             
             table th {
                 background-color: #f5f5f5;
                 border: 1px solid #000;
-                padding: 5px 6px;
+                padding: 4px 6px;
                 text-align: center;
                 font-weight: bold;
-                font-size: 11px;
+                font-size: 12px;
             }
             
             table td {
                 border: 1px solid #000;
-                padding: 4px 6px;
+                padding: 3px 6px;
                 text-align: left;
                 vertical-align: top;
-                font-size: 11px;
+                font-size: 12px;
             }
             
             .student-number {
@@ -168,9 +168,9 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                font-size: 11px;
+                font-size: 10px;
                 color: #666;
-                padding: 8px;
+                padding: 5px;
                 background-color: white;
                 border-top: 1px solid #ccc;
             }
@@ -180,112 +180,125 @@
                 justify-content: space-between;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 10px;
+                gap: 5px;
             }
             
             .footer-school-info {
                 flex: 1;
-                min-width: 200px;
+                min-width: 150px;
             }
             
             .footer-document-info {
                 flex: 1;
                 text-align: right;
-                min-width: 200px;
+                min-width: 150px;
             }
             
             .school-address,
             .school-phone {
-                margin: 1px 0;
-                font-size: 10px;
-                line-height: 1.2;
+                margin: 0;
+                font-size: 9px;
+                line-height: 1.1;
             }
             
             .footer-document-info p {
                 margin: 0;
-                font-size: 10px;
+                font-size: 9px;
                 color: #666;
                 font-style: italic;
             }
             
             .summary {
-                margin-bottom: 15px;
-                padding: 8px;
+                margin-bottom: 8px;
+                padding: 6px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                border-radius: 4px;
-                font-size: 12px;
+                border-radius: 3px;
+                font-size: 13px;
             }
             
             .summary-content {
                 display: flex;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 15px;
+                gap: 10px;
             }
             
             .summary-icon {
-                font-size: 16px;
+                font-size: 14px;
                 margin-right: 5px;
             }
             
             .summary-item {
-                padding: 4px 8px;
+                padding: 3px 6px;
                 background-color: #e9ecef;
-                border-radius: 3px;
+                border-radius: 2px;
                 font-size: 13px;
             }
             
             .class-section {
-                margin-bottom: 15px;
-                page-break-inside: avoid;
+                margin-bottom: 8px;
             }
             
             .class-header {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                border-radius: 4px;
-                margin-bottom: 15px;
+                border-radius: 3px;
+                margin-bottom: 8px;
                 overflow: hidden;
             }
             
             .class-title {
                 background-color: #e9ecef;
-                padding: 10px 15px;
+                padding: 5px 8px;
                 border-bottom: 1px solid #dee2e6;
                 display: flex;
                 align-items: center;
             }
             
             .class-icon {
-                font-size: 16px;
-                margin-right: 8px;
+                font-size: 12px;
+                margin-right: 5px;
             }
             
             .class-name {
-                font-size: 16px;
+                font-size: 15px;
                 font-weight: bold;
                 color: #495057;
             }
             
             .class-stats {
-                padding: 8px 15px;
+                padding: 6px 10px;
                 background-color: #ffffff;
                 display: flex;
                 flex-wrap: wrap;
-                gap: 15px;
+                gap: 10px;
                 font-size: 13px;
             }
             
             .stat-item {
                 padding: 3px 6px;
                 background-color: #f8f9fa;
-                border-radius: 3px;
+                border-radius: 2px;
                 color: #495057;
             }
             
             .students-table {
-                margin-bottom: 15px;
+                margin-bottom: 8px;
+            }
+            
+            /* Forcer le contenu à commencer immédiatement après l'en-tête */
+            .class-section:first-of-type {
+                page-break-before: avoid;
+            }
+            
+            /* Éviter les sauts de page dans les tableaux */
+            .students-table {
+                page-break-inside: auto;
+            }
+            
+            .students-table tbody tr {
+                page-break-inside: avoid;
             }
             
         }

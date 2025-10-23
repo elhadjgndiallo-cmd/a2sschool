@@ -37,13 +37,26 @@ use Illuminate\Support\Facades\Storage;
 
 @php
     $photo = $enseignant->utilisateur->photo_profil ?? null;
+    $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
 @endphp
 
 <!-- Fiche d'impression compacte (une seule page A4) -->
 <div class="fiche-impression d-none d-print-block">
     <div style="width:100%;">
-        <div style="text-align:center; margin-bottom:12px;">
-            <h3 style="margin:0;">Fiche Enseignant</h3>
+        <!-- En-tête avec logo et nom de l'école -->
+        <div style="text-align:center; margin-bottom:16px; border-bottom:2px solid #333; padding-bottom:8px;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:8px;">
+                @if($schoolInfo['logo_url'])
+                    <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo" style="height:50px; max-width:120px; object-fit:contain;">
+                @endif
+                <div>
+                    <h2 style="margin:0; font-size:20px; font-weight:bold;">{{ $schoolInfo['school_name'] }}</h2>
+                    @if($schoolInfo['school_slogan'])
+                        <p style="margin:2px 0 0 0; font-size:12px; color:#666; font-style:italic;">{{ $schoolInfo['school_slogan'] }}</p>
+                    @endif
+                </div>
+            </div>
+            <h3 style="margin:0; font-size:16px; color:#333;">Fiche Enseignant</h3>
         </div>
         <div style="display:flex; gap:16px; align-items:flex-start;">
             <div style="flex:0 0 120px; text-align:center;">
@@ -105,7 +118,17 @@ use Illuminate\Support\Facades\Storage;
             </div>
         </div>
     </div>
-    <hr style="margin:12px 0; border:0; border-top:1px solid #ccc;">
+    <!-- Pied de page avec adresse et téléphone -->
+    <div style="margin-top:16px; padding-top:8px; border-top:1px solid #ccc; text-align:center; font-size:12px; color:#666;">
+        <div style="margin-bottom:4px;"><strong>{{ $schoolInfo['school_name'] }}</strong></div>
+        <div style="margin-bottom:2px;">{{ $schoolInfo['school_address'] }}</div>
+        @if($schoolInfo['school_phone'])
+            <div>Téléphone: {{ $schoolInfo['school_phone'] }}</div>
+        @endif
+        @if($schoolInfo['school_email'])
+            <div>Email: {{ $schoolInfo['school_email'] }}</div>
+        @endif
+    </div>
 </div>
 <!-- Mot de passe par défaut pour impression et rappel -->
 <div class="alert alert-info py-2 px-3 mb-3">
