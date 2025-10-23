@@ -31,9 +31,9 @@
             }
             
             .header {
-                margin-bottom: 8px;
+                margin-bottom: 5px;
                 border-bottom: 1px solid #000;
-                padding-bottom: 5px;
+                padding-bottom: 3px;
             }
             
             .header-content {
@@ -44,8 +44,8 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin-bottom: 8px;
-                gap: 10px;
+                margin-bottom: 5px;
+                gap: 8px;
             }
             
             .school-logo {
@@ -53,8 +53,8 @@
             }
             
             .logo-image {
-                max-width: 45px;
-                max-height: 45px;
+                max-width: 35px;
+                max-height: 35px;
                 object-fit: contain;
             }
             
@@ -64,33 +64,33 @@
             
             .school-name {
                 margin: 0;
-                font-size: 22px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #000;
                 line-height: 1.1;
             }
             
             .school-slogan {
-                margin: 2px 0 0 0;
-                font-size: 13px;
+                margin: 1px 0 0 0;
+                font-size: 11px;
                 color: #666;
                 font-style: italic;
             }
             
             .document-title {
-                margin-bottom: 5px;
+                margin-bottom: 3px;
             }
             
             .document-title h2 {
                 margin: 0;
-                font-size: 20px;
+                font-size: 16px;
                 font-weight: bold;
                 color: #000;
             }
             
             .class-title {
-                margin: 2px 0 0 0;
-                font-size: 18px;
+                margin: 1px 0 0 0;
+                font-size: 14px;
                 font-weight: bold;
                 color: #007bff;
             }
@@ -120,24 +120,26 @@
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 5px;
-                font-size: 13px;
+                font-size: 11px;
             }
             
             table th {
                 background-color: #f5f5f5;
                 border: 1px solid #000;
-                padding: 4px 6px;
+                padding: 2px 4px;
                 text-align: center;
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 10px;
+                height: 20px;
             }
             
             table td {
                 border: 1px solid #000;
-                padding: 3px 6px;
+                padding: 1px 4px;
                 text-align: left;
-                vertical-align: top;
-                font-size: 12px;
+                vertical-align: middle;
+                font-size: 10px;
+                height: 18px;
             }
             
             .student-number {
@@ -209,87 +211,92 @@
             }
             
             .summary {
-                margin-bottom: 8px;
-                padding: 6px;
+                margin-bottom: 5px;
+                padding: 4px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                border-radius: 3px;
-                font-size: 13px;
+                border-radius: 2px;
+                font-size: 11px;
             }
             
             .summary-content {
                 display: flex;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 10px;
+                gap: 6px;
             }
             
             .summary-icon {
-                font-size: 14px;
-                margin-right: 5px;
+                font-size: 12px;
+                margin-right: 3px;
             }
             
             .summary-item {
-                padding: 3px 6px;
+                padding: 2px 4px;
                 background-color: #e9ecef;
                 border-radius: 2px;
-                font-size: 13px;
+                font-size: 11px;
             }
             
             .class-section {
-                margin-bottom: 8px;
+                margin-bottom: 5px;
             }
             
             .class-header {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                border-radius: 3px;
-                margin-bottom: 8px;
+                border-radius: 2px;
+                margin-bottom: 5px;
                 overflow: hidden;
             }
             
             .class-title {
                 background-color: #e9ecef;
-                padding: 5px 8px;
+                padding: 3px 6px;
                 border-bottom: 1px solid #dee2e6;
                 display: flex;
                 align-items: center;
             }
             
             .class-icon {
-                font-size: 12px;
-                margin-right: 5px;
+                font-size: 10px;
+                margin-right: 4px;
             }
             
             .class-name {
-                font-size: 15px;
+                font-size: 12px;
                 font-weight: bold;
                 color: #495057;
             }
             
             .class-stats {
-                padding: 6px 10px;
+                padding: 3px 6px;
                 background-color: #ffffff;
                 display: flex;
                 flex-wrap: wrap;
-                gap: 10px;
-                font-size: 13px;
+                gap: 6px;
+                font-size: 10px;
             }
             
             .stat-item {
-                padding: 3px 6px;
+                padding: 2px 4px;
                 background-color: #f8f9fa;
                 border-radius: 2px;
                 color: #495057;
             }
             
             .students-table {
-                margin-bottom: 8px;
+                margin-bottom: 5px;
             }
             
             /* Forcer le contenu à commencer immédiatement après l'en-tête */
             .class-section:first-of-type {
                 page-break-before: avoid;
+            }
+            
+            /* Limiter à 30 élèves par page A4 */
+            .students-table tbody tr:nth-child(31) {
+                page-break-before: always;
             }
             
             /* Éviter les sauts de page dans les tableaux */
@@ -299,6 +306,12 @@
             
             .students-table tbody tr {
                 page-break-inside: avoid;
+            }
+            
+            /* Optimiser l'espace pour 30 lignes par page */
+            .students-table tbody tr {
+                height: 18px;
+                line-height: 1.2;
             }
             
         }
