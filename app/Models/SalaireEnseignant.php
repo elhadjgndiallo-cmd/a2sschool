@@ -38,6 +38,7 @@ class SalaireEnseignant extends Model
     protected $casts = [
         'periode_debut' => 'date',
         'periode_fin' => 'date',
+        'nombre_heures' => 'integer',
         'taux_horaire' => 'decimal:2',
         'salaire_base' => 'decimal:2',
         'prime_anciennete' => 'decimal:2',
@@ -89,7 +90,9 @@ class SalaireEnseignant extends Model
      */
     public function calculerSalaireBrut()
     {
-        $salaireHoraire = $this->nombre_heures * $this->taux_horaire;
+        // Calculate hourly salary only if both hours and rate are provided
+        $salaireHoraire = ($this->nombre_heures && $this->taux_horaire) ? 
+                          $this->nombre_heures * $this->taux_horaire : 0;
         $this->salaire_brut = $this->salaire_base + $salaireHoraire + 
                              $this->prime_anciennete + $this->prime_performance + 
                              $this->prime_heures_supplementaires;

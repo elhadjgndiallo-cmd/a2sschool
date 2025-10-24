@@ -66,20 +66,20 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
-                                    <label for="nombre_heures">Nombre d'Heures <span class="text-danger">*</span></label>
+                                    <label for="nombre_heures">Nombre d'Heures</label>
                                     <input type="number" name="nombre_heures" id="nombre_heures" 
                                            class="form-control @error('nombre_heures') is-invalid @enderror" 
-                                           value="{{ old('nombre_heures', $salaire->nombre_heures) }}" min="0" required>
+                                           value="{{ old('nombre_heures', $salaire->nombre_heures) }}" min="0">
                                     <small class="form-text text-muted">Nombre d'heures enseignées dans la période</small>
                                 </div>
                             </div>
                             
                             <div class="col-md-4">
                                 <div class="form-group">
-                                    <label for="taux_horaire">Taux Horaire (GNF) <span class="text-danger">*</span></label>
+                                    <label for="taux_horaire">Taux Horaire (GNF)</label>
                                     <input type="number" name="taux_horaire" id="taux_horaire" step="0.01" min="0"
                                            class="form-control @error('taux_horaire') is-invalid @enderror" 
-                                           value="{{ old('taux_horaire', $salaire->taux_horaire) }}" required>
+                                           value="{{ old('taux_horaire', $salaire->taux_horaire) }}">
                                     <small class="form-text text-muted">Montant par heure en GNF</small>
                                 </div>
                             </div>
@@ -251,7 +251,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const dedAbs = parseFloat(deductionAbsences.value) || 0;
         const dedAutres = parseFloat(deductionAutres.value) || 0;
 
-        const salaireHoraire = heures * taux;
+        // Calculate hourly salary only if both hours and rate are provided
+        const salaireHoraire = (heures > 0 && taux > 0) ? heures * taux : 0;
         const totalPrimes = primeAnc + primePerf + primeHS;
         const salaireBrut = base + salaireHoraire + totalPrimes;
         const totalDeductions = dedAbs + dedAutres;
