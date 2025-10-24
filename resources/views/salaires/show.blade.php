@@ -76,8 +76,8 @@
                                         <i class="fas fa-user mr-2"></i>
                                         Enseignant
                                     </h5>
-                                    <p class="mb-1"><strong>Nom:</strong> {{ $salaire->enseignant->utilisateur->nom }} {{ $salaire->enseignant->utilisateur->prenom }}</p>
-                                    <p class="mb-1"><strong>Email:</strong> {{ $salaire->enseignant->utilisateur->email }}</p>
+                                    <p class="mb-1"><strong>Nom:</strong> {{ $salaire->enseignant->utilisateur->nom ?? 'Non renseigné' }} {{ $salaire->enseignant->utilisateur->prenom ?? '' }}</p>
+                                    <p class="mb-1"><strong>Email:</strong> {{ $salaire->enseignant->utilisateur->email ?? 'Non renseigné' }}</p>
                                     <p class="mb-0"><strong>Téléphone:</strong> {{ $salaire->enseignant->utilisateur->telephone ?? 'Non renseigné' }}</p>
                                 </div>
                             </div>

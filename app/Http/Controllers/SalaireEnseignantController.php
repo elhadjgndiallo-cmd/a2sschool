@@ -98,8 +98,27 @@ class SalaireEnseignantController extends Controller
      */
     public function show(SalaireEnseignant $salaire)
     {
-        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
-        return view('salaires.show', compact('salaire'));
+        try {
+            $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+            
+            // Vérifier que l'enseignant a un utilisateur associé
+            if (!$salaire->enseignant || !$salaire->enseignant->utilisateur) {
+                return redirect()->route('salaires.index')
+                    ->with('error', 'Aucun utilisateur associé à cet enseignant.');
+            }
+            
+            return view('salaires.show', compact('salaire'));
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'affichage du salaire:', [
+                'salaire_id' => $salaire->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('salaires.index')
+                ->with('error', 'Erreur lors du chargement des détails du salaire.');
+        }
     }
 
     /**
