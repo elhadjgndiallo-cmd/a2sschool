@@ -194,7 +194,7 @@
                                        $tarif->frais_cantine_mensuel + 
                                        $tarif->frais_transport_mensuel;
                         $totalAnnuel = $tarif->frais_inscription + 
-                                      ($totalMensuel * 12) + 
+                                      ($totalMensuel * $tarif->nombre_tranches) + 
                                       $tarif->frais_uniforme + 
                                       $tarif->frais_livres + 
                                       $tarif->frais_autres;
@@ -225,7 +225,7 @@
                             <strong class="text-success fs-5">{{ number_format($totalAnnuel, 0, ',', ' ') }} GNF</strong>
                         </div>
                         <small class="text-muted">
-                            Inscription + 12 mois + Uniforme + Livres + Autres
+                            Inscription + {{ $tarif->nombre_tranches }} mois + Uniforme + Livres + Autres
                         </small>
                     </div>
 

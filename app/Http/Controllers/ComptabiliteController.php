@@ -502,4 +502,148 @@ class ComptabiliteController extends Controller
             'moyenne' => $query->avg('montant')
         ];
     }
+
+    /**
+     * Générer le rapport journalier
+     */
+    public function rapportJournalier(Request $request)
+    {
+        $type = $request->get('type', 'jour');
+        $date = $request->get('date', Carbon::now()->format('Y-m-d'));
+        $month = $request->get('month', Carbon::now()->format('Y-m'));
+        $year = $request->get('year', Carbon::now()->year);
+        
+        // Déterminer la période selon le type
+        switch($type) {
+            case 'mois':
+                $dateDebut = Carbon::parse($month . '-01');
+                $dateFin = $dateDebut->copy()->endOfMonth();
+                $dateCarbon = $dateDebut;
+                break;
+            case 'annee':
+                $dateDebut = Carbon::create($year, 1, 1);
+                $dateFin = Carbon::create($year, 12, 31);
+                $dateCarbon = $dateDebut;
+                break;
+            default: // jour
+                $dateDebut = Carbon::parse($date);
+                $dateFin = $dateDebut->copy();
+                $dateCarbon = $dateDebut;
+                break;
+        }
+        
+        // Récupérer l'année scolaire active
+        $anneeScolaire = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        // Récupérer les entrées selon la période
+        $entrees = Entree::with('enregistrePar')
+            ->whereBetween('date_entree', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
+            ->orderBy('created_at', 'asc')
+            ->get();
+        
+        // Récupérer les paiements selon la période
+        $paiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+            ->whereBetween('date_paiement', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
+            ->orderBy('created_at', 'asc')
+            ->get();
+        
+        // Récupérer les dépenses selon la période
+        $depenses = Depense::with(['approuvePar', 'payePar'])
+            ->whereBetween('date_depense', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
+            ->orderBy('created_at', 'asc')
+            ->get();
+        
+        // Créer le journal des transactions
+        $journal = collect();
+        
+        // Ajouter les entrées manuelles
+        foreach ($entrees as $entree) {
+            $journal->push([
+                'date' => $entree->date_entree,
+                'libelle' => $entree->description,
+                'entree' => $entree->montant,
+                'sortie' => 0,
+                'type' => 'entree_manuelle',
+                'source' => $entree->source,
+                'enregistre_par' => $entree->enregistrePar,
+                'created_at' => $entree->created_at
+            ]);
+        }
+        
+        // Ajouter les paiements de frais de scolarité
+        foreach ($paiements as $paiement) {
+            $journal->push([
+                'date' => $paiement->date_paiement,
+                'libelle' => 'Paiement frais scolarité - ' . $paiement->fraisScolarite->eleve->utilisateur->prenom . ' ' . $paiement->fraisScolarite->eleve->utilisateur->nom,
+                'entree' => $paiement->montant_paye,
+                'sortie' => 0,
+                'type' => 'paiement_scolarite',
+                'source' => 'Frais de scolarité',
+                'enregistre_par' => $paiement->encaissePar,
+                'created_at' => $paiement->created_at
+            ]);
+        }
+        
+        // Ajouter les dépenses
+        foreach ($depenses as $depense) {
+            $journal->push([
+                'date' => $depense->date_depense,
+                'libelle' => $depense->libelle,
+                'entree' => 0,
+                'sortie' => $depense->montant,
+                'type' => 'depense',
+                'source' => $depense->type_depense,
+                'enregistre_par' => $depense->approuvePar ?? $depense->payePar,
+                'created_at' => $depense->created_at
+            ]);
+        }
+        
+        // Trier par heure de création (plus récent en premier)
+        $journal = $journal->sortByDesc('created_at');
+        
+        // Calculer le solde cumulé (comme dans l'exemple)
+        $soldeInitial = $this->getSoldeInitial($dateDebut->format('Y-m-d'));
+        $soldeActuel = $soldeInitial;
+        
+        $journal = $journal->map(function($transaction) use (&$soldeActuel) {
+            $soldeActuel += $transaction['entree'] - $transaction['sortie'];
+            $transaction['solde'] = $soldeActuel;
+            return $transaction;
+        });
+        
+        // Statistiques de la période
+        $totalEntrees = $journal->sum('entree');
+        $totalSorties = $journal->sum('sortie');
+        $soldeFinal = $soldeActuel;
+        
+        return view('comptabilite.rapport-journalier', compact(
+            'journal',
+            'date',
+            'dateCarbon',
+            'soldeInitial',
+            'totalEntrees',
+            'totalSorties',
+            'soldeFinal'
+        ));
+    }
+    
+    /**
+     * Calculer le solde initial avant la date donnée
+     */
+    private function getSoldeInitial($date)
+    {
+        $dateCarbon = Carbon::parse($date);
+        
+        // Calculer le solde des entrées avant cette date
+        $entreesAvant = Entree::whereDate('date_entree', '<', $dateCarbon)
+            ->sum('montant');
+        
+        $paiementsAvant = Paiement::whereDate('date_paiement', '<', $dateCarbon)
+            ->sum('montant_paye');
+        
+        $depensesAvant = Depense::whereDate('date_depense', '<', $dateCarbon)
+            ->sum('montant');
+        
+        return $entreesAvant + $paiementsAvant - $depensesAvant;
+    }
 }

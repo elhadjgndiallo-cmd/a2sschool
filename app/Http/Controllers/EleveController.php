@@ -763,7 +763,7 @@ class EleveController extends Controller
     }
 
     /**
-     * Supprimer un élève
+     * Supprimer un élève (désactivation)
      */
     public function destroy($id)
     {
@@ -771,6 +771,66 @@ class EleveController extends Controller
         
         DB::transaction(function() use ($eleve) {
             // Désactiver au lieu de supprimer
+            $eleve->update(['actif' => false, 'statut' => 'abandonne']);
+            $eleve->utilisateur->update(['actif' => false]);
+        });
+
+        return redirect()->route('eleves.index')
+            ->with('success', 'Élève désactivé avec succès');
+    }
+
+    /**
+     * Supprimer définitivement un élève
+     */
+    public function deletePermanently($id)
+    {
+        $eleve = Eleve::findOrFail($id);
+        
+        DB::transaction(function() use ($eleve) {
+            // Supprimer les relations parents-élèves
+            $eleve->parents()->detach();
+            
+            // Supprimer les frais de scolarité associés
+            $eleve->fraisScolarite()->delete();
+            
+            // Supprimer les notes associées
+            $eleve->notes()->delete();
+            
+            // Supprimer les absences associées
+            $eleve->absences()->delete();
+            
+            // Supprimer les cartes scolaires associées
+            $eleve->cartesScolaires()->delete();
+            
+            // Supprimer la photo de profil si elle existe
+            if ($eleve->utilisateur && $eleve->utilisateur->photo_profil) {
+                if (Storage::disk('public')->exists($eleve->utilisateur->photo_profil)) {
+                    Storage::disk('public')->delete($eleve->utilisateur->photo_profil);
+                }
+            }
+            
+            // Supprimer l'utilisateur associé
+            if ($eleve->utilisateur) {
+                $eleve->utilisateur->delete();
+            }
+            
+            // Supprimer l'élève
+            $eleve->delete();
+        });
+
+        return redirect()->route('eleves.index')
+            ->with('success', 'Élève supprimé définitivement avec succès');
+    }
+
+    /**
+     * Désactiver un élève
+     */
+    public function deactivate($id)
+    {
+        $eleve = Eleve::findOrFail($id);
+        
+        DB::transaction(function() use ($eleve) {
+            // Désactiver l'élève
             $eleve->update(['actif' => false, 'statut' => 'abandonne']);
             $eleve->utilisateur->update(['actif' => false]);
         });

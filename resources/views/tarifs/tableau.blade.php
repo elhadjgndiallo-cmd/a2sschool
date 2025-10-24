@@ -194,7 +194,7 @@
                                 <hr>
                                 <div class="alert alert-info">
                                     <i class="fas fa-lightbulb mr-2"></i>
-                                    <strong>Note :</strong> Les frais mensuels sont payables par tranches (12 mois). 
+                                    <strong>Note :</strong> Les frais mensuels sont payables par tranches ({{ $tarif->nombre_tranches }} mois). 
                                     Le total annuel inclut tous les frais pour l'année scolaire complète.
                                 </div>
                             </div>

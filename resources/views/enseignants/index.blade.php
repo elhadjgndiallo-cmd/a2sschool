@@ -123,9 +123,9 @@ use Illuminate\Support\Facades\Storage;
                                    onclick="return testButton('enseignant', {{ $enseignant->id }})">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('enseignants.edit', $enseignant->id) }}" 
+                                <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" 
                                    class="btn btn-outline-warning" title="Modifier"
-                                   onclick="return testEditButton('enseignant', {{ $enseignant->id }})">
+                                   onclick="return testSimpleEditButton('enseignant', {{ $enseignant->id }})">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <button type="button" 
@@ -135,12 +135,16 @@ use Illuminate\Support\Facades\Storage;
                                     <i class="fas fa-key"></i>
                                 </button>
                                 @if($enseignant->actif)
-                                    <button type="button" 
-                                            class="btn btn-outline-danger" 
-                                            onclick="confirmDelete({{ $enseignant->id }})"
-                                            title="Désactiver">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <form method="POST" action="{{ route('enseignants.destroy', $enseignant) }}" class="d-inline" 
+                                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action rendra l\'enseignant inactif et il ne pourra plus accéder à son compte.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="btn btn-outline-danger" 
+                                                title="Désactiver">
+                                            <i class="fas fa-pause"></i>
+                                        </button>
+                                    </form>
                                 @else
                                     <form action="{{ route('enseignants.reactivate', $enseignant->id) }}" method="POST" class="d-inline">
                                         @csrf
@@ -152,6 +156,18 @@ use Illuminate\Support\Facades\Storage;
                                         </button>
                                     </form>
                                 @endif
+                                
+                                <!-- Bouton de suppression définitive -->
+                                <form method="POST" action="{{ route('enseignants.delete-permanent', $enseignant) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'enseignant et son compte utilisateur\n- Tous ses salaires\n- Toutes ses cartes\n- Sa photo de profil\n- Toutes les relations avec les classes\n\nCette action est irréversible !')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="btn btn-outline-danger" 
+                                            title="Supprimer définitivement">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -206,11 +222,7 @@ use Illuminate\Support\Facades\Storage;
 
 @push('scripts')
 <script>
-function confirmDelete(id) {
-    const form = document.getElementById('deleteForm');
-    form.action = `{{ url('/enseignants') }}/${id}`;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
+// Fonctions JavaScript complexes supprimées - utilisation de confirm() simple
 
 function resetPassword(id) {
     if (confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet enseignant ?')) {
@@ -257,6 +269,20 @@ function testEditButton(type, id) {
     
     // Afficher un message de test
     const message = `Test du bouton "Modifier ${type}" pour l'ID: ${id}`;
+    console.log(message);
+    
+    // Vérifier les permissions avant la navigation
+    checkEditPermissions(type, id);
+    
+    // Retourner true pour permettre la navigation normale
+    return true;
+}
+
+function testSimpleEditButton(type, id) {
+    console.log(`Test du bouton modification simple ${type} avec ID: ${id}`);
+    
+    // Afficher un message de test
+    const message = `Test du bouton "Modification Simple ${type}" pour l'ID: ${id}`;
     console.log(message);
     
     // Vérifier les permissions avant la navigation

@@ -307,7 +307,7 @@
                                             $tarif->frais_cantine_mensuel + 
                                             $tarif->frais_transport_mensuel;
                         $totalAnnuelActuel = $tarif->frais_inscription + 
-                                           ($totalMensuelActuel * 12) + 
+                                           ($totalMensuelActuel * $tarif->nombre_tranches) + 
                                            $tarif->frais_uniforme + 
                                            $tarif->frais_livres + 
                                            $tarif->frais_autres;

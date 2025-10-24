@@ -12,6 +12,9 @@
                     Comptabilité
                 </h2>
                 <div class="btn-group">
+                    <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-outline-info">
+                        <i class="fas fa-calendar-day me-1"></i>Rapport Journalier
+                    </a>
                     <a href="{{ route('comptabilite.rapports') }}" class="btn btn-outline-primary">
                         <i class="fas fa-chart-line me-1"></i>Rapports
                     </a>

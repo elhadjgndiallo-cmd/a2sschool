@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'Gestion Scolaire') - A2school</title>
     
     <!-- Favicon -->
@@ -85,7 +88,7 @@
         .top-navbar {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu horizontal */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 1000;
+            z-index: 100;
             min-height: 60px;
         }
         
@@ -170,6 +173,8 @@
             background: #ffffff;
             min-height: calc(100vh - 60px);
             margin-left: 0;
+            position: relative;
+            z-index: 1;
         }
         
         .main-content.expanded {
@@ -188,6 +193,16 @@
         /* Styles généraux */
         .navbar-brand {
             font-weight: bold;
+        }
+        
+        /* Z-index pour les éléments de contenu */
+        .card, .modal, .dropdown-menu, .tooltip, .popover {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .modal {
+            z-index: 1050;
         }
         
         .card {
@@ -226,7 +241,7 @@
                 top: 70px;
                 left: 0;
                 width: 280px;
-                z-index: 999;
+                z-index: 99;
                 transform: translateX(-100%);
                 transition: transform 0.3s ease;
                 box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
@@ -253,7 +268,7 @@
                 width: 100%;
                 height: calc(100vh - 70px);
                 background: rgba(0, 0, 0, 0.5);
-                z-index: 998;
+                z-index: 98;
                 display: none;
             }
             

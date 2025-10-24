@@ -280,7 +280,7 @@ class EnseignantController extends Controller
             'nom' => 'required|string|max:255|min:2',
             'prenom' => 'required|string|max:255|min:2',
             'email' => 'required|email|max:191|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
-            'telephone' => 'nullable|string|max:20|regex:/^[0-9+\-\s()]+$/',
+            'telephone' => 'required|string|max:20|regex:/^[0-9+\-\s()]+$/',
             'adresse' => 'nullable|string|max:500',
             'date_naissance' => 'required|date|before:today',
             'lieu_naissance' => 'nullable|string|max:255',
@@ -366,15 +366,34 @@ class EnseignantController extends Controller
 
             \Log::info('Enseignant mis à jour avec succès', [
                 'enseignant_id' => $enseignant->id,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
+                'nouveau_nom' => $enseignant->utilisateur->nom,
+                'nouveau_prenom' => $enseignant->utilisateur->prenom
             ]);
             
             // Vider tous les caches pour s'assurer que les données sont fraîches
             \Cache::flush();
             \DB::flushQueryLog();
             
-            return redirect()->route('enseignants.index')
+            // Recharger l'enseignant pour s'assurer que les données sont à jour
+            $enseignant->refresh();
+            $enseignant->load('utilisateur');
+            
+            \Log::info('Données après refresh', [
+                'enseignant_id' => $enseignant->id,
+                'nom_apres_refresh' => $enseignant->utilisateur->nom,
+                'prenom_apres_refresh' => $enseignant->utilisateur->prenom
+            ]);
+            
+            $response = redirect()->route('enseignants.show', $enseignant)
                 ->with('success', 'Enseignant mis à jour avec succès');
+            
+            // Ajouter des headers pour empêcher la mise en cache
+            $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('Expires', '0');
+            
+            return $response;
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Gestion spécifique des erreurs de validation
@@ -397,6 +416,88 @@ class EnseignantController extends Controller
             
             return redirect()->route('enseignants.index')
                 ->with('error', 'Erreur lors de la mise à jour de l\'enseignant. Veuillez réessayer.');
+        }
+    }
+
+    /**
+     * Test de modification d'enseignant
+     */
+    public function testUpdate(Request $request, Enseignant $enseignant)
+    {
+        \Log::info('=== TEST DE MODIFICATION ENSEIGNANT ===');
+        \Log::info('Données reçues:', $request->all());
+        \Log::info('Enseignant ID:', $enseignant->id);
+        
+        try {
+            // Récupérer les données actuelles
+            $enseignant->load('utilisateur');
+            $ancienNom = $enseignant->utilisateur->nom;
+            $ancienPrenom = $enseignant->utilisateur->prenom;
+            
+            \Log::info('Données actuelles:', [
+                'ancien_nom' => $ancienNom,
+                'ancien_prenom' => $ancienPrenom
+            ]);
+            
+            // Créer des valeurs de test
+            $timestamp = now()->format('His');
+            $nouveauNom = $ancienNom . '_TEST_' . $timestamp;
+            $nouveauPrenom = $ancienPrenom . '_TEST';
+            
+            \Log::info('Nouvelles valeurs de test:', [
+                'nouveau_nom' => $nouveauNom,
+                'nouveau_prenom' => $nouveauPrenom
+            ]);
+            
+            // Effectuer la modification
+            $enseignant->utilisateur->update([
+                'nom' => $nouveauNom,
+                'prenom' => $nouveauPrenom,
+                'name' => $nouveauPrenom . ' ' . $nouveauNom
+            ]);
+            
+            \Log::info('Modification effectuée avec succès');
+            
+            // Recharger pour vérifier
+            $enseignant->refresh();
+            $enseignant->load('utilisateur');
+            
+            \Log::info('Données après modification:', [
+                'nom_apres' => $enseignant->utilisateur->nom,
+                'prenom_apres' => $enseignant->utilisateur->prenom
+            ]);
+            
+            // Restaurer les valeurs originales
+            $enseignant->utilisateur->update([
+                'nom' => $ancienNom,
+                'prenom' => $ancienPrenom,
+                'name' => $ancienPrenom . ' ' . $ancienNom
+            ]);
+            
+            \Log::info('Valeurs restaurées');
+            
+            if ($request->wantsJson() || $request->has('test_ajax')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Test de modification réussi !',
+                    'ancien_nom' => $ancienNom,
+                    'ancien_prenom' => $ancienPrenom,
+                    'nouveau_nom' => $nouveauNom,
+                    'nouveau_prenom' => $nouveauPrenom
+                ]);
+            }
+            
+            return redirect()->route('enseignants.edit', $enseignant)
+                ->with('success', 'Test de modification réussi ! Vérifiez les logs pour plus de détails.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du test de modification:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('enseignants.edit', $enseignant)
+                ->with('error', 'Erreur lors du test: ' . $e->getMessage());
         }
     }
 
@@ -469,5 +570,39 @@ class EnseignantController extends Controller
         });
 
         return redirect()->back()->with('success', 'Enseignant réactivé avec succès');
+    }
+
+    /**
+     * Supprimer définitivement un enseignant
+     */
+    public function deletePermanently($id)
+    {
+        $enseignant = Enseignant::findOrFail($id);
+        
+        DB::transaction(function() use ($enseignant) {
+            // Supprimer les salaires associés
+            $enseignant->salaires()->delete();
+            
+            // Supprimer les cartes associées
+            $enseignant->cartes()->delete();
+            
+            // Supprimer la photo de profil si elle existe
+            if ($enseignant->utilisateur && $enseignant->utilisateur->photo_profil) {
+                if (Storage::disk('public')->exists($enseignant->utilisateur->photo_profil)) {
+                    Storage::disk('public')->delete($enseignant->utilisateur->photo_profil);
+                }
+            }
+            
+            // Supprimer l'utilisateur associé
+            if ($enseignant->utilisateur) {
+                $enseignant->utilisateur->delete();
+            }
+            
+            // Supprimer l'enseignant
+            $enseignant->delete();
+        });
+
+        return redirect()->route('enseignants.index')
+            ->with('success', 'Enseignant supprimé définitivement avec succès');
     }
 }

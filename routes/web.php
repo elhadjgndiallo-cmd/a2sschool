@@ -25,6 +25,7 @@ use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\EvenementController;
 use App\Http\Controllers\ComptabiliteController;
+use App\Http\Controllers\EnseignantSimpleController;
 
 // Route d'accueil - redirection vers dashboard si connecté, sinon vers login ou setup
 Route::get('/', function () {
@@ -280,16 +281,77 @@ Route::middleware('auth')->group(function () {
         Route::get('enseignants/{enseignant}', [EnseignantController::class, 'show'])->name('enseignants.show')->middleware('check.permission:enseignants.view');
         Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
         Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware(['ensure.authenticated', 'check.permission:enseignants.edit']);
-        Route::put('enseignants/{enseignant}/simple', [\App\Http\Controllers\EnseignantControllerSimple::class, 'updateSimple'])->name('enseignants.update-simple');
+        // Routes pour la modification simplifiée
+        Route::get('enseignants/{enseignant}/edit-simple', [EnseignantSimpleController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');
+        Route::put('enseignants/{enseignant}/update-simple', [EnseignantSimpleController::class, 'updateSimple'])->name('enseignants.update-simple')->middleware('check.permission:enseignants.edit');
         
         // Route de test temporaire sans middleware
         Route::put('enseignants/{enseignant}/test-update', [EnseignantController::class, 'update'])->name('enseignants.test-update');
+        Route::post('enseignants/{enseignant}/test-modification', [EnseignantController::class, 'testUpdate'])->name('enseignants.test-modification');
+        
+        // Route de test simple sans authentification
+        Route::get('test-page', function() {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Page de test accessible',
+                'timestamp' => now(),
+                'user' => auth()->check() ? auth()->user()->email : 'Non connecté'
+            ]);
+        });
+        
+        // Route de test avec authentification
+        Route::get('test-auth', function() {
+            if (!auth()->check()) {
+                return response()->json(['error' => 'Non connecté'], 401);
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'user' => auth()->user()->email,
+                'role' => auth()->user()->role,
+                'permissions' => [
+                    'enseignants.edit' => auth()->user()->hasPermission('enseignants.edit'),
+                    'enseignants.create' => auth()->user()->hasPermission('enseignants.create')
+                ]
+            ]);
+        })->middleware('auth');
+        
+        // Route de test pour l'édition d'enseignant
+        Route::get('test-enseignant-edit/{enseignant}', function($enseignantId) {
+            if (!auth()->check()) {
+                return response()->json(['error' => 'Non connecté'], 401);
+            }
+            
+            $enseignant = \App\Models\Enseignant::with('utilisateur')->find($enseignantId);
+            if (!$enseignant) {
+                return response()->json(['error' => 'Enseignant non trouvé'], 404);
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'enseignant' => [
+                    'id' => $enseignant->id,
+                    'numero_employe' => $enseignant->numero_employe,
+                    'utilisateur' => $enseignant->utilisateur ? [
+                        'id' => $enseignant->utilisateur->id,
+                        'nom' => $enseignant->utilisateur->nom,
+                        'prenom' => $enseignant->utilisateur->prenom,
+                        'email' => $enseignant->utilisateur->email
+                    ] : null
+                ],
+                'user' => auth()->user()->email,
+                'permissions' => [
+                    'enseignants.edit' => auth()->user()->hasPermission('enseignants.edit')
+                ]
+            ]);
+        })->middleware(['auth', 'check.permission:enseignants.edit']);
         Route::get('enseignants/{enseignant}/test-edit', [EnseignantController::class, 'testEdit'])->name('enseignants.test-edit');
         
         // Route de test simple sans middleware
         Route::put('test-enseignant-update/{enseignant}', [EnseignantController::class, 'update'])->name('test.enseignant.update');
         
         Route::delete('enseignants/{enseignant}', [EnseignantController::class, 'destroy'])->name('enseignants.destroy')->middleware('check.permission:enseignants.delete');
+        Route::delete('enseignants/{enseignant}/permanent', [EnseignantController::class, 'deletePermanently'])->name('enseignants.delete-permanent')->middleware('check.permission:enseignants.delete');
         Route::post('/enseignants/{enseignant}/reset-password', [EnseignantController::class, 'resetPassword'])->name('enseignants.reset-password')->middleware('check.permission:enseignants.edit');
         Route::post('/enseignants/{enseignant}/reactivate', [EnseignantController::class, 'reactivate'])->name('enseignants.reactivate')->middleware('check.permission:enseignants.edit');
     });
@@ -773,6 +835,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::put('eleves/{eleve}', [EleveController::class, 'update'])->name('eleves.update')->middleware('check.permission:eleves.edit');
         Route::put('eleves/{eleve}/simple', [\App\Http\Controllers\EleveControllerSimple::class, 'updateSimple'])->name('eleves.update-simple');
         Route::delete('eleves/{eleve}', [EleveController::class, 'destroy'])->name('eleves.destroy')->middleware('check.permission:eleves.delete');
+        Route::delete('eleves/{eleve}/permanent', [EleveController::class, 'deletePermanently'])->name('eleves.delete-permanent')->middleware('check.permission:eleves.delete');
         Route::post('/eleves/{eleve}/reset-password', [EleveController::class, 'resetPassword'])->name('eleves.reset-password')->middleware('check.permission:eleves.edit');
         Route::post('/eleves/{eleve}/add-parent', [EleveController::class, 'addParent'])->name('eleves.add-parent')->middleware('check.permission:eleves.edit');
         Route::delete('/eleves/{eleve}/photo', [EleveController::class, 'deletePhoto'])->name('eleves.delete-photo');
@@ -991,6 +1054,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/comptabilite/rapports', [ComptabiliteController::class, 'rapports'])->name('comptabilite.rapports')->middleware('check.permission:comptabilite.rapports');
         Route::get('/comptabilite/entrees', [ComptabiliteController::class, 'entrees'])->name('comptabilite.entrees')->middleware('check.permission:comptabilite.entrees');
         Route::get('/comptabilite/sorties', [ComptabiliteController::class, 'sorties'])->name('comptabilite.sorties')->middleware('check.permission:comptabilite.sorties');
+        Route::get('/comptabilite/rapport-journalier', [ComptabiliteController::class, 'rapportJournalier'])->name('comptabilite.rapport-journalier')->middleware('check.permission:comptabilite.rapports');
     });
     
     

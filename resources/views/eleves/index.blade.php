@@ -250,11 +250,15 @@ use Illuminate\Support\Facades\Storage;
                                 </a>
                                                 
                                                 @if($eleve->actif)
-                                                    <button type="button" class="btn btn-sm btn-danger" 
-                                                            title="Désactiver l'élève"
-                                                            onclick="confirmDeactivate({{ $eleve->id }}, '{{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }}')">
-                                                        <i class="fas fa-pause"></i>
-                                                    </button>
+                                                    <form method="POST" action="{{ route('eleves.deactivate', $eleve) }}" class="d-inline" 
+                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action rendra l\'élève inactif et il ne pourra plus accéder à son compte.')">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                                title="Désactiver l'élève">
+                                                            <i class="fas fa-pause"></i>
+                                                        </button>
+                                                    </form>
                                                 @else
                                                     <form method="POST" action="{{ route('eleves.reactivate', $eleve) }}" class="d-inline">
                                                         @csrf
@@ -265,6 +269,17 @@ use Illuminate\Support\Facades\Storage;
                                                         </button>
                                                     </form>
                                                 @endif
+                                                
+                                                <!-- Bouton de suppression définitive -->
+                                                <form method="POST" action="{{ route('eleves.delete-permanent', $eleve) }}" class="d-inline" 
+                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'élève et son compte utilisateur\n- Tous ses frais de scolarité\n- Toutes ses notes\n- Toutes ses absences\n- Ses cartes scolaires\n- Sa photo de profil\n- Toutes les relations avec les parents\n\nCette action est irréversible !')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                            title="Supprimer définitivement">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
                                                 
                                     @if($eleve->exempte_frais)
                                         <button class="btn btn-sm btn-secondary" 
@@ -320,36 +335,15 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
-<!-- Modal de confirmation de désactivation -->
-<div class="modal fade" id="deactivateModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">⚠️ Désactiver l'élève</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action importante</h6>
-                    <p class="mb-0">Êtes-vous sûr de vouloir désactiver l'élève <strong id="deactivate-eleve-name"></strong> ?</p>
-                </div>
-                <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Cette action rendra l'élève inactif et il ne pourra plus accéder à son compte.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deactivate-form" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Désactiver l'élève</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modals supprimés - utilisation de confirm() simple -->
 
 <script>
+// Méthodes simplifiées - utilisation de confirm() natif
+
 // JavaScript pour les filtres côté serveur
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM chargé');
+    
     // Auto-submit du formulaire quand on change les filtres principaux
     const searchInput = document.querySelector('input[name="search"]');
     const classeSelect = document.querySelector('select[name="classe_id"]');
@@ -378,6 +372,9 @@ document.addEventListener('DOMContentLoaded', function() {
             this.form.submit();
         });
     }
+    
+    // Vérifier que la fonction est disponible après le chargement du DOM
+    console.log('Après DOM chargé, fonction confirmPermanentDelete:', typeof confirmPermanentDelete);
 });
 
 function toggleAdvancedFilters() {
@@ -475,11 +472,6 @@ document.addEventListener('DOMContentLoaded', function() {
     testPermissions();
 });
 
-// Fonction pour confirmer la désactivation d'un élève
-function confirmDeactivate(eleveId, eleveName) {
-    document.getElementById('deactivate-eleve-name').textContent = eleveName;
-    document.getElementById('deactivate-form').action = `/eleves/${eleveId}`;
-    new bootstrap.Modal(document.getElementById('deactivateModal')).show();
-}
+// Fonctions complexes supprimées - utilisation de confirm() simple dans les formulaires
 </script>
 @endpush

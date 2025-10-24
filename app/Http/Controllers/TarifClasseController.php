@@ -81,7 +81,23 @@ class TarifClasseController extends Controller
             return back()->withInput()->with('error', 'Un tarif existe déjà pour cette classe et cette année scolaire.');
         }
 
-        $tarif = TarifClasse::create($request->all());
+        // Préparer les données en gérant les valeurs nulles
+        $data = $request->all();
+        
+        // Convertir les chaînes vides en null pour les champs numériques
+        $numericFields = [
+            'frais_inscription', 'frais_reinscription', 'frais_scolarite_mensuel',
+            'frais_cantine_mensuel', 'frais_transport_mensuel', 'frais_uniforme',
+            'frais_livres', 'frais_autres'
+        ];
+        
+        foreach ($numericFields as $field) {
+            if (isset($data[$field]) && $data[$field] === '') {
+                $data[$field] = null;
+            }
+        }
+        
+        $tarif = TarifClasse::create($data);
 
         return redirect()->route('tarifs.show', $tarif)
             ->with('success', 'Tarif créé avec succès.');

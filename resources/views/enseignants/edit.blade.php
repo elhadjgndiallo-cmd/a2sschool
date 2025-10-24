@@ -143,7 +143,7 @@ use Illuminate\Support\Facades\Storage;
                             <label for="telephone" class="form-label">Téléphone <span class="text-danger">*</span></label>
                             <input type="tel" class="form-control" id="telephone" name="telephone" 
                                    value="{{ old('telephone', $enseignant->utilisateur->telephone) }}" 
-                                   maxlength="20" pattern="[0-9+\-\s()]+">
+                                   required maxlength="20" pattern="[0-9+\-\s()]+">
                         </div>
                     </div>
                     
@@ -156,7 +156,7 @@ use Illuminate\Support\Facades\Storage;
                         <div class="col-md-4 mb-3">
                             <label for="date_naissance" class="form-label">Date de naissance <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="date_naissance" name="date_naissance" 
-                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance->format('Y-m-d')) }}" 
+                                   value="{{ old('date_naissance', $enseignant->utilisateur->date_naissance ? $enseignant->utilisateur->date_naissance->format('Y-m-d') : '') }}" 
                                    required max="{{ date('Y-m-d', strtotime('-1 day')) }}">
                         </div>
                         <div class="col-md-4 mb-3">
@@ -268,6 +268,14 @@ use Illuminate\Support\Facades\Storage;
                             <i class="fas fa-save me-2"></i>
                             Mettre à jour l'enseignant
                         </button>
+                        <button type="button" class="btn btn-warning btn-lg ms-2" onclick="testSimple()">
+                            <i class="fas fa-flask me-2"></i>
+                            Test Simple
+                        </button>
+                        <button type="button" class="btn btn-info btn-lg ms-2" onclick="testFormulaire()">
+                            <i class="fas fa-bug me-2"></i>
+                            Test Formulaire
+                        </button>
                     </div>
                 </div>
             </div>
@@ -278,6 +286,102 @@ use Illuminate\Support\Facades\Storage;
 
 @push('scripts')
 <script>
-// JavaScript supprimé - le bouton fonctionne maintenant de manière normale
+function testSimple() {
+    console.log('=== TEST SIMPLE ===');
+    alert('Test simple fonctionne ! JavaScript est actif.');
+    
+    // Vérifier les éléments du formulaire
+    const nom = document.getElementById('nom');
+    const prenom = document.getElementById('prenom');
+    
+    if (nom && prenom) {
+        console.log('Champs trouvés:', { nom: nom.value, prenom: prenom.value });
+        alert(`Champs trouvés:\nNom: ${nom.value}\nPrénom: ${prenom.value}`);
+    } else {
+        console.error('Champs non trouvés');
+        alert('Erreur: Champs non trouvés');
+    }
+}
+
+function testFormulaire() {
+    console.log('=== TEST FORMULAIRE ===');
+    
+    // Vérifier le formulaire principal
+    const form = document.querySelector('form');
+    if (!form) {
+        alert('Erreur: Formulaire non trouvé');
+        return;
+    }
+    
+    console.log('Formulaire trouvé:', form);
+    console.log('Action:', form.action);
+    console.log('Méthode:', form.method);
+    
+    // Vérifier le token CSRF
+    const csrfToken = document.querySelector('input[name="_token"]');
+    if (csrfToken) {
+        console.log('Token CSRF trouvé:', csrfToken.value);
+    } else {
+        console.error('Token CSRF non trouvé');
+        alert('Erreur: Token CSRF non trouvé');
+        return;
+    }
+    
+    // Modifier temporairement les valeurs pour voir si ça marche
+    const nom = document.getElementById('nom');
+    const prenom = document.getElementById('prenom');
+    
+    if (nom && prenom) {
+        const ancienNom = nom.value;
+        const ancienPrenom = prenom.value;
+        
+        const timestamp = new Date().toLocaleTimeString().replace(/:/g, '');
+        nom.value = ancienNom + '_TEST_' + timestamp;
+        prenom.value = ancienPrenom + '_TEST';
+        
+        alert(`Valeurs modifiées temporairement:\nNom: ${nom.value}\nPrénom: ${prenom.value}\n\nCliquez sur "Mettre à jour l'enseignant" pour tester la soumission.`);
+        
+        // Restaurer après 5 secondes
+        setTimeout(() => {
+            nom.value = ancienNom;
+            prenom.value = ancienPrenom;
+            console.log('Valeurs restaurées');
+        }, 5000);
+    }
+}
+
+// Ajouter un indicateur de chargement au bouton principal
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DIAGNOSTIC JAVASCRIPT ===');
+    console.log('DOM chargé, initialisation des événements...');
+    
+    const submitButton = document.querySelector('button[type="submit"]');
+    const form = document.querySelector('form');
+    
+    console.log('Bouton submit trouvé:', submitButton);
+    console.log('Formulaire trouvé:', form);
+    
+    if (form) {
+        form.addEventListener('submit', function() {
+            console.log('Formulaire en cours de soumission...');
+            if (submitButton) {
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mise à jour en cours...';
+                submitButton.disabled = true;
+            }
+        });
+    }
+    
+    // Test des fonctions
+    console.log('Fonction testModification:', typeof testModification);
+    console.log('Fonction testAjax:', typeof testAjax);
+    
+    // Vérifier les boutons
+    const testButtons = document.querySelectorAll('button[onclick]');
+    console.log('Boutons avec onclick trouvés:', testButtons.length);
+    
+    testButtons.forEach((btn, index) => {
+        console.log(`Bouton ${index + 1}:`, btn.textContent.trim(), 'onclick:', btn.getAttribute('onclick'));
+    });
+});
 </script>
 @endpush
