@@ -213,12 +213,12 @@
                                                     @endif
                                                 @endif
                                                 @if($frais->paiements()->count() > 0)
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            title="Annuler le dernier paiement"
-                                                            onclick="confirmAnnulerPaiement({{ $frais->id }}, '{{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }}')">
-                                                        <i class="fas fa-undo"></i>
-                                                    </button>
+                                                    <form method="POST" action="{{ route('paiements.annuler-dernier-paiement', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler le dernier paiement de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement le dernier paiement et recalculera le montant restant.');">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-danger" title="Annuler le dernier paiement">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
+                                                    </form>
                                                 @endif
                                                 <form method="POST" action="{{ route('paiements.destroy', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer les frais \'{{ $frais->libelle }}\' de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement :\n- Les frais de scolarité\n- Tous les paiements associés\n- Les tranches de paiement\n- Les entrées comptables liées');">
                                                     @csrf
@@ -255,42 +255,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de confirmation pour annuler le dernier paiement -->
-<div class="modal fade" id="annulerPaiementModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Annuler le dernier paiement
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action irréversible</h6>
-                    <p class="mb-0">Êtes-vous sûr de vouloir annuler le dernier paiement de <strong id="eleve-nom"></strong> ?</p>
-                </div>
-                <p class="text-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Cette action supprimera définitivement le dernier paiement et recalculera le montant restant.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annuler
-                </button>
-                <form id="annuler-paiement-form" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-undo me-1"></i>Annuler le paiement
-                    </button>
-                </form>
             </div>
         </div>
     </div>
@@ -342,16 +306,7 @@
 
 @push('scripts')
 <script>
-function confirmAnnulerPaiement(fraisId, eleveNom) {
-    // Mettre à jour le contenu du modal
-    document.getElementById('eleve-nom').textContent = eleveNom;
-    
-    // Mettre à jour l'action du formulaire
-    document.getElementById('annuler-paiement-form').action = `/paiements/${fraisId}/annuler-dernier-paiement`;
-    
-    // Afficher le modal
-    new bootstrap.Modal(document.getElementById('annulerPaiementModal')).show();
-}
+// Script pour d'autres fonctionnalités si nécessaire
 </script>
 @endpush
 
