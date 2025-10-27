@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reçu de Paiement - {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }}</title>
+    <title>Reçu de Rappel - {{ $recuRappel->eleve->utilisateur->nom }} {{ $recuRappel->eleve->utilisateur->prenom }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -142,26 +142,64 @@
         }
         
         .montant-total {
-            background: #6c757d;
+            background: #007bff;
             color: white;
             padding: 6px;
             text-align: center;
             border-radius: 3px;
-            margin: 4px 0;
+            margin: 0;
+            height: fit-content;
         }
         
         .montant-total h2 {
-            margin: 0;
-            font-size: 18px;
+            margin: 0 0 4px 0;
+            font-size: 12px;
             font-weight: bold;
         }
         
         .montant-total p {
-            margin: 2px 0 0 0;
-            font-size: 12px;
+            margin: 1px 0 0 0;
+            font-size: 9px;
             opacity: 0.9;
         }
         
+        .montant-box {
+            background: white;
+            color: #007bff;
+            padding: 8px;
+            border-radius: 3px;
+            border: 2px solid #007bff;
+            margin: 4px 0 0 0;
+            text-align: center;
+        }
+        
+        .montant-box-label {
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .montant-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .montant-placeholder {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007bff;
+            text-align: center;
+            padding: 12px;
+            border: 2px dashed #007bff;
+            border-radius: 3px;
+            background: white;
+        }
+        
+        .montant-placeholder small {
+            font-size: 10px;
+            color: #999;
+        }
         
         .footer {
             background: #f8f9fa;
@@ -208,19 +246,19 @@
             font-size: 10px;
         }
         
-        .status-paye {
+        .status-actif {
             background: #d4edda;
             color: #155724;
         }
         
-        .status-en-attente {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-en-retard {
+        .status-expire {
             background: #f8d7da;
             color: #721c24;
+        }
+        
+        .status-paye {
+            background: #d4edda;
+            color: #155724;
         }
         
         @media print {
@@ -257,7 +295,7 @@
                 background: #007bff !important;
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                padding: 4px 8px !important;
+                padding: 8px !important;
                 display: flex !important;
                 align-items: center !important;
                 page-break-inside: avoid !important;
@@ -284,45 +322,41 @@
             }
             
             .montant-total {
-                background: #6c757d !important;
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
-                margin: 3px 0 !important;
-                padding: 6px !important;
-            }
-            
-            .montant-total h2 {
-                font-size: 18px !important;
-            }
-            
-            .montant-total p {
-                font-size: 12px !important;
+                background: #007bff !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
             }
             
             .status-badge {
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
             }
             
             .paiement-details {
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            
+            .montant-box {
+                border-color: #007bff !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
             }
             
             .footer {
-                padding: 3px 6px !important;
+                padding: 3px 5px !important;
                 font-size: 9px !important;
             }
             
             /* Optimisations spécifiques A5 */
             .info-section {
-                margin-bottom: 3px !important;
+                margin-bottom: 6px !important;
                 page-break-inside: avoid !important;
             }
             
             .info-section h3 {
-                font-size: 12px !important;
-                margin-bottom: 2px !important;
+                font-size: 11px !important;
+                margin-bottom: 4px !important;
             }
             
             .info-item {
@@ -330,8 +364,32 @@
                 padding: 2px 0 !important;
             }
             
+            .montant-total {
+                margin: 0 !important;
+                padding: 6px !important;
+                height: fit-content !important;
+            }
+            
+            .montant-total h2 {
+                font-size: 11px !important;
+            }
+            
+            .montant-box {
+                padding: 8px !important;
+                margin: 4px 0 0 0 !important;
+            }
+            
+            .montant-value {
+                font-size: 14px !important;
+            }
+            
+            .montant-placeholder {
+                font-size: 12px !important;
+                padding: 10px !important;
+            }
+            
             .signature-section {
-                margin-top: 3px !important;
+                margin-top: 8px !important;
                 page-break-inside: avoid !important;
             }
             
@@ -355,8 +413,9 @@
                 @endif
             </div>
             <div class="header-content">
-                <h1>REÇU DE PAIEMENT</h1>
+                <h1>REÇU DE RAPPEL</h1>
                 <p>{{ $schoolInfo['school_name'] ?? 'École' }}</p>
+                <p>N° {{ $recuRappel->numero_recu_rappel }}</p>
                 <div class="print-controls">
                     <button onclick="imprimerRecu()" class="btn-print">
                         <i class="fas fa-print"></i> Imprimer en PDF
@@ -377,38 +436,38 @@
                     <div>
                         <div class="info-item">
                             <span class="info-label">Nom complet :</span>
-                            <span class="info-value">{{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }}</span>
+                            <span class="info-value">{{ $recuRappel->eleve->utilisateur->nom }} {{ $recuRappel->eleve->utilisateur->prenom }}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Matricule :</span>
-                            <span class="info-value"><strong>{{ $frais->eleve->numero_etudiant ?? 'N/A' }}</strong></span>
+                            <span class="info-value"><strong>{{ $recuRappel->eleve->numero_etudiant ?? 'N/A' }}</strong></span>
                         </div>
                     </div>
                     <div>
                         <div class="info-item">
                             <span class="info-label">Classe :</span>
-                            <span class="info-value">{{ $frais->eleve->classe->nom ?? 'Non assignée' }}</span>
+                            <span class="info-value">{{ $recuRappel->eleve->classe->nom ?? 'Non assignée' }}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Année scolaire :</span>
-                            <span class="info-value">{{ $frais->annee_scolaire ?? date('Y') . '/' . (date('Y') + 1) }}</span>
+                            <span class="info-value">{{ $recuRappel->fraisScolarite->annee_scolaire ?? date('Y') . '/' . (date('Y') + 1) }}</span>
                         </div>
                     </div>
                     <div>
                         <div class="info-item">
                             <span class="info-label">Date de naissance :</span>
-                            <span class="info-value">{{ $frais->eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($frais->eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
+                            <span class="info-value">{{ $recuRappel->eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($recuRappel->eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Statut du paiement :</span>
+                            <span class="info-label">Statut du rappel :</span>
                             <span class="info-value">
-                                <span class="status-badge status-{{ str_replace('_', '-', $frais->statut) }}">
-                                    @if($frais->statut == 'paye')
-                                        Entièrement Payé
-                                    @elseif($frais->statut == 'en_attente')
-                                        Paiement Partiel
+                                <span class="status-badge status-{{ $recuRappel->statut }}">
+                                    @if($recuRappel->statut == 'actif')
+                                        Actif
+                                    @elseif($recuRappel->statut == 'expire')
+                                        Expiré
                                     @else
-                                        {{ ucfirst(str_replace('_', ' ', $frais->statut)) }}
+                                        {{ ucfirst($recuRappel->statut) }}
                                     @endif
                                 </span>
                             </span>
@@ -417,79 +476,110 @@
                 </div>
             </div>
             
+            <!-- Détails du rappel -->
+            <div class="info-section">
+                <h3>Détails du Rappel</h3>
+                <div class="paiement-details">
+                    <div class="info-item">
+                        <span class="info-label">Date de rappel :</span>
+                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y à H:i') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date d'échéance :</span>
+                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_echeance)->format('d/m/Y') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Frais concerné :</span>
+                        <span class="info-value">{{ $recuRappel->fraisScolarite->libelle }}</span>
+                    </div>
+                    @if($recuRappel->generePar)
+                    <div class="info-item">
+                        <span class="info-label">Généré par :</span>
+                        <span class="info-value">{{ $recuRappel->generePar->nom }} {{ $recuRappel->generePar->prenom }}</span>
+                    </div>
+                    @endif
+                </div>
+            </div>
             
             <!-- Section principale : Détails à gauche, Montant à droite -->
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 6px; margin-top: 4px;">
-                <!-- Colonne gauche : Détails du paiement -->
+                <!-- Colonne gauche : Détails du rappel -->
                 <div>
-                    <!-- Détails du paiement -->
-                    <div class="info-section">
-                        <h3>Détails du Paiement</h3>
-                        <div class="paiement-details">
-                            <div class="info-item">
-                                <span class="info-label">Référence du paiement :</span>
-                                <span class="info-value">#{{ $paiement->id }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Date du paiement :</span>
-                                <span class="info-value">{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y à H:i') }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Mode de paiement :</span>
-                                <span class="info-value">{{ ucfirst(str_replace('_', ' ', $paiement->mode_paiement)) }}</span>
-                            </div>
-                            @if($paiement->reference_paiement)
-                            <div class="info-item">
-                                <span class="info-label">Référence transaction :</span>
-                                <span class="info-value">{{ $paiement->reference_paiement }}</span>
-                            </div>
-                            @endif
-                            @if($paiement->encaissePar)
-                            <div class="info-item">
-                                <span class="info-label">Encaissé par :</span>
-                                <span class="info-value">{{ $paiement->encaissePar->nom }} {{ $paiement->encaissePar->prenom }}</span>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                    
                     <!-- Détails financiers -->
                     <div class="info-section">
                         <h3>Détails Financiers</h3>
                         <div class="paiement-details">
                             <div class="info-item">
                                 <span class="info-label">Montant total des frais :</span>
-                                <span class="info-value"><strong>{{ number_format($frais->montant, 0, ',', ' ') }} GNF</strong></span>
+                                <span class="info-value"><strong>{{ number_format($recuRappel->montant_total_du, 0, ',', ' ') }} GNF</strong></span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Montant déjà payé :</span>
-                                <span class="info-value"><strong>{{ number_format($frais->montant_paye, 0, ',', ' ') }} GNF</strong></span>
+                                <span class="info-value"><strong>{{ number_format($recuRappel->montant_paye, 0, ',', ' ') }} GNF</strong></span>
                             </div>
                             <div class="info-item" style="border-top: 1px solid #007bff; padding-top: 3px; margin-top: 3px;">
                                 <span class="info-label" style="font-size: 9px;">Montant restant à payer :</span>
-                                <span class="info-value" style="font-size: 10px; color: {{ $frais->montant_restant > 0 ? '#dc3545' : '#28a745' }};">
-                                    <strong>{{ number_format($frais->montant_restant, 0, ',', ' ') }} GNF</strong>
+                                <span class="info-value" style="font-size: 10px; color: {{ $recuRappel->montant_restant > 0 ? '#dc3545' : '#28a745' }};">
+                                    <strong>{{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF</strong>
                                 </span>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Informations du reçu -->
+                    <div class="info-section">
+                        <h3>Informations du Reçu</h3>
+                        <div class="paiement-details">
+                            <div class="info-item">
+                                <span class="info-label">Date de rappel :</span>
+                                <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y à H:i') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Date d'échéance :</span>
+                                <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_echeance)->format('d/m/Y') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Frais concerné :</span>
+                                <span class="info-value">{{ $recuRappel->fraisScolarite->libelle }}</span>
+                            </div>
+                            @if($recuRappel->generePar)
+                            <div class="info-item">
+                                <span class="info-label">Généré par :</span>
+                                <span class="info-value">{{ $recuRappel->generePar->nom }} {{ $recuRappel->generePar->prenom }}</span>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Colonne droite : Montant payé -->
-                <div style="display: flex; justify-content: center; align-items: center;">
-                    <div class="montant-total" style="width: 100%; max-width: 200px;">
-                        <h2>{{ number_format($paiement->montant_paye, 0, ',', ' ') }} GNF</h2>
-                        <p>Montant de ce paiement</p>
+                <!-- Colonne droite : Montant à payer -->
+                <div>
+                    <div class="montant-total">
+                        <h2>MONTANT À PAYER</h2>
+                        <div class="montant-box" style="border: 2px solid #007bff; background: #f8f9ff;">
+                            <div class="montant-box-label" style="color: #007bff; font-size: 8px;">Montant à payer</div>
+                            @if($recuRappel->montant_a_payer)
+                                <div class="montant-value" style="color: #007bff; font-size: 12px;">
+                                    {{ number_format($recuRappel->montant_a_payer, 0, ',', ' ') }} GNF
+                                </div>
+                            @else
+                                <div class="montant-placeholder" style="border: 2px dashed #007bff; background: white; padding: 8px;">
+                                    <div style="font-size: 10px; font-weight: bold; color: #007bff; margin-bottom: 3px;">
+                                        CASE VIDE
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
             
             <!-- Message d'information compact -->
-            @if($frais->montant_restant > 0)
+            @if($recuRappel->montant_restant > 0)
             <div class="info-section" style="margin-bottom: 2px;">
                 <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 2px; padding: 2px; text-align: center;">
                     <p style="color: #856404; margin: 0; font-size: 7px;">
-                        <strong>Paiement Partiel</strong> - Reste: {{ number_format($frais->montant_restant, 0, ',', ' ') }} GNF
+                        <strong>Paiement Partiel</strong> - Reste: {{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF
                     </p>
                 </div>
             </div>
@@ -502,14 +592,15 @@
                 </div>
             </div>
             @endif
+
             
             <!-- Informations complémentaires (observations) -->
-            @if($paiement->observations && trim($paiement->observations) != '')
+            @if($recuRappel->observations && trim($recuRappel->observations) != '')
             <div class="info-section" style="margin-bottom: 2px;">
                 <h3 style="font-size: 8px;">Observations</h3>
                 <div class="observations-box">
-                    <p style="background: #f8f9fa; padding: 3px; border-radius: 2px; border-left: 2px solid #007bff; font-size: 7px; margin: 0; line-height: 1.2;">
-                        {{ $paiement->observations }}
+                    <p style="background: #f8f9fa; padding: 3px; border-radius: 2px; border-left: 2px solid #dc3545; font-size: 7px; margin: 0; line-height: 1.2;">
+                        {{ $recuRappel->observations }}
                     </p>
                 </div>
             </div>
@@ -519,7 +610,7 @@
             <div class="signature-section">
                 <div class="signature-box">
                     <div class="signature-line"></div>
-                    <p><strong>Signature du Caissier</strong></p>
+                    <p><strong>Signature du Comptable</strong></p>
                 </div>
                 <div class="signature-box">
                     <div class="signature-line"></div>
@@ -534,7 +625,7 @@
             <p>{{ $schoolInfo['school_address'] ?? 'Adresse de l\'école' }}</p>
             <p>Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone de l\'école' }}</p>
             <p>Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}</p>
-            <p>Ce reçu fait foi de paiement. Conservez-le précieusement.</p>
+            <p>Ce reçu de rappel fait foi de notification. Conservez-le précieusement.</p>
         </div>
     </div>
     
@@ -564,8 +655,8 @@
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                // Si pas d'historique, rediriger vers la liste des paiements
-                window.location.href = '{{ route("paiements.index") }}';
+                // Si pas d'historique, rediriger vers la liste des reçus de rappel
+                window.location.href = '{{ route("recus-rappel.index") }}';
             }
         }
         

@@ -26,6 +26,14 @@
                                 </a>
                             @endif
                         @endif
+                        
+                        @if($frais->montant_restant > 0)
+                            <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" class="btn btn-danger ml-2">
+                                <i class="fas fa-bell mr-1"></i>
+                                Créer Reçu de Rappel
+                            </a>
+                        @endif
+                        
                         @if($frais->paiements->count() > 0)
                             <a href="{{ route('paiements.recu', $frais) }}" class="btn btn-info ml-2" target="_blank">
                                 <i class="fas fa-file-pdf mr-1"></i>

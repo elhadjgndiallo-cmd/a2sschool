@@ -21,6 +21,10 @@
                             <i class="fas fa-chart-bar mr-1"></i>
                             Rapports
                         </a>
+                        <a href="{{ route('recus-rappel.create') }}" class="btn btn-danger">
+                            <i class="fas fa-bell mr-1"></i>
+                            Créer Reçu de Rappel
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -211,6 +215,12 @@
                                                             <i class="fas fa-money-bill-wave"></i>
                                                         </a>
                                                     @endif
+                                                @endif
+                                                @if($frais->montant_restant > 0)
+                                                    <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" 
+                                                       class="btn btn-sm btn-danger" title="Créer reçu de rappel">
+                                                        <i class="fas fa-bell"></i>
+                                                    </a>
                                                 @endif
                                                 @if($frais->paiements()->count() > 0)
                                                     <form method="POST" action="{{ route('paiements.annuler-dernier-paiement', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler le dernier paiement de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement le dernier paiement et recalculera le montant restant.');">

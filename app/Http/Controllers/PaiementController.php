@@ -525,8 +525,17 @@ public function store(Request $request)
 
         $paiement->load('encaissePar');
         
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::principal();
+        $schoolInfo = [
+            'school_name' => $etablissement ? $etablissement->nom : 'École A2S',
+            'school_address' => $etablissement ? $etablissement->adresse : 'Adresse de l\'école',
+            'school_phone' => $etablissement ? $etablissement->telephone : 'Téléphone de l\'école',
+            'school_email' => $etablissement ? $etablissement->email : 'email@ecole.com'
+        ];
+        
         // Générer le contenu HTML du reçu
-        $html = view('paiements.recu-pdf', compact('frais', 'paiement'))->render();
+        $html = view('paiements.recu-pdf', compact('frais', 'paiement', 'schoolInfo'))->render();
         
         // Créer une réponse avec le contenu HTML
         $response = response($html);

@@ -967,6 +967,18 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/paiements/{frais}/annuler-dernier-paiement', [PaiementController::class, 'annulerDernierPaiement'])->name('paiements.annuler-dernier-paiement')->middleware('check.permission:paiements.edit');
         Route::delete('/paiements/{frais}', [PaiementController::class, 'destroy'])->name('paiements.destroy')->middleware('check.permission:paiements.delete');
         
+        // Routes pour les reçus de rappel
+        Route::get('/recus-rappel', [\App\Http\Controllers\RecuRappelController::class, 'index'])->name('recus-rappel.index')->middleware('check.permission:paiements.view');
+        Route::get('/recus-rappel/create', [\App\Http\Controllers\RecuRappelController::class, 'create'])->name('recus-rappel.create')->middleware('check.permission:paiements.create');
+        Route::post('/recus-rappel', [\App\Http\Controllers\RecuRappelController::class, 'store'])->name('recus-rappel.store')->middleware('check.permission:paiements.create');
+        Route::get('/recus-rappel/search-eleves', [\App\Http\Controllers\RecuRappelController::class, 'searchEleves'])->name('recus-rappel.search-eleves')->middleware('check.permission:paiements.create');
+        Route::get('/recus-rappel/eleve/{eleve}/frais', [\App\Http\Controllers\RecuRappelController::class, 'getFraisEleve'])->name('recus-rappel.frais-eleve')->middleware('check.permission:paiements.create');
+        Route::get('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'show'])->name('recus-rappel.show')->middleware('check.permission:paiements.view');
+        Route::get('/recus-rappel/{recuRappel}/edit', [\App\Http\Controllers\RecuRappelController::class, 'edit'])->name('recus-rappel.edit')->middleware('check.permission:paiements.edit');
+        Route::put('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'update'])->name('recus-rappel.update')->middleware('check.permission:paiements.edit');
+        Route::delete('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'destroy'])->name('recus-rappel.destroy')->middleware('check.permission:paiements.delete');
+        Route::get('/recus-rappel/{recuRappel}/pdf', [\App\Http\Controllers\RecuRappelController::class, 'pdf'])->name('recus-rappel.pdf')->middleware('check.permission:paiements.view');
+        
         // Routes pour la gestion des entrées
         Route::get('/entrees', [\App\Http\Controllers\EntreeController::class, 'index'])->name('entrees.index');
         Route::get('/entrees/create', [\App\Http\Controllers\EntreeController::class, 'create'])->name('entrees.create');
