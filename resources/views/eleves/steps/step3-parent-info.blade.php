@@ -82,14 +82,19 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="parent_telephone" class="form-label">
-                            <i class="fas fa-phone me-1"></i>Téléphone (Optionnel)
+                            <i class="fas fa-phone me-1"></i>Téléphone *
                         </label>
                         <input type="tel" class="form-control @error('parent_telephone') is-invalid @enderror" 
                                id="parent_telephone" name="parent_telephone" 
-                               value="{{ old('parent_telephone', $studentData['parent_telephone'] ?? '') }}">
+                               value="{{ old('parent_telephone', $studentData['parent_telephone'] ?? '') }}" required>
+                        <div id="phone-validation-feedback" class="invalid-feedback d-none"></div>
                         @error('parent_telephone')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Le numéro de téléphone doit être unique et sera utilisé pour identifier le parent.
+                        </div>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -208,6 +213,59 @@ document.addEventListener('DOMContentLoaded', function() {
     const newParentSection = document.getElementById('new-parent-section');
     const lienParenteSelect = document.getElementById('lien_parente');
     const autreLienSection = document.getElementById('autre-lien-section');
+    
+    // Validation du téléphone en temps réel
+    const phoneInput = document.getElementById('parent_telephone');
+    const phoneValidationFeedback = document.getElementById('phone-validation-feedback');
+    let phoneValidationTimeout;
+    
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            clearTimeout(phoneValidationTimeout);
+            const phone = this.value.trim();
+            
+            if (phone.length >= 8) { // Minimum 8 caractères pour un téléphone
+                phoneValidationTimeout = setTimeout(() => {
+                    validatePhoneUniqueness(phone);
+                }, 500); // Attendre 500ms après la dernière frappe
+            } else {
+                clearPhoneValidation();
+            }
+        });
+    }
+    
+    function validatePhoneUniqueness(phone) {
+        fetch('/api/parents/check-phone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ telephone: phone })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'error' && !data.data.is_unique) {
+                showPhoneError(data.message);
+            } else {
+                clearPhoneValidation();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors de la validation du téléphone:', error);
+        });
+    }
+    
+    function showPhoneError(message) {
+        phoneInput.classList.add('is-invalid');
+        phoneValidationFeedback.textContent = message;
+        phoneValidationFeedback.classList.remove('d-none');
+    }
+    
+    function clearPhoneValidation() {
+        phoneInput.classList.remove('is-invalid');
+        phoneValidationFeedback.classList.add('d-none');
+    }
 
     function toggleParentSections() {
         if (existingParentRadio.checked) {

@@ -233,7 +233,7 @@ class EleveController extends Controller
             'parent_nom' => 'required_if:parent_type,new|string|max:255',
             'parent_prenom' => 'required_if:parent_type,new|string|max:255',
             'parent_email' => 'nullable|email|max:191',
-            'parent_telephone' => 'nullable|string|max:20',
+            'parent_telephone' => 'required_if:parent_type,new|string|max:20|unique:utilisateurs,telephone',
             'parent_whatsapp' => 'nullable|string|max:20',
             'parent_adresse' => 'nullable|string',
             'parent_sexe' => 'required_if:parent_type,new|in:M,F',
@@ -1002,7 +1002,7 @@ class EleveController extends Controller
         } else {
             $rules['parent_prenom'] = 'required|string|max:255';
             $rules['parent_nom'] = 'required|string|max:255';
-            $rules['parent_telephone'] = 'nullable|string|max:20';
+            $rules['parent_telephone'] = 'required|string|max:20|unique:utilisateurs,telephone';
             $rules['parent_email'] = 'nullable|email|unique:utilisateurs,email';
             $rules['parent_adresse'] = 'nullable|string';
         }
@@ -1495,7 +1495,7 @@ class EleveController extends Controller
         } else {
             $rules['parent_prenom'] = 'required|string|max:255';
             $rules['parent_nom'] = 'required|string|max:255';
-            $rules['parent_telephone'] = 'nullable|string|max:20';
+            $rules['parent_telephone'] = 'required|string|max:20|unique:utilisateurs,telephone';
             $rules['parent_email'] = 'nullable|email|unique:utilisateurs,email';
             $rules['parent_adresse'] = 'nullable|string';
         }

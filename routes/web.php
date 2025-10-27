@@ -221,6 +221,7 @@ Route::middleware('auth')->group(function () {
     // API Routes pour la recherche de parents
     Route::get('/api/parents/search', [App\Http\Controllers\Api\ParentSearchController::class, 'search'])->name('api.parents.search');
     Route::get('/api/parents/{parent}', [App\Http\Controllers\Api\ParentSearchController::class, 'show'])->name('api.parents.show');
+    Route::post('/api/parents/check-phone', [App\Http\Controllers\Api\ParentSearchController::class, 'checkPhoneUniqueness'])->name('api.parents.check-phone');
         
     // Routes pour la gestion des notes (Admin, Enseignants et Personnel Admin)
     Route::middleware('role:admin,teacher,personnel_admin')->group(function () {

@@ -28,6 +28,13 @@ class ParentSearchController extends Controller
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             }
+            
+            // Filtre par téléphone exact (pour vérifier l'unicité)
+            if ($request->filled('telephone_exact')) {
+                $query->whereHas('utilisateur', function($q) use ($request) {
+                    $q->where('telephone', $request->telephone_exact);
+                });
+            }
 
             // Filtre par profession
             if ($request->filled('profession')) {
@@ -94,6 +101,55 @@ class ParentSearchController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la recherche: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Vérifier l'unicité d'un numéro de téléphone
+     */
+    public function checkPhoneUniqueness(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'telephone' => 'required|string|max:20'
+            ]);
+
+            $telephone = $request->telephone;
+            
+            // Vérifier si le téléphone existe déjà pour un parent
+            $existingParent = ParentModel::whereHas('utilisateur', function($q) use ($telephone) {
+                $q->where('telephone', $telephone)
+                  ->where('role', 'parent');
+            })->first();
+
+            if ($existingParent) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Ce numéro de téléphone est déjà utilisé par un autre parent',
+                    'data' => [
+                        'is_unique' => false,
+                        'existing_parent' => [
+                            'id' => $existingParent->id,
+                            'nom_complet' => $existingParent->utilisateur->nom . ' ' . $existingParent->utilisateur->prenom,
+                            'telephone' => $existingParent->utilisateur->telephone
+                        ]
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Numéro de téléphone disponible',
+                'data' => [
+                    'is_unique' => true
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la vérification: ' . $e->getMessage()
             ], 500);
         }
     }
