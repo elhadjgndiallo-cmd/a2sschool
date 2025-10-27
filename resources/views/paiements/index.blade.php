@@ -220,6 +220,13 @@
                                                         <i class="fas fa-undo"></i>
                                                     </button>
                                                 @endif
+                                                <form method="POST" action="{{ route('paiements.destroy', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer les frais \'{{ $frais->libelle }}\' de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement :\n- Les frais de scolarité\n- Tous les paiements associés\n- Les tranches de paiement\n- Les entrées comptables liées');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer les frais">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>
@@ -282,6 +289,50 @@
                     @csrf
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-undo me-1"></i>Annuler le paiement
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation pour supprimer les frais -->
+<div class="modal fade" id="supprimerFraisModal" tabindex="-1" aria-labelledby="supprimerFraisModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="supprimerFraisModalLabel">
+                    <i class="fas fa-trash me-2"></i>
+                    Supprimer les frais
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action irréversible</h6>
+                    <p class="mb-0">Êtes-vous sûr de vouloir supprimer les frais de <strong id="eleve-nom-suppression"></strong> ?</p>
+                </div>
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-info-circle me-2"></i>Détails de la suppression</h6>
+                    <p class="mb-0">Frais: <strong id="frais-libelle"></strong></p>
+                    <p class="mb-0">Cette action supprimera définitivement :</p>
+                    <ul class="mb-0">
+                        <li>Les frais de scolarité</li>
+                        <li>Tous les paiements associés</li>
+                        <li>Les tranches de paiement</li>
+                        <li>Les entrées comptables liées</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <form id="supprimer-frais-form" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Supprimer
                     </button>
                 </form>
             </div>

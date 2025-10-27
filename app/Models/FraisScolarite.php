@@ -24,7 +24,8 @@ class FraisScolarite extends Model
         'montant_tranche',
         'periode_tranche',
         'date_debut_tranches',
-        'calendrier_tranches'
+        'calendrier_tranches',
+        'actif'
     ];
 
     protected $casts = [
@@ -33,7 +34,8 @@ class FraisScolarite extends Model
         'montant_tranche' => 'decimal:2',
         'date_debut_tranches' => 'date',
         'calendrier_tranches' => 'array',
-        'paiement_par_tranches' => 'boolean'
+        'paiement_par_tranches' => 'boolean',
+        'actif' => 'boolean'
     ];
 
     /**
@@ -66,6 +68,22 @@ class FraisScolarite extends Model
     public function scopeEnAttente($query)
     {
         return $query->where('statut', 'en_attente');
+    }
+
+    /**
+     * Scope pour les frais actifs
+     */
+    public function scopeActif($query)
+    {
+        return $query->where('actif', true);
+    }
+
+    /**
+     * Scope pour les frais inactifs
+     */
+    public function scopeInactif($query)
+    {
+        return $query->where('actif', false);
     }
 
     /**

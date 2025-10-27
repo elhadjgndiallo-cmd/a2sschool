@@ -557,6 +557,58 @@ public function store(Request $request)
     }
 
     /**
+     * Supprimer définitivement un frais de scolarité
+     */
+    public function destroy(FraisScolarite $frais)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('paiements.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer des frais.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Récupérer les informations avant suppression pour les logs
+            $eleveNom = $frais->eleve->utilisateur->nom . ' ' . $frais->eleve->utilisateur->prenom;
+            $fraisLibelle = $frais->libelle;
+
+            // Supprimer toutes les entrées comptables associées
+            $paiements = $frais->paiements;
+            foreach ($paiements as $paiement) {
+                $entrees = Entree::where('reference', $paiement->reference_paiement)
+                    ->where('montant', $paiement->montant_paye)
+                    ->where('date_entree', $paiement->date_paiement)
+                    ->where('enregistre_par', $paiement->encaisse_par)
+                    ->get();
+                
+                foreach ($entrees as $entree) {
+                    $entree->delete();
+                }
+            }
+
+            // Supprimer tous les paiements
+            $frais->paiements()->delete();
+
+            // Supprimer toutes les tranches de paiement
+            $frais->tranchesPaiement()->delete();
+
+            // Supprimer le frais de scolarité
+            $frais->delete();
+
+            DB::commit();
+
+            return redirect()->route('paiements.index')
+                ->with('success', "Les frais '{$fraisLibelle}' de {$eleveNom} ont été supprimés avec succès.");
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Erreur lors de la suppression des frais: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
      * Créer automatiquement une entrée comptable pour un paiement
      */
     private function creerEntreeComptable(Paiement $paiement, FraisScolarite $frais)
