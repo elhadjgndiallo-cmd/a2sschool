@@ -217,6 +217,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/supprimer-toutes-lues', [NotificationController::class, 'supprimerToutesLues'])->name('notifications.supprimer-toutes-lues');
     Route::get('/api/notifications/compteur-non-lues', [NotificationController::class, 'compteurNonLues'])->name('notifications.compteur-non-lues');
     Route::get('/api/notifications/dernieres', [NotificationController::class, 'dernieres'])->name('notifications.dernieres');
+    
+    // API Routes pour la recherche de parents
+    Route::get('/api/parents/search', [App\Http\Controllers\Api\ParentSearchController::class, 'search'])->name('api.parents.search');
+    Route::get('/api/parents/{parent}', [App\Http\Controllers\Api\ParentSearchController::class, 'show'])->name('api.parents.show');
         
     // Routes pour la gestion des notes (Admin, Enseignants et Personnel Admin)
     Route::middleware('role:admin,teacher,personnel_admin')->group(function () {
@@ -829,6 +833,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('eleves', [EleveController::class, 'index'])->name('eleves.index')->middleware('check.permission:eleves.view');
         Route::get('eleves/print', [EleveController::class, 'print'])->name('eleves.print')->middleware('check.permission:eleves.view');
         Route::get('eleves/create', [EleveController::class, 'create'])->name('eleves.create')->middleware('check.permission:eleves.create');
+        Route::get('eleves/create-multi-step', [EleveController::class, 'createMultiStep'])->name('eleves.create-multi-step')->middleware('check.permission:eleves.create');
         Route::post('eleves', [EleveController::class, 'store'])->name('eleves.store')->middleware('check.permission:eleves.create');
         Route::get('eleves/{eleve}', [EleveController::class, 'show'])->name('eleves.show')->middleware('check.permission:eleves.view');
         Route::get('eleves/{eleve}/edit', [EleveController::class, 'edit'])->name('eleves.edit')->middleware('check.permission:eleves.edit');

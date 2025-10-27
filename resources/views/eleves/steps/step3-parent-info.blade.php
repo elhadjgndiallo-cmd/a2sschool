@@ -48,27 +48,7 @@
 
             {{-- Sélection parent existant --}}
             <div id="existing-parent-section" class="d-none">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="parent_id" class="form-label">
-                            <i class="fas fa-search me-1"></i>Sélectionner le Parent
-                        </label>
-                        <select class="form-select @error('parent_id') is-invalid @enderror" id="parent_id" name="parent_id">
-                            <option value="">Choisir un parent</option>
-                            @foreach($parents as $parent)
-                                <option value="{{ $parent->id }}" {{ old('parent_id', $studentData['parent_id'] ?? '') == $parent->id ? 'selected' : '' }}>
-                                    {{ $parent->utilisateur->nom ?? '' }} {{ $parent->utilisateur->prenom ?? '' }}
-                                    @if($parent->utilisateur->telephone)
-                                        - {{ $parent->utilisateur->telephone }}
-                                    @endif
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('parent_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
+                @include('components.parent-search')
             </div>
 
             {{-- Nouveau parent --}}

@@ -185,15 +185,24 @@ class EleveController extends Controller
         // Récupérer les données nécessaires
         $classes = Classe::actif()->get();
         $anneesScolarites = AnneeScolaire::orderBy('active', 'desc')->orderBy('date_debut', 'desc')->get();
-        $parents = ParentModel::with('utilisateur')->get();
+        // Plus besoin de charger tous les parents - ils seront recherchés via AJAX
         
-        // Debug pour voir les parents disponibles
-        \Log::info('Parents disponibles:', [
-            'count' => $parents->count(),
-            'parents' => $parents->pluck('utilisateur.nom_complet', 'id')->toArray()
-        ]);
+        return view('eleves.create', compact('classes', 'anneesScolarites'));
+    }
+
+    /**
+     * Afficher le formulaire d'inscription multi-étapes
+     */
+    public function createMultiStep()
+    {
+        $currentStep = session('current_step', 1);
+        $studentData = session('student_data', []);
         
-        return view('eleves.create', compact('classes', 'anneesScolarites', 'parents'));
+        // Récupérer les données nécessaires selon l'étape
+        $classes = Classe::actif()->get();
+        $anneesScolarites = AnneeScolaire::orderBy('active', 'desc')->orderBy('date_debut', 'desc')->get();
+        
+        return view('eleves.create-multi-step', compact('currentStep', 'studentData', 'classes', 'anneesScolarites'));
     }
 
     /**
