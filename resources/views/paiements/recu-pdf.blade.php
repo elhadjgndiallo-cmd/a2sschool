@@ -440,12 +440,15 @@
             </div>
             @endif
             
-            <!-- Informations complémentaires (seulement si importantes) -->
-            @if($paiement->observations && strlen($paiement->observations) > 10)
+            <!-- Informations complémentaires (observations) -->
+            @if($paiement->observations && trim($paiement->observations) != '')
             <div class="info-section">
-                <p style="background: #f8f9fa; padding: 4px; border-radius: 2px; border-left: 2px solid #007bff; font-size: 9px; margin: 0;">
-                    <strong>Obs:</strong> {{ $paiement->observations }}
-                </p>
+                <h3>Observations</h3>
+                <div class="observations-box">
+                    <p style="background: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 3px solid #007bff; font-size: 10px; margin: 0; line-height: 1.4;">
+                        {{ $paiement->observations }}
+                    </p>
+                </div>
             </div>
             @endif
             
