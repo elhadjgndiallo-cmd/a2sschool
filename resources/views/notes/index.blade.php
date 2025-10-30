@@ -40,19 +40,11 @@
                                     <small>Niveau: {{ $classe->niveau }}</small>
                                 </p>
                                 <div class="btn-group-vertical w-100">
-                                    @if(auth()->user()->isTeacher())
-                                        <a href="{{ route('teacher.notes.saisir', $classe->id) }}" 
-                                           class="btn btn-primary btn-sm">
-                                            <i class="fas fa-edit me-1"></i>
-                                            Saisir Notes
-                                        </a>
-                                    @else
-                                        <a href="{{ route('notes.saisir', $classe->id) }}" 
-                                           class="btn btn-primary btn-sm">
-                                            <i class="fas fa-edit me-1"></i>
-                                            Saisir Notes
-                                        </a>
-                                    @endif
+                                    <a href="{{ route('notes.saisir', $classe->id) }}" 
+                                       class="btn btn-primary btn-sm">
+                                        <i class="fas fa-edit me-1"></i>
+                                        Saisir Notes
+                                    </a>
                                     <a href="{{ route('notes.statistiques', $classe->id) }}" 
                                        class="btn btn-outline-info btn-sm">
                                         <i class="fas fa-chart-bar me-1"></i>
@@ -116,8 +108,8 @@
 </div>
 
 <!-- Modal pour sélection de classe (Bulletins) -->
-<div class="modal fade" id="bulletinsModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="bulletinsModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Générer Bulletins</h5>
@@ -194,7 +186,7 @@ function confirmerBulletins() {
         return;
     }
     
-    window.open(`/notes/bulletins/${classeId}`, '_blank');
+    window.location.href = `/notes/bulletins/${classeId}`;
     bootstrap.Modal.getInstance(document.getElementById('bulletinsModal')).hide();
 }
 

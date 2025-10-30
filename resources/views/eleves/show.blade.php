@@ -270,7 +270,7 @@
                             <i class="fas fa-calendar-times me-1"></i>
                             Voir absences
                         </a>
-                        <a href="#" class="btn btn-sm btn-outline-info">
+                        <a href="{{ route('notes.eleve', $eleve->id) }}" class="btn btn-sm btn-outline-info">
                             <i class="fas fa-graduation-cap me-1"></i>
                             Voir notes
                         </a>

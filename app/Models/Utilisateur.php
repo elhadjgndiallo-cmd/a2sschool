@@ -274,7 +274,10 @@ class Utilisateur extends Authenticatable
             'eleves.view',
             'absences.view',
             'absences.create',
-            'absences.edit'
+            'absences.edit',
+            'emplois-temps.view',
+            'emplois-temps.create',
+            'emplois-temps.edit'
         ];
         
         return in_array($permission, $teacherPermissions);

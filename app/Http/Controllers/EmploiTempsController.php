@@ -84,7 +84,7 @@ class EmploiTempsController extends Controller
     {
         // Vérifier les permissions
         if (!auth()->user()->hasPermission('emplois-temps.create')) {
-            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à créer des emplois du temps.');
+            return response()->json(['success' => false, 'message' => 'Vous n\'êtes pas autorisé à créer des emplois du temps.'], 403);
         }
         $validator = Validator::make($request->all(), [
             'classe_id' => 'required|exists:classes,id',
@@ -284,10 +284,14 @@ class EmploiTempsController extends Controller
                 'classe_id' => $request->target_classe_id,
                 'matiere_id' => $emploi->matiere_id,
                 'enseignant_id' => $emploi->enseignant_id,
-                'jour' => $emploi->jour_semaine,
+                'jour_semaine' => $emploi->jour_semaine,
                 'heure_debut' => $emploi->heure_debut,
                 'heure_fin' => $emploi->heure_fin,
-                'salle' => $emploi->salle
+                'salle' => $emploi->salle,
+                'type_cours' => $emploi->type_cours ?? 'cours',
+                'date_debut' => $emploi->date_debut ?? now()->startOfYear(),
+                'date_fin' => $emploi->date_fin ?? now()->endOfYear(),
+                'actif' => $emploi->actif ?? true,
             ]);
         }
 

@@ -45,7 +45,7 @@
         <div class="row">
             @foreach($classes as $classe)
             <div class="col-md-3 mb-3">
-                <div class="card classe-card" data-classe-id="{{ $classe->id }}" onclick="loadEmploiTemps({{ $classe->id }}, this)" style="cursor: pointer;">
+                <div class="card classe-card" data-classe-id="{{ $classe->id }}" onclick="loadEmploiTemps({{ $classe->id }}, this)" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor='white'">
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ $classe->nom }}</h5>
                         <p class="card-text">{{ $classe->niveau }}</p>
@@ -92,8 +92,8 @@
 </div>
 
 <!-- Modal d'ajout de créneau -->
-<div class="modal fade" id="addCreneauModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="addCreneauModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Ajouter un Créneau</h5>
@@ -247,9 +247,27 @@
 
 @push('scripts')
 <script>
+// Debug: Afficher les informations de l'utilisateur connecté
+console.log('=== DEBUG EMPLOIS DU TEMPS ===');
+console.log('Utilisateur connecté:', @json(auth()->user()));
+console.log('Permissions emplois-temps.view:', @json(auth()->user()->hasPermission('emplois-temps.view')));
+console.log('Permissions emplois-temps.create:', @json(auth()->user()->hasPermission('emplois-temps.create')));
+console.log('Classes disponibles:', @json($classes));
+console.log('================================');
+
 let currentClasseId = null;
 
 function loadEmploiTemps(classeId, element) {
+    console.log('=== DÉBUT loadEmploiTemps ===');
+    console.log('Classe ID:', classeId);
+    console.log('Élément:', element);
+    
+    // Vérification basique
+    if (!classeId) {
+        alert('Erreur: ID de classe manquant');
+        return;
+    }
+    
     currentClasseId = classeId;
     
     // Mettre en surbrillance la classe sélectionnée
@@ -262,109 +280,79 @@ function loadEmploiTemps(classeId, element) {
         element.classList.add('border-primary');
     }
     
-    // Charger l'emploi du temps
-    console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
+    // Afficher immédiatement le conteneur avec un message de chargement
+    const container = document.getElementById('emploi-temps-container');
+    const classeName = document.getElementById('classe-name');
+    const tbody = document.getElementById('emploi-temps-body');
     
-    // Essayer d'abord la route simple pour LWS, puis les autres routes
-    // Adapter les URLs pour LWS avec le chemin complet
-    const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
-    const urls = [
-        `${baseUrl}/get-emploi-temps?classe_id=${classeId}`,
-        `${baseUrl}/api/emploi-temps/${classeId}`,
-        `${baseUrl}/emplois-temps/classe/${classeId}/data`
-    ];
-    
-    let currentUrlIndex = 0;
-    
-    function tryNextUrl() {
-        if (currentUrlIndex >= urls.length) {
-            throw new Error('Toutes les routes ont échoué');
-        }
-        
-        const url = urls[currentUrlIndex];
-        console.log(`Tentative avec l'URL: ${url}`);
-        
-        return fetch(url, {
-            credentials: 'same-origin', // Inclure les cookies de session
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            console.log('Réponse reçue:', response.status, response.statusText);
-            if (!response.ok) {
-                // Si c'est une erreur 404 et qu'il y a d'autres URLs à essayer
-                if (response.status === 404 && currentUrlIndex < urls.length - 1) {
-                    console.log('Route non trouvée, essai de la route suivante...');
-                    currentUrlIndex++;
-                    return tryNextUrl();
-                }
-                // Essayer de récupérer le message d'erreur du serveur
-                return response.json().then(err => {
-                    throw new Error(`Erreur ${response.status}: ${err.error || response.statusText}`);
-                }).catch(() => {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                });
-            }
-            
-            // Vérifier le type de contenu de la réponse
-            const contentType = response.headers.get('content-type');
-            console.log('Content-Type de la réponse:', contentType);
-            
-            if (!contentType || !contentType.includes('application/json')) {
-                console.error('Réponse non-JSON reçue:', contentType);
-                throw new Error('Réponse non-JSON reçue du serveur (Content-Type: ' + contentType + ')');
-            }
-            
-            return response.json();
-        })
-        .then(data => {
-            console.log('Données reçues:', data);
-            console.log('Type de données:', typeof data);
-            console.log('Contenu brut:', JSON.stringify(data));
-            
-            // Vérifier que les données sont valides
-            if (!data) {
-                throw new Error('Aucune donnée reçue du serveur');
-            }
-            
-            if (typeof data !== 'object') {
-                console.error('Type de données incorrect:', typeof data, data);
-                throw new Error('Format de données incorrect - JSON attendu, reçu: ' + typeof data);
-            }
-            
-            if (!data.classe) {
-                console.error('Propriété "classe" manquante dans la réponse:', data);
-                throw new Error('Données de classe manquantes dans la réponse du serveur');
-            }
-            
-            if (!data.emplois) {
-                console.error('Propriété "emplois" manquante dans la réponse:', data);
-                throw new Error('Données d\'emploi du temps manquantes dans la réponse du serveur');
-            }
-            
-            console.log('Données validées avec succès');
-            document.getElementById('classe-name').textContent = data.classe.nom;
-            generateEmploiTempsTable(data.emplois);
-            document.getElementById('emploi-temps-container').style.display = 'block';
-            
-            // Vérifier que les données ont été rechargées
-            console.log('Emploi du temps rechargé avec', data.emplois.length, 'créneaux');
-        })
-        .catch(error => {
-            console.error('Erreur détaillée:', error);
-            alert('Erreur lors du chargement de l\'emploi du temps: ' + error.message + '\n\nVérifiez la console pour plus de détails.');
-        });
+    if (container && classeName && tbody) {
+        classeName.textContent = 'Chargement...';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Chargement en cours...</td></tr>';
+        container.style.display = 'block';
     }
     
-    // Commencer avec la première URL
-    tryNextUrl();
+    // Charger l'emploi du temps avec une approche simplifiée
+    console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
+    
+    // Utiliser une seule URL simple
+    const url = `/get-emploi-temps?classe_id=${classeId}`;
+    console.log(`URL utilisée: ${url}`);
+    
+    fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+    })
+    .then(response => {
+        console.log('Réponse reçue:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Vous n\'êtes pas connecté. Veuillez vous reconnecter.');
+            } else if (response.status === 403) {
+                throw new Error('Vous n\'avez pas les permissions pour voir les emplois du temps.');
+            } else {
+                throw new Error(`Erreur serveur: ${response.status} ${response.statusText}`);
+            }
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Données reçues:', data);
+        
+        if (!data || !data.classe) {
+            throw new Error('Données invalides reçues du serveur');
+        }
+        
+        // Mettre à jour l'affichage
+        if (classeName) {
+            classeName.textContent = data.classe.nom;
+        }
+        
+        // Générer le tableau
+        generateEmploiTempsTable(data.emplois || []);
+        
+        console.log('Emploi du temps chargé avec succès');
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        
+        // Afficher l'erreur dans le tableau
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Erreur: ${error.message}</td></tr>`;
+        }
+        
+        alert('Erreur lors du chargement de l\'emploi du temps:\n' + error.message);
+    });
 }
 
 function generateEmploiTempsTable(emplois) {
     console.log('Génération du tableau avec', emplois.length, 'créneaux');
-    console.log('Créneaux reçus:', emplois);
     
     const tbody = document.getElementById('emploi-temps-body');
     if (!tbody) {
@@ -396,27 +384,19 @@ function generateEmploiTempsTable(emplois) {
             
             // Chercher un emploi pour ce créneau
             const emploi = emplois.find(e => {
-                // Extraire l'heure de début et fin (format HH:MM:SS -> HH:MM)
-                const heureDebut = e.heure_debut.substring(0, 5);
-                const heureFin = e.heure_fin.substring(0, 5);
+                const heureDebut = e.heure_debut ? e.heure_debut.substring(0, 5) : '';
+                const heureFin = e.heure_fin ? e.heure_fin.substring(0, 5) : '';
                 
-                const match = e.jour_semaine === jour && 
+                return e.jour_semaine === jour && 
                        heureDebut <= heure && 
                        heureFin > heure;
-                
-                if (match) {
-                    console.log('Créneau trouvé:', e, 'pour', jour, heure);
-                }
-                
-                return match;
             });
             
-            if (emploi) {
-                console.log('Affichage du créneau:', emploi.matiere.nom, 'pour', jour, heure);
+            if (emploi && emploi.matiere && emploi.enseignant) {
                 cell.innerHTML = `
-                    <div class="creneau" style="background-color: ${emploi.matiere.couleur}; color: white; padding: 5px; border-radius: 3px; position: relative;">
+                    <div class="creneau" style="background-color: ${emploi.matiere.couleur || '#007bff'}; color: white; padding: 5px; border-radius: 3px; position: relative;">
                         <strong>${emploi.matiere.nom}</strong><br>
-                        <small>${emploi.enseignant.utilisateur.name}</small>
+                        <small>${emploi.enseignant.utilisateur ? emploi.enseignant.utilisateur.name : 'Enseignant'}</small>
                         <button type="button" class="btn btn-sm btn-outline-light position-absolute top-0 end-0" 
                                 onclick="event.stopPropagation(); deleteCreneau(${emploi.id})" 
                                 style="padding: 2px 6px; font-size: 10px;">
@@ -433,6 +413,8 @@ function generateEmploiTempsTable(emplois) {
         
         tbody.appendChild(row);
     });
+    
+    console.log('Tableau généré avec succès');
 }
 
 function showAddModal() {

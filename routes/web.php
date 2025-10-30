@@ -392,9 +392,8 @@ Route::get('/api/emploi-temps/{classeId}', function($classeId) {
             $canAccess = true;
         } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
             $canAccess = true;
-        } elseif ($user->role === 'teacher') {
-            // Les enseignants peuvent voir l'emploi du temps des classes où ils enseignent
-            $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+        } elseif ($user->role === 'teacher' && $user->hasPermission('emplois-temps.view')) {
+            $canAccess = true;
         } elseif ($user->role === 'student' && $user->eleve) {
             // Les élèves peuvent voir l'emploi du temps de leur classe
             $canAccess = $user->eleve->classe_id == $classe->id;
@@ -509,8 +508,8 @@ Route::get('/get-emploi-temps', function() {
             $canAccess = true;
         } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
             $canAccess = true;
-        } elseif ($user->role === 'teacher') {
-            $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+        } elseif ($user->role === 'teacher' && $user->hasPermission('emplois-temps.view')) {
+            $canAccess = true;
         } elseif ($user->role === 'student' && $user->eleve) {
             $canAccess = $user->eleve->classe_id == $classe->id;
         }
@@ -595,6 +594,8 @@ Route::post('/add-emploi-temps', function() {
             $canAdd = true;
         } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.create')) {
             $canAdd = true;
+        } elseif ($user->role === 'teacher' && $user->hasPermission('emplois-temps.create')) {
+            $canAdd = true;
         }
         
         if (!$canAdd) {
@@ -617,10 +618,13 @@ Route::post('/add-emploi-temps', function() {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
+        // Normaliser le jour en minuscule
+        $jourNormalized = strtolower($request->jour);
+
         // Vérifier les conflits d'horaires (sauf si on force)
         if (!$request->has('force') || !$request->force) {
             $conflit = App\Models\EmploiTemps::where('classe_id', $request->classe_id)
-                ->where('jour_semaine', $request->jour)
+                ->where('jour_semaine', $jourNormalized)
                 ->where('matiere_id', '!=', $request->matiere_id)
                 ->where(function($query) use ($request) {
                     $query->where(function($q) use ($request) {
@@ -641,12 +645,22 @@ Route::post('/add-emploi-temps', function() {
             }
         }
 
+        // Si l'utilisateur est un enseignant, imposer l'enseignant courant
+        if ($user->role === 'teacher') {
+            if (!$user->enseignant) {
+                return response()->json(['success' => false, 'message' => "Profil enseignant introuvable"], 422);
+            }
+            if ((int)$request->enseignant_id !== (int)$user->enseignant->id) {
+                return response()->json(['success' => false, 'message' => "Vous ne pouvez créer que vos propres créneaux"], 403);
+            }
+        }
+
         // Créer l'emploi du temps
         $data = [
             'classe_id' => $request->classe_id,
             'matiere_id' => $request->matiere_id,
             'enseignant_id' => $request->enseignant_id,
-            'jour_semaine' => $request->jour,
+            'jour_semaine' => $jourNormalized,
             'heure_debut' => $request->heure_debut,
             'heure_fin' => $request->heure_fin,
             'salle' => $request->salle,
@@ -914,9 +928,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
                 $canAccess = true;
             } elseif ($user->role === 'personnel_admin' && $user->hasPermission('emplois-temps.view')) {
                 $canAccess = true;
-            } elseif ($user->role === 'teacher') {
-                // Les enseignants peuvent voir l'emploi du temps des classes où ils enseignent
-                $canAccess = $classe->emploisTemps()->where('enseignant_id', $user->enseignant->id ?? 0)->exists();
+            } elseif ($user->role === 'teacher' && $user->hasPermission('emplois-temps.view')) {
+                $canAccess = true;
             } elseif ($user->role === 'student' && $user->eleve) {
                 // Les élèves peuvent voir l'emploi du temps de leur classe
                 $canAccess = $user->eleve->classe_id == $classe->id;

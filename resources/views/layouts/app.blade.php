@@ -195,14 +195,18 @@
             font-weight: bold;
         }
         
-        /* Z-index pour les éléments de contenu */
-        .card, .modal, .dropdown-menu, .tooltip, .popover {
+        /* Z-index pour les éléments de contenu (ne pas toucher aux modals Bootstrap) */
+        .card, .dropdown-menu, .tooltip, .popover {
             position: relative;
             z-index: 10;
         }
         
-        .modal {
-            z-index: 1050;
+        /* Laisser Bootstrap gérer la position/z-index des modals */
+        
+        /* Désactiver l'assombrissement (gris) du fond quand un modal s'affiche */
+        .modal-backdrop.show {
+            opacity: 0 !important; /* pas d'opacité -> pas de gris */
+            background: transparent !important;
         }
         
         .card {
@@ -768,5 +772,6 @@
             }
         });
     </script>
+    @stack('scripts')
 </body>
 </html>
