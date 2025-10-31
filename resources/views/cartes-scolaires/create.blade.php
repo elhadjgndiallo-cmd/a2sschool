@@ -29,22 +29,35 @@
                                     <div class="card-body">
                                         <div class="mb-3">
                                             <label for="eleve_id" class="form-label">Élève <span class="text-danger">*</span></label>
-                                            <select class="form-select @error('eleve_id') is-invalid @enderror" 
-                                                    id="eleve_id" 
-                                                    name="eleve_id" 
-                                                    required>
-                                                <option value="">Sélectionner un élève</option>
-                                                @foreach($eleves as $eleve)
-                                                    <option value="{{ $eleve->id }}" 
-                                                            {{ old('eleve_id') == $eleve->id ? 'selected' : '' }}>
-                                                        {{ $eleve->utilisateur->nom }} {{ $eleve->utilisateur->prenom }} 
-                                                        ({{ $eleve->numero_etudiant }})
-                                                        @if($eleve->classe)
-                                                            - {{ $eleve->classe->nom }}
-                                                        @endif
-                                                    </option>
-                                                @endforeach
-                                            </select>
+                                            <input type="text" 
+                                                   class="form-control @error('eleve_id') is-invalid @enderror" 
+                                                   id="eleve_search" 
+                                                   placeholder="Rechercher un élève par nom, prénom ou matricule..."
+                                                   autocomplete="off">
+                                            <input type="hidden" 
+                                                   id="eleve_id" 
+                                                   name="eleve_id" 
+                                                   value="{{ old('eleve_id', $selectedEleveId ?? '') }}"
+                                                   required>
+                                            <div id="eleve_search_results" class="list-group mt-2" style="max-height: 300px; overflow-y: auto; display: none;"></div>
+                                            <div id="selected_eleve" class="mt-2">
+                                                @if(isset($selectedEleveId) && $selectedEleveId)
+                                                    @php
+                                                        $preSelectedEleve = $eleves->firstWhere('id', $selectedEleveId);
+                                                    @endphp
+                                                    @if($preSelectedEleve)
+                                                        <div class="alert alert-success">
+                                                            <strong><i class="fas fa-check-circle me-2"></i>Élève sélectionné :</strong>
+                                                            {{ $preSelectedEleve->utilisateur->nom ?? '' }} {{ $preSelectedEleve->utilisateur->prenom ?? '' }} 
+                                                            (Matricule: {{ $preSelectedEleve->numero_etudiant ?? 'N/A' }}) 
+                                                            - {{ $preSelectedEleve->classe->nom ?? 'Non assigné' }}
+                                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearEleveSelection()">
+                                                                <i class="fas fa-times"></i> Changer
+                                                            </button>
+                                                        </div>
+                                                    @endif
+                                                @endif
+                                            </div>
                                             @error('eleve_id')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
@@ -181,6 +194,94 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (this.value && !dateExpirationInput.value) {
             dateExpirationInput.value = expirationDate.toISOString().split('T')[0];
+        }
+    });
+
+    // Système de recherche d'élèves
+    const eleveSearchInput = document.getElementById('eleve_search');
+    const eleveIdInput = document.getElementById('eleve_id');
+    const searchResults = document.getElementById('eleve_search_results');
+    const selectedEleveDiv = document.getElementById('selected_eleve');
+    const eleves = @json($eleves);
+
+    let searchTimeout;
+
+    eleveSearchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const searchTerm = this.value.toLowerCase().trim();
+
+        if (searchTerm.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            const filtered = eleves.filter(eleve => {
+                const nom = (eleve.utilisateur?.nom || '').toLowerCase();
+                const prenom = (eleve.utilisateur?.prenom || '').toLowerCase();
+                const matricule = (eleve.numero_etudiant || '').toLowerCase();
+                const classe = (eleve.classe?.nom || '').toLowerCase();
+                
+                return nom.includes(searchTerm) || 
+                       prenom.includes(searchTerm) || 
+                       matricule.includes(searchTerm) ||
+                       classe.includes(searchTerm);
+            });
+
+            if (filtered.length === 0) {
+                searchResults.innerHTML = '<div class="list-group-item text-muted">Aucun élève trouvé</div>';
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.innerHTML = filtered.map(eleve => `
+                    <button type="button" class="list-group-item list-group-item-action" 
+                            onclick="selectEleve(${eleve.id}, '${eleve.utilisateur?.nom || ''} ${eleve.utilisateur?.prenom || ''}', '${eleve.numero_etudiant || 'N/A'}', '${eleve.classe?.nom || 'Non assigné'}')">
+                        <strong>${eleve.utilisateur?.nom || ''} ${eleve.utilisateur?.prenom || ''}</strong>
+                        <br>
+                        <small class="text-muted">
+                            Matricule: ${eleve.numero_etudiant || 'N/A'} | 
+                            Classe: ${eleve.classe?.nom || 'Non assigné'}
+                        </small>
+                    </button>
+                `).join('');
+                searchResults.style.display = 'block';
+            }
+        }, 300);
+    });
+
+    // Fonction pour sélectionner un élève
+    window.selectEleve = function(id, nom, matricule, classe) {
+        eleveIdInput.value = id;
+        eleveSearchInput.value = '';
+        searchResults.style.display = 'none';
+        
+        selectedEleveDiv.innerHTML = `
+            <div class="alert alert-success">
+                <strong><i class="fas fa-check-circle me-2"></i>Élève sélectionné :</strong>
+                ${nom} (Matricule: ${matricule}) - ${classe}
+                <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearEleveSelection()">
+                    <i class="fas fa-times"></i> Changer
+                </button>
+            </div>
+        `;
+    };
+
+    // Si un élève est déjà pré-sélectionné (venant de l'URL), le champ de recherche reste fonctionnel
+    @if(isset($selectedEleveId) && $selectedEleveId)
+        // L'élève est déjà pré-sélectionné via le template Blade ci-dessus
+        // Le champ de recherche reste actif pour permettre de changer d'élève
+    @endif
+
+    // Fonction pour effacer la sélection
+    window.clearEleveSelection = function() {
+        eleveIdInput.value = '';
+        selectedEleveDiv.innerHTML = '';
+        eleveSearchInput.focus();
+    };
+
+    // Masquer les résultats si on clique ailleurs
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#eleve_search') && !e.target.closest('#eleve_search_results')) {
+            searchResults.style.display = 'none';
         }
     });
 });

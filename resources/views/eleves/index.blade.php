@@ -300,6 +300,20 @@ use Illuminate\Support\Facades\Storage;
                                             <i class="fas fa-credit-card"></i>
                                         </a>
                                     @endif
+                                    
+                                    @if($eleve->cartesScolaires->where('statut', 'active')->count() > 0)
+                                        <button class="btn btn-sm btn-info" 
+                                                title="Carte scolaire active ({{ $eleve->cartesScolaires->where('statut', 'active')->first()->numero_carte }})" 
+                                                disabled>
+                                            <i class="fas fa-id-card"></i>
+                                        </button>
+                                    @else
+                                        <a href="{{ route('cartes-scolaires.create') }}?eleve_id={{ $eleve->id }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="Créer une carte scolaire">
+                                            <i class="fas fa-id-card"></i>
+                                        </a>
+                                    @endif
                             </div>
                         </td>
                     </tr>

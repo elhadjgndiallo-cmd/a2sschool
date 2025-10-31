@@ -11,6 +11,9 @@
                         Gestion des Cartes Scolaires
                     </h3>
                     <div class="card-tools">
+                        <button type="button" id="btnImprimerPlusieurs" class="btn btn-info me-2" style="display: none;" onclick="imprimerPlusieurs()">
+                            <i class="fas fa-print me-2"></i>Imprimer les sélectionnées (8 par page)
+                        </button>
                         <a href="{{ route('cartes-scolaires.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Nouvelle Carte
                         </a>
@@ -91,22 +94,28 @@
 
                     <!-- Tableau des cartes -->
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Numéro</th>
-                                    <th>Élève</th>
-                                    <th>Classe</th>
-                                    <th>Type</th>
-                                    <th>Date d'émission</th>
-                                    <th>Date d'expiration</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>Numéro</th>
+                                        <th>Élève</th>
+                                        <th>Classe</th>
+                                        <th>Type</th>
+                                        <th>Date d'émission</th>
+                                        <th>Date d'expiration</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
                             <tbody>
                                 @forelse($cartes as $carte)
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" name="cartes[]" value="{{ $carte->id }}" class="carte-checkbox" onchange="updateImprimerButton()">
+                                        </td>
                                         <td>
                                             <span class="badge bg-info">{{ $carte->numero_carte }}</span>
                                         </td>
@@ -198,7 +207,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4">
+                                        <td colspan="9" class="text-center py-4">
                                             <div class="text-muted">
                                                 <i class="fas fa-id-card fa-3x mb-3"></i>
                                                 <p>Aucune carte scolaire trouvée.</p>
@@ -231,6 +240,59 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.carte-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateImprimerButton();
+}
+
+function updateImprimerButton() {
+    const checked = document.querySelectorAll('.carte-checkbox:checked');
+    const btnImprimer = document.getElementById('btnImprimerPlusieurs');
+    
+    if (checked.length > 0) {
+        btnImprimer.style.display = 'inline-block';
+        btnImprimer.innerHTML = `<i class="fas fa-print me-2"></i>Imprimer les sélectionnées (${checked.length} carte${checked.length > 1 ? 's' : ''})`;
+    } else {
+        btnImprimer.style.display = 'none';
+    }
+    
+    // Mettre à jour la checkbox "Tout sélectionner"
+    const selectAll = document.getElementById('selectAll');
+    const allCheckboxes = document.querySelectorAll('.carte-checkbox');
+    selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+}
+
+function imprimerPlusieurs() {
+    const checked = document.querySelectorAll('.carte-checkbox:checked');
+    
+    if (checked.length === 0) {
+        alert('Veuillez sélectionner au moins une carte.');
+        return;
+    }
+    
+    // Collecter les IDs des cartes sélectionnées
+    const carteIds = Array.from(checked).map(checkbox => checkbox.value);
+    
+    // Construire l'URL avec les paramètres
+    const url = '{{ route("cartes-scolaires.imprimer-plusieurs") }}?cartes=' + carteIds.join(',');
+    
+    // Ouvrir dans un nouvel onglet
+    window.open(url, '_blank');
+}
+
+// Mettre à jour le bouton au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    updateImprimerButton();
+});
+</script>
 
 @endsection
 

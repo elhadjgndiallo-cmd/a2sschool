@@ -334,7 +334,7 @@
                             <span><strong>Classe :</strong> {{ $cartes_scolaire->eleve->classe->nom ?? 'Non assigné' }}</span>
                         </div>
                         @if($cartes_scolaire->eleve->numero_etudiant)
-                        <div><strong>Numéro :</strong> {{ $cartes_scolaire->eleve->numero_etudiant }}</div>
+                        <div><strong>Matricule :</strong> {{ $cartes_scolaire->eleve->numero_etudiant }}</div>
                         @endif
                         <div><strong>Contact :</strong> {{ $cartes_scolaire->eleve->utilisateur->telephone ?? '**********' }}</div>
                     </div>

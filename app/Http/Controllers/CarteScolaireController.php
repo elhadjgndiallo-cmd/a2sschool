@@ -46,16 +46,18 @@ class CarteScolaireController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $eleves = Eleve::with('utilisateur')
+        // Récupérer tous les élèves actifs (pas seulement ceux sans carte)
+        // pour permettre la création même si une carte existe déjà (remplacement)
+        $eleves = Eleve::with(['utilisateur', 'classe'])
             ->where('actif', true)
-            ->whereDoesntHave('cartesScolaires', function($query) {
-                $query->where('statut', 'active');
-            })
             ->get();
 
-        return view('cartes-scolaires.create', compact('eleves'));
+        // Si un eleve_id est passé, pré-sélectionner cet élève
+        $selectedEleveId = $request->get('eleve_id');
+
+        return view('cartes-scolaires.create', compact('eleves', 'selectedEleveId'));
     }
 
     /**
@@ -200,6 +202,38 @@ class CarteScolaireController extends Controller
         $cartes_scolaire->load(['eleve.utilisateur', 'eleve.classe', 'emisePar']);
         
         return view('cartes-scolaires.imprimer', compact('cartes_scolaire'));
+    }
+
+    /**
+     * Imprimer plusieurs cartes scolaires (8 par page A4)
+     */
+    public function imprimerPlusieurs(Request $request)
+    {
+        // Récupérer les IDs depuis les paramètres GET ou POST
+        $carteIds = $request->input('cartes', []);
+        
+        // Si c'est une chaîne séparée par des virgules, la convertir en tableau
+        if (is_string($carteIds)) {
+            $carteIds = explode(',', $carteIds);
+            $carteIds = array_filter($carteIds, function($id) {
+                return !empty(trim($id));
+            });
+        }
+        
+        if (empty($carteIds)) {
+            return redirect()->back()->with('error', 'Veuillez sélectionner au moins une carte.');
+        }
+
+        // Charger les cartes avec leurs relations
+        $cartes = CarteScolaire::whereIn('id', $carteIds)
+            ->with(['eleve.utilisateur', 'eleve.classe', 'emisePar'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Diviser en pages de 8 cartes
+        $cartesParPage = $cartes->chunk(8);
+
+        return view('cartes-scolaires.imprimer-plusieurs', compact('cartesParPage', 'cartes'));
     }
 
 

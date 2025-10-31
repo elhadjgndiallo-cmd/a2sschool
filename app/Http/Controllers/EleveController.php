@@ -152,6 +152,13 @@ class EleveController extends Controller
                 $eleve->load('parents.utilisateur');
             }
             
+            // Charger les cartes scolaires actives
+            if (!$eleve->relationLoaded('cartesScolaires')) {
+                $eleve->load(['cartesScolaires' => function($query) {
+                    $query->where('statut', 'active');
+                }]);
+            }
+            
             // Forcer le rechargement des données parent
             foreach ($eleve->parents as $parent) {
                 if ($parent->utilisateur) {

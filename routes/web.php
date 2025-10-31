@@ -1093,6 +1093,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     
     // Routes pour la gestion des cartes scolaires (Admin seulement)
     Route::middleware('role:admin,personnel_admin')->group(function () {
+        // Routes spécifiques AVANT les routes resource pour éviter les conflits
+        Route::get('/cartes-scolaires/imprimer-plusieurs', [CarteScolaireController::class, 'imprimerPlusieurs'])->name('cartes-scolaires.imprimer-plusieurs');
         Route::resource('cartes-scolaires', CarteScolaireController::class);
         Route::get('/cartes-scolaires/{cartes_scolaire}/imprimer', [CarteScolaireController::class, 'imprimer'])->name('cartes-scolaires.imprimer');
         Route::get('/cartes-scolaires/{cartes_scolaire}/renouveler', [CarteScolaireController::class, 'renouveler'])->name('cartes-scolaires.renouveler');
