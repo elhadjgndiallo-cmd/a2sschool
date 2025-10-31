@@ -13,6 +13,22 @@
             color: #333;
         }
         
+        /* Clamp observations text when printing to keep within one page */
+        @media print {
+            .observations-box p {
+                font-size: 5.5px !important;
+                line-height: 1.05 !important;
+                max-height: 10mm !important; /* make room for signatures */
+                overflow: hidden !important;
+                padding: 1px !important;
+                margin: 0 !important;
+            }
+            
+            .info-section h3[style*="font-size: 8px"] {
+                font-size: 7px !important;
+            }
+        }
+        
         .recu-container {
             max-width: 842px; /* Largeur A5 paysage */
             height: 595px; /* Hauteur A5 paysage */
@@ -264,7 +280,13 @@
         @media print {
             @page {
                 size: A5 landscape;
-                margin: 0;
+                /* Minimal margins to maximize content area */
+                margin: 3mm 6mm 14mm 6mm; /* reduce bottom by 1mm to avoid rounding overflows */
+            }
+            html, body {
+                width: 210mm;
+                height: auto !important; /* avoid rounding that causes blank page */
+                overflow: hidden !important;
             }
             
             * {
@@ -276,35 +298,41 @@
                 background: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                font-size: 11px !important;
+                font-size: 9px !important; /* slightly larger to fill page */
             }
             
             .recu-container {
                 box-shadow: none !important;
                 border: none !important;
                 max-width: none !important;
-                height: auto !important;
+                height: calc(148mm - 19mm) !important; /* add 1mm safety */
+                max-height: calc(148mm - 19mm) !important;
                 margin: 0 !important;
                 border-radius: 0 !important;
                 width: 100% !important;
                 max-width: 842px !important; /* Largeur A5 paysage */
-                height: 595px !important; /* Hauteur A5 paysage */
+                min-height: calc(148mm - 19mm) !important; /* compenser les marges */
+                overflow: hidden !important;
+                page-break-after: avoid !important;
             }
             
             .header {
                 background: #007bff !important;
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                padding: 8px !important;
+                padding: 2mm 3mm !important;
+                min-height: 15mm !important;
+                max-height: 15mm !important;
                 display: flex !important;
                 align-items: center !important;
                 page-break-inside: avoid !important;
+                page-break-after: avoid !important;
             }
             
             .header-logo {
-                width: 45px !important;
-                height: 45px !important;
-                margin-right: 10px !important;
+                width: 30px !important;
+                height: 30px !important;
+                margin-right: 6px !important;
             }
             
             .header-content {
@@ -312,13 +340,31 @@
                 text-align: center !important;
             }
             
+            .header h1 {
+                font-size: 12px !important;
+                margin: 0 !important;
+            }
+            
+            .header p {
+                font-size: 7px !important;
+                margin: 0 !important;
+            }
+            
             .print-controls {
                 display: none !important;
             }
             
             .content {
-                padding: 6px !important;
-                font-size: 11px !important;
+                padding: 2px 4px !important;
+                font-size: 9px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                /* Laisser le contenu déborder pour ne pas rogner les signatures */
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-y: visible !important;
+                padding-bottom: 12mm !important; /* ensure clearance from fixed footer */
+                page-break-inside: avoid !important;
             }
             
             .montant-total {
@@ -344,57 +390,139 @@
             }
             
             .footer {
-                padding: 3px 5px !important;
-                font-size: 9px !important;
+                padding: 1px 3px !important;
+                font-size: 7px !important;
+                /* Fix the footer at the bottom of the printed page */
+                position: fixed !important;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 10;
+                height: 11.5mm !important; /* slightly smaller to guarantee fit */
+                max-height: 11.5mm !important;
+                page-break-inside: avoid !important;
+            }
+            
+            .footer p {
+                margin: 0 !important;
+                font-size: 7px !important;
+                line-height: 1.1 !important;
             }
             
             /* Optimisations spécifiques A5 */
             .info-section {
-                margin-bottom: 6px !important;
+                margin-bottom: 3px !important;
                 page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                page-break-after: avoid !important;
             }
             
             .info-section h3 {
-                font-size: 11px !important;
-                margin-bottom: 4px !important;
+                font-size: 9px !important;
+                margin-bottom: 3px !important;
+                padding-bottom: 1px !important;
             }
             
             .info-item {
-                font-size: 10px !important;
-                padding: 2px 0 !important;
+                font-size: 8px !important;
+                padding: 0 !important;
+                line-height: 1.25 !important;
+            }
+            
+            .paiement-details {
+                padding: 3px !important;
+                margin: 2px 0 !important;
+            }
+            
+            .info-grid {
+                gap: 4px !important;
+                margin-bottom: 3px !important;
+            }
+            
+            .info-label, .info-value {
+                font-size: 8px !important;
             }
             
             .montant-total {
                 margin: 0 !important;
-                padding: 6px !important;
+                padding: 4px !important;
                 height: fit-content !important;
             }
             
             .montant-total h2 {
-                font-size: 11px !important;
+                font-size: 9px !important;
+                margin: 0 0 2px 0 !important;
             }
             
             .montant-box {
-                padding: 8px !important;
-                margin: 4px 0 0 0 !important;
+                padding: 4px !important;
+                margin: 2px 0 0 0 !important;
+            }
+            
+            .montant-box-label {
+                font-size: 7px !important;
             }
             
             .montant-value {
-                font-size: 14px !important;
+                font-size: 11px !important;
             }
             
             .montant-placeholder {
-                font-size: 12px !important;
-                padding: 10px !important;
+                font-size: 8px !important;
+                padding: 4px !important;
             }
             
             .signature-section {
-                margin-top: 8px !important;
+                /* Keep signatures together on the same page as preceding content */
                 page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-inside: avoid !important;
+                break-before: avoid !important;
+                margin-top: 8px !important;
+                margin-bottom: 6px !important;
+                gap: 8px !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                align-items: end !important;
+                visibility: visible !important;
+            }
+            
+            .signature-line {
+                height: 12px !important;
+                border-bottom: 1px solid #333 !important;
             }
             
             .signature-box p {
-                font-size: 8px !important;
+                font-size: 7px !important;
+                margin: 2px 0 0 0 !important;
+                text-align: center !important;
+                font-weight: bold !important;
+            }
+            
+            .signature-box p {
+                font-size: 6px !important;
+                margin: 0 !important;
+            }
+            
+            /* Message d'information compact */
+            .info-section[style*="margin-bottom: 2px"] {
+                margin-bottom: 1px !important;
+            }
+            
+            .info-section[style*="margin-bottom: 2px"] p {
+                font-size: 6px !important;
+                margin: 0 !important;
+                padding: 1px !important;
+            }
+            
+            .info-section[style*="margin-bottom: 2px"] div[style*="background"] {
+                padding: 1px !important;
+            }
+            
+            /* Prevent any page breaks */
+            * {
+                page-break-after: avoid !important;
             }
         }
     </style>
@@ -502,7 +630,7 @@
             </div>
             
             <!-- Section principale : Détails à gauche, Montant à droite -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 6px; margin-top: 4px;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 3px; margin-top: 2px;">
                 <!-- Colonne gauche : Détails du rappel -->
                 <div>
                     <!-- Détails financiers -->
@@ -517,39 +645,16 @@
                                 <span class="info-label">Montant déjà payé :</span>
                                 <span class="info-value"><strong>{{ number_format($recuRappel->montant_paye, 0, ',', ' ') }} GNF</strong></span>
                             </div>
-                            <div class="info-item" style="border-top: 1px solid #007bff; padding-top: 3px; margin-top: 3px;">
-                                <span class="info-label" style="font-size: 9px;">Montant restant à payer :</span>
-                                <span class="info-value" style="font-size: 10px; color: {{ $recuRappel->montant_restant > 0 ? '#dc3545' : '#28a745' }};">
+                            <div class="info-item" style="border-top: 1px solid #007bff; padding-top: 2px; margin-top: 2px;">
+                                <span class="info-label" style="font-size: 7px;">Montant restant à payer :</span>
+                                <span class="info-value" style="font-size: 7px; color: {{ $recuRappel->montant_restant > 0 ? '#dc3545' : '#28a745' }};">
                                     <strong>{{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF</strong>
                                 </span>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Informations du reçu -->
-                    <div class="info-section">
-                        <h3>Informations du Reçu</h3>
-                        <div class="paiement-details">
-                            <div class="info-item">
-                                <span class="info-label">Date de rappel :</span>
-                                <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y à H:i') }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Date d'échéance :</span>
-                                <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_echeance)->format('d/m/Y') }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Frais concerné :</span>
-                                <span class="info-value">{{ $recuRappel->fraisScolarite->libelle }}</span>
-                            </div>
-                            @if($recuRappel->generePar)
-                            <div class="info-item">
-                                <span class="info-label">Généré par :</span>
-                                <span class="info-value">{{ $recuRappel->generePar->nom }} {{ $recuRappel->generePar->prenom }}</span>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
+                    
                 </div>
                 
                 <!-- Colonne droite : Montant à payer -->
@@ -557,14 +662,14 @@
                     <div class="montant-total">
                         <h2>MONTANT À PAYER</h2>
                         <div class="montant-box" style="border: 2px solid #007bff; background: #f8f9ff;">
-                            <div class="montant-box-label" style="color: #007bff; font-size: 8px;">Montant à payer</div>
+                            <div class="montant-box-label" style="color: #007bff; font-size: 6px;">Montant à payer</div>
                             @if($recuRappel->montant_a_payer)
-                                <div class="montant-value" style="color: #007bff; font-size: 12px;">
+                                <div class="montant-value" style="color: #007bff; font-size: 10px;">
                                     {{ number_format($recuRappel->montant_a_payer, 0, ',', ' ') }} GNF
                                 </div>
                             @else
-                                <div class="montant-placeholder" style="border: 2px dashed #007bff; background: white; padding: 8px;">
-                                    <div style="font-size: 10px; font-weight: bold; color: #007bff; margin-bottom: 3px;">
+                                <div class="montant-placeholder" style="border: 2px dashed #007bff; background: white; padding: 4px;">
+                                    <div style="font-size: 8px; font-weight: bold; color: #007bff; margin-bottom: 2px;">
                                         CASE VIDE
                                     </div>
                                 </div>
@@ -576,17 +681,17 @@
             
             <!-- Message d'information compact -->
             @if($recuRappel->montant_restant > 0)
-            <div class="info-section" style="margin-bottom: 2px;">
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 2px; padding: 2px; text-align: center;">
-                    <p style="color: #856404; margin: 0; font-size: 7px;">
+            <div class="info-section" style="margin-bottom: 1px;">
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 1px; padding: 1px; text-align: center;">
+                    <p style="color: #856404; margin: 0; font-size: 6px;">
                         <strong>Paiement Partiel</strong> - Reste: {{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF
                     </p>
                 </div>
             </div>
             @else
-            <div class="info-section" style="margin-bottom: 2px;">
-                <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 2px; padding: 2px; text-align: center;">
-                    <p style="color: #155724; margin: 0; font-size: 7px;">
+            <div class="info-section" style="margin-bottom: 1px;">
+                <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 1px; padding: 1px; text-align: center;">
+                    <p style="color: #155724; margin: 0; font-size: 6px;">
                         <strong>Paiement Complet</strong>
                     </p>
                 </div>
@@ -596,10 +701,10 @@
             
             <!-- Informations complémentaires (observations) -->
             @if($recuRappel->observations && trim($recuRappel->observations) != '')
-            <div class="info-section" style="margin-bottom: 2px;">
-                <h3 style="font-size: 8px;">Observations</h3>
+            <div class="info-section" style="margin-bottom: 1px;">
+                <h3 style="font-size: 7px;">Observations</h3>
                 <div class="observations-box">
-                    <p style="background: #f8f9fa; padding: 3px; border-radius: 2px; border-left: 2px solid #dc3545; font-size: 7px; margin: 0; line-height: 1.2;">
+                    <p style="background: #f8f9fa; padding: 2px; border-radius: 1px; border-left: 1px solid #dc3545; font-size: 6px; margin: 0; line-height: 1.1;">
                         {{ $recuRappel->observations }}
                     </p>
                 </div>
@@ -622,10 +727,14 @@
         <!-- Pied de page -->
         <div class="footer">
             <p><strong>{{ $schoolInfo['school_name'] ?? 'École' }}</strong></p>
-            <p>{{ $schoolInfo['school_address'] ?? 'Adresse de l\'école' }}</p>
-            <p>Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone de l\'école' }}</p>
-            <p>Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}</p>
-            <p>Ce reçu de rappel fait foi de notification. Conservez-le précieusement.</p>
+            <p>
+                {{ $schoolInfo['school_address'] ?? 'Adresse de l\'école' }}
+                | Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone de l\'école' }}
+            </p>
+            <p>
+                Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}
+                | Ce reçu de rappel fait foi de notification. Conservez-le précieusement.
+            </p>
         </div>
     </div>
     

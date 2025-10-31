@@ -114,9 +114,10 @@
     
 </div>
 
-<div class="row">
+<!-- Informations personnelles et scolaires côte à côte en haut -->
+<div class="row g-3 mb-4">
     <!-- Informations personnelles -->
-    <div class="col-md-6">
+    <div class="col-12 col-lg-5">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Informations Personnelles</h5>
@@ -210,8 +211,8 @@
         </div>
     </div>
     
-    <!-- Informations scolaires -->
-    <div class="col-md-6">
+    <!-- Informations scolaires (à droite sur desktop) -->
+    <div class="col-12 col-lg-7">
         <div class="card mb-4">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">Informations Scolaires</h5>
@@ -280,8 +281,9 @@
         </div>
     </div>
 </div>
+<!-- Fin de la section Informations Personnelles et Scolaires côte à côte -->
 
-<!-- Parents -->
+<!-- Parents / Tuteurs - En dessous des informations personnelles et scolaires -->
 <div class="card mb-4">
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Parents / Tuteurs</h5>
@@ -384,6 +386,69 @@
         @endif
     </div>
 </div>
+<!-- Fin de la section Parents / Tuteurs -->
+
+<!-- Paiements et Frais de Scolarité - En dessous de la section Parents / Tuteurs -->
+<div class="card mb-4">
+	<div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+		<h5 class="mb-0">Paiements et Frais de Scolarité</h5>
+		<a href="{{ route('paiements.index') }}" class="btn btn-sm btn-light">
+			<i class="fas fa-receipt me-1"></i> Aller aux paiements
+		</a>
+	</div>
+	<div class="card-body">
+		@if($eleve->fraisScolarite && $eleve->fraisScolarite->count() > 0)
+			<div class="table-responsive">
+				<table class="table table-striped align-middle">
+					<thead class="table-light">
+						<tr>
+							<th>Libellé</th>
+							<th class="text-end">Montant</th>
+							<th class="text-end">Payé</th>
+							<th class="text-end">Restant</th>
+							<th>Échéance</th>
+							<th>Paiements</th>
+						</tr>
+					</thead>
+					<tbody>
+					@foreach($eleve->fraisScolarite as $frais)
+						@php
+							$montantPaye = $frais->paiements->sum('montant_paye');
+							$restant = max(0, ($frais->montant ?? 0) - $montantPaye);
+						@endphp
+						<tr>
+							<td>{{ $frais->libelle ?? 'Frais' }}</td>
+                            <td class="text-end">{{ number_format($frais->montant ?? 0, 0, ',', ' ') }} GNF</td>
+                            <td class="text-end text-success fw-semibold">{{ number_format($montantPaye, 0, ',', ' ') }} GNF</td>
+                            <td class="text-end {{ $restant > 0 ? 'text-danger' : 'text-success' }} fw-semibold">{{ number_format($restant, 0, ',', ' ') }} GNF</td>
+							<td>{{ optional($frais->date_echeance)->format('d/m/Y') }}</td>
+							<td>
+								@if($frais->paiements->count() > 0)
+									<ul class="mb-0 ps-3">
+										@foreach($frais->paiements as $paie)
+											<li>
+                                                <strong>{{ number_format($paie->montant_paye, 0, ',', ' ') }} GNF</strong>
+												<small class="text-muted">— {{ optional($paie->date_paiement)->format('d/m/Y') }} @if($paie->numero_recu) • Reçu {{ $paie->numero_recu }} @endif</small>
+											</li>
+										@endforeach
+									</ul>
+								@else
+									<span class="text-muted">Aucun paiement</span>
+								@endif
+							</td>
+						</tr>
+					@endforeach
+					</tbody>
+				</table>
+			</div>
+		@else
+			<p class="text-muted mb-0">
+				<i class="fas fa-info-circle me-1"></i>
+				Aucun frais de scolarité enregistré pour cet élève.
+			</p>
+		@endif
+	</div>
+</div>
 
 <!-- Modal pour upload de photo -->
 <div class="modal fade" id="uploadPhotoModal" tabindex="-1">
@@ -458,6 +523,8 @@ document.getElementById('photo_profil').addEventListener('change', function(e) {
     /* Nettoyage visuel */
     .card, .card-header { box-shadow: none !important; border: none !important; background: transparent !important; }
 }
+/* Garder le style existant et ajouter un léger resserrement pour la table paiements */
+.table td, .table th { vertical-align: middle; }
 </style>
 @endpush
 @endsection

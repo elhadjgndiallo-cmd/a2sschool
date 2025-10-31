@@ -416,23 +416,60 @@ public function store(Request $request)
     /**
      * Afficher les rapports de paiement
      */
-    public function rapports()
+    public function rapports(Request $request)
     {
+        // Récupérer les filtres
+        $dateDebut = $request->get('date_debut', now()->subMonths(6)->format('Y-m-01'));
+        $dateFin = $request->get('date_fin', now()->format('Y-m-t'));
+        $classeId = $request->get('classe_id');
+
+        // Construire les requêtes de base
+        $fraisQuery = FraisScolarite::query();
+        $paiementsQuery = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin]);
+
+        // Appliquer le filtre classe si présent
+        if ($classeId) {
+            $fraisQuery->whereHas('eleve', function($q) use ($classeId) {
+                $q->where('classe_id', $classeId);
+            });
+            $paiementsQuery->whereHas('fraisScolarite.eleve', function($q) use ($classeId) {
+                $q->where('classe_id', $classeId);
+            });
+        }
+
+        // Statistiques générales
         $stats = [
-            'total_frais' => FraisScolarite::count(),
-            'frais_payes' => FraisScolarite::where('statut', 'paye')->count(),
-            'frais_en_attente' => FraisScolarite::where('statut', 'en_attente')->count(),
-            'frais_en_retard' => FraisScolarite::where('statut', 'en_retard')->count(),
-            'montant_total' => FraisScolarite::sum('montant'),
-            'montant_paye' => Paiement::sum('montant_paye')
+            'total_frais' => $fraisQuery->count(),
+            'frais_payes' => (clone $fraisQuery)->where('statut', 'paye')->count(),
+            'frais_en_attente' => (clone $fraisQuery)->where('statut', 'en_attente')->count(),
+            'frais_en_retard' => (clone $fraisQuery)->where('statut', 'en_retard')->count(),
+            'montant_total' => (clone $fraisQuery)->sum('montant'),
+            'montant_paye' => $paiementsQuery->sum('montant_paye')
         ];
 
-        $paiementsRecents = Paiement::with(['fraisScolarite.eleve', 'encaissePar'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
+        // Statistiques par classe
+        $paiementsParClasse = DB::table('paiements')
+            ->join('frais_scolarite', 'paiements.frais_scolarite_id', '=', 'frais_scolarite.id')
+            ->join('eleves', 'frais_scolarite.eleve_id', '=', 'eleves.id')
+            ->join('classes', 'eleves.classe_id', '=', 'classes.id')
+            ->whereBetween('paiements.date_paiement', [$dateDebut, $dateFin])
+            ->select(
+                'classes.nom',
+                DB::raw('SUM(frais_scolarite.montant) as montant_total'),
+                DB::raw('SUM(paiements.montant_paye) as montant_paye'),
+                DB::raw('COUNT(DISTINCT frais_scolarite.id) as nombre_frais')
+            )
+            ->groupBy('classes.id', 'classes.nom')
+            ->orderBy('montant_paye', 'desc')
             ->get();
 
-        return view('paiements.rapports', compact('stats', 'paiementsRecents'));
+        // Paiements récents
+        $paiementsRecents = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'encaissePar'])
+            ->orderBy('date_paiement', 'desc')
+            ->limit(20)
+            ->get();
+
+        return view('paiements.rapports', compact('stats', 'paiementsRecents', 'paiementsParClasse'));
     }
 
     /**

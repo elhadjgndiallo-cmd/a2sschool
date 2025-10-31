@@ -975,12 +975,13 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/paiements', [PaiementController::class, 'index'])->name('paiements.index')->middleware('check.permission:paiements.view');
         Route::get('/paiements/create', [PaiementController::class, 'create'])->name('paiements.create')->middleware('check.permission:paiements.create');
         Route::post('/paiements', [PaiementController::class, 'store'])->name('paiements.store')->middleware('check.permission:paiements.create');
+        // Route spécifique AVANT les routes avec paramètres
+        Route::get('/paiements/rapports', [PaiementController::class, 'rapports'])->name('paiements.rapports')->middleware('check.permission:paiements.view');
         Route::get('/paiements/{frais}', [PaiementController::class, 'show'])->name('paiements.show')->middleware('check.permission:paiements.view');
         Route::get('/paiements/{frais}/payer-direct', [PaiementController::class, 'payerDirect'])->name('paiements.payer-direct')->middleware('check.permission:paiements.create');
         Route::post('/paiements/{frais}/enregistrer-direct', [PaiementController::class, 'enregistrerPaiementDirect'])->name('paiements.enregistrer-direct')->middleware('check.permission:paiements.create');
         Route::get('/paiements/tranche/{tranche}/payer', [PaiementController::class, 'payerTranche'])->name('paiements.payer-tranche')->middleware('check.permission:paiements.create');
         Route::post('/paiements/tranche/{tranche}/enregistrer', [PaiementController::class, 'enregistrerPaiementTranche'])->name('paiements.enregistrer-tranche')->middleware('check.permission:paiements.enregistrer');
-        Route::get('/paiements/rapports', [PaiementController::class, 'rapports'])->name('paiements.rapports')->middleware('check.permission:paiements.view');
         Route::get('/paiements/{frais}/recu/{paiement?}', [PaiementController::class, 'genererRecu'])->name('paiements.recu')->middleware('check.permission:paiements.view');
         Route::get('/entrees/{entree}/recu', [PaiementController::class, 'genererRecuFromEntree'])->name('entrees.recu')->middleware('check.permission:paiements.view');
         Route::post('/paiements/{frais}/annuler-dernier-paiement', [PaiementController::class, 'annulerDernierPaiement'])->name('paiements.annuler-dernier-paiement')->middleware('check.permission:paiements.edit');

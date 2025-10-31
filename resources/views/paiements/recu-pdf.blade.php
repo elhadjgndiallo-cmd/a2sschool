@@ -11,10 +11,11 @@
             padding: 20px;
             background-color: #f8f9fa;
             color: #333;
+            font-size: 12px; /* base plus grande pour meilleure occupation */
         }
         
         .recu-container {
-            max-width: 800px; /* Largeur A5 paysage avec marges */
+            max-width: 960px; /* A5 paysage visuel plus large pour l'écran */
             height: auto; /* Hauteur automatique */
             margin: 0 auto;
             background: white;
@@ -23,9 +24,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            font-size: 10px;
-            margin-left: 20px;
-            margin-right: 20px;
+            font-size: 12px;
         }
         
         .header {
@@ -58,7 +57,7 @@
         
         .header h1 {
             margin: 0;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: bold;
         }
         
@@ -98,6 +97,8 @@
             padding: 3px 8px;
             flex: 1;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
         
         .info-section {
@@ -107,9 +108,9 @@
         .info-section h3 {
             color: #007bff;
             border-bottom: 1px solid #007bff;
-            padding-bottom: 1px;
-            margin-bottom: 2px;
-            font-size: 10px;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
+            font-size: 12px;
         }
         
         .info-grid {
@@ -122,9 +123,9 @@
         .info-item {
             display: flex;
             justify-content: space-between;
-            padding: 1px 0;
+            padding: 2px 0;
             border-bottom: 1px solid #eee;
-            font-size: 9px;
+            font-size: 11px;
         }
         
         .info-label {
@@ -154,7 +155,7 @@
         
         .montant-total h2 {
             margin: 0;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: bold;
         }
         
@@ -210,10 +211,18 @@
             color: #721c24;
         }
         
+        .footer {
+            background: #f8f9fa;
+            padding: 3px 8px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            font-size: 9px;
+        }
+        
         @media print {
             @page {
                 size: A5 landscape;
-                margin: 5mm 8mm;
+                margin: 3mm 5mm;
             }
             
             * {
@@ -225,18 +234,18 @@
                 background: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                font-size: 11px !important;
+                font-size: 12px !important;
             }
             
+            html, body { height: 100% !important; }
             .recu-container {
                 box-shadow: none !important;
                 border: none !important;
                 max-width: none !important;
-                height: auto !important;
+                height: 100% !important;
                 margin: 0 !important;
                 border-radius: 0 !important;
                 width: 100% !important;
-                max-width: 820px !important; /* Largeur A5 paysage avec marges réduites */
             }
             
             .header {
@@ -275,10 +284,15 @@
             }
             
             .content {
-                padding: 2px !important;
-                font-size: 9px !important;
+                padding: 6px 10px !important;
+                font-size: 11px !important;
                 flex: 1 !important;
-                overflow: hidden !important;
+                overflow: visible !important; /* allow signatures to be seen */
+                display: flex !important;
+                flex-direction: column !important;
+                min-height: 100% !important;
+                justify-content: flex-start !important;
+                padding-bottom: 18mm !important; /* reserve space for fixed footer + signatures */
             }
             
             .montant-total {
@@ -290,12 +304,12 @@
             }
             
             .montant-total h2 {
-                font-size: 14px !important;
+                font-size: 22px !important;
                 margin: 0 !important;
             }
             
             .montant-total p {
-                font-size: 8px !important;
+                font-size: 10px !important;
                 margin: 0px 0 0 0 !important;
             }
             
@@ -312,18 +326,18 @@
             
             /* Optimisations spécifiques A5 */
             .info-section {
-                margin-bottom: 1px !important;
+                margin-bottom: 6px !important;
                 page-break-inside: avoid !important;
             }
             
             .info-section h3 {
-                font-size: 8px !important;
+                font-size: 11px !important;
                 margin-bottom: 0px !important;
                 padding-bottom: 0px !important;
             }
             
             .info-item {
-                font-size: 8px !important;
+                font-size: 10px !important;
                 padding: 0px 0 !important;
             }
             
@@ -334,18 +348,52 @@
             }
             
             .signature-section {
-                margin-top: 1px !important;
                 page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-inside: avoid !important;
+                break-before: avoid !important;
+                margin-top: 12px !important;
+                margin-bottom: 8px !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 12px !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                z-index: 1 !important;
+            }
+            
+            .signature-box {
+                text-align: center !important;
+                visibility: visible !important;
+                opacity: 1 !important;
             }
             
             .signature-box p {
-                font-size: 5px !important;
-                margin: 0 !important;
+                font-size: 8px !important;
+                margin: 4px 0 0 0 !important;
+                font-weight: bold !important;
+                color: #333 !important;
             }
             
             .signature-line {
-                height: 6px !important;
-                margin-bottom: 0px !important;
+                height: 20px !important;
+                margin-bottom: 4px !important;
+                border-bottom: 2px solid #333 !important;
+                visibility: visible !important;
+                display: block !important;
+            }
+            
+            .footer {
+                position: fixed !important;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 10 !important;
+                font-size: 8px !important;
+                padding: 2px 6px !important;
+                height: 10mm !important; /* smaller to create more room for signatures */
             }
         }
     </style>
@@ -493,25 +541,6 @@
                 </div>
             </div>
             
-            <!-- Message d'information compact -->
-            @if($frais->montant_restant > 0)
-            <div class="info-section" style="margin-bottom: 0px;">
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 1px; padding: 0px; text-align: center;">
-                    <p style="color: #856404; margin: 0; font-size: 5px;">
-                        <strong>Paiement Partiel</strong> - Reste: {{ number_format($frais->montant_restant, 0, ',', ' ') }} GNF
-                    </p>
-                </div>
-            </div>
-            @else
-            <div class="info-section" style="margin-bottom: 0px;">
-                <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 1px; padding: 0px; text-align: center;">
-                    <p style="color: #155724; margin: 0; font-size: 5px;">
-                        <strong>Paiement Complet</strong>
-                    </p>
-                </div>
-            </div>
-            @endif
-            
             <!-- Informations complémentaires (observations) -->
             @if($paiement->observations && trim($paiement->observations) != '')
             <div class="info-section" style="margin-bottom: 0px;">
@@ -536,14 +565,13 @@
                 </div>
             </div>
             
-            <!-- Pied de page intégré -->
-            <div class="info-section" style="margin-top: 2px; border-top: 1px solid #dee2e6; padding-top: 2px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 1px;">
-                    <p style="margin: 0; font-size: 7px; text-align: left;"><strong>{{ $schoolInfo['school_name'] ?? 'École' }}</strong></p>
-                    <p style="margin: 0; font-size: 7px; text-align: center;">{{ $schoolInfo['school_address'] ?? 'Adresse' }}</p>
-                    <p style="margin: 0; font-size: 7px; text-align: right;">Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone' }}</p>
-                </div>
-                <p style="margin: 0; font-size: 6px; text-align: center; color: #6c757d;">
+            <!-- Pied de page -->
+            <div class="footer">
+                <p style="margin: 0; font-size: 8px;"><strong>{{ $schoolInfo['school_name'] ?? 'École' }}</strong></p>
+                <p style="margin: 0; font-size: 8px;">
+                    {{ $schoolInfo['school_address'] ?? 'Adresse' }} | Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone' }}
+                </p>
+                <p style="margin: 0; font-size: 7px; color: #6c757d;">
                     Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }} | Ce reçu fait foi de paiement
                 </p>
             </div>

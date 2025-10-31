@@ -173,12 +173,12 @@
                                         </div>
 
                                         <div class="row">
-                                            {{-- Téléphone --}}
+                                            {{-- Téléphone (optionnel) --}}
                                             <div class="col-md-6 mb-3">
-                                                <label for="telephone" class="form-label text-danger">Téléphone</label>
+                                                <label for="telephone" class="form-label">Téléphone (optionnel)</label>
                                                 <input type="tel" class="form-control @error('telephone') is-invalid @enderror" 
                                                        id="telephone" name="telephone" value="{{ old('telephone') }}"
-                                                       placeholder="Saisie obligatoire">
+                                                       placeholder="Optionnel">
                                                 @error('telephone')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
