@@ -12,7 +12,7 @@
                     </h3>
                     <div class="card-tools">
                         <button type="button" id="btnImprimerPlusieurs" class="btn btn-info me-2" style="display: none;" onclick="imprimerPlusieurs()">
-                            <i class="fas fa-print me-2"></i>Imprimer les sélectionnées (8 par page)
+                            <i class="fas fa-print me-2"></i>Imprimer les sélectionnées (10 par page)
                         </button>
                         <a href="{{ route('cartes-scolaires.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Nouvelle Carte
@@ -281,8 +281,9 @@ function imprimerPlusieurs() {
     // Collecter les IDs des cartes sélectionnées
     const carteIds = Array.from(checked).map(checkbox => checkbox.value);
     
-    // Construire l'URL avec les paramètres
-    const url = '{{ route("cartes-scolaires.imprimer-plusieurs") }}?cartes=' + carteIds.join(',');
+    // Construire l'URL avec les paramètres et cache-busting
+    const timestamp = new Date().getTime();
+    const url = '{{ route("cartes-scolaires.imprimer-plusieurs") }}?cartes=' + carteIds.join(',') + '&t=' + timestamp;
     
     // Ouvrir dans un nouvel onglet
     window.open(url, '_blank');

@@ -205,7 +205,7 @@ class CarteScolaireController extends Controller
     }
 
     /**
-     * Imprimer plusieurs cartes scolaires (8 par page A4)
+     * Imprimer plusieurs cartes scolaires (10 par page A4)
      */
     public function imprimerPlusieurs(Request $request)
     {
@@ -230,10 +230,15 @@ class CarteScolaireController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Diviser en pages de 8 cartes
-        $cartesParPage = $cartes->chunk(8);
-
-        return view('cartes-scolaires.imprimer-plusieurs', compact('cartesParPage', 'cartes'));
+        // Diviser en pages de 10 cartes
+        $cartesParPage = $cartes->chunk(10);
+        
+        // Ajouter des en-têtes pour empêcher le cache
+        return response()
+            ->view('cartes-scolaires.imprimer-plusieurs', compact('cartesParPage', 'cartes'))
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
 
