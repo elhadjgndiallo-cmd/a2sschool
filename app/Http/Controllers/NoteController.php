@@ -365,8 +365,21 @@ class NoteController extends Controller
      */
     public function bulletins()
     {
-        $classes = Classe::with('eleves')->get();
-        return view('notes.bulletins', compact('classes'));
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
+        // Filtrer les classes pour ne montrer que celles qui ont des élèves de l'année scolaire active
+        $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->with(['eleves' => function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        }])->get();
+        
+        return view('notes.bulletins', compact('classes', 'anneeScolaireActive'));
     }
 
     /**
@@ -374,25 +387,41 @@ class NoteController extends Controller
      */
     public function genererBulletins(Request $request, $classeId)
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $periode = $request->input('periode', 'trimestre1');
-        $classe = Classe::with(['eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
+        
+        // Filtrer les élèves par année scolaire active
+        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        }, 'eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
             $q->where('periode', $periode)->with('matiere');
         }])->findOrFail($classeId);
         
+        // Filtrer les élèves pour ne garder que ceux de l'année scolaire active
+        $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
+            return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
+        });
+        
         // Logique de génération des bulletins
         $bulletins = [];
-        foreach ($classe->eleves as $eleve) {
+        foreach ($elevesActifs as $eleve) {
             $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
             $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
             $bulletins[] = [
                 'eleve' => $eleve,
                 'notes' => $notesDetaillees,
                 'moyenne_generale' => $moyenneGenerale,
-                'rang' => $this->calculerRangEleve($eleve->id, $classeId)
+                'rang' => $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id)
             ];
         }
         
-        return view('notes.bulletins-classe', compact('classe', 'bulletins', 'periode'));
+        return view('notes.bulletins-classe', compact('classe', 'bulletins', 'periode', 'anneeScolaireActive'));
     }
 
     /**
@@ -400,28 +429,50 @@ class NoteController extends Controller
      */
     public function rapportGlobal()
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $user = auth()->user();
         
         if ($user->isAdmin()) {
-            $classes = Classe::actif()->with(['eleves.notes'])->get();
+            $classes = Classe::actif()
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                }, 'eleves.notes'])
+                ->get();
         } else {
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id);
                 })
-                ->with(['eleves.notes'])
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
+                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                }, 'eleves.notes'])
                 ->get();
         }
 
+        // Filtrer les notes par élèves de l'année scolaire active
+        $elevesIds = \App\Models\Eleve::where('annee_scolaire_id', $anneeScolaireActive->id)->pluck('id');
+        
         $statistiques = [
-            'total_notes' => Note::count(),
-            'moyenne_generale' => Note::whereNotNull('note_finale')->avg('note_finale'),
-            'notes_ce_mois' => Note::whereMonth('created_at', now()->month)->count(),
+            'total_notes' => Note::whereIn('eleve_id', $elevesIds)->count(),
+            'moyenne_generale' => Note::whereIn('eleve_id', $elevesIds)->whereNotNull('note_finale')->avg('note_finale'),
+            'notes_ce_mois' => Note::whereIn('eleve_id', $elevesIds)->whereMonth('created_at', now()->month)->count(),
             'classes_actives' => $classes->count()
         ];
 
-        return view('notes.rapport-global', compact('classes', 'statistiques'));
+        return view('notes.rapport-global', compact('classes', 'statistiques', 'anneeScolaireActive'));
     }
 
     /**
@@ -550,15 +601,18 @@ class NoteController extends Controller
             $moyenneNoteCours = $nombreNotesCours > 0 ? $sommeNoteCours / $nombreNotesCours : 0;
             $moyenneNoteComposition = $nombreNotesComposition > 0 ? $sommeNoteComposition / $nombreNotesComposition : 0;
             
-            // Calculer la note finale (moyenne des deux si les deux existent, sinon prendre celle qui existe)
+            // Calculer la note finale selon la formule : (NOTE DE COURS + NOTES DE COMPO * 2) / 3
             $noteFinale = 0;
             if ($moyenneNoteCours > 0 && $moyenneNoteComposition > 0) {
-                $noteFinale = ($moyenneNoteCours + $moyenneNoteComposition) / 2;
+                $noteFinale = ($moyenneNoteCours + ($moyenneNoteComposition * 2)) / 3;
             } elseif ($moyenneNoteCours > 0) {
                 $noteFinale = $moyenneNoteCours;
             } elseif ($moyenneNoteComposition > 0) {
                 $noteFinale = $moyenneNoteComposition;
             }
+            
+            // Calculer les points : Note finale * Coefficient
+            $points = $noteFinale * $matiere->coefficient;
             
             $notesParMatiere[$matiere->nom] = [
                 'matiere' => $matiere,
@@ -566,7 +620,7 @@ class NoteController extends Controller
                 'note_cours' => round($moyenneNoteCours, 2),
                 'note_composition' => round($moyenneNoteComposition, 2),
                 'note_finale' => round($noteFinale, 2),
-                'points' => round($noteFinale * $matiere->coefficient, 2)
+                'points' => round($points, 2)
             ];
         }
         
@@ -662,9 +716,16 @@ class NoteController extends Controller
     /**
      * Calculer le rang d'un élève dans sa classe
      */
-    private function calculerRangEleve($eleveId, $classeId)
+    private function calculerRangEleve($eleveId, $classeId, $anneeScolaireId = null)
     {
-        $eleves = Eleve::where('classe_id', $classeId)->get();
+        $query = Eleve::where('classe_id', $classeId);
+        
+        // Filtrer par année scolaire si fournie
+        if ($anneeScolaireId) {
+            $query->where('annee_scolaire_id', $anneeScolaireId);
+        }
+        
+        $eleves = $query->get();
         $moyennes = [];
         
         foreach ($eleves as $eleve) {
@@ -692,17 +753,41 @@ class NoteController extends Controller
      */
     public function statistiques()
     {
-        $classes = Classe::with('eleves')->get();
-        return view('notes.statistiques', compact('classes'));
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
+        // Filtrer les classes pour ne montrer que celles qui ont des élèves de l'année scolaire active
+        $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->with(['eleves' => function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        }])->get();
+        
+        return view('notes.statistiques', compact('classes', 'anneeScolaireActive'));
     }
 
     public function statistiquesClasse(Request $request, $classeId)
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $classe = Classe::findOrFail($classeId);
         $periode = $request->input('periode', 'trimestre1');
         
-        // Récupérer toutes les moyennes des élèves de la classe
-        $eleves = Eleve::where('classe_id', $classeId)->with('utilisateur')->get();
+        // Filtrer les élèves par année scolaire active
+        $eleves = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+        
         $statistiques = [];
 
         foreach ($eleves as $eleve) {
@@ -727,7 +812,7 @@ class NoteController extends Controller
         // Convertir en collection pour utiliser les méthodes Laravel
         $statistiques = collect($statistiques);
 
-        return view('notes.statistiques-classe', compact('classe', 'periode', 'statistiques'));
+        return view('notes.statistiques-classe', compact('classe', 'periode', 'statistiques', 'anneeScolaireActive'));
     }
 
     /**
@@ -735,10 +820,21 @@ class NoteController extends Controller
      */
     public function statistiquesClasseImprimable($classeId, $periode = 'trimestre1')
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $classe = Classe::findOrFail($classeId);
         
-        // Récupérer toutes les moyennes des élèves de la classe
-        $eleves = Eleve::where('classe_id', $classeId)->with('utilisateur')->get();
+        // Filtrer les élèves par année scolaire active
+        $eleves = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+        
         $statistiques = [];
 
         foreach ($eleves as $eleve) {
@@ -763,7 +859,7 @@ class NoteController extends Controller
         // Convertir en collection pour utiliser les méthodes Laravel
         $statistiques = collect($statistiques);
 
-        return view('notes.statistiques-classe-imprimable', compact('classe', 'periode', 'statistiques'));
+        return view('notes.statistiques-classe-imprimable', compact('classe', 'periode', 'statistiques', 'anneeScolaireActive'));
     }
 
     /**

@@ -221,47 +221,72 @@ class StatistiqueController extends Controller
      */
     public function absences()
     {
-        // Statistiques d'absences
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
+        // Statistiques d'absences (filtrées par année scolaire active)
         $statsAbsences = [
-            'total' => Absence::count(),
-            'justifiees' => Absence::where('statut', 'justifiee')->count(),
-            'non_justifiees' => Absence::where('statut', 'non_justifiee')->count(),
-            'en_attente' => Absence::where('statut', 'en_attente')->count(),
+            'total' => Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->count(),
+            'justifiees' => Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->where('statut', 'justifiee')->count(),
+            'non_justifiees' => Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->where('statut', 'non_justifiee')->count(),
+            'en_attente' => Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->where('statut', 'en_attente')->count(),
         ];
 
-        // Taux d'absentéisme
-        $totalEleves = \App\Models\Eleve::count();
+        // Taux d'absentéisme (filtré par année scolaire active)
+        $totalEleves = \App\Models\Eleve::where('annee_scolaire_id', $anneeScolaireActive->id)->count();
         $statsAbsences['taux_absenteisme'] = $totalEleves > 0 ? 
             round(($statsAbsences['total'] / $totalEleves) * 100, 1) : 0;
 
-        // Absences par mois (12 derniers mois)
+        // Absences par mois (12 derniers mois, filtrées par année scolaire active)
         $absencesParMois = Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
+            ->whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
             ->where('date_absence', '>=', now()->subMonths(12))
             ->groupBy('mois')
             ->orderBy('mois')
             ->get();
 
-        // Types d'absences
+        // Types d'absences (filtrées par année scolaire active)
         $typesAbsences = Absence::selectRaw('type, COUNT(*) as total')
+            ->whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
             ->where('date_absence', '>=', now()->subMonths(6))
             ->groupBy('type')
             ->get();
 
-        // Dernières absences
-        $dernieresAbsences = Absence::with(['eleve.utilisateur', 'matiere'])
+        // Dernières absences (filtrées par année scolaire active)
+        $dernieresAbsences = Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->with(['eleve.utilisateur', 'matiere'])
             ->orderBy('date_absence', 'desc')
             ->limit(10)
             ->get();
 
-        // Top 5 des classes avec le plus d'absences
+        // Top 5 des classes avec le plus d'absences (filtrées par année scolaire active)
         $topAbsencesParClasse = DB::table('absences')
             ->join('eleves', 'absences.eleve_id', '=', 'eleves.id')
             ->join('classes', 'eleves.classe_id', '=', 'classes.id')
             ->select(
                 'classes.nom',
                 DB::raw('count(*) as total'),
-                DB::raw('count(*) * 100.0 / (SELECT COUNT(*) FROM eleves e2 WHERE e2.classe_id = classes.id) as taux_absenteisme')
+                DB::raw('count(*) * 100.0 / (SELECT COUNT(*) FROM eleves e2 WHERE e2.classe_id = classes.id AND e2.annee_scolaire_id = ' . $anneeScolaireActive->id . ') as taux_absenteisme')
             )
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
             ->where('absences.date_absence', '>=', now()->subMonths(6))
             ->groupBy('classes.id', 'classes.nom')
             ->orderBy('total', 'desc')
@@ -273,7 +298,8 @@ class StatistiqueController extends Controller
             'absencesParMois',
             'typesAbsences',
             'dernieresAbsences',
-            'topAbsencesParClasse'
+            'topAbsencesParClasse',
+            'anneeScolaireActive'
         ));
     }
 

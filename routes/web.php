@@ -518,7 +518,24 @@ Route::get('/get-emploi-temps', function() {
             return response()->json(['error' => 'Accès non autorisé'], 403);
         }
         
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return response()->json(['error' => 'Aucune année scolaire active trouvée.'], 400);
+        }
+        
+        // Vérifier que la classe a des élèves de l'année active
+        $hasElevesActiveYear = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->exists();
+            
+        if (!$hasElevesActiveYear) {
+            return response()->json(['error' => 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.'], 404);
+        }
+        
         $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+            ->actif()
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get();
             
@@ -939,7 +956,24 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
                 return response()->json(['error' => 'Accès non autorisé'], 403);
             }
             
+            // Récupérer l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+            
+            if (!$anneeScolaireActive) {
+                return response()->json(['error' => 'Aucune année scolaire active trouvée.'], 400);
+            }
+            
+            // Vérifier que la classe a des élèves de l'année active
+            $hasElevesActiveYear = $classe->eleves()
+                ->where('annee_scolaire_id', $anneeScolaireActive->id)
+                ->exists();
+                
+            if (!$hasElevesActiveYear) {
+                return response()->json(['error' => 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.'], 404);
+            }
+            
             $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+                ->actif()
                 ->with(['matiere', 'enseignant.utilisateur'])
                 ->get();
                 

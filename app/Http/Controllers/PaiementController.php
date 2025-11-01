@@ -95,19 +95,33 @@ class PaiementController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
         
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $query = FraisScolarite::with(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements']);
+        
+        // Filtrer par année scolaire active (via les élèves)
+        $query->whereHas('eleve', function($q) use ($anneeScolaireActive) {
+            $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+        });
         
         // Filtre par classe
         if ($request->filled('classe_id')) {
-            $query->whereHas('eleve', function($q) use ($request) {
-                $q->where('classe_id', $request->classe_id);
+            $query->whereHas('eleve', function($q) use ($request, $anneeScolaireActive) {
+                $q->where('classe_id', $request->classe_id)
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
             });
         }
         
         // Filtre par matricule
         if ($request->filled('matricule')) {
-            $query->whereHas('eleve', function($q) use ($request) {
-                $q->where('numero_etudiant', 'like', '%' . $request->matricule . '%');
+            $query->whereHas('eleve', function($q) use ($request, $anneeScolaireActive) {
+                $q->where('numero_etudiant', 'like', '%' . $request->matricule . '%')
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
             });
         }
         
@@ -118,6 +132,8 @@ class PaiementController extends Controller
                     $subQuery->where('nom', 'like', '%' . $request->nom . '%')
                             ->orWhere('prenom', 'like', '%' . $request->nom . '%');
                 });
+            })->whereHas('eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
             });
         }
         
@@ -128,7 +144,7 @@ class PaiementController extends Controller
         
         $fraisScolarite = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        return view('paiements.index', compact('fraisScolarite'));
+        return view('paiements.index', compact('fraisScolarite', 'anneeScolaireActive'));
     }
 
     /**
@@ -418,22 +434,37 @@ public function store(Request $request)
      */
     public function rapports(Request $request)
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         // Récupérer les filtres
         $dateDebut = $request->get('date_debut', now()->subMonths(6)->format('Y-m-01'));
         $dateFin = $request->get('date_fin', now()->format('Y-m-t'));
         $classeId = $request->get('classe_id');
 
-        // Construire les requêtes de base
-        $fraisQuery = FraisScolarite::query();
-        $paiementsQuery = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin]);
+        // Construire les requêtes de base avec filtrage par année scolaire active
+        $fraisQuery = FraisScolarite::whereHas('eleve', function($q) use ($anneeScolaireActive) {
+            $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+        });
+        
+        $paiementsQuery = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            });
 
         // Appliquer le filtre classe si présent
         if ($classeId) {
-            $fraisQuery->whereHas('eleve', function($q) use ($classeId) {
-                $q->where('classe_id', $classeId);
+            $fraisQuery->whereHas('eleve', function($q) use ($classeId, $anneeScolaireActive) {
+                $q->where('classe_id', $classeId)
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
             });
-            $paiementsQuery->whereHas('fraisScolarite.eleve', function($q) use ($classeId) {
-                $q->where('classe_id', $classeId);
+            $paiementsQuery->whereHas('fraisScolarite.eleve', function($q) use ($classeId, $anneeScolaireActive) {
+                $q->where('classe_id', $classeId)
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
             });
         }
 
@@ -447,12 +478,13 @@ public function store(Request $request)
             'montant_paye' => $paiementsQuery->sum('montant_paye')
         ];
 
-        // Statistiques par classe
+        // Statistiques par classe (filtrées par année scolaire active)
         $paiementsParClasse = DB::table('paiements')
             ->join('frais_scolarite', 'paiements.frais_scolarite_id', '=', 'frais_scolarite.id')
             ->join('eleves', 'frais_scolarite.eleve_id', '=', 'eleves.id')
             ->join('classes', 'eleves.classe_id', '=', 'classes.id')
             ->whereBetween('paiements.date_paiement', [$dateDebut, $dateFin])
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
             ->select(
                 'classes.nom',
                 DB::raw('SUM(frais_scolarite.montant) as montant_total'),
@@ -463,13 +495,16 @@ public function store(Request $request)
             ->orderBy('montant_paye', 'desc')
             ->get();
 
-        // Paiements récents
+        // Paiements récents (filtrés par année scolaire active)
         $paiementsRecents = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'encaissePar'])
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
             ->orderBy('date_paiement', 'desc')
             ->limit(20)
             ->get();
 
-        return view('paiements.rapports', compact('stats', 'paiementsRecents', 'paiementsParClasse'));
+        return view('paiements.rapports', compact('stats', 'paiementsRecents', 'paiementsParClasse', 'anneeScolaireActive'));
     }
 
     /**

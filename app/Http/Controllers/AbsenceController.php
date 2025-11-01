@@ -22,7 +22,7 @@ class AbsenceController extends Controller
         }
         
         // Récupérer l'année scolaire active pour filtrer les données
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
         $classes = Classe::actif()
             ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
@@ -50,7 +50,7 @@ class AbsenceController extends Controller
         }
         
         // Récupérer l'année scolaire active pour filtrer les données
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
         $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
             if ($anneeScolaireActive) {
@@ -138,7 +138,7 @@ class AbsenceController extends Controller
         }
         
         // Récupérer l'année scolaire active pour filtrer les données
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
         
@@ -205,16 +205,27 @@ class AbsenceController extends Controller
      */
     public function rapportClasse($classeId)
     {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
         $classe = Classe::findOrFail($classeId);
         $dateDebut = request('date_debut', now()->startOfMonth()->format('Y-m-d'));
         $dateFin = request('date_fin', now()->endOfMonth()->format('Y-m-d'));
 
-        // Récupérer tous les élèves de la classe
-        $tousLesEleves = $classe->eleves()->with('utilisateur')->get();
+        // Récupérer uniquement les élèves de l'année scolaire active
+        $tousLesEleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
 
-        // Récupérer toutes les absences pour la période
-        $absences = Absence::whereHas('eleve', function($query) use ($classeId) {
-            $query->where('classe_id', $classeId);
+        // Récupérer toutes les absences pour la période et l'année active
+        $absences = Absence::whereHas('eleve', function($query) use ($classeId, $anneeScolaireActive) {
+            $query->where('classe_id', $classeId)
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
         })
         ->whereBetween('date_absence', [$dateDebut, $dateFin])
         ->with(['eleve.utilisateur', 'matiere'])
@@ -254,7 +265,8 @@ class AbsenceController extends Controller
             'rapportComplet', 
             'statistiques',
             'dateDebut', 
-            'dateFin'
+            'dateFin',
+            'anneeScolaireActive'
         ));
     }
 
@@ -279,21 +291,44 @@ class AbsenceController extends Controller
      */
     public function statistiques()
     {
-        $totalAbsences = Absence::count();
-        $absencesAujourdhui = Absence::whereDate('date_absence', today())->count();
-        $absencesNonJustifiees = Absence::where('statut', 'non_justifiee')->count();
-        $retardsAujourdhui = Absence::whereDate('date_absence', today())
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
+        // Filtrer toutes les requêtes par année scolaire active
+        $totalAbsences = Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->count();
+        
+        $absencesAujourdhui = Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->whereDate('date_absence', today())->count();
+        
+        $absencesNonJustifiees = Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->where('statut', 'non_justifiee')->count();
+        
+        $retardsAujourdhui = Absence::whereHas('eleve', function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        })->whereDate('date_absence', today())
             ->where('type', 'retard')->count();
 
-        // Absences par classe
+        // Absences par classe (filtrées par année scolaire active)
         $absencesParClasse = Absence::selectRaw('COUNT(*) as total, classes.nom')
             ->join('eleves', 'absences.eleve_id', '=', 'eleves.id')
             ->join('classes', 'eleves.classe_id', '=', 'classes.id')
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
             ->groupBy('classes.id', 'classes.nom')
             ->get();
 
-        // Évolution des absences sur les 30 derniers jours
+        // Évolution des absences sur les 30 derniers jours (filtrées par année scolaire active)
         $evolutionAbsences = Absence::selectRaw('DATE(date_absence) as date, COUNT(*) as total')
+            ->whereHas('eleve', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
             ->where('date_absence', '>=', now()->subDays(30))
             ->groupBy('date')
             ->orderBy('date')
@@ -305,7 +340,8 @@ class AbsenceController extends Controller
             'absencesNonJustifiees',
             'retardsAujourdhui',
             'absencesParClasse',
-            'evolutionAbsences'
+            'evolutionAbsences',
+            'anneeScolaireActive'
         ));
     }
 }
