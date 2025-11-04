@@ -10,6 +10,7 @@ use App\Models\Matiere;
 use App\Models\Enseignant;
 use App\Models\TestMensuel;
 use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class NoteController extends Controller
 {
@@ -413,13 +414,44 @@ class NoteController extends Controller
         foreach ($elevesActifs as $eleve) {
             $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
             $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
+            $rang = $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id);
+            
+            // Générer un hash unique pour sécuriser le bulletin
+            // Le hash est basé sur les données du bulletin + la clé secrète de l'application
+            $dataToHash = $eleve->id . '|' . $classeId . '|' . $periode . '|' . $anneeScolaireActive->id . '|' . number_format($moyenneGenerale, 2);
+            $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
+            
+            // Créer le token de vérification (format base64 encodé)
+            $token = base64_encode(json_encode([
+                'e' => $eleve->id,
+                'c' => $classeId,
+                'p' => $periode,
+                'a' => $anneeScolaireActive->id,
+                'h' => $verificationHash
+            ]));
+            
+            // URL de vérification pour le QR code
+            $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+            
             $bulletins[] = [
                 'eleve' => $eleve,
                 'notes' => $notesDetaillees,
                 'moyenne_generale' => $moyenneGenerale,
-                'rang' => $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id)
+                'rang' => $rang,
+                'verification_token' => $token,
+                'verification_url' => $verificationUrl
             ];
         }
+        
+        // Trier les bulletins par ordre de mérite (par rang, puis par moyenne générale)
+        usort($bulletins, function($a, $b) {
+            // D'abord par rang (1er avant 2ème)
+            if ($a['rang'] != $b['rang']) {
+                return $a['rang'] <=> $b['rang'];
+            }
+            // En cas d'égalité de rang, trier par moyenne générale décroissante
+            return $b['moyenne_generale'] <=> $a['moyenne_generale'];
+        });
         
         return view('notes.bulletins-classe', compact('classe', 'bulletins', 'periode', 'anneeScolaireActive'));
     }
@@ -1528,5 +1560,78 @@ class NoteController extends Controller
             'annee' => $annee
         ])
             ->with('success', 'Note supprimée avec succès');
+    }
+
+    /**
+     * Vérifier l'authenticité d'un bulletin via le token QR code
+     */
+    public function verifierBulletin(Request $request, $token)
+    {
+        try {
+            // Décoder le token
+            $decoded = json_decode(base64_decode($token), true);
+            
+            if (!$decoded || !isset($decoded['e']) || !isset($decoded['c']) || !isset($decoded['p']) || !isset($decoded['a']) || !isset($decoded['h'])) {
+                return view('notes.bulletin-verify', [
+                    'valid' => false,
+                    'message' => 'Token invalide'
+                ]);
+            }
+            
+            // Récupérer les données
+            $eleveId = $decoded['e'];
+            $classeId = $decoded['c'];
+            $periode = $decoded['p'];
+            $anneeScolaireId = $decoded['a'];
+            $hash = $decoded['h'];
+            
+            // Récupérer l'élève
+            $eleve = Eleve::with(['utilisateur', 'classe'])->find($eleveId);
+            if (!$eleve) {
+                return view('notes.bulletin-verify', [
+                    'valid' => false,
+                    'message' => 'Élève non trouvé'
+                ]);
+            }
+            
+            // Calculer la moyenne générale
+            $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleveId, $periode);
+            
+            // Vérifier le hash
+            $dataToHash = $eleveId . '|' . $classeId . '|' . $periode . '|' . $anneeScolaireId . '|' . number_format($moyenneGenerale, 2);
+            $expectedHash = hash_hmac('sha256', $dataToHash, config('app.key'));
+            
+            if ($hash !== $expectedHash) {
+                return view('notes.bulletin-verify', [
+                    'valid' => false,
+                    'message' => 'Le bulletin a été modifié ou n\'est pas authentique',
+                    'eleve' => $eleve,
+                    'periode' => $periode
+                ]);
+            }
+            
+            // Récupérer l'année scolaire
+            $anneeScolaire = \App\Models\AnneeScolaire::find($anneeScolaireId);
+            
+            // Récupérer les notes détaillées
+            $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleveId, $periode);
+            
+            return view('notes.bulletin-verify', [
+                'valid' => true,
+                'message' => 'Ce bulletin est authentique et vérifié',
+                'eleve' => $eleve,
+                'classe' => $eleve->classe,
+                'periode' => $periode,
+                'anneeScolaire' => $anneeScolaire,
+                'moyenneGenerale' => $moyenneGenerale,
+                'notes' => $notesDetaillees
+            ]);
+            
+        } catch (\Exception $e) {
+            return view('notes.bulletin-verify', [
+                'valid' => false,
+                'message' => 'Erreur lors de la vérification: ' . $e->getMessage()
+            ]);
+        }
     }
 }

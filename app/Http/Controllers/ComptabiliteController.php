@@ -777,9 +777,12 @@ class ComptabiliteController extends Controller
         // Récupérer l'année scolaire active
         $anneeScolaire = \App\Models\AnneeScolaire::where('active', true)->first();
         
-        // Récupérer les entrées selon la période
+        // Récupérer les entrées selon la période (exclure celles créées automatiquement par les paiements)
+        // Ces sources sont créées automatiquement lors des paiements et sont déjà représentées dans la section paiements
+        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
         $entrees = Entree::with('enregistrePar')
             ->whereBetween('date_entree', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
+            ->whereNotIn('source', $sourcesAuto)
             ->orderBy('created_at', 'asc')
             ->get();
         
