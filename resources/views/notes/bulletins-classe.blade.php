@@ -195,8 +195,8 @@
                         <div class="row" style="margin: 0; display: flex; flex-direction: row; flex-wrap: nowrap;">
                             <div class="col-md-6" style="padding-right: 8px; padding-left: 0; width: 50%; flex: 0 0 50%; display: inline-block; vertical-align: top;">
                                 <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 4px 6px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 60px;">
-                                    <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; font-size: 0.9rem; line-height: 1.2;"><strong>Observations:</strong></h6>
-                                    <div style="font-style: italic; color: #495057; line-height: 1.3; font-size: 0.85rem; padding-top: 2px;">
+                                    <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; font-size: 14px; line-height: 1.2;"><strong>Observations:</strong></h6>
+                                    <div style="font-style: italic; color: #495057; line-height: 1.3; font-size: 14px; padding-top: 2px;">
                                         @php $moy = $bulletin['moyenne_generale'] ?? 0; @endphp
                                         @if($moy >= 16)
                                             <span style="color: #28a745; font-weight: 600;">Excellent travail. Félicitations pour ces très bons résultats.</span>
@@ -213,18 +213,18 @@
                                 </div>
                             </div>
                             <div class="col-md-6" style="padding-left: 8px; padding-right: 0; width: 50%; flex: 0 0 50%; display: inline-block; vertical-align: top;">
-                                <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 4px 6px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 60px;">
-                                    <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; font-size: 0.9rem; line-height: 1.2;"><strong>Signatures:</strong></h6>
+                                <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 4px 6px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 80px;">
+                                    <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; font-size: 14px; line-height: 1.2;"><strong>Signatures:</strong></h6>
                                     <div class="row" style="margin-top: 4px; margin-left: 0; margin-right: 0;">
                                         <div class="col-6" style="padding-left: 0; padding-right: 4px;">
-                                            <p class="text-center" style="font-weight: 700; color: #2c3e50; margin-bottom: 2px; font-size: 0.75rem; line-height: 1.2;">Directeur</p>
-                                            <div style="height: 20px; border-bottom: 1px solid #2c3e50; margin-bottom: 2px;"></div>
-                                            <div class="text-center" style="color: #6c757d; font-size: 0.7rem; line-height: 1.2;">Date: _____</div>
+                                            <p class="text-center" style="font-weight: 700; color: #2c3e50; margin-bottom: 4px; font-size: 14px; line-height: 1.2;">Directeur</p>
+                                            <div style="height: 35px; border-bottom: 1px solid #2c3e50; margin-bottom: 4px;"></div>
+                                            <div class="text-center" style="color: #6c757d; font-size: 14px; line-height: 1.2; margin-top: 2px;">Date: _____</div>
                                         </div>
                                         <div class="col-6" style="padding-left: 4px; padding-right: 0;">
-                                            <p class="text-center" style="font-weight: 700; color: #2c3e50; margin-bottom: 2px; font-size: 0.75rem; line-height: 1.2;">Parent</p>
-                                            <div style="height: 20px; border-bottom: 1px solid #2c3e50; margin-bottom: 2px;"></div>
-                                            <div class="text-center" style="color: #6c757d; font-size: 0.7rem; line-height: 1.2;">Date: _____</div>
+                                            <p class="text-center" style="font-weight: 700; color: #2c3e50; margin-bottom: 4px; font-size: 14px; line-height: 1.2;">Parent</p>
+                                            <div style="height: 35px; border-bottom: 1px solid #2c3e50; margin-bottom: 4px;"></div>
+                                            <div class="text-center" style="color: #6c757d; font-size: 14px; line-height: 1.2; margin-top: 2px;">Date: _____</div>
                                         </div>
                                     </div>
                                 </div>
@@ -470,7 +470,7 @@
     }
     
     .card-body {
-        padding: 8px 12px 70px 12px !important;
+        padding: 8px 12px 65px 12px !important;
         page-break-inside: avoid !important;
         font-size: 0.85rem !important;
         flex: 1 1 auto !important;
@@ -494,10 +494,10 @@
         flex-shrink: 0 !important;
         margin-bottom: 0 !important;
         margin-top: auto !important;
-        height: 70px !important;
-        max-height: 70px !important;
-        min-height: 70px !important;
-        overflow: hidden !important;
+        height: 85px !important;
+        max-height: 85px !important;
+        min-height: 85px !important;
+        overflow: visible !important;
         background: white !important;
         z-index: 100 !important;
         box-sizing: border-box !important;

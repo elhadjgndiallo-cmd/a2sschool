@@ -217,21 +217,20 @@
             <!-- Logo et nom de l'école -->
             <div class="school-info">
                 @php
-                    $schoolInfo = [
-                        'school_name' => config('app.name', 'A2S School'),
-                        'school_slogan' => 'Excellence et Innovation',
-                        'logo_url' => asset('images/logo.png')
-                    ];
+                    $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+                    $logoUrl = $schoolInfo && isset($schoolInfo->logo) && $schoolInfo->logo ? asset('storage/' . $schoolInfo->logo) : null;
+                    $schoolName = $schoolInfo && isset($schoolInfo->nom) ? $schoolInfo->nom : config('app.name', 'A2S School');
+                    $schoolSlogan = $schoolInfo && isset($schoolInfo->slogan) ? $schoolInfo->slogan : '';
                 @endphp
-                @if($schoolInfo['logo_url'] && file_exists(public_path('images/logo.png')))
+                @if($logoUrl)
                     <div class="school-logo">
-                        <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo" class="logo-image">
+                        <img src="{{ $logoUrl }}" alt="Logo de l'école" class="logo-image">
                     </div>
                 @endif
                 <div class="school-details">
-                    <h1 class="school-name">{{ $schoolInfo['school_name'] }}</h1>
-                    @if($schoolInfo['school_slogan'])
-                        <p class="school-slogan">"{{ $schoolInfo['school_slogan'] }}"</p>
+                    <h1 class="school-name">{{ $schoolName }}</h1>
+                    @if($schoolSlogan)
+                        <p class="school-slogan">"{{ $schoolSlogan }}"</p>
                     @endif
                 </div>
             </div>
@@ -473,8 +472,30 @@
 <div class="footer print-only">
     <div class="footer-content">
         <div class="footer-school-info">
-            <p class="school-address">{{ config('app.name', 'A2S School') }}</p>
-            <p class="school-phone">Tél: +224 XXX XX XX XX | Email: contact@a2sschool.com</p>
+            @php
+                $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+                $schoolName = $schoolInfo && isset($schoolInfo->nom) ? $schoolInfo->nom : config('app.name', 'A2S School');
+                $schoolAddress = $schoolInfo && isset($schoolInfo->adresse) ? $schoolInfo->adresse : '';
+                $schoolPhone = $schoolInfo && isset($schoolInfo->telephone) ? $schoolInfo->telephone : '';
+                $schoolEmail = $schoolInfo && isset($schoolInfo->email) ? $schoolInfo->email : '';
+            @endphp
+            <p class="school-address">{{ $schoolName }}</p>
+            @if($schoolAddress)
+                <p class="school-address">{{ $schoolAddress }}</p>
+            @endif
+            @if($schoolPhone || $schoolEmail)
+                <p class="school-phone">
+                    @if($schoolPhone)
+                        Tél: {{ $schoolPhone }}
+                    @endif
+                    @if($schoolPhone && $schoolEmail)
+                         | 
+                    @endif
+                    @if($schoolEmail)
+                        Email: {{ $schoolEmail }}
+                    @endif
+                </p>
+            @endif
         </div>
         <div class="footer-document-info">
             <p>Rapport généré le {{ now()->format('d/m/Y à H:i') }}</p>
