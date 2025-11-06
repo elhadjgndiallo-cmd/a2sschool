@@ -230,6 +230,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/teacher/notes/classe/{classe}', [NoteController::class, 'teacherSaisir'])->name('teacher.notes.saisir')->middleware('role:teacher');
         Route::post('/notes', [NoteController::class, 'store'])->name('notes.store')->middleware('check.permission:notes.create');
         Route::get('/notes/eleve/{eleve}', [NoteController::class, 'eleveNotes'])->name('notes.eleve')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletin/eleve/{eleve}', [NoteController::class, 'bulletin'])->name('notes.bulletin.eleve')->middleware('check.permission:notes.view');
         Route::get('/notes/{note}/edit', [NoteController::class, 'edit'])->name('notes.edit')->middleware('check.permission:notes.edit');
         Route::put('/notes/{note}', [NoteController::class, 'update'])->name('notes.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy')->middleware('check.permission:notes.delete');
