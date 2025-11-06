@@ -108,8 +108,20 @@ class TeacherController extends Controller
                 abort(403, 'Profil enseignant non trouvé');
             }
 
-            // Récupérer l'emploi du temps de l'enseignant
+            // Récupérer l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+            
+            if (!$anneeScolaireActive) {
+                $emploisTemps = collect();
+                return view('teacher.emploi-temps', compact('emploisTemps'))
+                    ->with('error', 'Aucune année scolaire active trouvée.');
+            }
+
+            // Récupérer l'emploi du temps de l'enseignant pour les classes ayant des élèves de l'année scolaire active
             $emploisTemps = $enseignant->emploisTemps()
+                ->whereHas('classe.eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
                 ->with(['classe', 'matiere'])
                 ->actif()
                 ->orderBy('jour_semaine')
@@ -121,7 +133,7 @@ class TeacherController extends Controller
                 'emplois_count' => $emploisTemps->count()
             ]);
 
-            return view('teacher.emploi-temps', compact('emploisTemps'));
+            return view('teacher.emploi-temps', compact('emploisTemps', 'anneeScolaireActive'));
             
         } catch (\Exception $e) {
             \Log::error('Erreur lors du chargement de l\'emploi du temps enseignant', [

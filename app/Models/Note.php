@@ -70,7 +70,7 @@ class Note extends Model
 
     /**
      * Calculer la note finale selon la formule
-     * Note finale = (NotesCours + (NotesComposition * 2) / 3) * coefficient
+     * Note finale = (NOTE DE COURS + NOTES DE COMPO * 2) / 3
      */
     public function calculerNoteFinale()
     {
@@ -87,7 +87,7 @@ class Note extends Model
         } elseif ($this->note_composition === null) {
             $noteFinale = $noteCours;
         } else {
-            // Appliquer la formule : (NotesCours + (NotesComposition * 2) / 3)
+            // Appliquer la formule : (NOTE DE COURS + NOTES DE COMPO * 2) / 3
             $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
         }
 

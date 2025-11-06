@@ -25,6 +25,20 @@ class StudentController extends Controller
                 abort(403, 'Profil élève non trouvé');
             }
 
+            // Récupérer l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+            
+            if (!$anneeScolaireActive) {
+                return view('student.emploi-temps', compact('eleve'))
+                    ->with('error', 'Aucune année scolaire active trouvée.');
+            }
+
+            // Vérifier que l'élève appartient à l'année scolaire active
+            if ($eleve->annee_scolaire_id != $anneeScolaireActive->id) {
+                return view('student.emploi-temps', compact('eleve'))
+                    ->with('error', 'Vous n\'appartenez pas à l\'année scolaire active.');
+            }
+
             if (!$eleve->classe) {
                 \Log::warning('Élève sans classe', ['eleve_id' => $eleve->id]);
                 return view('student.emploi-temps', compact('eleve'))
@@ -45,7 +59,7 @@ class StudentController extends Controller
                 'emplois_count' => $emploisTemps->count()
             ]);
 
-            return view('student.emploi-temps', compact('eleve', 'emploisTemps'));
+            return view('student.emploi-temps', compact('eleve', 'emploisTemps', 'anneeScolaireActive'));
             
         } catch (\Exception $e) {
             \Log::error('Erreur lors du chargement de l\'emploi du temps élève', [

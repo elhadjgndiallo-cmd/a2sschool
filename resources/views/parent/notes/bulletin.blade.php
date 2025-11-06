@@ -3,6 +3,41 @@
 @section('title', 'Bulletin - ' . $eleve->utilisateur->nom . ' ' . $eleve->utilisateur->prenom)
 
 @section('content')
+@php
+    $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+    $logoUrl = $schoolInfo && isset($schoolInfo->logo) ? asset('storage/' . $schoolInfo->logo) : null;
+    $schoolName = $schoolInfo && isset($schoolInfo->nom) ? $schoolInfo->nom : 'École';
+@endphp
+
+<!-- En-tête avec logo et nom de l'école pour l'impression -->
+<div class="school-header-section d-none d-print-block" style="background: #f8f9fa; padding: 15px; border-bottom: 2px solid #2c3e50; margin-bottom: 20px;">
+    <div class="row align-items-center">
+        @if($logoUrl && file_exists(public_path('storage/' . $schoolInfo->logo)))
+        <div class="col-md-2 text-center">
+            <img src="{{ $logoUrl }}" alt="Logo de l'école" style="max-width: 70px; max-height: 70px; object-fit: contain;">
+        </div>
+        @endif
+        <div class="{{ $logoUrl && file_exists(public_path('storage/' . $schoolInfo->logo)) ? 'col-md-8' : 'col-md-10' }} text-center">
+            <h2 class="mb-1" style="font-weight: 700; color: #2c3e50; text-transform: uppercase; letter-spacing: 1px; font-size: 1.5rem;">
+                {{ $schoolName }}
+            </h2>
+            @if($schoolInfo && isset($schoolInfo->slogan) && $schoolInfo->slogan)
+            <p class="mb-0" style="font-style: italic; color: #6c757d; font-size: 0.85rem;">"{{ $schoolInfo->slogan }}"</p>
+            @endif
+            @if($schoolInfo && isset($schoolInfo->adresse) && $schoolInfo->adresse)
+            <p class="mb-0" style="color: #495057; font-size: 0.75rem; margin-top: 3px;">
+                <i class="fas fa-map-marker-alt"></i> {{ $schoolInfo->adresse }}
+            </p>
+            @endif
+        </div>
+        <div class="col-md-2 text-center">
+            @if($logoUrl && file_exists(public_path('storage/' . $schoolInfo->logo)))
+            <img src="{{ $logoUrl }}" alt="Logo de l'école" style="max-width: 70px; max-height: 70px; object-fit: contain;">
+            @endif
+        </div>
+    </div>
+</div>
+
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">

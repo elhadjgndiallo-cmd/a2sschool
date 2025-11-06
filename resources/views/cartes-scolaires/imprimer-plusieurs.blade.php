@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impression de Cartes Scolaires</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Impression de Cartes Scolaires - Version {{ date('YmdHis') }}</title>
+    <!-- Version: {{ time() }} -->
     <style>
         @page {
             size: A4;
             margin: 0;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
         }
         
         body {
@@ -29,9 +27,11 @@
             page-break-after: always;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: 3mm;
+            grid-template-rows: repeat(5, 1fr);
+            gap: 2.5mm;
             padding: 3mm;
+            justify-items: center;
+            align-items: start;
         }
         
         .carte-container {
@@ -42,6 +42,8 @@
             position: relative;
             background: white;
             page-break-inside: avoid;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         
         .carte-header {
@@ -52,6 +54,7 @@
             position: relative;
             height: 12mm;
             border-bottom: 1px solid #d4af37;
+            box-sizing: border-box;
         }
         
         .header-content {
@@ -151,7 +154,9 @@
         .carte-right {
             width: 55mm;
             padding-left: 2mm;
+            padding-right: 2mm;
             position: relative;
+            margin-right: 0;
         }
         
         .eleve-photo {
@@ -183,13 +188,17 @@
         }
         
         .eleve-info {
-            font-size: 2.2mm;
-            line-height: 1.3;
+            font-size: 2.5mm;
+            line-height: 1.4;
         }
         
         .eleve-details {
-            font-size: 2mm;
+            font-size: 2.3mm;
             color: #333;
+        }
+        
+        .eleve-details strong {
+            font-size: 2.3mm;
         }
         
         .eleve-details div {
@@ -202,18 +211,37 @@
             margin-bottom: 0.5mm;
         }
         
+        .info-row-left {
+            flex: 1;
+        }
+        
+        .info-row-right {
+            text-align: right;
+            white-space: nowrap;
+            padding-right: 2mm;
+            margin-right: 0;
+        }
+        
         .info-label {
             font-weight: bold;
         }
         
         .qr-code {
             position: absolute;
-            top: 0;
-            right: 0;
+            top: 2mm;
+            right: 2mm;
             width: 12mm;
             height: 12mm;
             border: 1px solid #d4af37;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .classe-row {
+            text-align: right;
+            margin-top: 0.5mm;
+            padding-right: 0;
         }
         
         .qr-code img {
@@ -223,14 +251,32 @@
         
         .carte-footer {
             position: absolute;
-            bottom: 1mm;
-            left: 2mm;
-            right: 2mm;
+            bottom: 0;
+            left: 0;
+            right: 0;
             font-size: 1.8mm;
             color: #666;
             text-align: center;
             border-top: 1px solid #d4af37;
-            padding-top: 1mm;
+            padding: 1mm 2mm;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        
+        .footer-left {
+            color: #d4af37;
+            font-weight: bold;
+            font-size: 2.5mm;
+            position: absolute;
+            left: 2mm;
+        }
+        
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .status-badge {
@@ -265,8 +311,8 @@
                 print-color-adjust: exact !important;
             }
             
-            body { margin: 0; padding: 0; }
-            .no-print { display: none !important; }
+            body { margin: 0; }
+            .no-print { display: none; }
             .carte-container {
                 box-shadow: none;
             }
@@ -315,7 +361,7 @@
 </head>
 <body>
     <div class="no-print" style="text-align: center; padding: 15px;">
-        <h3 style="margin: 0 0 10px 0;">Impression de {{ $cartes->count() }} carte(s)</h3>
+        <h3 style="margin: 0 0 10px 0;">Impression de {{ $cartes->count() }} carte(s) - Format 10 par page A4</h3>
         <button onclick="window.print()">
             <i class="fas fa-print"></i> Imprimer
         </button>
@@ -382,9 +428,6 @@
                                 @endif
                             </div>
                             
-                            <div class="matricule">
-                                MAT. : {{ $carte->numero_carte }}
-                            </div>
                         </div>
                         
                         <div class="carte-right">
@@ -395,8 +438,8 @@
                                     <div><strong>Prénom :</strong> {{ strtoupper($carte->eleve->utilisateur->prenom ?? '') }}</div>
                                     <div><strong>Né(e) le :</strong> {{ $carte->eleve->utilisateur->date_naissance ? $carte->eleve->utilisateur->date_naissance->format('d-m-Y') : 'Non définie' }} A {{ strtoupper($carte->eleve->utilisateur->lieu_naissance ?? 'CONAKRY') }}</div>
                                     <div class="info-row">
-                                        <span><strong>Sexe :</strong> {{ $carte->eleve->utilisateur->sexe == 'M' ? 'M' : 'F' }}</span>
-                                        <span><strong>Classe :</strong> {{ $carte->eleve->classe->nom ?? 'Non assigné' }}</span>
+                                        <span class="info-row-left"><strong>Sexe :</strong> {{ $carte->eleve->utilisateur->sexe == 'M' ? 'M' : 'F' }}</span>
+                                        <span class="info-row-right"><strong>Classe :</strong> {{ $carte->eleve->classe->nom ?? 'Non assigné' }}</span>
                                     </div>
                                     @if($carte->eleve->numero_etudiant)
                                     <div><strong>Matricule :</strong> {{ $carte->eleve->numero_etudiant }}</div>
@@ -412,16 +455,19 @@
                     </div>
                     
                     <div class="carte-footer">
-                        <span class="status-badge status-{{ $carte->statut }}">
-                            {{ $carte->statut_libelle }}
+                        <span class="footer-left">MAT. : {{ $carte->numero_carte }}</span>
+                        <span class="footer-right">
+                            <span class="status-badge status-{{ $carte->statut }}">
+                                {{ $carte->statut_libelle }}
+                            </span>
+                            | Émise le {{ $carte->date_emission ? $carte->date_emission->format('d/m/Y') : 'Non définie' }}
                         </span>
-                        | Émise le {{ $carte->date_emission ? $carte->date_emission->format('d/m/Y') : 'Non définie' }}
                     </div>
                 </div>
             @endforeach
             
-            {{-- Remplir les emplacements vides si moins de 8 cartes --}}
-            @for($i = $pageCartes->count(); $i < 8; $i++)
+            {{-- Remplir les emplacements vides si moins de 10 cartes --}}
+            @for($i = $pageCartes->count(); $i < 10; $i++)
                 <div class="carte-container" style="visibility: hidden;">
                     <!-- Carte vide pour maintenir la grille -->
                 </div>
@@ -430,12 +476,36 @@
     @endforeach
 
     <script>
+        // Forcer le rechargement sans cache au chargement
+        if (window.performance && window.performance.navigation && window.performance.navigation.type === 1) {
+            // La page a été rechargée - forcer un hard reload
+            setTimeout(function() {
+                window.location.reload(true);
+            }, 100);
+        }
+        
+        // Vérifier et forcer le rechargement si nécessaire
+        if (window.history.replaceState) {
+            var url = window.location.href;
+            if (!url.includes('t=') || url.includes('t=0')) {
+                var separator = url.includes('?') ? '&' : '?';
+                window.location.replace(url + separator + 't=' + Date.now());
+            }
+        }
+        
         // Auto-impression au chargement
         window.onload = function() {
             setTimeout(function() {
                 window.print();
             }, 500);
         };
+        
+        // Empêcher le cache du navigateur
+        window.addEventListener('beforeunload', function() {
+            if (window.history.replaceState) {
+                window.history.replaceState(null, null, window.location.href.split('&t=')[0] + '&t=' + new Date().getTime());
+            }
+        });
     </script>
 </body>
 </html>

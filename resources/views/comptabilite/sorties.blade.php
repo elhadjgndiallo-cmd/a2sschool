@@ -38,8 +38,7 @@
                             <div class="col-md-3 mb-3">
                                 <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
                                 <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
-                                    @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
-                                    @foreach($annees as $annee)
+                                    @foreach(\App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
                                         <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }}>
                                             {{ $annee->nom }}
                                         </option>
@@ -60,17 +59,11 @@
                                 <label for="type_depense" class="form-label">Type de dépense</label>
                                 <select class="form-select" id="type_depense" name="type_depense">
                                     <option value="">Tous les types</option>
-                                    <option value="salaire_enseignant" {{ request('type_depense') == 'salaire_enseignant' ? 'selected' : '' }}>Salaire enseignant</option>
-                                    <option value="salaire_personnel" {{ request('type_depense') == 'salaire_personnel' ? 'selected' : '' }}>Salaire personnel</option>
-                                    <option value="achat_materiel" {{ request('type_depense') == 'achat_materiel' ? 'selected' : '' }}>Achat matériel</option>
-                                    <option value="maintenance" {{ request('type_depense') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                                    <option value="electricite" {{ request('type_depense') == 'electricite' ? 'selected' : '' }}>Électricité</option>
-                                    <option value="eau" {{ request('type_depense') == 'eau' ? 'selected' : '' }}>Eau</option>
-                                    <option value="nourriture" {{ request('type_depense') == 'nourriture' ? 'selected' : '' }}>Nourriture</option>
-                                    <option value="transport" {{ request('type_depense') == 'transport' ? 'selected' : '' }}>Transport</option>
-                                    <option value="communication" {{ request('type_depense') == 'communication' ? 'selected' : '' }}>Communication</option>
-                                    <option value="formation" {{ request('type_depense') == 'formation' ? 'selected' : '' }}>Formation</option>
-                                    <option value="autre" {{ request('type_depense') == 'autre' ? 'selected' : '' }}>Autre</option>
+                                    @foreach($typesDepense as $type)
+                                        <option value="{{ $type }}" {{ request('type_depense') == $type ? 'selected' : '' }}>
+                                            {{ ucfirst(str_replace('_', ' ', $type)) }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3 d-flex align-items-end">
@@ -134,7 +127,7 @@
                                         <th>Date</th>
                                         <th>Libellé</th>
                                         <th>Type</th>
-                                        <th class="text-end">Montant</th>
+                                        <th class="text-end" style="width: 150px;">Montant</th>
                                         <th>Enregistré par</th>
                                         <th>Actions</th>
                                     </tr>
@@ -144,28 +137,36 @@
                                         <tr>
                                             <td>
                                                 <i class="fas fa-calendar text-muted me-1"></i>
-                                                {{ $sortie->date_depense->format('d/m/Y') }}
+                                                @if(isset($sortie->date) && $sortie->date)
+                                                    {{ $sortie->date->format('d/m/Y') }}
+                                                @else
+                                                    N/A
+                                                @endif
                                             </td>
                                             <td>
-                                                <strong>{{ $sortie->libelle }}</strong>
-                                                @if($sortie->description)
+                                                <strong>{{ $sortie->libelle ?? 'N/A' }}</strong>
+                                                @if(isset($sortie->description) && $sortie->description)
                                                     <br><small class="text-muted">{{ Str::limit($sortie->description, 50) }}</small>
                                                 @endif
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ $sortie->type_depense == 'salaire_enseignant' ? 'primary' : ($sortie->type_depense == 'achat_materiel' ? 'success' : 'warning') }}">
-                                                    {{ ucfirst(str_replace('_', ' ', $sortie->type_depense)) }}
+                                                <span class="badge bg-{{ isset($sortie->type_depense) && $sortie->type_depense == 'salaire_enseignant' ? 'primary' : (isset($sortie->type_depense) && $sortie->type_depense == 'achat_materiel' ? 'success' : 'warning') }}">
+                                                    {{ isset($sortie->type_depense) ? ucfirst(str_replace('_', ' ', $sortie->type_depense)) : 'N/A' }}
                                                 </span>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end" style="width: 150px;">
                                                 <strong class="text-danger">
-                                                    {{ number_format($sortie->montant, 0, ',', ' ') }} GNF
+                                                    {{ number_format($sortie->montant ?? 0, 0, ',', ' ') }} GNF
                                                 </strong>
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    @if($sortie->approuvePar && $sortie->approuvePar->photo_profil)
-                                                        <img src="{{ asset('storage/' . $sortie->approuvePar->photo_profil) }}" 
+                                                    @php
+                                                        $personne = $sortie->approuve_par ?? $sortie->paye_par ?? null;
+                                                        $photoProfil = $personne && isset($personne->photo_profil) ? $personne->photo_profil : null;
+                                                    @endphp
+                                                    @if($photoProfil)
+                                                        <img src="{{ asset('storage/' . $photoProfil) }}" 
                                                              alt="Photo" class="rounded-circle me-2" 
                                                              style="width: 30px; height: 30px; object-fit: cover;">
                                                     @else
@@ -175,9 +176,9 @@
                                                         </div>
                                                     @endif
                                                     <div>
-                                                        @if($sortie->approuvePar)
-                                                            <div class="fw-bold">{{ $sortie->approuvePar->nom }} {{ $sortie->approuvePar->prenom }}</div>
-                                                            <small class="text-muted">{{ ucfirst($sortie->approuvePar->role) }}</small>
+                                                        @if($personne)
+                                                            <div class="fw-bold">{{ $personne->nom ?? 'N/A' }} {{ $personne->prenom ?? '' }}</div>
+                                                            <small class="text-muted">{{ ucfirst($personne->role ?? 'Système') }}</small>
                                                         @else
                                                             <div class="fw-bold">Non assigné</div>
                                                             <small class="text-muted">En attente</small>
@@ -187,21 +188,32 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <a href="{{ route('depenses.show', $sortie) }}" class="btn btn-outline-primary" title="Voir">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('depenses.edit', $sortie) }}" class="btn btn-outline-warning" title="Modifier">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <form method="POST" action="{{ route('depenses.destroy', $sortie) }}" 
-                                                          style="display: inline;" 
-                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    @if(isset($sortie->type) && $sortie->type == 'depense' && isset($sortie->data))
+                                                        <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('depenses.edit', $sortie->data) }}" class="btn btn-outline-warning" title="Modifier">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form method="POST" action="{{ route('depenses.destroy', $sortie->data) }}" 
+                                                              style="display: inline;" 
+                                                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-outline-danger" title="Supprimer">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    @elseif(isset($sortie->type) && $sortie->type == 'salaire' && isset($sortie->data))
+                                                        <a href="{{ route('salaires.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <span class="badge bg-info">Salaire</span>
+                                                    @elseif(isset($sortie->data))
+                                                        <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -210,16 +222,64 @@
                             </table>
                         </div>
 
-                        <!-- Pagination -->
+                        <!-- Pagination Simple -->
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <div>
                                 <small class="text-muted">
                                     Affichage de {{ $sorties->firstItem() }} à {{ $sorties->lastItem() }} 
-                                    sur {{ $sorties->total() }} dépenses
+                                    sur {{ $sorties->total() }} sorties
                                 </small>
                             </div>
                             <div>
-                                {{ $sorties->links() }}
+                                <nav aria-label="Pagination">
+                                    <ul class="pagination pagination-simple">
+                                        <!-- Bouton Précédent -->
+                                        @if($sorties->currentPage() > 1)
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $sorties->previousPageUrl() }}" aria-label="Précédent">
+                                                    <i class="fas fa-chevron-left"></i> Précédent
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="fas fa-chevron-left"></i> Précédent
+                                                </span>
+                                            </li>
+                                        @endif
+
+                                        <!-- Numéros de pages -->
+                                        @php
+                                            $currentPage = $sorties->currentPage();
+                                            $lastPage = $sorties->lastPage();
+                                            $start = max(1, $currentPage - 2);
+                                            $end = min($lastPage, $currentPage + 2);
+                                        @endphp
+
+                                        @if($start <= $end)
+                                            @for($i = $start; $i <= $end; $i++)
+                                                <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                                                    <a class="page-link" href="{{ $sorties->url($i) }}">{{ $i }}</a>
+                                                </li>
+                                            @endfor
+                                        @endif
+
+                                        <!-- Bouton Suivant -->
+                                        @if($sorties->hasMorePages())
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $sorties->nextPageUrl() }}" aria-label="Suivant">
+                                                    Suivant <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Suivant <i class="fas fa-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     @else
@@ -238,3 +298,4 @@
     </div>
 </div>
 @endsection
+

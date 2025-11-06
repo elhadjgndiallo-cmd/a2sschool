@@ -239,6 +239,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/statistiques/{classe}/imprimer', [NoteController::class, 'statistiquesClasseImprimable'])->name('notes.statistiques.classe.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletins', [NoteController::class, 'bulletins'])->name('notes.bulletins')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletins/{classe}', [NoteController::class, 'genererBulletins'])->name('notes.bulletins.classe')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletin/verifier/{token}', [NoteController::class, 'verifierBulletin'])->name('notes.bulletin.verify');
         Route::get('/notes/rapport-global', [NoteController::class, 'rapportGlobal'])->name('notes.rapport-global')->middleware('check.permission:notes.view');
         Route::get('/notes/export', [NoteController::class, 'exporterNotes'])->name('notes.export')->middleware('check.permission:notes.view');
         Route::get('/notes/parametres', [NoteController::class, 'parametres'])->name('notes.parametres')->middleware('check.permission:notes.view');
@@ -519,7 +520,24 @@ Route::get('/get-emploi-temps', function() {
             return response()->json(['error' => 'Accès non autorisé'], 403);
         }
         
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return response()->json(['error' => 'Aucune année scolaire active trouvée.'], 400);
+        }
+        
+        // Vérifier que la classe a des élèves de l'année active
+        $hasElevesActiveYear = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->exists();
+            
+        if (!$hasElevesActiveYear) {
+            return response()->json(['error' => 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.'], 404);
+        }
+        
         $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+            ->actif()
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get();
             
@@ -940,7 +958,24 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
                 return response()->json(['error' => 'Accès non autorisé'], 403);
             }
             
+            // Récupérer l'année scolaire active
+            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+            
+            if (!$anneeScolaireActive) {
+                return response()->json(['error' => 'Aucune année scolaire active trouvée.'], 400);
+            }
+            
+            // Vérifier que la classe a des élèves de l'année active
+            $hasElevesActiveYear = $classe->eleves()
+                ->where('annee_scolaire_id', $anneeScolaireActive->id)
+                ->exists();
+                
+            if (!$hasElevesActiveYear) {
+                return response()->json(['error' => 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.'], 404);
+            }
+            
             $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+                ->actif()
                 ->with(['matiere', 'enseignant.utilisateur'])
                 ->get();
                 
@@ -1096,10 +1131,11 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     Route::middleware('role:admin,personnel_admin')->group(function () {
         // Routes spécifiques AVANT les routes resource pour éviter les conflits
         Route::get('/cartes-scolaires/imprimer-plusieurs', [CarteScolaireController::class, 'imprimerPlusieurs'])->name('cartes-scolaires.imprimer-plusieurs');
-        Route::resource('cartes-scolaires', CarteScolaireController::class);
         Route::get('/cartes-scolaires/{cartes_scolaire}/imprimer', [CarteScolaireController::class, 'imprimer'])->name('cartes-scolaires.imprimer');
         Route::get('/cartes-scolaires/{cartes_scolaire}/renouveler', [CarteScolaireController::class, 'renouveler'])->name('cartes-scolaires.renouveler');
         Route::post('/cartes-scolaires/{cartes_scolaire}/traiter-renouvellement', [CarteScolaireController::class, 'traiterRenouvellement'])->name('cartes-scolaires.traiter-renouvellement');
+        // Route resource APRÈS les routes spécifiques (crée edit, update, destroy, etc.)
+        Route::resource('cartes-scolaires', CarteScolaireController::class);
         
         // Routes pour les cartes enseignants
         Route::resource('cartes-enseignants', CarteEnseignantController::class);

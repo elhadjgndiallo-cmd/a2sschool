@@ -49,7 +49,7 @@
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ $classe->nom }}</h5>
                         <p class="card-text">{{ $classe->niveau }}</p>
-                        <small class="text-muted">{{ $classe->eleves->count() }} élèves</small>
+                        <small class="text-muted">{{ $classe->eleves->count() }} élève{{ $classe->eleves->count() > 1 ? 's' : '' }}</small>
                     </div>
                 </div>
             </div>
