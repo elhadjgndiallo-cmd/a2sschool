@@ -16,6 +16,12 @@
             Bulletin de Notes - {{ $eleve->nom_complet }}
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
+            @if(auth()->user()->hasPermission('notes.edit'))
+                <a href="{{ route('notes.saisir', $eleve->classe_id) }}" class="btn btn-primary me-2">
+                    <i class="fas fa-edit me-1"></i>
+                    Modifier les notes
+                </a>
+            @endif
             <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>
                 Retour
@@ -332,7 +338,7 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        @if($data['notes']->count() > 0)
+                                        @if($data['notes']->count() > 0 && auth()->user()->hasPermission('notes.edit'))
                                             @php
                                                 $premiereNote = $data['notes']->first();
                                             @endphp
@@ -478,17 +484,21 @@
                                                     </td>
                                                     <td>
                                                         <div class="btn-group btn-group-sm">
-                                                            <a href="{{ route('notes.edit', $note->id) }}" 
-                                                               class="btn btn-outline-primary btn-sm" 
-                                                               title="Modifier cette note">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <button type="button" 
-                                                                    class="btn btn-outline-danger btn-sm" 
-                                                                    title="Supprimer cette note"
-                                                                    onclick="confirmDeleteNote({{ $note->id }}, '{{ $data['matiere']->nom }}')">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
+                                                            @if(auth()->user()->hasPermission('notes.edit'))
+                                                                <a href="{{ route('notes.edit', $note->id) }}" 
+                                                                   class="btn btn-outline-primary btn-sm" 
+                                                                   title="Modifier cette note">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                            @endif
+                                                            @if(auth()->user()->hasPermission('notes.delete'))
+                                                                <button type="button" 
+                                                                        class="btn btn-outline-danger btn-sm" 
+                                                                        title="Supprimer cette note"
+                                                                        onclick="confirmDeleteNote({{ $note->id }}, '{{ $data['matiere']->nom }}')">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            @endif
                                                         </div>
                                                     </td>
                                                 </tr>

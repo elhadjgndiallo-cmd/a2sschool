@@ -295,19 +295,21 @@
 
                         <!-- Boutons d'action -->
                         <div class="form-group">
-                            <div class="btn-group" role="group">
+                            <div class="d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-save"></i>
-                                    Mettre à jour
+                                    Mettre à jour la note
                                 </button>
                                 <a href="{{ route('notes.eleve', $note->eleve_id) }}" class="btn btn-secondary">
                                     <i class="fas fa-times"></i>
                                     Annuler
                                 </a>
-                                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
-                                    <i class="fas fa-trash"></i>
-                                    Supprimer
-                                </button>
+                                @if(auth()->user()->hasPermission('notes.delete'))
+                                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                                        <i class="fas fa-trash"></i>
+                                        Supprimer
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </form>

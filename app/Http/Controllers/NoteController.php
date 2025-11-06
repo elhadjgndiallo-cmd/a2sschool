@@ -261,18 +261,11 @@ class NoteController extends Controller
     }
 
     /**
-     * Afficher les notes d'un élève (alias pour bulletin)
+     * Afficher les notes d'un élève (vue interactive)
      */
-    public function eleveNotes($eleveId, $periode = 'trimestre1')
+    public function eleveNotes(Request $request, $eleveId)
     {
-        return $this->bulletin($eleveId, $periode);
-    }
-
-    /**
-     * Afficher le bulletin de notes d'un élève
-     */
-    public function bulletin($eleveId, $periode = 'trimestre1')
-    {
+        $periode = $request->input('periode', 'trimestre1');
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
         
         // Récupérer les notes de l'élève pour la période
@@ -319,6 +312,77 @@ class NoteController extends Controller
         // Moyenne générale
         $moyenneGenerale = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
 
+        // Calculer l'appréciation générale
+        $appreciationGenerale = $eleve->classe->getAppreciation($moyenneGenerale);
+
+        // Calculer le rang dans la classe
+        $rang = $this->calculerRang($eleve->classe_id, $periode, $moyenneGenerale);
+
+        return view('notes.eleve', compact(
+            'eleve', 
+            'periode', 
+            'moyennesParMatiere', 
+            'moyenneGenerale', 
+            'appreciationGenerale',
+            'rang'
+        ));
+    }
+
+    /**
+     * Afficher le bulletin de notes d'un élève
+     */
+    public function bulletin(Request $request, $eleveId, $periode = 'trimestre1')
+    {
+        $periode = $request->input('periode', $periode);
+        $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+        
+        // Récupérer les notes de l'élève pour la période
+        $notes = Note::where('eleve_id', $eleveId)
+            ->where('periode', $periode)
+            ->with(['matiere', 'enseignant'])
+            ->get()
+            ->groupBy('matiere_id');
+
+        // Calculer les moyennes par matière
+        $moyennesParMatiere = [];
+        $totalPoints = 0;
+        $totalCoefficients = 0;
+
+        foreach ($notes as $matiereId => $notesMatiere) {
+            $matiere = $notesMatiere->first()->matiere;
+            
+            // Calculer la moyenne de la matière en utilisant les notes finales
+            $sommeNotesFinales = 0;
+            $nombreNotes = 0;
+            
+            foreach ($notesMatiere as $note) {
+                $noteFinale = $note->calculerNoteFinale();
+                if ($noteFinale !== null) {
+                    $sommeNotesFinales += $noteFinale;
+                    $nombreNotes++;
+                }
+            }
+            
+            $moyenneMatiere = $nombreNotes > 0 ? $sommeNotesFinales / $nombreNotes : 0;
+            
+            $moyennesParMatiere[$matiereId] = [
+                'matiere' => $matiere,
+                'notes' => $notesMatiere,
+                'moyenne' => $moyenneMatiere,
+                'coefficient' => $matiere->coefficient,
+                'points' => $moyenneMatiere * $matiere->coefficient
+            ];
+
+            $totalPoints += $moyenneMatiere * $matiere->coefficient;
+            $totalCoefficients += $matiere->coefficient;
+        }
+
+        // Moyenne générale
+        $moyenneGenerale = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+
+        // Calculer l'appréciation générale
+        $appreciationGenerale = $eleve->classe->getAppreciation($moyenneGenerale);
+
         // Calculer le rang dans la classe
         $rang = $this->calculerRang($eleve->classe_id, $periode, $moyenneGenerale);
 
@@ -327,6 +391,7 @@ class NoteController extends Controller
             'periode', 
             'moyennesParMatiere', 
             'moyenneGenerale', 
+            'appreciationGenerale',
             'rang'
         ));
     }
