@@ -99,22 +99,27 @@ class ComptabiliteController extends Controller
      */
     public function entrees(Request $request)
     {
-        // Récupérer l'année scolaire active
-        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        // Récupérer l'année scolaire (filtrée ou active par défaut)
+        $anneeScolaireId = $request->filled('annee_scolaire_id') 
+            ? $request->annee_scolaire_id 
+            : (\App\Models\AnneeScolaire::anneeActive()?->id);
         
-        if (!$anneeScolaireActive) {
-            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        $anneeScolaire = $anneeScolaireId 
+            ? \App\Models\AnneeScolaire::find($anneeScolaireId)
+            : \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaire) {
+            return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
         
-        // Récupérer les entrées manuelles (filtrées par période de l'année scolaire active)
+        // Récupérer les entrées manuelles
         $query = Entree::with('enregistrePar');
         
-        // Filtrer par période de l'année scolaire active
-        // Convertir les dates en format string pour éviter les problèmes de comparaison
-        if ($anneeScolaireActive) {
+        // Filtrer par période de l'année scolaire sélectionnée
+        if ($anneeScolaire) {
             $query->whereBetween('date_entree', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
+                $anneeScolaire->date_debut->format('Y-m-d'),
+                $anneeScolaire->date_fin->format('Y-m-d')
             ]);
         }
         
@@ -131,21 +136,90 @@ class ComptabiliteController extends Controller
             $query->where('source', $request->source);
         }
         
+        // Filtre par montant minimum
+        if ($request->filled('montant_min')) {
+            $query->where('montant', '>=', $request->montant_min);
+        }
+        
+        // Filtre par montant maximum
+        if ($request->filled('montant_max')) {
+            $query->where('montant', '<=', $request->montant_max);
+        }
+        
+        // Filtre par type d'entrée
+        if ($request->filled('type_entree')) {
+            if ($request->type_entree == 'manuelle') {
+                // Ne rien faire, on garde les entrées manuelles
+            } elseif ($request->type_entree == 'paiement') {
+                // On ne récupérera que les paiements plus tard
+                $query->whereRaw('1 = 0'); // Ne récupérer aucune entrée manuelle
+            }
+        }
+        
         $entrees = $query->orderBy('date_entree', 'desc')->get();
 
-        // Récupérer les paiements de frais de scolarité de l'année active seulement
-        $paiementsFrais = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
-            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            })
-            ->orderBy('date_paiement', 'desc')
-            ->get();
+        // Récupérer les paiements de frais de scolarité de l'année sélectionnée
+        $paiementsFraisQuery = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'fraisScolarite:id,type_frais,eleve_id', 'encaissePar'])
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+                $q->where('annee_scolaire_id', $anneeScolaire->id);
+            });
+        
+        // Appliquer les filtres de date aux paiements
+        if ($request->filled('date_debut')) {
+            $paiementsFraisQuery->whereDate('date_paiement', '>=', $request->date_debut);
+        }
+        
+        if ($request->filled('date_fin')) {
+            $paiementsFraisQuery->whereDate('date_paiement', '<=', $request->date_fin);
+        }
+        
+        // Filtre par montant minimum pour les paiements
+        if ($request->filled('montant_min')) {
+            $paiementsFraisQuery->where('montant_paye', '>=', $request->montant_min);
+        }
+        
+        // Filtre par montant maximum pour les paiements
+        if ($request->filled('montant_max')) {
+            $paiementsFraisQuery->where('montant_paye', '<=', $request->montant_max);
+        }
+        
+        $paiementsFrais = $paiementsFraisQuery->orderBy('date_paiement', 'desc')->get();
 
+        // Créer une collection des références de paiements pour éviter les doublons
+        $paiementsReferences = $paiementsFrais->pluck('reference_paiement')->filter()->toArray();
+        
         // Combiner les deux collections et créer une pagination unifiée
         $allEntries = collect();
         
-        // Ajouter les entrées manuelles avec un type
+        // Ajouter les entrées manuelles avec un type (en excluant celles qui correspondent à un paiement)
         foreach ($entrees as $entree) {
+            // Vérifier si cette entrée correspond à un paiement (pour éviter les doublons)
+            // Si l'entrée a une référence qui correspond à un paiement, on l'exclut
+            $isPaiementEntry = false;
+            
+            // Vérifier par référence
+            if ($entree->reference && in_array($entree->reference, $paiementsReferences)) {
+                $isPaiementEntry = true;
+            }
+            
+            // Vérifier aussi par montant, date et source pour les entrées de scolarité
+            if (!$isPaiementEntry && in_array($entree->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'])) {
+                // Vérifier si un paiement correspond (même montant, même date)
+                foreach ($paiementsFrais as $paiement) {
+                    if ($paiement->montant_paye == $entree->montant && 
+                        $paiement->date_paiement->format('Y-m-d') == $entree->date_entree->format('Y-m-d') &&
+                        $paiement->encaisse_par == $entree->enregistre_par) {
+                        $isPaiementEntry = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Si c'est une entrée créée automatiquement par un paiement, on l'exclut
+            if ($isPaiementEntry) {
+                continue;
+            }
+            
             $allEntries->push((object) [
                 'id' => 'entree_' . $entree->id,
                 'type' => 'entree',
@@ -158,29 +232,47 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Ajouter tous les paiements de frais de scolarité de l'année active
+        // Fonction pour convertir le type de frais en libellé de source
+        $getSourceFromTypeFrais = function($typeFrais) {
+            $sources = [
+                'inscription' => 'Inscription',
+                'reinscription' => 'Réinscription',
+                'scolarite' => 'Frais de scolarité',
+                'cantine' => 'Cantine',
+                'transport' => 'Transport',
+                'activites' => 'Activités',
+                'autre' => 'Autres frais'
+            ];
+            return $sources[$typeFrais] ?? 'Autres frais';
+        };
+        
+        // Ajouter tous les paiements de frais de scolarité (déjà filtrés)
         foreach ($paiementsFrais as $paiement) {
-            // Vérifier si le paiement correspond aux filtres de date si spécifiés
-            if ($request->filled('date_debut') && $paiement->date_paiement < $request->date_debut) {
-                continue;
-            }
-            
-            if ($request->filled('date_fin') && $paiement->date_paiement > $request->date_fin) {
-                continue;
-            }
-            
             // Récupérer l'élève pour la description
             $eleve = $paiement->fraisScolarite->eleve ?? null;
             $eleveNom = $eleve && $eleve->utilisateur ? 
                 ($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom) : 
                 'Élève inconnu';
             
-            $description = 'Paiement de ' . number_format($paiement->montant_paye, 0, ',', ' ') . ' GNF - ' . $eleveNom;
-            $source = 'Frais de scolarité';
+            // Récupérer le matricule et la classe
+            $matricule = $eleve ? ($eleve->numero_etudiant ?? 'N/A') : 'N/A';
+            $classe = $eleve && $eleve->classe ? $eleve->classe->nom : 'N/A';
+            
+            // Créer la description avec matricule et classe
+            $description = 'Paiement de ' . number_format($paiement->montant_paye, 0, ',', ' ') . ' GNF - ' . $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
+            
+            // Utiliser le type de frais comme source
+            $typeFrais = $paiement->fraisScolarite->type_frais ?? 'autre';
+            $source = $getSourceFromTypeFrais($typeFrais);
             
             // Appliquer le filtre de source si spécifié
             if ($request->filled('source') && $source !== $request->source) {
                 continue; // Ignorer ce paiement s'il ne correspond pas au filtre
+            }
+            
+            // Appliquer le filtre de type d'entrée
+            if ($request->filled('type_entree') && $request->type_entree == 'manuelle') {
+                continue; // Ignorer les paiements si on veut seulement les entrées manuelles
             }
             
             $allEntries->push((object) [
@@ -193,6 +285,11 @@ class ComptabiliteController extends Controller
                 'enregistre_par' => $paiement->encaissePar,
                 'data' => $paiement
             ]);
+        }
+        
+        // Appliquer le filtre de type d'entrée pour les entrées manuelles
+        if ($request->filled('type_entree') && $request->type_entree == 'paiement') {
+            // On a déjà filtré les entrées manuelles plus haut
         }
         
         // Trier par date décroissante
@@ -219,28 +316,71 @@ class ComptabiliteController extends Controller
         // Ajouter les paramètres de requête à la pagination
         $paginatedEntries->appends(request()->query());
         
-        // Statistiques des entrées (filtrées par année scolaire active)
-        $statsEntrees = $this->getStatsEntrees($request, $anneeScolaireActive);
+        // Statistiques des entrées (filtrées par année scolaire sélectionnée)
+        $statsEntrees = $this->getStatsEntrees($request, $anneeScolaire);
         
-        // Sources disponibles pour les filtres (filtrées par année scolaire active)
-        $sourcesQuery = Entree::query();
-        if ($anneeScolaireActive) {
-            $sourcesQuery->whereBetween('date_entree', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
+        // Sources disponibles pour les filtres basées sur les types de frais des paiements
+        $sources = [];
+        
+        // Récupérer les types de frais uniques des paiements de l'année sélectionnée
+        $typesFraisQuery = \App\Models\Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+            if ($anneeScolaire) {
+                $q->where('annee_scolaire_id', $anneeScolaire->id);
+            }
+        })
+        ->whereHas('fraisScolarite', function($q) {
+            $q->whereNotNull('type_frais');
+        })
+        ->with('fraisScolarite');
+        
+        $paiementsPourSources = $typesFraisQuery->get();
+        
+        // Fonction pour convertir le type de frais en libellé de source
+        $getSourceFromTypeFrais = function($typeFrais) {
+            $sources = [
+                'inscription' => 'Inscription',
+                'reinscription' => 'Réinscription',
+                'scolarite' => 'Frais de scolarité',
+                'cantine' => 'Cantine',
+                'transport' => 'Transport',
+                'activites' => 'Activités',
+                'autre' => 'Autres frais'
+            ];
+            return $sources[$typeFrais] ?? 'Autres frais';
+        };
+        
+        // Récupérer les sources uniques à partir des types de frais
+        foreach ($paiementsPourSources as $paiement) {
+            $typeFrais = $paiement->fraisScolarite->type_frais ?? 'autre';
+            $source = $getSourceFromTypeFrais($typeFrais);
+            if (!in_array($source, $sources)) {
+                $sources[] = $source;
+            }
+        }
+        
+        // Ajouter aussi les sources des entrées manuelles (non liées aux paiements)
+        $sourcesEntreesQuery = Entree::query();
+        if ($anneeScolaire) {
+            $sourcesEntreesQuery->whereBetween('date_entree', [
+                $anneeScolaire->date_debut->format('Y-m-d'),
+                $anneeScolaire->date_fin->format('Y-m-d')
             ]);
         }
-        $sources = $sourcesQuery->select('source')->distinct()->orderBy('source')->pluck('source')->toArray();
+        // Exclure les sources automatiques créées par les paiements
+        $sourcesEntreesQuery->whereNotIn('source', ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']);
+        $sourcesEntrees = $sourcesEntreesQuery->select('source')->distinct()->orderBy('source')->pluck('source')->toArray();
         
-        // Ajouter "Frais de scolarité" si des paiements existent pour l'année active
-        if ($paiementsFrais->count() > 0 && !in_array('Frais de scolarité', $sources)) {
-            $sources[] = 'Frais de scolarité';
-            sort($sources);
-        }
+        // Combiner les sources
+        $sources = array_merge($sources, $sourcesEntrees);
+        $sources = array_unique($sources);
+        sort($sources);
         
         $sources = collect($sources);
         
-        return view('comptabilite.entrees', compact('paginatedEntries', 'statsEntrees', 'sources', 'anneeScolaireActive'));
+        // Récupérer toutes les années scolaires pour le filtre
+        $anneesScolaires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
+        
+        return view('comptabilite.entrees', compact('paginatedEntries', 'statsEntrees', 'sources', 'anneeScolaire', 'anneesScolaires'));
     }
 
     /**
@@ -615,8 +755,7 @@ class ComptabiliteController extends Controller
     {
         $query = Entree::query();
         
-        // Filtrer par période de l'année scolaire active
-        // Convertir les dates en format string pour éviter les problèmes de comparaison
+        // Filtrer par période de l'année scolaire sélectionnée
         if ($anneeScolaireActive) {
             $query->whereBetween('date_entree', [
                 $anneeScolaireActive->date_debut->format('Y-m-d'),
@@ -632,15 +771,90 @@ class ComptabiliteController extends Controller
             $query->whereDate('date_entree', '<=', $request->date_fin);
         }
         
-        // Ajouter les paiements de frais de scolarité de l'année active
-        $totalEntrees = $query->sum('montant');
-        $nombreEntrees = $query->count();
+        if ($request->filled('source')) {
+            $query->where('source', $request->source);
+        }
+        
+        // Filtre par montant minimum
+        if ($request->filled('montant_min')) {
+            $query->where('montant', '>=', $request->montant_min);
+        }
+        
+        // Filtre par montant maximum
+        if ($request->filled('montant_max')) {
+            $query->where('montant', '<=', $request->montant_max);
+        }
+        
+        // Filtre par type d'entrée
+        if ($request->filled('type_entree') && $request->type_entree == 'paiement') {
+            $query->whereRaw('1 = 0'); // Ne pas compter les entrées manuelles
+        }
+        
+        // Récupérer les paiements pour exclure les entrées correspondantes (éviter les doublons)
+        $paiementsFraisQuery = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
+            if ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }
+        });
+        
+        if ($request->filled('date_debut')) {
+            $paiementsFraisQuery->whereDate('date_paiement', '>=', $request->date_debut);
+        }
+        
+        if ($request->filled('date_fin')) {
+            $paiementsFraisQuery->whereDate('date_paiement', '<=', $request->date_fin);
+        }
+        
+        $paiementsFrais = $paiementsFraisQuery->get();
+        $paiementsReferences = $paiementsFrais->pluck('reference_paiement')->filter()->toArray();
+        
+        // Exclure les entrées qui correspondent à un paiement (pour éviter les doublons)
+        // Les entrées créées automatiquement par les paiements ont la même référence
+        if (!empty($paiementsReferences)) {
+            $query->whereNotIn('reference', $paiementsReferences);
+        }
+        
+        // Exclure aussi les entrées de scolarité qui correspondent à un paiement (même montant, même date)
+        // mais seulement si elles n'ont pas de référence
+        $entrees = $query->get();
+        $entreesFiltrees = $entrees->filter(function($entree) use ($paiementsFrais) {
+            // Si l'entrée a une source de scolarité, vérifier si elle correspond à un paiement
+            if (in_array($entree->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'])) {
+                foreach ($paiementsFrais as $paiement) {
+                    if ($paiement->montant_paye == $entree->montant && 
+                        $paiement->date_paiement->format('Y-m-d') == $entree->date_entree->format('Y-m-d') &&
+                        $paiement->encaisse_par == $entree->enregistre_par) {
+                        return false; // Exclure cette entrée car elle correspond à un paiement
+                    }
+                }
+            }
+            return true; // Garder cette entrée
+        });
+        
+        // Calculer les statistiques des entrées manuelles (sans les doublons)
+        $totalEntrees = $entreesFiltrees->sum('montant');
+        $nombreEntrees = $entreesFiltrees->count();
         
         // Ajouter les paiements de frais de scolarité
-        if ($anneeScolaireActive) {
+        if ($anneeScolaireActive && (!$request->filled('type_entree') || $request->type_entree != 'manuelle')) {
+            // Fonction pour convertir le type de frais en libellé de source
+            $getSourceFromTypeFrais = function($typeFrais) {
+                $sources = [
+                    'inscription' => 'Inscription',
+                    'reinscription' => 'Réinscription',
+                    'scolarite' => 'Frais de scolarité',
+                    'cantine' => 'Cantine',
+                    'transport' => 'Transport',
+                    'activites' => 'Activités',
+                    'autre' => 'Autres frais'
+                ];
+                return $sources[$typeFrais] ?? 'Autres frais';
+            };
+            
             $paiementsQuery = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
                 $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            });
+            })
+            ->with('fraisScolarite:id,type_frais');
             
             if ($request->filled('date_debut')) {
                 $paiementsQuery->whereDate('date_paiement', '>=', $request->date_debut);
@@ -650,8 +864,29 @@ class ComptabiliteController extends Controller
                 $paiementsQuery->whereDate('date_paiement', '<=', $request->date_fin);
             }
             
-            $totalPaiements = $paiementsQuery->sum('montant_paye');
-            $nombrePaiements = $paiementsQuery->count();
+            // Filtre par montant minimum pour les paiements
+            if ($request->filled('montant_min')) {
+                $paiementsQuery->where('montant_paye', '>=', $request->montant_min);
+            }
+            
+            // Filtre par montant maximum pour les paiements
+            if ($request->filled('montant_max')) {
+                $paiementsQuery->where('montant_paye', '<=', $request->montant_max);
+            }
+            
+            $paiements = $paiementsQuery->get();
+            
+            // Filtre par source pour les paiements (basé sur le type de frais)
+            if ($request->filled('source')) {
+                $paiements = $paiements->filter(function($paiement) use ($request, $getSourceFromTypeFrais) {
+                    $typeFrais = $paiement->fraisScolarite->type_frais ?? 'autre';
+                    $source = $getSourceFromTypeFrais($typeFrais);
+                    return $source === $request->source;
+                });
+            }
+            
+            $totalPaiements = $paiements->sum('montant_paye');
+            $nombrePaiements = $paiements->count();
             
             $totalEntrees += $totalPaiements;
             $nombreEntrees += $nombrePaiements;
@@ -787,7 +1022,7 @@ class ComptabiliteController extends Controller
             ->get();
         
         // Récupérer les paiements selon la période
-        $paiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+        $paiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'encaissePar'])
             ->whereBetween('date_paiement', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -817,9 +1052,22 @@ class ComptabiliteController extends Controller
         
         // Ajouter les paiements de frais de scolarité
         foreach ($paiements as $paiement) {
+            // Récupérer les informations de l'élève
+            $eleve = $paiement->fraisScolarite->eleve ?? null;
+            $eleveNom = $eleve && $eleve->utilisateur ? 
+                ($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom) : 
+                'Élève inconnu';
+            
+            // Récupérer le matricule et la classe
+            $matricule = $eleve ? ($eleve->numero_etudiant ?? 'N/A') : 'N/A';
+            $classe = $eleve && $eleve->classe ? $eleve->classe->nom : 'N/A';
+            
+            // Créer le libellé avec matricule et classe
+            $libelle = 'Paiement frais scolarité - ' . $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
+            
             $journal->push([
                 'date' => $paiement->date_paiement,
-                'libelle' => 'Paiement frais scolarité - ' . $paiement->fraisScolarite->eleve->utilisateur->prenom . ' ' . $paiement->fraisScolarite->eleve->utilisateur->nom,
+                'libelle' => $libelle,
                 'entree' => $paiement->montant_paye,
                 'sortie' => 0,
                 'type' => 'paiement_scolarite',

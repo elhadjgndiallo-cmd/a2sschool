@@ -36,9 +36,11 @@
                     <form method="GET" action="{{ route('comptabilite.entrees') }}">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
-                                    @foreach(\App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
+                                <label for="annee_scolaire_id" class="form-label">
+                                    <i class="fas fa-calendar-alt me-1"></i>Année scolaire
+                                </label>
+                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()">
+                                    @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
                                         <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }}>
                                             {{ $annee->nom }}
                                         </option>
@@ -46,17 +48,23 @@
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label for="date_debut" class="form-label">Date de début</label>
+                                <label for="date_debut" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Date de début
+                                </label>
                                 <input type="date" class="form-control" id="date_debut" name="date_debut" 
                                        value="{{ request('date_debut') }}">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label for="date_fin" class="form-label">Date de fin</label>
+                                <label for="date_fin" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Date de fin
+                                </label>
                                 <input type="date" class="form-control" id="date_fin" name="date_fin" 
                                        value="{{ request('date_fin') }}">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label for="source" class="form-label">Source</label>
+                                <label for="source" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>Source
+                                </label>
                                 <select class="form-select" id="source" name="source">
                                     <option value="">Toutes les sources</option>
                                     @foreach($sources as $source)
@@ -66,9 +74,37 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-search me-1"></i>Filtrer
+                            <div class="col-md-3 mb-3">
+                                <label for="type_entree" class="form-label">
+                                    <i class="fas fa-filter me-1"></i>Type d'entrée
+                                </label>
+                                <select class="form-select" id="type_entree" name="type_entree">
+                                    <option value="">Tous les types</option>
+                                    <option value="manuelle" {{ request('type_entree') == 'manuelle' ? 'selected' : '' }}>
+                                        Entrées manuelles
+                                    </option>
+                                    <option value="paiement" {{ request('type_entree') == 'paiement' ? 'selected' : '' }}>
+                                        Paiements de scolarité
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="montant_min" class="form-label">
+                                    <i class="fas fa-arrow-up me-1"></i>Montant minimum (GNF)
+                                </label>
+                                <input type="number" class="form-control" id="montant_min" name="montant_min" 
+                                       value="{{ request('montant_min') }}" min="0" step="1000" placeholder="Ex: 100000">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="montant_max" class="form-label">
+                                    <i class="fas fa-arrow-down me-1"></i>Montant maximum (GNF)
+                                </label>
+                                <input type="number" class="form-control" id="montant_max" name="montant_max" 
+                                       value="{{ request('montant_max') }}" min="0" step="1000" placeholder="Ex: 1000000">
+                            </div>
+                            <div class="col-md-12 mb-3 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Appliquer les filtres
                                 </button>
                                 <a href="{{ route('comptabilite.entrees') }}" class="btn btn-outline-secondary">
                                     <i class="fas fa-refresh me-1"></i>Réinitialiser
