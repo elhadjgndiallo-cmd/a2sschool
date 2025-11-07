@@ -1670,6 +1670,14 @@ class ComptabiliteController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
         
+        // Récupérer les salaires enseignants payés selon la période
+        $salairesPayes = \App\Models\SalaireEnseignant::where('statut', 'payé')
+            ->whereNotNull('date_paiement')
+            ->whereBetween('date_paiement', [$dateDebut->format('Y-m-d'), $dateFin->format('Y-m-d')])
+            ->with(['enseignant.utilisateur', 'payePar'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+        
         // Créer le journal des transactions
         $journal = collect();
         
@@ -1714,8 +1722,24 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Ajouter les dépenses
+        // Ajouter les dépenses (en excluant celles qui correspondent à un salaire pour éviter les doublons)
         foreach ($depenses as $depense) {
+            // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
+            $correspondSalaire = false;
+            foreach ($salairesPayes as $salaire) {
+                if ($depense->type_depense === 'salaire_enseignant' && 
+                    $depense->date_depense->format('Y-m-d') == $salaire->date_paiement->format('Y-m-d') &&
+                    abs($depense->montant - $salaire->salaire_net) < 0.01) {
+                    $correspondSalaire = true;
+                    break;
+                }
+            }
+            
+            // Si c'est une dépense de salaire déjà représentée par un salaire payé, on la saute
+            if ($correspondSalaire) {
+                continue;
+            }
+            
             $journal->push([
                 'date' => $depense->date_depense,
                 'libelle' => $depense->libelle,
@@ -1725,6 +1749,26 @@ class ComptabiliteController extends Controller
                 'source' => $depense->type_depense,
                 'enregistre_par' => $depense->approuvePar ?? $depense->payePar,
                 'created_at' => $depense->created_at
+            ]);
+        }
+        
+        // Ajouter les salaires enseignants payés
+        foreach ($salairesPayes as $salaire) {
+            $enseignantNom = $salaire->enseignant && $salaire->enseignant->utilisateur ? 
+                ($salaire->enseignant->utilisateur->prenom . ' ' . $salaire->enseignant->utilisateur->nom) : 
+                'Enseignant inconnu';
+            
+            $libelle = 'Salaire - ' . $enseignantNom . ' (' . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - ' . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A') . ')';
+            
+            $journal->push([
+                'date' => $salaire->date_paiement,
+                'libelle' => $libelle,
+                'entree' => 0,
+                'sortie' => $salaire->salaire_net ?? 0,
+                'type' => 'salaire_enseignant',
+                'source' => 'Salaire enseignant',
+                'enregistre_par' => $salaire->payePar,
+                'created_at' => $salaire->created_at
             ]);
         }
         
@@ -1744,7 +1788,8 @@ class ComptabiliteController extends Controller
         // Statistiques de la période
         $totalEntrees = $journal->sum('entree');
         $totalSorties = $journal->sum('sortie');
-        $soldeFinal = $soldeActuel;
+        // Solde final = Entrées - Sorties
+        $soldeFinal = $totalEntrees - $totalSorties;
         
         return view('comptabilite.rapport-journalier', compact(
             'journal',
