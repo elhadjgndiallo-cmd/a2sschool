@@ -581,7 +581,6 @@
                 'notes': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('notes')),
                 'comptabilite': [
                     { href: '{{ route("comptabilite.index") }}', icon: 'fas fa-tachometer-alt', text: 'Tableau de bord' },
-                    { href: '{{ route("comptabilite.rapports") }}', icon: 'fas fa-chart-line', text: 'Rapports' },
                     { href: '{{ route("comptabilite.entrees") }}', icon: 'fas fa-arrow-up', text: 'Entrées' },
                     { href: '{{ route("comptabilite.sorties") }}', icon: 'fas fa-arrow-down', text: 'Sorties' },
                     { href: '{{ route("recus-rappel.index") }}', icon: 'fas fa-bell', text: 'Reçus de Rappel' }

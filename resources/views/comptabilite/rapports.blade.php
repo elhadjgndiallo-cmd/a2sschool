@@ -37,7 +37,7 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
+                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="updateDatesFromAnneeScolaire()">
                                     @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
                                     @foreach($annees as $annee)
                                         <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }} data-start="{{ $annee->date_debut->format('Y-m-d') }}" data-end="{{ $annee->date_fin->format('Y-m-d') }}">
@@ -85,7 +85,7 @@
             <div class="card bg-danger text-white">
                 <div class="card-body text-center">
                     <h3 class="mb-0">{{ number_format($rapports['total_depenses'], 0, ',', ' ') }}</h3>
-                    <small>Total Dépenses (GNF)</small>
+                    <small>Total Sorties (GNF)</small>
                 </div>
             </div>
         </div>
@@ -220,14 +220,14 @@
                                     <tr>
                                         <td>
                                             <i class="fas fa-arrow-up text-success me-2"></i>
-                                            {{ $revenu->source }}
+                                            {{ is_array($revenu) ? $revenu['source'] : $revenu->source }}
                                         </td>
                                         <td class="text-end">
-                                            <strong>{{ number_format($revenu->total, 0, ',', ' ') }}</strong>
+                                            <strong>{{ number_format(is_array($revenu) ? $revenu['total'] : $revenu->total, 0, ',', ' ') }}</strong>
                                         </td>
                                         <td class="text-end">
                                             <span class="badge bg-primary">
-                                                {{ $rapports['total_revenus'] > 0 ? number_format(($revenu->total / $rapports['total_revenus']) * 100, 1) : 0 }}%
+                                                {{ $rapports['total_revenus'] > 0 ? number_format(((is_array($revenu) ? $revenu['total'] : $revenu->total) / $rapports['total_revenus']) * 100, 1) : 0 }}%
                                             </span>
                                         </td>
                                     </tr>
@@ -265,9 +265,9 @@
     new Chart(revenusCtx, {
         type: 'pie',
         data: {
-            labels: {!! json_encode($rapports['revenus_par_type']->pluck('source')) !!},
+            labels: {!! json_encode($rapports['revenus_par_type']->pluck('source')->values()) !!},
             datasets: [{
-                data: {!! json_encode($rapports['revenus_par_type']->pluck('total')) !!},
+                data: {!! json_encode($rapports['revenus_par_type']->pluck('total')->values()) !!},
                 backgroundColor: [
                     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
                 ]
@@ -310,16 +310,20 @@
     new Chart(evolutionCtx, {
         type: 'line',
         data: {
-            labels: {!! json_encode($evolutionRevenus->map(function($item) { return $item->annee . '-' . str_pad($item->mois, 2, '0', STR_PAD_LEFT); })) !!},
+            labels: {!! json_encode($evolutionRevenus->map(function($item) { 
+                $annee = is_array($item) ? $item['annee'] : $item->annee;
+                $mois = is_array($item) ? $item['mois'] : $item->mois;
+                return $annee . '-' . str_pad($mois, 2, '0', STR_PAD_LEFT);
+            })) !!},
             datasets: [{
                 label: 'Revenus',
-                data: {!! json_encode($evolutionRevenus->pluck('total')) !!},
+                data: {!! json_encode($evolutionRevenus->map(function($item) { return is_array($item) ? $item['total'] : $item->total; })) !!},
                 borderColor: '#36A2EB',
                 backgroundColor: 'rgba(54, 162, 235, 0.1)',
                 tension: 0.1
             }, {
                 label: 'Dépenses',
-                data: {!! json_encode($evolutionDepenses->pluck('total')) !!},
+                data: {!! json_encode($evolutionDepenses->map(function($item) { return is_array($item) ? $item['total'] : $item->total; })) !!},
                 borderColor: '#FF6384',
                 backgroundColor: 'rgba(255, 99, 132, 0.1)',
                 tension: 0.1
@@ -339,6 +343,24 @@
         // Fonction pour exporter vers Excel
         alert('Fonction d\'export Excel à implémenter');
     }
+    
+    // Fonction pour mettre à jour les dates lors du changement d'année scolaire
+    function updateDatesFromAnneeScolaire() {
+        const select = document.getElementById('annee_scolaire_id');
+        const selectedOption = select.options[select.selectedIndex];
+        const dateDebut = selectedOption.getAttribute('data-start');
+        const dateFin = selectedOption.getAttribute('data-end');
+        
+        if (dateDebut && dateFin) {
+            document.getElementById('date_debut').value = dateDebut;
+            document.getElementById('date_fin').value = dateFin;
+        }
+    }
+    
+    // Mettre à jour les dates au chargement de la page
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDatesFromAnneeScolaire();
+    });
 </script>
 @endpush
 @endsection

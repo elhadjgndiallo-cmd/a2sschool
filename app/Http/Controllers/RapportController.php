@@ -42,10 +42,24 @@ class RapportController extends Controller
         }
 
         // Statistiques générales
-        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements scolaires)
-        $totalEntreesManuelles = $entreesQuery->where('source', '!=', 'Paiements scolaires')->sum('montant');
+        // Exclure toutes les sources automatiques créées par les paiements (pour éviter les doublons)
+        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
         
-        // Frais de scolarité (paiements scolaires)
+        // Récupérer les références des paiements pour exclure les entrées correspondantes
+        $paiementsReferences = $paiementsQuery->pluck('reference_paiement')->filter()->toArray();
+        
+        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements)
+        $entreesManuellesQuery = clone $entreesQuery;
+        $entreesManuellesQuery->whereNotIn('source', $sourcesAuto);
+        
+        // Exclure aussi les entrées avec une référence de paiement
+        if (!empty($paiementsReferences)) {
+            $entreesManuellesQuery->whereNotIn('reference', $paiementsReferences);
+        }
+        
+        $totalEntreesManuelles = $entreesManuellesQuery->sum('montant');
+        
+        // Frais de scolarité (paiements scolaires) - tous les paiements
         $totalPaiements = $paiementsQuery->sum('montant_paye');
         
         // Total Entrées = Entrées manuelles + Frais de scolarité
@@ -65,22 +79,68 @@ class RapportController extends Controller
         // Solde = Total Entrées - Total Sorties
         $solde = $totalEntrees - $totalSorties;
 
-        // Entrées par mois (période filtrée)
+        // Entrées par mois (période filtrée) - inclure les paiements
         $entreesParMois = Entree::select(
                 DB::raw('YEAR(date_entree) as annee'),
                 DB::raw('MONTH(date_entree) as mois'),
                 DB::raw('SUM(montant) as total')
             )
-            ->whereBetween('date_entree', [$dateDebut, $dateFin]);
+            ->whereBetween('date_entree', [$dateDebut, $dateFin])
+            ->whereNotIn('source', $sourcesAuto);
             
         if ($sourceEntree) {
             $entreesParMois->where('source', $sourceEntree);
+        }
+        
+        // Exclure les entrées avec référence de paiement
+        if (!empty($paiementsReferences)) {
+            $entreesParMois->whereNotIn('reference', $paiementsReferences);
         }
         
         $entreesParMois = $entreesParMois->groupBy('annee', 'mois')
             ->orderBy('annee', 'desc')
             ->orderBy('mois', 'desc')
             ->get();
+        
+        // Ajouter les paiements par mois
+        $paiementsParMois = Paiement::select(
+                DB::raw('YEAR(date_paiement) as annee'),
+                DB::raw('MONTH(date_paiement) as mois'),
+                DB::raw('SUM(montant_paye) as total')
+            )
+            ->whereBetween('date_paiement', [$dateDebut, $dateFin])
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee', 'desc')
+            ->orderBy('mois', 'desc')
+            ->get();
+        
+        // Combiner les entrées manuelles et les paiements par mois
+        $entreesParMoisCombines = collect();
+        foreach ($entreesParMois as $entree) {
+            $key = $entree->annee . '-' . $entree->mois;
+            $entreesParMoisCombines->put($key, [
+                'annee' => $entree->annee,
+                'mois' => $entree->mois,
+                'total' => $entree->total
+            ]);
+        }
+        
+        foreach ($paiementsParMois as $paiement) {
+            $key = $paiement->annee . '-' . $paiement->mois;
+            if ($entreesParMoisCombines->has($key)) {
+                $entreesParMoisCombines[$key]['total'] += $paiement->total;
+            } else {
+                $entreesParMoisCombines->put($key, [
+                    'annee' => $paiement->annee,
+                    'mois' => $paiement->mois,
+                    'total' => $paiement->total
+                ]);
+            }
+        }
+        
+        $entreesParMois = $entreesParMoisCombines->values()->sortByDesc(function($item) {
+            return $item['annee'] * 100 + $item['mois'];
+        })->values();
 
         // Sorties par mois (période filtrée)
         $sortiesParMois = Depense::select(
@@ -103,12 +163,64 @@ class RapportController extends Controller
             ->orderBy('mois', 'desc')
             ->get();
 
-        // Entrées par source (période filtrée)
-        $entreesParSource = Entree::select('source', DB::raw('SUM(montant) as total'))
+        // Entrées par source (période filtrée) - exclure les sources automatiques
+        $entreesParSourceQuery = Entree::select('source', DB::raw('SUM(montant) as total'))
             ->whereBetween('date_entree', [$dateDebut, $dateFin])
-            ->groupBy('source')
+            ->whereNotIn('source', $sourcesAuto);
+        
+        // Exclure les entrées avec référence de paiement
+        if (!empty($paiementsReferences)) {
+            $entreesParSourceQuery->whereNotIn('reference', $paiementsReferences);
+        }
+        
+        $entreesParSource = $entreesParSourceQuery->groupBy('source')
             ->orderBy('total', 'desc')
             ->get();
+        
+        // Ajouter les paiements par type de frais
+        $paiementsParTypeFrais = Paiement::select('frais_scolarite.type_frais', DB::raw('SUM(paiements.montant_paye) as total'))
+            ->join('frais_scolarite', 'paiements.frais_scolarite_id', '=', 'frais_scolarite.id')
+            ->whereBetween('paiements.date_paiement', [$dateDebut, $dateFin])
+            ->whereNotNull('frais_scolarite.type_frais')
+            ->groupBy('frais_scolarite.type_frais')
+            ->get();
+        
+        // Fonction pour convertir le type de frais en libellé de source
+        $getSourceFromTypeFrais = function($typeFrais) {
+            $sources = [
+                'inscription' => 'Inscription',
+                'reinscription' => 'Réinscription',
+                'scolarite' => 'Frais de scolarité',
+                'cantine' => 'Cantine',
+                'transport' => 'Transport',
+                'activites' => 'Activités',
+                'autre' => 'Autres frais'
+            ];
+            return $sources[$typeFrais] ?? 'Autres frais';
+        };
+        
+        // Combiner les entrées manuelles et les paiements par source
+        $entreesParSourceCombines = collect();
+        foreach ($entreesParSource as $entree) {
+            $entreesParSourceCombines->put($entree->source, [
+                'source' => $entree->source,
+                'total' => $entree->total
+            ]);
+        }
+        
+        foreach ($paiementsParTypeFrais as $paiement) {
+            $source = $getSourceFromTypeFrais($paiement->type_frais);
+            if ($entreesParSourceCombines->has($source)) {
+                $entreesParSourceCombines[$source]['total'] += $paiement->total;
+            } else {
+                $entreesParSourceCombines->put($source, [
+                    'source' => $source,
+                    'total' => $paiement->total
+                ]);
+            }
+        }
+        
+        $entreesParSource = $entreesParSourceCombines->values()->sortByDesc('total')->values();
 
         // Sorties par type (période filtrée)
         $sortiesParType = Depense::select('type_depense', DB::raw('SUM(montant) as total'))
@@ -233,11 +345,25 @@ class RapportController extends Controller
             $sorties = $sortiesQuery->orderBy('date_depense', 'desc')->get();
         }
 
-        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements scolaires)
-        $totalEntreesManuelles = $entreesQuery->where('source', '!=', 'Paiements scolaires')->sum('montant');
+        // Exclure toutes les sources automatiques créées par les paiements (pour éviter les doublons)
+        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
         
-        // Frais de scolarité (paiements scolaires)
+        // Récupérer les références des paiements pour exclure les entrées correspondantes
         $paiementsQuery = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin]);
+        $paiementsReferences = $paiementsQuery->pluck('reference_paiement')->filter()->toArray();
+        
+        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements)
+        $entreesManuellesQuery = clone $entreesQuery;
+        $entreesManuellesQuery->whereNotIn('source', $sourcesAuto);
+        
+        // Exclure aussi les entrées avec une référence de paiement
+        if (!empty($paiementsReferences)) {
+            $entreesManuellesQuery->whereNotIn('reference', $paiementsReferences);
+        }
+        
+        $totalEntreesManuelles = $entreesManuellesQuery->sum('montant');
+        
+        // Frais de scolarité (paiements scolaires) - tous les paiements
         $totalPaiements = $paiementsQuery->sum('montant_paye');
         
         // Total Entrées = Entrées manuelles + Frais de scolarité
@@ -303,14 +429,26 @@ class RapportController extends Controller
         $dateFin = $request->get('date_fin', now()->format('Y-m-t'));
 
         // === RAPPORTS FINANCIERS ===
-        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements scolaires)
-        $totalEntreesManuelles = Entree::whereBetween('date_entree', [$dateDebut, $dateFin])
-            ->where('source', '!=', 'Paiements scolaires')
-            ->sum('montant');
+        // Exclure toutes les sources automatiques créées par les paiements (pour éviter les doublons)
+        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
         
-        // Frais de scolarité (paiements scolaires)
-        $totalPaiements = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
-            ->sum('montant_paye');
+        // Récupérer les références des paiements pour exclure les entrées correspondantes
+        $paiementsQuery = Paiement::whereBetween('date_paiement', [$dateDebut, $dateFin]);
+        $paiementsReferences = $paiementsQuery->pluck('reference_paiement')->filter()->toArray();
+        
+        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements)
+        $entreesManuellesQuery = Entree::whereBetween('date_entree', [$dateDebut, $dateFin])
+            ->whereNotIn('source', $sourcesAuto);
+        
+        // Exclure aussi les entrées avec une référence de paiement
+        if (!empty($paiementsReferences)) {
+            $entreesManuellesQuery->whereNotIn('reference', $paiementsReferences);
+        }
+        
+        $totalEntreesManuelles = $entreesManuellesQuery->sum('montant');
+        
+        // Frais de scolarité (paiements scolaires) - tous les paiements
+        $totalPaiements = $paiementsQuery->sum('montant_paye');
         
         // Total Entrées = Entrées manuelles + Frais de scolarité
         $totalEntrees = $totalEntreesManuelles + $totalPaiements;

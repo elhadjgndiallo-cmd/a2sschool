@@ -1120,7 +1120,9 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     // Routes pour la comptabilité (Admin seulement)
     Route::middleware(['role:admin,personnel_admin', 'check.permission:comptabilite.view'])->group(function () {
         Route::get('/comptabilite', [ComptabiliteController::class, 'index'])->name('comptabilite.index');
-        Route::get('/comptabilite/rapports', [ComptabiliteController::class, 'rapports'])->name('comptabilite.rapports')->middleware('check.permission:comptabilite.rapports');
+        Route::get('/comptabilite/rapports', function() {
+            return redirect()->route('comptabilite.index');
+        });
         Route::get('/comptabilite/entrees', [ComptabiliteController::class, 'entrees'])->name('comptabilite.entrees')->middleware('check.permission:comptabilite.entrees');
         Route::get('/comptabilite/sorties', [ComptabiliteController::class, 'sorties'])->name('comptabilite.sorties')->middleware('check.permission:comptabilite.sorties');
         Route::get('/comptabilite/rapport-journalier', [ComptabiliteController::class, 'rapportJournalier'])->name('comptabilite.rapport-journalier')->middleware('check.permission:comptabilite.rapports');
