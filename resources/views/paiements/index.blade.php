@@ -126,7 +126,18 @@
                                         <td>
                                             <strong>{{ $frais->eleve->utilisateur->nom ?? 'N/A' }} {{ $frais->eleve->utilisateur->prenom ?? 'N/A' }}</strong>
                                         </td>
-                                        <td>{{ $frais->eleve->numero_etudiant ?? 'N/A' }}</td>
+                                        <td>
+                                            @if($frais->eleve && $frais->eleve->id)
+                                                <a href="{{ route('eleves.show', $frais->eleve->id) }}" 
+                                                   class="text-primary text-decoration-none" 
+                                                   title="Voir le profil de l'élève">
+                                                    <i class="fas fa-user me-1"></i>
+                                                    {{ $frais->eleve->numero_etudiant ?? 'N/A' }}
+                                                </a>
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
                                         <td>{{ $frais->eleve->classe->nom ?? 'N/A' }}</td>
                                         <td>{{ $frais->libelle }}</td>
                                         <td>
