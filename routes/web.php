@@ -231,6 +231,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/notes', [NoteController::class, 'store'])->name('notes.store')->middleware('check.permission:notes.create');
         Route::get('/notes/eleve/{eleve}', [NoteController::class, 'eleveNotes'])->name('notes.eleve')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletin/eleve/{eleve}', [NoteController::class, 'bulletin'])->name('notes.bulletin.eleve')->middleware('check.permission:notes.view');
+        // Route pour la sélection de la fiche de notes
+        Route::get('/notes/fiche', [NoteController::class, 'ficheNotesSelection'])->name('notes.fiche.selection')->middleware('check.permission:notes.view');
+        // Route pour la fiche de notes à imprimer (A4 paysage) - doit être avant /notes/{note}
+        Route::get('/notes/fiche/{classe}/{enseignant}/{matiere}', [NoteController::class, 'ficheNotes'])->name('notes.fiche')->middleware('check.permission:notes.view');
         Route::get('/notes/{note}/edit', [NoteController::class, 'edit'])->name('notes.edit')->middleware('check.permission:notes.edit');
         Route::put('/notes/{note}', [NoteController::class, 'update'])->name('notes.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy')->middleware('check.permission:notes.delete');

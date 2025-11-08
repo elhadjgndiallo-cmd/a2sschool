@@ -1628,6 +1628,152 @@ class NoteController extends Controller
     }
 
     /**
+     * Afficher le formulaire de sélection pour la fiche de notes
+     */
+    public function ficheNotesSelection()
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+        
+        $user = auth()->user();
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+        
+        // Récupérer les classes selon le rôle
+        if ($user->isAdmin() || $user->role === 'personnel_admin') {
+            $classes = Classe::actif()
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
+                ->get();
+            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+        } else if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $classes = Classe::actif()
+                ->whereHas('emploisTemps', function($query) use ($enseignant) {
+                    $query->where('enseignant_id', $enseignant->id);
+                })
+                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })
+                ->get();
+            $enseignants = collect([$enseignant]);
+        } else {
+            $classes = collect();
+            $enseignants = collect();
+        }
+        
+        $matieres = Matiere::actif()->orderBy('nom')->get();
+        
+        return view('notes.fiche-selection', compact('classes', 'enseignants', 'matieres', 'anneeScolaireActive'));
+    }
+
+    /**
+     * Générer la fiche de notes pour l'enseignant (format A4 paysage)
+     */
+    public function ficheNotes(Request $request, $classeId, $enseignantId, $matiereId)
+    {
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+        }
+        
+        $semestre = $request->input('semestre', 'sem1'); // sem1 ou sem2
+        
+        // Récupérer la classe
+        $classe = Classe::findOrFail($classeId);
+        
+        // Récupérer l'enseignant
+        $enseignant = Enseignant::with('utilisateur')->findOrFail($enseignantId);
+        
+        // Récupérer la matière
+        $matiere = Matiere::findOrFail($matiereId);
+        
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $eleves = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('actif', true)
+            ->with('utilisateur')
+            ->orderBy('id', 'asc')
+            ->get();
+        
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::principal();
+        
+        // Préparer les données des élèves avec leurs notes
+        $elevesAvecNotes = [];
+        
+        foreach ($eleves as $eleve) {
+            // Récupérer les notes de l'élève pour cette matière et ce semestre
+            $notes = Note::where('eleve_id', $eleve->id)
+                ->where('matiere_id', $matiereId)
+                ->where('enseignant_id', $enseignantId)
+                ->where('periode', $semestre == 'sem1' ? 'trimestre1' : 'trimestre2')
+                ->get();
+            
+            // Calculer les moyennes des notes cours et composition
+            $sommeNoteCours = 0;
+            $sommeNoteComposition = 0;
+            $nombreNotesCours = 0;
+            $nombreNotesComposition = 0;
+            
+            foreach ($notes as $note) {
+                if ($note->note_cours !== null) {
+                    $sommeNoteCours += $note->note_cours;
+                    $nombreNotesCours++;
+                }
+                if ($note->note_composition !== null) {
+                    $sommeNoteComposition += $note->note_composition;
+                    $nombreNotesComposition++;
+                }
+            }
+            
+            $moyenneCours = $nombreNotesCours > 0 ? round($sommeNoteCours / $nombreNotesCours, 2) : null;
+            $moyenneComposition = $nombreNotesComposition > 0 ? round($sommeNoteComposition / $nombreNotesComposition, 2) : null;
+            
+            // Récupérer les tests mensuels pour les mois du semestre
+            $moisSemestre = $semestre == 'sem1' ? [10, 11, 12] : [1, 2, 3]; // Octobre, Novembre, Décembre pour sem1
+            $annee = $anneeScolaireActive->date_debut->year;
+            
+            $notesMensuelles = [];
+            foreach ($moisSemestre as $mois) {
+                $testMensuel = TestMensuel::where('eleve_id', $eleve->id)
+                    ->where('matiere_id', $matiereId)
+                    ->where('enseignant_id', $enseignantId)
+                    ->where('mois', $mois)
+                    ->where('annee', $annee)
+                    ->first();
+                
+                $notesMensuelles[$mois] = $testMensuel ? $testMensuel->note : null;
+            }
+            
+            $elevesAvecNotes[] = [
+                'eleve' => $eleve,
+                'notes_mensuelles' => $notesMensuelles,
+                'moyenne_cours' => $moyenneCours,
+                'moyenne_composition' => $moyenneComposition
+            ];
+        }
+        
+        return view('notes.fiche-notes', compact(
+            'classe',
+            'enseignant',
+            'matiere',
+            'elevesAvecNotes',
+            'anneeScolaireActive',
+            'etablissement',
+            'semestre'
+        ));
+    }
+
+    /**
      * Vérifier l'authenticité d'un bulletin via le token QR code
      */
     public function verifierBulletin(Request $request, $token)
