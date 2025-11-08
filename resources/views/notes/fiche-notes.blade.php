@@ -261,7 +261,7 @@
         .prenoms {
             text-align: left;
             padding-left: 4px;
-            width: 130px;
+            width: 160px;
         }
         
         .sexe {
