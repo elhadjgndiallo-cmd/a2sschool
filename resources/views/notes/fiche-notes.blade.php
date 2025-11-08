@@ -341,9 +341,9 @@
                     <h1>REPUBLIQUE DE GUINEE</h1>
                     <h2>Travail - Justice - Solidarité</h2>
                     @if($etablissement)
-                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px;">{{ strtoupper($etablissement->nom) }}</h3>
+                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">{{ strtoupper($etablissement->nom) }}</h3>
                     @else
-                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px;">COMPLEXE SCOLAIRE</h3>
+                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">COMPLEXE SCOLAIRE</h3>
                     @endif
                     @if($etablissement && $etablissement->telephone)
                         <div class="school-phone" style="margin-top: 5px;">{{ $etablissement->telephone }}</div>
@@ -366,7 +366,10 @@
             </div>
             
             <div class="header-title">
-                FICHE DE NOTES DU {{ $semestre == 'sem1' ? 'PREMIER' : 'DEUXIÈME' }} SEMESTRE
+                FICHE DE NOTES
+                @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                    - {{ implode(', ', array_map(function($m) use ($nomsMois) { return $nomsMois[$m]; }, $moisSelectionnes)) }}
+                @endif
             </div>
         </div>
 
@@ -397,14 +400,14 @@
                         <th>Nom</th>
                         <th>Prénoms</th>
                         <th>Sexe</th>
-                        @if($semestre == 'sem1')
+                        @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                            @foreach($moisSelectionnes as $mois)
+                                <th>{{ $nomsMois[$mois] }}</th>
+                            @endforeach
+                        @else
                             <th>Octobre</th>
                             <th>Novembre</th>
                             <th>Décembre</th>
-                        @else
-                            <th>Janvier</th>
-                            <th>Février</th>
-                            <th>Mars</th>
                         @endif
                         <th>Moyenne Cours</th>
                         <th>Note Composition</th>
@@ -417,10 +420,10 @@
                             <td class="nom">{{ strtoupper($data['eleve']->utilisateur->nom ?? '') }}</td>
                             <td class="prenoms">{{ ucfirst($data['eleve']->utilisateur->prenom ?? '') }}</td>
                             <td class="sexe">{{ strtoupper($data['eleve']->utilisateur->sexe ?? 'M') }}</td>
-                            @if($semestre == 'sem1')
-                                <td class="note-col"></td>
-                                <td class="note-col"></td>
-                                <td class="note-col"></td>
+                            @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                                @foreach($moisSelectionnes as $mois)
+                                    <td class="note-col"></td>
+                                @endforeach
                             @else
                                 <td class="note-col"></td>
                                 <td class="note-col"></td>
@@ -431,7 +434,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" style="text-align: center; padding: 20px;">
+                            <td colspan="{{ (isset($moisSelectionnes) ? count($moisSelectionnes) : 3) + 6 }}" style="text-align: center; padding: 20px;">
                                 Aucun élève trouvé
                             </td>
                         </tr>

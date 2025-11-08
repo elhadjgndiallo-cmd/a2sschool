@@ -1685,7 +1685,16 @@ class NoteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
         
-        $semestre = $request->input('semestre', 'sem1'); // sem1 ou sem2
+        // Récupérer les mois sélectionnés
+        $moisSelectionnes = $request->input('mois', []);
+        
+        if (empty($moisSelectionnes)) {
+            return redirect()->back()->with('error', 'Veuillez sélectionner au moins un mois.');
+        }
+        
+        // Convertir les mois en entiers et les trier
+        $moisSelectionnes = array_map('intval', $moisSelectionnes);
+        sort($moisSelectionnes);
         
         // Récupérer la classe
         $classe = Classe::findOrFail($classeId);
@@ -1707,15 +1716,22 @@ class NoteController extends Controller
         // Récupérer les informations de l'établissement
         $etablissement = \App\Models\Etablissement::principal();
         
+        // Noms des mois en français
+        $nomsMois = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+        
         // Préparer les données des élèves avec leurs notes
         $elevesAvecNotes = [];
+        $annee = $anneeScolaireActive->date_debut->year;
         
         foreach ($eleves as $eleve) {
-            // Récupérer les notes de l'élève pour cette matière et ce semestre
+            // Récupérer les notes de l'élève pour cette matière
             $notes = Note::where('eleve_id', $eleve->id)
                 ->where('matiere_id', $matiereId)
                 ->where('enseignant_id', $enseignantId)
-                ->where('periode', $semestre == 'sem1' ? 'trimestre1' : 'trimestre2')
                 ->get();
             
             // Calculer les moyennes des notes cours et composition
@@ -1738,12 +1754,9 @@ class NoteController extends Controller
             $moyenneCours = $nombreNotesCours > 0 ? round($sommeNoteCours / $nombreNotesCours, 2) : null;
             $moyenneComposition = $nombreNotesComposition > 0 ? round($sommeNoteComposition / $nombreNotesComposition, 2) : null;
             
-            // Récupérer les tests mensuels pour les mois du semestre
-            $moisSemestre = $semestre == 'sem1' ? [10, 11, 12] : [1, 2, 3]; // Octobre, Novembre, Décembre pour sem1
-            $annee = $anneeScolaireActive->date_debut->year;
-            
+            // Récupérer les tests mensuels pour les mois sélectionnés
             $notesMensuelles = [];
-            foreach ($moisSemestre as $mois) {
+            foreach ($moisSelectionnes as $mois) {
                 $testMensuel = TestMensuel::where('eleve_id', $eleve->id)
                     ->where('matiere_id', $matiereId)
                     ->where('enseignant_id', $enseignantId)
@@ -1769,7 +1782,8 @@ class NoteController extends Controller
             'elevesAvecNotes',
             'anneeScolaireActive',
             'etablissement',
-            'semestre'
+            'moisSelectionnes',
+            'nomsMois'
         ));
     }
 
