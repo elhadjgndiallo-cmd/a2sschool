@@ -1706,11 +1706,14 @@ class NoteController extends Controller
         $matiere = Matiere::findOrFail($matiereId);
         
         // Récupérer les élèves de la classe pour l'année scolaire active
-        $eleves = Eleve::where('classe_id', $classeId)
-            ->where('annee_scolaire_id', $anneeScolaireActive->id)
-            ->where('actif', true)
+        $eleves = Eleve::where('eleves.classe_id', $classeId)
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('eleves.actif', true)
+            ->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->select('eleves.*')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->orderBy('utilisateurs.prenom', 'asc')
             ->with('utilisateur')
-            ->orderBy('id', 'asc')
             ->get();
         
         // Récupérer les informations de l'établissement

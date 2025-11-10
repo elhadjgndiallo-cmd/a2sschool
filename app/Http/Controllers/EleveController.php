@@ -1655,28 +1655,28 @@ class EleveController extends Controller
 
         // Filtre par année scolaire - par défaut, afficher seulement l'année active
         if ($request->filled('annee_scolaire_id')) {
-            $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+            $query->where('eleves.annee_scolaire_id', $request->annee_scolaire_id);
         } else {
             // Par défaut, afficher seulement les élèves de l'année scolaire active
             $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
             if ($anneeScolaireActive) {
-                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                $query->where('eleves.annee_scolaire_id', $anneeScolaireActive->id);
             }
         }
 
         // Filtre par classe
         if ($request->filled('classe_id')) {
-            $query->where('classe_id', $request->classe_id);
+            $query->where('eleves.classe_id', $request->classe_id);
         }
 
         // Filtre par statut
         if ($request->filled('statut')) {
-            $query->where('statut', $request->statut);
+            $query->where('eleves.statut', $request->statut);
         }
 
         // Filtre par statut actif/inactif
         if ($request->filled('actif')) {
-            $query->where('actif', $request->actif === '1');
+            $query->where('eleves.actif', $request->actif === '1');
         }
 
         // Filtre intelligent par recherche (nom, prénom, matricule)
@@ -1685,11 +1685,11 @@ class EleveController extends Controller
             
             // Si c'est un numéro (matricule), chercher dans numero_etudiant
             if (is_numeric($searchTerm)) {
-                $query->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%');
+                $query->where('eleves.numero_etudiant', 'LIKE', '%' . $searchTerm . '%');
             } else {
                 // Sinon, chercher dans nom, prénom ou matricule
                 $query->where(function($q) use ($searchTerm) {
-                    $q->where('numero_etudiant', 'LIKE', '%' . $searchTerm . '%')
+                    $q->where('eleves.numero_etudiant', 'LIKE', '%' . $searchTerm . '%')
                       ->orWhereHas('utilisateur', function($userQuery) use ($searchTerm) {
                           $userQuery->where(function($subQuery) use ($searchTerm) {
                               $subQuery->where('nom', 'LIKE', '%' . $searchTerm . '%')
@@ -1703,7 +1703,7 @@ class EleveController extends Controller
 
         // Filtre par matricule (pour compatibilité)
         if ($request->filled('matricule')) {
-            $query->where('numero_etudiant', 'LIKE', '%' . $request->matricule . '%');
+            $query->where('eleves.numero_etudiant', 'LIKE', '%' . $request->matricule . '%');
         }
 
         // Filtre par nom complet (pour compatibilité)
@@ -1718,8 +1718,11 @@ class EleveController extends Controller
             });
         }
 
-        // Tri par défaut
-        $query->orderBy('numero_etudiant', 'asc');
+        // Tri par ordre alphabétique (nom puis prénom)
+        $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->select('eleves.*')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->orderBy('utilisateurs.prenom', 'asc');
 
         // Récupérer TOUS les élèves (sans pagination pour l'impression)
         $eleves = $query->get();
