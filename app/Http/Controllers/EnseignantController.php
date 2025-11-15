@@ -577,39 +577,53 @@ class EnseignantController extends Controller
      */
     public function deletePermanently(Enseignant $enseignant)
     {
-        DB::transaction(function() use ($enseignant) {
-            // Détacher les matières associées
-            $enseignant->matieres()->detach();
-            
-            // Supprimer les notes associées
-            $enseignant->notes()->delete();
-            
-            // Supprimer les emplois du temps associés
-            $enseignant->emploisTemps()->delete();
-            
-            // Supprimer les salaires associés
-            $enseignant->salairesEnseignants()->delete();
-            
-            // Supprimer les cartes associées
-            $enseignant->cartesEnseignants()->delete();
-            
-            // Supprimer la photo de profil si elle existe
-            if ($enseignant->utilisateur && $enseignant->utilisateur->photo_profil) {
-                if (Storage::disk('public')->exists($enseignant->utilisateur->photo_profil)) {
-                    Storage::disk('public')->delete($enseignant->utilisateur->photo_profil);
+        try {
+            DB::transaction(function() use ($enseignant) {
+                // Détacher les matières associées
+                $enseignant->matieres()->detach();
+                
+                // Supprimer les notes associées
+                $enseignant->notes()->delete();
+                
+                // Supprimer les emplois du temps associés
+                $enseignant->emploisTemps()->delete();
+                
+                // Supprimer les salaires associés
+                $enseignant->salairesEnseignants()->delete();
+                
+                // Supprimer les cartes associées
+                $enseignant->cartesEnseignants()->delete();
+                
+                // Supprimer la photo de profil si elle existe
+                if ($enseignant->utilisateur && $enseignant->utilisateur->photo_profil) {
+                    try {
+                        if (Storage::disk('public')->exists($enseignant->utilisateur->photo_profil)) {
+                            Storage::disk('public')->delete($enseignant->utilisateur->photo_profil);
+                        }
+                    } catch (\Exception $e) {
+                        // Ignorer les erreurs de suppression de fichier
+                    }
                 }
-            }
-            
-            // Supprimer l'utilisateur associé
-            if ($enseignant->utilisateur) {
-                $enseignant->utilisateur->delete();
-            }
-            
-            // Supprimer l'enseignant
-            $enseignant->delete();
-        });
+                
+                // Supprimer l'utilisateur associé
+                if ($enseignant->utilisateur) {
+                    $enseignant->utilisateur->delete();
+                }
+                
+                // Supprimer l'enseignant
+                $enseignant->delete();
+            });
 
-        return redirect()->route('enseignants.index')
-            ->with('success', 'Enseignant supprimé définitivement avec succès');
+            return redirect()->route('enseignants.index')
+                ->with('success', 'Enseignant supprimé définitivement avec succès');
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression de l\'enseignant: ' . $e->getMessage(), [
+                'enseignant_id' => $enseignant->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('enseignants.index')
+                ->with('error', 'Erreur lors de la suppression de l\'enseignant: ' . $e->getMessage());
+        }
     }
 }
