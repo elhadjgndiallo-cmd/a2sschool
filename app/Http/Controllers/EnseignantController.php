@@ -575,11 +575,18 @@ class EnseignantController extends Controller
     /**
      * Supprimer définitivement un enseignant
      */
-    public function deletePermanently($id)
+    public function deletePermanently(Enseignant $enseignant)
     {
-        $enseignant = Enseignant::findOrFail($id);
-        
         DB::transaction(function() use ($enseignant) {
+            // Détacher les matières associées
+            $enseignant->matieres()->detach();
+            
+            // Supprimer les notes associées
+            $enseignant->notes()->delete();
+            
+            // Supprimer les emplois du temps associés
+            $enseignant->emploisTemps()->delete();
+            
             // Supprimer les salaires associés
             $enseignant->salairesEnseignants()->delete();
             
