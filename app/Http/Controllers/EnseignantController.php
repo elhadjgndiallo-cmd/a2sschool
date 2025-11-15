@@ -592,22 +592,22 @@ class EnseignantController extends Controller
                 
                 // Supprimer les notes associées
                 $notesCount = $enseignant->notes()->count();
-                $enseignant->notes()->delete();
+                DB::table('notes')->where('enseignant_id', $enseignantId)->delete();
                 \Log::info("Notes supprimées: {$notesCount}");
                 
                 // Supprimer les emplois du temps associés
                 $emploisCount = $enseignant->emploisTemps()->count();
-                $enseignant->emploisTemps()->delete();
+                DB::table('emplois_temps')->where('enseignant_id', $enseignantId)->delete();
                 \Log::info("Emplois du temps supprimés: {$emploisCount}");
                 
                 // Supprimer les salaires associés
                 $salairesCount = $enseignant->salairesEnseignants()->count();
-                $enseignant->salairesEnseignants()->delete();
+                DB::table('salaires_enseignants')->where('enseignant_id', $enseignantId)->delete();
                 \Log::info("Salaires supprimés: {$salairesCount}");
                 
                 // Supprimer les cartes associées
                 $cartesCount = $enseignant->cartesEnseignants()->count();
-                $enseignant->cartesEnseignants()->delete();
+                DB::table('cartes_enseignants')->where('enseignant_id', $enseignantId)->delete();
                 \Log::info("Cartes supprimées: {$cartesCount}");
                 
                 // Supprimer la photo de profil si elle existe
@@ -622,21 +622,22 @@ class EnseignantController extends Controller
                     }
                 }
                 
-                // Supprimer l'enseignant d'abord
+                // Supprimer l'enseignant directement avec DB
                 \Log::info('Tentative de suppression de l\'enseignant ID: ' . $enseignantId);
-                $deleted = $enseignant->delete();
-                \Log::info('Résultat de la suppression de l\'enseignant: ' . ($deleted ? 'true' : 'false'));
+                $deletedRows = DB::table('enseignants')->where('id', $enseignantId)->delete();
+                \Log::info('Nombre de lignes supprimées (enseignant): ' . $deletedRows);
                 
-                if (!$deleted) {
-                    throw new \Exception('La suppression de l\'enseignant a échoué');
+                if ($deletedRows === 0) {
+                    throw new \Exception('Aucune ligne enseignante n\'a été supprimée');
                 }
                 
                 // Supprimer l'utilisateur après (si l'enseignant a été supprimé avec succès)
                 if ($utilisateur) {
-                    \Log::info('Tentative de suppression de l\'utilisateur ID: ' . $utilisateur->id);
-                    $utilisateurDeleted = $utilisateur->delete();
-                    \Log::info('Résultat de la suppression de l\'utilisateur: ' . ($utilisateurDeleted ? 'true' : 'false'));
-                    if (!$utilisateurDeleted) {
+                    $utilisateurId = $utilisateur->id;
+                    \Log::info('Tentative de suppression de l\'utilisateur ID: ' . $utilisateurId);
+                    $utilisateurDeletedRows = DB::table('utilisateurs')->where('id', $utilisateurId)->delete();
+                    \Log::info('Nombre de lignes supprimées (utilisateur): ' . $utilisateurDeletedRows);
+                    if ($utilisateurDeletedRows === 0) {
                         \Log::warning('La suppression de l\'utilisateur a échoué pour l\'enseignant ID: ' . $enseignantId);
                     }
                 }
