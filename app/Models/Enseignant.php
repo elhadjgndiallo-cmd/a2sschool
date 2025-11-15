@@ -54,6 +54,11 @@ class Enseignant extends Model
         return $this->hasMany(CarteEnseignant::class);
     }
 
+    public function salairesEnseignants()
+    {
+        return $this->hasMany(SalaireEnseignant::class);
+    }
+
     /**
      * Scope pour les enseignants actifs
      */

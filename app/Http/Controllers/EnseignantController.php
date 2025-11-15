@@ -581,10 +581,10 @@ class EnseignantController extends Controller
         
         DB::transaction(function() use ($enseignant) {
             // Supprimer les salaires associés
-            $enseignant->salaires()->delete();
+            $enseignant->salairesEnseignants()->delete();
             
             // Supprimer les cartes associées
-            $enseignant->cartes()->delete();
+            $enseignant->cartesEnseignants()->delete();
             
             // Supprimer la photo de profil si elle existe
             if ($enseignant->utilisateur && $enseignant->utilisateur->photo_profil) {
