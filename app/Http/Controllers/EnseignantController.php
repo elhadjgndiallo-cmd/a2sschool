@@ -578,47 +578,83 @@ class EnseignantController extends Controller
     public function deletePermanently(Enseignant $enseignant)
     {
         try {
-            DB::transaction(function() use ($enseignant) {
+            // Charger l'utilisateur avant la transaction
+            $utilisateur = $enseignant->utilisateur;
+            $enseignantId = $enseignant->id;
+            
+            DB::transaction(function() use ($enseignant, $utilisateur, $enseignantId) {
+                \Log::info('Début de la suppression de l\'enseignant ID: ' . $enseignantId);
+                
                 // Détacher les matières associées
+                $matieresCount = $enseignant->matieres()->count();
                 $enseignant->matieres()->detach();
+                \Log::info("Matières détachées: {$matieresCount}");
                 
                 // Supprimer les notes associées
+                $notesCount = $enseignant->notes()->count();
                 $enseignant->notes()->delete();
+                \Log::info("Notes supprimées: {$notesCount}");
                 
                 // Supprimer les emplois du temps associés
+                $emploisCount = $enseignant->emploisTemps()->count();
                 $enseignant->emploisTemps()->delete();
+                \Log::info("Emplois du temps supprimés: {$emploisCount}");
                 
                 // Supprimer les salaires associés
+                $salairesCount = $enseignant->salairesEnseignants()->count();
                 $enseignant->salairesEnseignants()->delete();
+                \Log::info("Salaires supprimés: {$salairesCount}");
                 
                 // Supprimer les cartes associées
+                $cartesCount = $enseignant->cartesEnseignants()->count();
                 $enseignant->cartesEnseignants()->delete();
+                \Log::info("Cartes supprimées: {$cartesCount}");
                 
                 // Supprimer la photo de profil si elle existe
-                if ($enseignant->utilisateur && $enseignant->utilisateur->photo_profil) {
+                if ($utilisateur && $utilisateur->photo_profil) {
                     try {
-                        if (Storage::disk('public')->exists($enseignant->utilisateur->photo_profil)) {
-                            Storage::disk('public')->delete($enseignant->utilisateur->photo_profil);
+                        if (Storage::disk('public')->exists($utilisateur->photo_profil)) {
+                            Storage::disk('public')->delete($utilisateur->photo_profil);
+                            \Log::info('Photo de profil supprimée');
                         }
                     } catch (\Exception $e) {
-                        // Ignorer les erreurs de suppression de fichier
+                        \Log::warning('Erreur lors de la suppression de la photo: ' . $e->getMessage());
                     }
                 }
                 
-                // Supprimer l'utilisateur associé
-                if ($enseignant->utilisateur) {
-                    $enseignant->utilisateur->delete();
+                // Supprimer l'enseignant d'abord
+                \Log::info('Tentative de suppression de l\'enseignant ID: ' . $enseignantId);
+                $deleted = $enseignant->delete();
+                \Log::info('Résultat de la suppression de l\'enseignant: ' . ($deleted ? 'true' : 'false'));
+                
+                if (!$deleted) {
+                    throw new \Exception('La suppression de l\'enseignant a échoué');
                 }
                 
-                // Supprimer l'enseignant
-                $enseignant->delete();
+                // Supprimer l'utilisateur après (si l'enseignant a été supprimé avec succès)
+                if ($utilisateur) {
+                    \Log::info('Tentative de suppression de l\'utilisateur ID: ' . $utilisateur->id);
+                    $utilisateurDeleted = $utilisateur->delete();
+                    \Log::info('Résultat de la suppression de l\'utilisateur: ' . ($utilisateurDeleted ? 'true' : 'false'));
+                    if (!$utilisateurDeleted) {
+                        \Log::warning('La suppression de l\'utilisateur a échoué pour l\'enseignant ID: ' . $enseignantId);
+                    }
+                }
+                
+                \Log::info('Fin de la suppression de l\'enseignant ID: ' . $enseignantId);
             });
+
+            // Vérifier que l'enseignant a bien été supprimé
+            $enseignantVerif = Enseignant::find($enseignantId);
+            if ($enseignantVerif) {
+                throw new \Exception('L\'enseignant existe encore après la suppression');
+            }
 
             return redirect()->route('enseignants.index')
                 ->with('success', 'Enseignant supprimé définitivement avec succès');
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la suppression de l\'enseignant: ' . $e->getMessage(), [
-                'enseignant_id' => $enseignant->id,
+                'enseignant_id' => $enseignantId ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -627,3 +663,4 @@ class EnseignantController extends Controller
         }
     }
 }
+
