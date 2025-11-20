@@ -128,9 +128,22 @@ class EleveController extends Controller
         $perPage = $request->get('per_page', 20);
         $perPage = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
         
-        $eleves = $query->orderBy('updated_at', 'desc')
-                       ->orderBy('created_at', 'desc')
-                       ->paginate($perPage)
+        // Gestion du tri
+        $sort = $request->get('sort', 'default');
+        if ($sort === 'name_asc') {
+            // Tri A-Z par nom puis prénom via la relation utilisateur
+            $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+                  ->orderBy('utilisateurs.nom', 'asc')
+                  ->orderBy('utilisateurs.prenom', 'asc')
+                  ->select('eleves.*')
+                  ->distinct();
+        } else {
+            // Tri par défaut (par date de mise à jour)
+            $query->orderBy('eleves.updated_at', 'desc')
+                  ->orderBy('eleves.created_at', 'desc');
+        }
+        
+        $eleves = $query->paginate($perPage)
                        ->appends($request->query());
         
         // S'assurer que les relations sont bien chargées et fraîches

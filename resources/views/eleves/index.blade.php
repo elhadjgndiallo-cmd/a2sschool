@@ -75,14 +75,14 @@ use Illuminate\Support\Facades\Storage;
                     <!-- Filtres côté serveur -->
                     <form method="GET" action="{{ route('eleves.index') }}" class="mb-3">
                         <div class="row g-2">
-                            <div class="col-12 col-sm-6 col-md-4">
+                            <div class="col-12 col-sm-6 col-md-3">
                                 <input type="text" 
                                        class="form-control" 
                                        name="search" 
                                        value="{{ request('search') }}"
                                        placeholder="Rechercher par nom, prénom ou matricule...">
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-2">
                                 <select class="form-control" name="classe_id">
                                     <option value="">Toutes les classes</option>
                                     @foreach($classes as $classe)
@@ -93,7 +93,7 @@ use Illuminate\Support\Facades\Storage;
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-2">
                                 <select class="form-control" name="actif">
                                     <option value="">Tous les statuts</option>
                                     <option value="1" {{ request('actif') === '1' ? 'selected' : '' }}>Actifs</option>
@@ -101,6 +101,25 @@ use Illuminate\Support\Facades\Storage;
                                 </select>
                             </div>
                             <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    @if(request('sort') === 'name_asc')
+                                        <a href="{{ route('eleves.index', array_merge(request()->except('sort'), ['sort' => 'default'])) }}" 
+                                           class="btn btn-success flex-fill" 
+                                           title="Tri A-Z actif - Cliquez pour revenir au tri par défaut">
+                                            <i class="fas fa-sort-alpha-down"></i>
+                                            <span class="d-none d-sm-inline">A-Z</span>
+                                        </a>
+                                    @else
+                                        <a href="{{ route('eleves.index', array_merge(request()->all(), ['sort' => 'name_asc'])) }}" 
+                                           class="btn btn-outline-success flex-fill" 
+                                           title="Trier par ordre alphabétique (A-Z)">
+                                            <i class="fas fa-sort-alpha-down"></i>
+                                            <span class="d-none d-sm-inline">Trier A-Z</span>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
                                 <div class="d-flex gap-1">
                                     <button type="submit" class="btn btn-primary flex-fill">
                                         <i class="fas fa-search"></i>
