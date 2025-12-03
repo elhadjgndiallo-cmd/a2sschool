@@ -168,8 +168,9 @@
         /* Contenu principal */
         .main-content {
             margin-top: 0;
+            padding-top: 70px; /* Espace pour la navbar fixe */
             transition: all 0.3s ease;
-            padding: 20px;
+            padding: 70px 20px 20px 20px;
             background: #ffffff;
             min-height: calc(100vh - 60px);
             margin-left: 0;
@@ -230,6 +231,10 @@
         
         /* Responsive */
         @media (max-width: 768px) {
+            .top-navbar {
+                min-height: 60px;
+            }
+            
             .top-navbar .nav-link {
                 padding: 0.4rem 0.5rem;
                 font-size: 0.8rem;
@@ -240,9 +245,20 @@
                 font-size: 1rem;
             }
             
+            /* Ajuster le padding-top pour la navbar sur mobile */
+            .main-content {
+                margin-left: 0 !important;
+                padding-top: 80px !important; /* Plus d'espace pour la navbar dépliée */
+                padding: 80px 10px 10px 10px;
+            }
+            
+            .main-content .container-fluid {
+                padding: 10px;
+            }
+            
             .sidebar {
                 position: fixed;
-                top: 70px;
+                top: 60px;
                 left: 0;
                 width: 280px;
                 z-index: 99;
@@ -255,22 +271,13 @@
                 transform: translateX(0);
             }
             
-            .main-content {
-                margin-left: 0 !important;
-                padding: 10px;
-            }
-            
-            .main-content .container-fluid {
-                padding: 10px;
-            }
-            
             /* Overlay pour fermer le sidebar */
             .sidebar-overlay {
                 position: fixed;
-                top: 70px;
+                top: 60px;
                 left: 0;
                 width: 100%;
-                height: calc(100vh - 70px);
+                height: calc(100vh - 60px);
                 background: rgba(0, 0, 0, 0.5);
                 z-index: 98;
                 display: none;
@@ -279,9 +286,19 @@
             .sidebar-overlay.show {
                 display: block;
             }
+            
+            /* Quand la navbar est dépliée, augmenter le padding */
+            .navbar-collapse.show ~ * .main-content,
+            .navbar-collapse.collapsing ~ * .main-content {
+                padding-top: 120px !important;
+            }
         }
         
         @media (max-width: 576px) {
+            .top-navbar {
+                min-height: 56px;
+            }
+            
             .top-navbar .nav-link {
                 padding: 0.3rem 0.4rem;
                 font-size: 0.75rem;
@@ -291,13 +308,27 @@
                 font-size: 0.9rem;
             }
             
-            .sidebar {
-                width: 100%;
+            /* Encore plus d'espace sur très petit écran pour la navbar dépliée */
+            .main-content {
+                padding-top: 120px !important; /* Espace pour navbar + menu déplié */
+                padding: 120px 5px 5px 5px;
             }
             
             .main-content .container-fluid {
                 padding: 5px;
             }
+            
+            .sidebar {
+                width: 100%;
+                top: 56px;
+            }
+            
+            /* Quand la navbar est dépliée sur très petit écran */
+            .navbar-collapse.show ~ * .main-content,
+            .navbar-collapse.collapsing ~ * .main-content {
+                padding-top: 200px !important;
+            }
+        }
             
             /* Améliorer les dropdowns sur mobile */
             .dropdown-menu {
@@ -756,6 +787,44 @@
 
         // Auto-refresh du compteur toutes les 30 secondes
         setInterval(loadNotificationCounter, 30000);
+
+        // Ajuster le padding-top du main-content selon l'état de la navbar
+        document.addEventListener('DOMContentLoaded', function() {
+            const navbar = document.querySelector('.top-navbar');
+            const navbarCollapse = document.getElementById('topNavbar');
+            const mainContent = document.querySelector('.main-content');
+            
+            if (navbarCollapse && mainContent) {
+                function adjustMainContentPadding() {
+                    if (window.innerWidth <= 768) {
+                        const navbarHeight = navbar.offsetHeight;
+                        const isExpanded = navbarCollapse.classList.contains('show') || navbarCollapse.classList.contains('collapsing');
+                        
+                        if (isExpanded) {
+                            // Calculer la hauteur totale de la navbar dépliée
+                            const totalHeight = navbarHeight + navbarCollapse.scrollHeight;
+                            mainContent.style.paddingTop = (totalHeight + 20) + 'px';
+                        } else {
+                            // Hauteur normale de la navbar
+                            mainContent.style.paddingTop = (navbarHeight + 20) + 'px';
+                        }
+                    } else {
+                        // Sur desktop, utiliser le padding normal
+                        mainContent.style.paddingTop = '70px';
+                    }
+                }
+                
+                // Écouter les événements de collapse Bootstrap
+                navbarCollapse.addEventListener('show.bs.collapse', adjustMainContentPadding);
+                navbarCollapse.addEventListener('shown.bs.collapse', adjustMainContentPadding);
+                navbarCollapse.addEventListener('hide.bs.collapse', adjustMainContentPadding);
+                navbarCollapse.addEventListener('hidden.bs.collapse', adjustMainContentPadding);
+                
+                // Ajuster au chargement et au redimensionnement
+                adjustMainContentPadding();
+                window.addEventListener('resize', adjustMainContentPadding);
+            }
+        });
 
         // Gestion de la déconnexion
         document.addEventListener('DOMContentLoaded', function() {
