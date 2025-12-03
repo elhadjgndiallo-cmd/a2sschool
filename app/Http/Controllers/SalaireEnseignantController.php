@@ -230,14 +230,49 @@ class SalaireEnseignantController extends Controller
      */
     public function destroy(SalaireEnseignant $salaire)
     {
-        if ($salaire->statut === 'payé') {
-            return back()->with('error', 'Impossible de supprimer un salaire déjà payé.');
+        DB::beginTransaction();
+        try {
+            // Si le salaire est payé, supprimer aussi la dépense associée
+            if ($salaire->statut === 'payé') {
+                $salaire->load(['enseignant.utilisateur']);
+                
+                // Trouver la dépense associée au salaire
+                $depense = Depense::where('type_depense', 'salaire_enseignant')
+                    ->where('montant', $salaire->salaire_net)
+                    ->where('date_depense', $salaire->date_paiement)
+                    ->where('beneficiaire', $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom)
+                    ->where('observations', 'like', '%Paiement automatique depuis le système de salaires%')
+                    ->first();
+                
+                if ($depense) {
+                    $depense->delete();
+                }
+                
+                // Remettre le salaire au statut validé (ou calculé si pas validé)
+                $nouveauStatut = $salaire->date_validation ? 'validé' : 'calculé';
+                $salaire->update([
+                    'statut' => $nouveauStatut,
+                    'date_paiement' => null,
+                    'paye_par' => null
+                ]);
+            }
+            
+            // Supprimer le salaire
+            $salaire->delete();
+
+            DB::commit();
+            
+            // Rediriger vers la page d'origine si c'est depuis sorties, sinon vers l'index
+            $redirectRoute = request()->headers->get('referer') && str_contains(request()->headers->get('referer'), 'sorties') 
+                ? route('comptabilite.sorties')
+                : route('salaires.index');
+            
+            return redirect($redirectRoute)
+                ->with('success', 'Paiement de salaire supprimé avec succès.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
-
-        $salaire->delete();
-
-        return redirect()->route('salaires.index')
-            ->with('success', 'Salaire supprimé avec succès.');
     }
 
     /**

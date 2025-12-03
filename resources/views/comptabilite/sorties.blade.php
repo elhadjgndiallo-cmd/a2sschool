@@ -187,8 +187,8 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    @if(isset($sortie->type) && $sortie->type == 'depense' && isset($sortie->data))
+                                                @if(isset($sortie->type) && $sortie->type == 'depense' && isset($sortie->data))
+                                                    <div class="btn-group btn-group-sm">
                                                         <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
@@ -204,17 +204,34 @@
                                                                 <i class="fas fa-trash"></i>
                                                             </button>
                                                         </form>
-                                                    @elseif(isset($sortie->type) && $sortie->type == 'salaire' && isset($sortie->data))
-                                                        <a href="{{ route('salaires.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
+                                                    </div>
+                                                @elseif(isset($sortie->type) && $sortie->type == 'salaire' && isset($sortie->data))
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a href="{{ route('salaires.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                            @if(auth()->user()->hasPermission('salaires.delete'))
+                                                                <form method="POST" action="{{ route('salaires.destroy', $sortie->data) }}" 
+                                                                      style="display: inline;" 
+                                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce paiement de salaire ?')">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        </div>
                                                         <span class="badge bg-info">Salaire</span>
-                                                    @elseif(isset($sortie->data))
+                                                    </div>
+                                                @elseif(isset($sortie->data))
+                                                    <div class="btn-group btn-group-sm">
                                                         <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                    @endif
-                                                </div>
+                                                    </div>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
