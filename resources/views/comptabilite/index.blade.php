@@ -6,14 +6,14 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+                <h2 class="mb-0 mb-md-0">
                     <i class="fas fa-calculator text-primary me-2"></i>
                     Comptabilité
                 </h2>
-                <div class="btn-group">
+                <div class="btn-group w-100 w-md-auto flex-wrap">
                     <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-outline-info">
-                        <i class="fas fa-calendar-day me-1"></i>Rapport Journalier
+                        <i class="fas fa-calendar-day me-1"></i><span class="d-none d-sm-inline">Rapport Journalier</span><span class="d-sm-none">Journalier</span>
                     </a>
                     <a href="{{ route('comptabilite.entrees') }}" class="btn btn-outline-success">
                         <i class="fas fa-arrow-up me-1"></i>Entrées

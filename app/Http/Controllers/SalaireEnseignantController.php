@@ -31,7 +31,7 @@ class SalaireEnseignantController extends Controller
             $query->whereBetween('periode_debut', [$request->periode_debut, $request->periode_fin]);
         }
 
-        $salaires = $query->orderBy('periode_debut', 'desc')->paginate(20);
+        $salaires = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(20);
         $enseignants = Enseignant::with('utilisateur')
             ->where('actif', true)
             ->get()

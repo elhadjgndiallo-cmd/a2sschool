@@ -6,17 +6,18 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+                <h2 class="mb-0 mb-md-0">
                     <i class="fas fa-arrow-up text-success me-2"></i>
-                    Entrées (Revenus)
+                    <span class="d-none d-sm-inline">Entrées (Revenus)</span>
+                    <span class="d-sm-none">Entrées</span>
                 </h2>
-                <div class="btn-group">
+                <div class="btn-group w-100 w-md-auto">
                     <a href="{{ route('entrees.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus me-1"></i>Nouvelle Entrée
+                        <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Nouvelle Entrée</span><span class="d-sm-none">Nouveau</span>
                     </a>
                     <button class="btn btn-outline-primary" onclick="window.print()">
-                        <i class="fas fa-print me-1"></i>Imprimer
+                        <i class="fas fa-print me-1"></i><span class="d-none d-sm-inline">Imprimer</span>
                     </button>
                 </div>
             </div>
