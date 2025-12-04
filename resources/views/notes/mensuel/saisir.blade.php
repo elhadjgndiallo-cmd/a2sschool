@@ -135,21 +135,31 @@
                 <table class="table table-bordered table-striped">
                     <thead class="table-dark">
                         <tr>
-                            <th class="text-center">Matricule</th>
-                            <th class="text-center">Nom</th>
-                            <th class="text-center">Prénom</th>
-                            <th class="text-center">Matière</th>
-                            <th class="text-center">Note</th>
-                            <th class="text-center">Coefficient</th>
+                            <th class="text-center">MATRICULE</th>
+                            <th class="text-center">PRENOMS</th>
+                            <th class="text-center">NOM</th>
+                            <th class="text-center">MATIERE</th>
+                            <th class="text-center">COEFFICIENT</th>
+                            <th class="text-center">NOTE</th>
                         </tr>
                     </thead>
                     <tbody id="eleves-table">
                         @foreach($eleves as $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
                             <td class="fw-bold text-center">{{ $eleve->matricule }}</td>
-                            <td>{{ $eleve->nom }}</td>
                             <td>{{ $eleve->prenom }}</td>
+                            <td>{{ $eleve->nom }}</td>
                             <td class="matiere-nom">-</td>
+                            <td>
+                                <input type="number" 
+                                       name="notes[{{ $eleve->id }}][coefficient]" 
+                                       class="form-control form-control-sm text-center coefficient-input" 
+                                       min="1" 
+                                       max="10" 
+                                       value="1"
+                                       placeholder="1"
+                                       disabled>
+                            </td>
                             <td>
                                 <input type="number" 
                                        name="notes[{{ $eleve->id }}][note]" 
@@ -162,16 +172,6 @@
                                 <input type="hidden" 
                                        name="notes[{{ $eleve->id }}][eleve_id]" 
                                        value="{{ $eleve->id }}">
-                            </td>
-                            <td>
-                                <input type="number" 
-                                       name="notes[{{ $eleve->id }}][coefficient]" 
-                                       class="form-control form-control-sm text-center coefficient-input" 
-                                       min="1" 
-                                       max="10" 
-                                       value="1"
-                                       placeholder="1"
-                                       disabled>
                             </td>
                         </tr>
                         @endforeach

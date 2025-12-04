@@ -527,9 +527,9 @@
                     <thead>
                         <tr>
                             <th style="width: 8%;">N°</th>
-                            <th style="width: 20%;">Matricule</th>
-                            <th style="width: 36%;">Nom</th>
-                            <th style="width: 36%;">Prénom</th>
+                            <th style="width: 20%;">MATRICULE</th>
+                            <th style="width: 36%;">PRENOMS</th>
+                            <th style="width: 36%;">NOM</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -537,8 +537,8 @@
                             <tr>
                                 <td class="student-number">{{ $index + 1 }}</td>
                                 <td class="student-number">{{ $eleve->numero_etudiant ?? 'N/A' }}</td>
-                                <td class="student-name">{{ $eleve->utilisateur->nom ?? 'N/A' }}</td>
                                 <td class="student-name">{{ $eleve->utilisateur->prenom ?? 'N/A' }}</td>
+                                <td class="student-name">{{ $eleve->utilisateur->nom ?? 'N/A' }}</td>
                             </tr>
                         @endforeach
                     </tbody>

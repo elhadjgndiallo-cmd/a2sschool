@@ -320,129 +320,238 @@
         </div>
     </div>
 
-    <div class="container-print">
-        <div class="header">
-            <div class="header-top">
-                <div class="header-logo-left">
-                    <div class="school-logo">
-                        @if($etablissement && $etablissement->logo)
-                            <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
-                        @else
-                            <div class="school-logo-text">
-                                <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
-                                <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
-                                <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="header-content-center">
-                    <h1>REPUBLIQUE DE GUINEE</h1>
-                    <h2>Travail - Justice - Solidarité</h2>
-                    @if($etablissement)
-                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">{{ strtoupper($etablissement->nom) }}</h3>
-                    @else
-                        <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">COMPLEXE SCOLAIRE</h3>
-                    @endif
-                    @if($etablissement && $etablissement->telephone)
-                        <div class="school-phone" style="margin-top: 5px;">{{ $etablissement->telephone }}</div>
-                    @endif
-                </div>
-                
-                <div class="header-logo-right">
-                    <div class="school-logo">
-                        @if($etablissement && $etablissement->logo)
-                            <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
-                        @else
-                            <div class="school-logo-text">
-                                <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
-                                <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
-                                <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
+    @if(isset($elevesParPage) && $elevesParPage->count() > 0)
+        @foreach($elevesParPage as $pageIndex => $pageEleves)
+            @if($pageIndex > 0)
+                <div class="page-break"></div>
+            @endif
             
-            <div class="header-title">
-                FICHE DE NOTES
-                @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
-                    - {{ implode(', ', array_map(function($m) use ($nomsMois) { return $nomsMois[$m]; }, $moisSelectionnes)) }}
-                @endif
-            </div>
-        </div>
-
-        <div class="teacher-info">
-            <div class="teacher-photo">
-                @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil)
-                    <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" alt="Photo enseignant">
-                @else
-                    <div class="teacher-photo-placeholder">
-                        Photo
+            <div class="container-print">
+                <div class="header">
+                    <div class="header-top">
+                        <div class="header-logo-left">
+                            <div class="school-logo">
+                                @if($etablissement && $etablissement->logo)
+                                    <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
+                                @else
+                                    <div class="school-logo-text">
+                                        <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
+                                        <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
+                                        <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <div class="header-content-center">
+                            <h1>REPUBLIQUE DE GUINEE</h1>
+                            <h2>Travail - Justice - Solidarité</h2>
+                            @if($etablissement)
+                                <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">{{ strtoupper($etablissement->nom) }}</h3>
+                            @else
+                                <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">COMPLEXE SCOLAIRE</h3>
+                            @endif
+                            @if($etablissement && $etablissement->telephone)
+                                <div class="school-phone" style="margin-top: 5px;">{{ $etablissement->telephone }}</div>
+                            @endif
+                        </div>
+                        
+                        <div class="header-logo-right">
+                            <div class="school-logo">
+                                @if($etablissement && $etablissement->logo)
+                                    <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
+                                @else
+                                    <div class="school-logo-text">
+                                        <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
+                                        <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
+                                        <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
-                @endif
-            </div>
-            <div class="teacher-details">
-                <p><strong>Professeur :</strong> {{ strtoupper($enseignant->utilisateur->nom ?? '') }} {{ ucfirst($enseignant->utilisateur->prenom ?? '') }}</p>
-                <p><strong>Matière :</strong> {{ strtoupper($matiere->nom) }}</p>
-                <p><strong>Tel :</strong> {{ $enseignant->utilisateur->telephone ?? ($etablissement->telephone ?? '') }}</p>
-                <p><strong>Année scolaire :</strong> {{ $anneeScolaireActive->nom ?? '' }}</p>
-                <p><strong>Classe :</strong> {{ strtoupper($classe->nom) }}</p>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Matricule</th>
-                        <th>Nom</th>
-                        <th>Prénoms</th>
-                        <th>Sexe</th>
+                    
+                    <div class="header-title">
+                        FICHE DE NOTES
                         @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
-                            @foreach($moisSelectionnes as $mois)
-                                <th>{{ $nomsMois[$mois] }}</th>
-                            @endforeach
-                        @else
-                            <th>Octobre</th>
-                            <th>Novembre</th>
-                            <th>Décembre</th>
+                            - {{ implode(', ', array_map(function($m) use ($nomsMois) { return $nomsMois[$m]; }, $moisSelectionnes)) }}
                         @endif
-                        <th>Moyenne Cours</th>
-                        <th>Note Composition</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($elevesAvecNotes as $data)
+                        @if($elevesParPage->count() > 1)
+                            - Page {{ $pageIndex + 1 }}/{{ $elevesParPage->count() }}
+                        @endif
+                    </div>
+                </div>
+
+                <div class="teacher-info">
+                    <div class="teacher-photo">
+                        @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil)
+                            <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" alt="Photo enseignant">
+                        @else
+                            <div class="teacher-photo-placeholder">
+                                Photo
+                            </div>
+                        @endif
+                    </div>
+                    <div class="teacher-details">
+                        <p><strong>Professeur :</strong> {{ strtoupper($enseignant->utilisateur->nom ?? '') }} {{ ucfirst($enseignant->utilisateur->prenom ?? '') }}</p>
+                        <p><strong>Matière :</strong> {{ strtoupper($matiere->nom) }}</p>
+                        <p><strong>Tel :</strong> {{ $enseignant->utilisateur->telephone ?? ($etablissement->telephone ?? '') }}</p>
+                        <p><strong>Année scolaire :</strong> {{ $anneeScolaireActive->nom ?? '' }}</p>
+                        <p><strong>Classe :</strong> {{ strtoupper($classe->nom) }}</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MATRICULE</th>
+                                <th>PRENOMS</th>
+                                <th>NOM</th>
+                                <th>Sexe</th>
+                                @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                                    @foreach($moisSelectionnes as $mois)
+                                        <th>{{ $nomsMois[$mois] }}</th>
+                                    @endforeach
+                                @else
+                                    <th>Octobre</th>
+                                    <th>Novembre</th>
+                                    <th>Décembre</th>
+                                @endif
+                                <th>Moyenne Cours</th>
+                                <th>Note Composition</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pageEleves as $data)
+                                <tr>
+                                    <td class="matricule">{{ $data['eleve']->numero_etudiant ?? '-' }}</td>
+                                    <td class="prenoms">{{ ucfirst($data['eleve']->utilisateur->prenom ?? '') }}</td>
+                                    <td class="nom">{{ strtoupper($data['eleve']->utilisateur->nom ?? '') }}</td>
+                                    <td class="sexe">{{ strtoupper($data['eleve']->utilisateur->sexe ?? 'M') }}</td>
+                                    @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                                        @foreach($moisSelectionnes as $mois)
+                                            <td class="note-col"></td>
+                                        @endforeach
+                                    @else
+                                        <td class="note-col"></td>
+                                        <td class="note-col"></td>
+                                        <td class="note-col"></td>
+                                    @endif
+                                    <td class="note-col"></td>
+                                    <td class="note-col"></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endforeach
+    @else
+        <div class="container-print">
+            <div class="header">
+                <div class="header-top">
+                    <div class="header-logo-left">
+                        <div class="school-logo">
+                            @if($etablissement && $etablissement->logo)
+                                <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
+                            @else
+                                <div class="school-logo-text">
+                                    <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
+                                    <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
+                                    <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <div class="header-content-center">
+                        <h1>REPUBLIQUE DE GUINEE</h1>
+                        <h2>Travail - Justice - Solidarité</h2>
+                        @if($etablissement)
+                            <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">{{ strtoupper($etablissement->nom) }}</h3>
+                        @else
+                            <h3 style="font-weight: bold; color: #1e3a8a; margin-top: 5px; font-size: 14px;">COMPLEXE SCOLAIRE</h3>
+                        @endif
+                        @if($etablissement && $etablissement->telephone)
+                            <div class="school-phone" style="margin-top: 5px;">{{ $etablissement->telephone }}</div>
+                        @endif
+                    </div>
+                    
+                    <div class="header-logo-right">
+                        <div class="school-logo">
+                            @if($etablissement && $etablissement->logo)
+                                <img src="{{ asset('storage/' . $etablissement->logo) }}" alt="Logo">
+                            @else
+                                <div class="school-logo-text">
+                                    <div style="font-size: 10px; line-height: 1.2;">COMPLEXE</div>
+                                    <div style="font-size: 10px; line-height: 1.2;">SCOLAIRE</div>
+                                    <div style="font-size: 12px; margin-top: 3px; font-weight: bold;">CS</div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="header-title">
+                    FICHE DE NOTES
+                    @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
+                        - {{ implode(', ', array_map(function($m) use ($nomsMois) { return $nomsMois[$m]; }, $moisSelectionnes)) }}
+                    @endif
+                </div>
+            </div>
+
+            <div class="teacher-info">
+                <div class="teacher-photo">
+                    @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil)
+                        <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" alt="Photo enseignant">
+                    @else
+                        <div class="teacher-photo-placeholder">
+                            Photo
+                        </div>
+                    @endif
+                </div>
+                <div class="teacher-details">
+                    <p><strong>Professeur :</strong> {{ strtoupper($enseignant->utilisateur->nom ?? '') }} {{ ucfirst($enseignant->utilisateur->prenom ?? '') }}</p>
+                    <p><strong>Matière :</strong> {{ strtoupper($matiere->nom) }}</p>
+                    <p><strong>Tel :</strong> {{ $enseignant->utilisateur->telephone ?? ($etablissement->telephone ?? '') }}</p>
+                    <p><strong>Année scolaire :</strong> {{ $anneeScolaireActive->nom ?? '' }}</p>
+                    <p><strong>Classe :</strong> {{ strtoupper($classe->nom) }}</p>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
                         <tr>
-                            <td class="matricule">{{ $data['eleve']->numero_etudiant ?? '-' }}</td>
-                            <td class="nom">{{ strtoupper($data['eleve']->utilisateur->nom ?? '') }}</td>
-                            <td class="prenoms">{{ ucfirst($data['eleve']->utilisateur->prenom ?? '') }}</td>
-                            <td class="sexe">{{ strtoupper($data['eleve']->utilisateur->sexe ?? 'M') }}</td>
+                            <th>MATRICULE</th>
+                            <th>PRENOMS</th>
+                            <th>NOM</th>
+                            <th>Sexe</th>
                             @if(isset($moisSelectionnes) && count($moisSelectionnes) > 0)
                                 @foreach($moisSelectionnes as $mois)
-                                    <td class="note-col"></td>
+                                    <th>{{ $nomsMois[$mois] }}</th>
                                 @endforeach
                             @else
-                                <td class="note-col"></td>
-                                <td class="note-col"></td>
-                                <td class="note-col"></td>
+                                <th>Octobre</th>
+                                <th>Novembre</th>
+                                <th>Décembre</th>
                             @endif
-                            <td class="note-col"></td>
-                            <td class="note-col"></td>
+                            <th>Moyenne Cours</th>
+                            <th>Note Composition</th>
                         </tr>
-                    @empty
+                    </thead>
+                    <tbody>
                         <tr>
                             <td colspan="{{ (isset($moisSelectionnes) ? count($moisSelectionnes) : 3) + 6 }}" style="text-align: center; padding: 20px;">
                                 Aucun élève trouvé
                             </td>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    @endif
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

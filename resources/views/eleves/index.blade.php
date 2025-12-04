@@ -194,8 +194,8 @@ use Illuminate\Support\Facades\Storage;
                     <tr>
                                     <th>Profil</th>
                         <th>Matricule</th>
-                                    <th>Nom</th>
                                     <th>Prénom</th>
+                                    <th>Nom</th>
                         <th>Classe</th>
                         <th>Statut</th>
                         <th>Frais</th>
@@ -215,10 +215,10 @@ use Illuminate\Support\Facades\Storage;
                                             <span class="badge bg-info">{{ $eleve->numero_etudiant ?? 'N/A' }}</span>
                                         </td>
                                         <td>
-                                            <strong>{{ $eleve->utilisateur->nom ?? 'N/A' }}</strong>
+                                            <strong>{{ $eleve->utilisateur->prenom ?? 'N/A' }}</strong>
                         </td>
                         <td>
-                                            <strong>{{ $eleve->utilisateur->prenom ?? 'N/A' }}</strong>
+                                            <strong>{{ $eleve->utilisateur->nom ?? 'N/A' }}</strong>
                         </td>
                         <td>
                                             <strong>{{ $eleve->classe->nom ?? 'N/A' }}</strong>

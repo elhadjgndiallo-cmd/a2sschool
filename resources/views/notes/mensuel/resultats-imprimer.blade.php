@@ -164,7 +164,13 @@
                     <td class="bold">{{ $eleve->matricule }}</td>
                     <td class="text-left">{{ $eleve->nom }}</td>
                     <td class="text-left">{{ $eleve->prenom }}</td>
-                    <td class="bold">{{ number_format($moyenne, 2) }}/20</td>
+                    <td class="bold">
+                        @if($moyenne == 0.00)
+                            00/20
+                        @else
+                            {{ number_format($moyenne, 2) }}/20
+                        @endif
+                    </td>
                     <td>{{ $appreciation }}</td>
                 </tr>
                 @endforeach

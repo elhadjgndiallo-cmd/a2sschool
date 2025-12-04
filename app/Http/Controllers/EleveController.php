@@ -131,16 +131,19 @@ class EleveController extends Controller
         // Gestion du tri
         $sort = $request->get('sort', 'default');
         if ($sort === 'name_asc') {
-            // Tri A-Z par nom puis prénom via la relation utilisateur
+            // Tri A-Z par prénom puis nom via la relation utilisateur
             $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
-                  ->orderBy('utilisateurs.nom', 'asc')
                   ->orderBy('utilisateurs.prenom', 'asc')
+                  ->orderBy('utilisateurs.nom', 'asc')
                   ->select('eleves.*')
                   ->distinct();
         } else {
-            // Tri par défaut (par date de mise à jour)
-            $query->orderBy('eleves.updated_at', 'desc')
-                  ->orderBy('eleves.created_at', 'desc');
+            // Tri par défaut par prénom puis nom
+            $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+                  ->orderBy('utilisateurs.prenom', 'asc')
+                  ->orderBy('utilisateurs.nom', 'asc')
+                  ->select('eleves.*')
+                  ->distinct();
         }
         
         $eleves = $query->paginate($perPage)
@@ -1731,11 +1734,11 @@ class EleveController extends Controller
             });
         }
 
-        // Tri par ordre alphabétique (nom puis prénom)
+        // Tri par ordre alphabétique (prénom puis nom)
         $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
             ->select('eleves.*')
-            ->orderBy('utilisateurs.nom', 'asc')
-            ->orderBy('utilisateurs.prenom', 'asc');
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc');
 
         // Récupérer TOUS les élèves (sans pagination pour l'impression)
         $eleves = $query->get();

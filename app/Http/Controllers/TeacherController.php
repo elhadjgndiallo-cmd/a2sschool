@@ -267,7 +267,7 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        $classe = Classe::findOrFail($classeId);
         
         // Vérifier que l'enseignant enseigne dans cette classe
         $hasAccess = $classe->emploisTemps()
@@ -277,6 +277,19 @@ class TeacherController extends Controller
         if (!$hasAccess) {
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
+        
+        // Récupérer les élèves triés par prénom puis nom
+        $eleves = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+            ->where('eleves.actif', true)
+            ->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('eleves.*')
+            ->with('utilisateur')
+            ->get();
+        
+        // Assigner les élèves triés à la classe
+        $classe->setRelation('eleves', $eleves);
         
         // Récupérer toutes les matières actives (temporaire pour résoudre le problème)
         $matieres = \App\Models\Matiere::actif()->get();

@@ -142,15 +142,14 @@
                 <table class="table table-bordered table-hover" id="notesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th width="8%">Matricule</th>
-                            <th width="15%">Nom</th>
-                            <th width="15%">Prénom</th>
-                            <th width="15%">Matière</th>
-                            <th width="8%">Coefficient</th>
-                            <th width="12%">Note de cours</th>
-                            <th width="12%">Note de composition</th>
-                            <th width="10%">Note finale</th>
-                            <th width="15%">Commentaire</th>
+                            <th width="10%">MATRICULE</th>
+                            <th width="15%">PRENOMS</th>
+                            <th width="15%">NOM</th>
+                            <th width="15%">MATIERES</th>
+                            <th width="8%">COEFFICIENT</th>
+                            <th width="12%">NOTE COURS</th>
+                            <th width="12%">NOTE COMPO</th>
+                            <th width="13%">NOTE FINALE</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -161,10 +160,10 @@
                                 <input type="hidden" name="notes[{{ $index }}][eleve_id]" value="{{ $eleve->id }}">
                             </td>
                             <td>
-                                <strong>{{ $eleve->utilisateur->nom }}</strong>
+                                <strong>{{ $eleve->utilisateur->prenom }}</strong>
                             </td>
                             <td>
-                                <strong>{{ $eleve->utilisateur->prenom }}</strong>
+                                <strong>{{ $eleve->utilisateur->nom }}</strong>
                             </td>
                             <td>
                                 <select class="form-select matiere-select" name="notes[{{ $index }}][matiere_id]" data-index="{{ $index }}">
@@ -214,13 +213,6 @@
                                        placeholder="Calculée"
                                        data-index="{{ $index }}"
                                        style="background-color: #f8f9fa;">
-                            </td>
-                            <td>
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="notes[{{ $index }}][commentaire]" 
-                                       placeholder="Commentaire..."
-                                       style="font-size: 0.85rem;">
                             </td>
                         </tr>
                         @endforeach
@@ -451,10 +443,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = '';
             });
             
-            // Vider les commentaires
-            document.querySelectorAll('input[name*="[commentaire]"]').forEach(function(input) {
-                input.value = '';
-            });
             
             // Recalculer les statistiques
             calculerStatistiques();

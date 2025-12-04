@@ -75,11 +75,14 @@
                 </div>
                 <div class="col-md-3">
                     <label for="enseignant_id" class="form-label">Enseignant</label>
-                    <select class="form-select" id="enseignant_id" name="enseignant_id">
-                        @if(auth()->user()->isAdmin())
+                    <select class="form-select" id="enseignant_id" name="enseignant_id" required>
+                        @if(auth()->user()->isAdmin() || auth()->user()->role === 'personnel_admin')
                             <option value="">Sélectionner un enseignant</option>
                             @foreach($enseignants as $enseignant)
-                            <option value="{{ $enseignant->id }}">{{ $enseignant->nom_complet }}</option>
+                            <option value="{{ $enseignant->id }}" 
+                                    data-matieres="{{ json_encode($enseignant->matieres_classe ?? []) }}">
+                                {{ $enseignant->nom_complet }}
+                            </option>
                             @endforeach
                         @else
                             @foreach($enseignants as $enseignant)
@@ -143,31 +146,26 @@
                 <table class="table table-bordered table-hover" id="notesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th width="5%">#</th>
-                            <th width="20%">Élève</th>
-                            <th width="15%">Matière</th>
-                            <th width="8%">
-                                Coefficient
-                                <i class="fas fa-info-circle text-info ms-1" 
-                                   data-bs-toggle="tooltip" 
-                                   title="Vous pouvez personnaliser le coefficient pour chaque matière"></i>
-                            </th>
-                            <th width="12%">Note Cours (/20)</th>
-                            <th width="12%">Note Composition (/20)</th>
-                            <th width="10%">Note Finale</th>
-                            <th width="10%">Commentaire</th>
-                            <th width="8%">Actions</th>
+                            <th width="10%">MATRICULE</th>
+                            <th width="15%">PRENOMS</th>
+                            <th width="15%">NOM</th>
+                            <th width="20%">MATIERE</th>
+                            <th width="10%">COEFFICIENT</th>
+                            <th width="15%">NOTE</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($classe->eleves as $index => $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
-                            <td class="text-center">{{ $index + 1 }}</td>
                             <td>
-                                <strong>{{ $eleve->nom_complet }}</strong>
-                                <br>
-                                <small class="text-muted">{{ $eleve->numero_etudiant }}</small>
+                                <strong>{{ $eleve->numero_etudiant }}</strong>
                                 <input type="hidden" name="notes[{{ $index }}][eleve_id]" value="{{ $eleve->id }}">
+                            </td>
+                            <td>
+                                <strong>{{ $eleve->utilisateur->prenom ?? '' }}</strong>
+                            </td>
+                            <td>
+                                <strong>{{ $eleve->utilisateur->nom ?? '' }}</strong>
                             </td>
                             <td>
                                 <select class="form-select matiere-select" name="notes[{{ $index }}][matiere_id]" data-index="{{ $index }}">
@@ -192,45 +190,14 @@
                             </td>
                             <td>
                                 <input type="number" 
-                                       class="form-control note-cours-input" 
-                                       name="notes[{{ $index }}][note_cours]" 
-                                       min="0" 
-                                       max="{{ $classe->note_max }}" 
-                                       step="0.25"
-                                       placeholder="0.00"
-                                       data-index="{{ $index }}">
-                                <small class="text-muted">Sur {{ $classe->note_max }}</small>
-                            </td>
-                            <td>
-                                <input type="number" 
-                                       class="form-control note-composition-input" 
+                                       class="form-control note-input" 
                                        name="notes[{{ $index }}][note_composition]" 
                                        min="0" 
                                        max="{{ $classe->note_max }}" 
                                        step="0.25"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
-                                <small class="text-muted">Sur {{ $classe->note_max }}</small>
-                            </td>
-                            <td>
-                                <input type="number" 
-                                       class="form-control note-finale-display" 
-                                       readonly
-                                       placeholder="Calculée"
-                                       data-index="{{ $index }}"
-                                       style="background-color: #f8f9fa;">
-                            </td>
-                            <td>
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="notes[{{ $index }}][commentaire]" 
-                                       placeholder="Commentaire..."
-                                       style="font-size: 0.85rem;">
-                            </td>
-                            <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-success calculer-note-finale" data-index="{{ $index }}">
-                                    <i class="fas fa-calculator"></i>
-                                </button>
+                                <input type="hidden" name="notes[{{ $index }}][note_cours]" value="">
                             </td>
                         </tr>
                         @endforeach
@@ -303,6 +270,104 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Récupérer toutes les matières pour le filtrage
+    const allMatieres = @json($matieres);
+    
+    // Fonction pour filtrer les matières selon l'enseignant
+    function filtrerMatieres(matieresEnseignant) {
+        // Filtrer le select global de matière (Application rapide)
+        const matiereGlobale = document.getElementById('matiere_globale');
+        if (matiereGlobale) {
+            const currentValue = matiereGlobale.value;
+            matiereGlobale.innerHTML = '<option value="">Choisir une matière</option>';
+            
+            if (matieresEnseignant && matieresEnseignant.length > 0) {
+                // Ajouter seulement les matières enseignées par cet enseignant
+                allMatieres.forEach(matiere => {
+                    if (matieresEnseignant.includes(matiere.id)) {
+                        const option = document.createElement('option');
+                        option.value = matiere.id;
+                        option.textContent = matiere.nom;
+                        option.dataset.coefficient = matiere.coefficient;
+                        matiereGlobale.appendChild(option);
+                    }
+                });
+            } else {
+                // Si aucune matière, afficher toutes
+                allMatieres.forEach(matiere => {
+                    const option = document.createElement('option');
+                    option.value = matiere.id;
+                    option.textContent = matiere.nom;
+                    option.dataset.coefficient = matiere.coefficient;
+                    matiereGlobale.appendChild(option);
+                });
+            }
+            
+            // Restaurer la valeur précédente si elle existe toujours
+            if (currentValue && matieresEnseignant && matieresEnseignant.includes(parseInt(currentValue))) {
+                matiereGlobale.value = currentValue;
+            }
+        }
+        
+        // Filtrer les matières dans tous les selects de matière du tableau
+        document.querySelectorAll('.matiere-select').forEach(function(select) {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Choisir une matière</option>';
+            
+            if (matieresEnseignant && matieresEnseignant.length > 0) {
+                // Ajouter seulement les matières enseignées par cet enseignant
+                allMatieres.forEach(matiere => {
+                    if (matieresEnseignant.includes(matiere.id)) {
+                        const option = document.createElement('option');
+                        option.value = matiere.id;
+                        option.textContent = matiere.nom;
+                        option.dataset.coefficient = matiere.coefficient;
+                        select.appendChild(option);
+                    }
+                });
+            } else {
+                // Si aucune matière, afficher toutes
+                allMatieres.forEach(matiere => {
+                    const option = document.createElement('option');
+                    option.value = matiere.id;
+                    option.textContent = matiere.nom;
+                    option.dataset.coefficient = matiere.coefficient;
+                    select.appendChild(option);
+                });
+            }
+            
+            // Restaurer la valeur précédente si elle existe toujours
+            if (currentValue && matieresEnseignant && matieresEnseignant.includes(parseInt(currentValue))) {
+                select.value = currentValue;
+            }
+        });
+    }
+    
+    // Gestion de la sélection d'enseignant
+    const enseignantSelect = document.getElementById('enseignant_id');
+    if (enseignantSelect) {
+        enseignantSelect.addEventListener('change', function() {
+            const enseignantId = this.value;
+            
+            if (enseignantId) {
+                // Récupérer les matières de l'enseignant sélectionné
+                const selectedOption = this.options[this.selectedIndex];
+                const matieresEnseignant = JSON.parse(selectedOption.dataset.matieres || '[]');
+                
+                // Filtrer toutes les matières (tableau + application rapide)
+                filtrerMatieres(matieresEnseignant);
+            } else {
+                // Si aucun enseignant sélectionné, afficher toutes les matières
+                filtrerMatieres(null);
+            }
+        });
+        
+        // Déclencher le changement si un enseignant est déjà sélectionné
+        if (enseignantSelect.value) {
+            enseignantSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
     // Gestion du changement de matière
     document.querySelectorAll('.matiere-select').forEach(function(select) {
         select.addEventListener('change', function() {

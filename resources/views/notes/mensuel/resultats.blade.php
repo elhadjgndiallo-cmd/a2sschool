@@ -137,7 +137,11 @@
                         <td>{{ $eleve->prenom }}</td>
                         <td class="text-center">
                             <span class="badge bg-{{ $moyenne >= 10 ? 'success' : ($moyenne >= 5 ? 'warning' : 'danger') }} fs-6">
-                                {{ number_format($moyenne, 2) }}/20
+                                @if($moyenne == 0.00)
+                                    00/20
+                                @else
+                                    {{ number_format($moyenne, 2) }}/20
+                                @endif
                             </span>
                         </td>
                         <td class="text-center">

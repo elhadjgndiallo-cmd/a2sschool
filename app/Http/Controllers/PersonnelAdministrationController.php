@@ -16,7 +16,11 @@ class PersonnelAdministrationController extends Controller
     public function index()
     {
         $personnel = PersonnelAdministration::with('utilisateur')
-            ->orderBy('created_at', 'desc')
+            ->join('utilisateurs', 'personnel_administration.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('personnel_administration.*')
+            ->distinct()
             ->paginate(10);
             
         return view('personnel-administration.index', compact('personnel'));

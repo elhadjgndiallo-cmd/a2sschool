@@ -101,7 +101,7 @@ use Illuminate\Support\Facades\Storage;
                             </div>
                         </td>
                         <td>
-                            <strong>{{ $enseignant->utilisateur->nom }} {{ $enseignant->utilisateur->prenom }}</strong>
+                            <strong>{{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }}</strong>
                             <br>
                             <small class="text-muted">{{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}</small>
                         </td>

@@ -64,7 +64,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="fw-bold">{{ $p->utilisateur->nom }} {{ $p->utilisateur->prenom }}</div>
+                                            <div class="fw-bold">{{ $p->utilisateur->prenom }} {{ $p->utilisateur->nom }}</div>
                                             <small class="text-muted">{{ $p->utilisateur->email }}</small>
                                         </td>
                                         <td>

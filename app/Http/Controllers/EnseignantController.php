@@ -43,7 +43,13 @@ class EnseignantController extends Controller
         \DB::flushQueryLog();
         \Cache::flush();
         
-        $enseignants = Enseignant::with('utilisateur')->paginate(20);
+        $enseignants = Enseignant::with('utilisateur')
+            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('enseignants.*')
+            ->distinct()
+            ->paginate(20);
         
         // S'assurer que les relations sont bien chargées et fraîches
         foreach ($enseignants as $enseignant) {

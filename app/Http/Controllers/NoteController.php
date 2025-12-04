@@ -77,11 +77,30 @@ class NoteController extends Controller
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
-        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
-            if ($anneeScolaireActive) {
-                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-            }
-        }, 'eleves.utilisateur'])->findOrFail($classeId);
+        $classe = Classe::findOrFail($classeId);
+        
+        // Récupérer les élèves triés par prénom puis nom
+        $elevesQuery = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+            ->where('eleves.actif', true);
+            
+        if ($anneeScolaireActive) {
+            $elevesQuery->where('eleves.annee_scolaire_id', $anneeScolaireActive->id);
+        }
+        
+        $eleves = $elevesQuery->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('eleves.*')
+            ->with('utilisateur')
+            ->get();
+        
+        // Ajouter l'attribut nom_complet pour compatibilité
+        $eleves->each(function($eleve) {
+            $eleve->nom_complet = $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom;
+        });
+        
+        // Assigner les élèves triés à la classe
+        $classe->setRelation('eleves', $eleves);
         
         // Vérifier les permissions
         if ($user->isTeacher()) {
@@ -104,12 +123,27 @@ class NoteController extends Controller
                 return $enseignant;
             });
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
-            // Admin et Personnel Admin voient toutes les matières et enseignants
+            // Admin et Personnel Admin voient seulement les enseignants qui enseignent dans cette classe
+            $enseignants = \App\Models\Enseignant::with(['utilisateur', 'emploisTemps.matiere'])
+                ->whereHas('emploisTemps', function($query) use ($classe) {
+                    $query->where('classe_id', $classe->id)
+                          ->where('actif', true);
+                })
+                ->get()
+                ->map(function($enseignant) use ($classe) {
+                    $enseignant->nom_complet = $enseignant->utilisateur->prenom . ' ' . $enseignant->utilisateur->nom;
+                    // Ajouter les matières enseignées par cet enseignant dans cette classe
+                    $enseignant->matieres_classe = $enseignant->emploisTemps
+                        ->where('classe_id', $classe->id)
+                        ->where('actif', true)
+                        ->pluck('matiere_id')
+                        ->unique()
+                        ->toArray();
+                    return $enseignant;
+                });
+            
+            // Récupérer toutes les matières actives pour le filtrage JavaScript
             $matieres = Matiere::actif()->get();
-            $enseignants = Enseignant::with('utilisateur')->get()->map(function($enseignant) {
-                $enseignant->nom_complet = $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
-                return $enseignant;
-            });
         } else {
             abort(403, 'Vous n\'avez pas accès à cette fonctionnalité.');
         }
@@ -135,11 +169,25 @@ class NoteController extends Controller
         // Récupérer l'année scolaire active pour filtrer les données
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         
-        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
-            if ($anneeScolaireActive) {
-                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-            }
-        }, 'eleves.utilisateur'])->findOrFail($classeId);
+        $classe = Classe::findOrFail($classeId);
+        
+        // Récupérer les élèves triés par prénom puis nom
+        $elevesQuery = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+            ->where('eleves.actif', true);
+            
+        if ($anneeScolaireActive) {
+            $elevesQuery->where('eleves.annee_scolaire_id', $anneeScolaireActive->id);
+        }
+        
+        $eleves = $elevesQuery->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('eleves.*')
+            ->with('utilisateur')
+            ->get();
+        
+        // Assigner les élèves triés à la classe
+        $classe->setRelation('eleves', $eleves);
         
         // Vérifier que l'enseignant enseigne dans cette classe
         $enseignant = $user->enseignant;
@@ -1241,14 +1289,25 @@ class NoteController extends Controller
         $mois = $request->get('mois', date('n'));
         $annee = $request->get('annee', date('Y'));
 
-        // Récupérer les élèves de la classe pour l'année scolaire active
+        // Récupérer les élèves de la classe pour l'année scolaire active, triés par prénom
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
-        $eleves = $classe->eleves()
-            ->where('annee_scolaire_id', $anneeScolaireActive->id)
-            ->where('actif', true)
+        $elevesQuery = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('eleves.actif', true);
+        
+        $eleves = $elevesQuery->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('eleves.*')
             ->with('utilisateur')
-            ->orderBy('id', 'asc')
             ->get();
+        
+        // Ajouter les attributs matricule, nom, prenom pour compatibilité avec la vue
+        $eleves->each(function($eleve) {
+            $eleve->matricule = $eleve->numero_etudiant;
+            $eleve->nom = $eleve->utilisateur->nom;
+            $eleve->prenom = $eleve->utilisateur->prenom;
+        });
             
         // Mettre à jour l'effectif actuel de la classe
         $classe->updateEffectifActuel();
@@ -1306,7 +1365,7 @@ class NoteController extends Controller
             'matiere_id' => 'required|exists:matieres,id',
             'notes' => 'required|array',
             'notes.*.eleve_id' => 'required|exists:eleves,id',
-            'notes.*.note' => 'required|numeric|min:0|max:20',
+            'notes.*.note' => 'nullable|numeric|min:0|max:20',
             'notes.*.coefficient' => 'required|integer|min:1|max:10'
         ]);
 
@@ -1317,34 +1376,67 @@ class NoteController extends Controller
         $annee = $request->annee;
         $createdBy = auth()->id();
 
+        // Récupérer tous les élèves de la classe pour l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $tousLesEleves = \App\Models\Eleve::where('eleves.classe_id', $classeId)
+            ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
+            ->where('eleves.actif', true)
+            ->pluck('id')
+            ->toArray();
+
+        // Créer un tableau des notes saisies indexé par eleve_id
+        $notesSaisies = [];
+        foreach ($request->notes as $noteData) {
+            if (!empty($noteData['note']) || $noteData['note'] === '0' || $noteData['note'] === 0) {
+                $notesSaisies[$noteData['eleve_id']] = [
+                    'note' => floatval($noteData['note']),
+                    'coefficient' => intval($noteData['coefficient'])
+                ];
+            }
+        }
+
         DB::beginTransaction();
         try {
-            foreach ($request->notes as $noteData) {
+            // Traiter tous les élèves de la classe
+            foreach ($tousLesEleves as $eleveId) {
                 // Vérifier si un test existe déjà
-                $testExistant = TestMensuel::where('eleve_id', $noteData['eleve_id'])
+                $testExistant = TestMensuel::where('eleve_id', $eleveId)
                     ->where('matiere_id', $matiereId)
                     ->where('mois', $mois)
                     ->where('annee', $annee)
                     ->first();
 
+                // Déterminer la note et le coefficient
+                if (isset($notesSaisies[$eleveId])) {
+                    // L'élève a une note saisie
+                    $note = $notesSaisies[$eleveId]['note'];
+                    $coefficient = $notesSaisies[$eleveId]['coefficient'];
+                } else {
+                    // L'élève n'a pas de note, attribuer 0.00
+                    $note = 0.00;
+                    // Utiliser le coefficient par défaut (1) ou celui de la matière
+                    $matiere = \App\Models\Matiere::find($matiereId);
+                    $coefficient = $matiere ? $matiere->coefficient : 1;
+                }
+
                 if ($testExistant) {
                     // Mettre à jour le test existant
                     $testExistant->update([
                         'enseignant_id' => $enseignantId,
-                        'note' => $noteData['note'],
-                        'coefficient' => $noteData['coefficient']
+                        'note' => $note,
+                        'coefficient' => $coefficient
                     ]);
                 } else {
                     // Créer un nouveau test
                     TestMensuel::create([
-                        'eleve_id' => $noteData['eleve_id'],
+                        'eleve_id' => $eleveId,
                         'classe_id' => $classeId,
                         'matiere_id' => $matiereId,
                         'enseignant_id' => $enseignantId,
                         'mois' => $mois,
                         'annee' => $annee,
-                        'note' => $noteData['note'],
-                        'coefficient' => $noteData['coefficient'],
+                        'note' => $note,
+                        'coefficient' => $coefficient,
                         'created_by' => $createdBy
                     ]);
                 }
@@ -1416,16 +1508,18 @@ class NoteController extends Controller
         // Mettre à jour l'effectif actuel de la classe
         $classe->updateEffectifActuel();
 
-        // Calculer les moyennes et rangs
+        // Calculer les moyennes et rangs - inclure tous les élèves même sans note
         $resultats = [];
         foreach ($eleves as $eleve) {
             $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
-            if ($moyenne !== null) {
-                $resultats[] = [
-                    'eleve' => $eleve,
-                    'moyenne' => $moyenne
-                ];
+            // Si l'élève n'a pas de note, lui attribuer 0.00
+            if ($moyenne === null) {
+                $moyenne = 0.00;
             }
+            $resultats[] = [
+                'eleve' => $eleve,
+                'moyenne' => $moyenne
+            ];
         }
 
         // Trier par moyenne décroissante et calculer les rangs
@@ -1493,16 +1587,18 @@ class NoteController extends Controller
         // Mettre à jour l'effectif actuel de la classe
         $classe->updateEffectifActuel();
 
-        // Calculer les moyennes et rangs
+        // Calculer les moyennes et rangs - inclure tous les élèves même sans note
         $resultats = [];
         foreach ($eleves as $eleve) {
             $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
-            if ($moyenne !== null) {
-                $resultats[] = [
-                    'eleve' => $eleve,
-                    'moyenne' => $moyenne
-                ];
+            // Si l'élève n'a pas de note, lui attribuer 0.00
+            if ($moyenne === null) {
+                $moyenne = 0.00;
             }
+            $resultats[] = [
+                'eleve' => $eleve,
+                'moyenne' => $moyenne
+            ];
         }
 
         // Trier par moyenne décroissante et calculer les rangs
@@ -1705,14 +1801,14 @@ class NoteController extends Controller
         // Récupérer la matière
         $matiere = Matiere::findOrFail($matiereId);
         
-        // Récupérer les élèves de la classe pour l'année scolaire active
+        // Récupérer les élèves de la classe pour l'année scolaire active, triés par prénom puis nom
         $eleves = Eleve::where('eleves.classe_id', $classeId)
             ->where('eleves.annee_scolaire_id', $anneeScolaireActive->id)
             ->where('eleves.actif', true)
             ->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
             ->select('eleves.*')
-            ->orderBy('utilisateurs.nom', 'asc')
             ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
             ->with('utilisateur')
             ->get();
         
@@ -1778,11 +1874,15 @@ class NoteController extends Controller
             ];
         }
         
+        // Diviser les élèves en groupes de 30 pour la pagination
+        $elevesParPage = collect($elevesAvecNotes)->chunk(30);
+        
         return view('notes.fiche-notes', compact(
             'classe',
             'enseignant',
             'matiere',
             'elevesAvecNotes',
+            'elevesParPage',
             'anneeScolaireActive',
             'etablissement',
             'moisSelectionnes',
