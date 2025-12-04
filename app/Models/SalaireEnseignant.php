@@ -136,11 +136,11 @@ class SalaireEnseignant extends Model
     /**
      * Marquer comme payé
      */
-    public function marquerCommePaye()
+    public function marquerCommePaye($datePaiement = null)
     {
         $this->update([
             'statut' => 'payé',
-            'date_paiement' => now()->toDateString(),
+            'date_paiement' => $datePaiement ? $datePaiement : now()->toDateString(),
             'paye_par' => auth()->id()
         ]);
     }

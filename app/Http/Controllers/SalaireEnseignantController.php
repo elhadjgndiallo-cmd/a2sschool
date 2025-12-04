@@ -197,10 +197,10 @@ class SalaireEnseignantController extends Controller
 
         DB::beginTransaction();
         try {
-            // Marquer le salaire comme payé
-            $salaire->marquerCommePaye();
+            // Marquer le salaire comme payé avec la date du formulaire
+            $salaire->marquerCommePaye($request->date_paiement);
 
-            // Créer une dépense correspondante
+            // Créer une dépense correspondante avec la même date de paiement
             Depense::create([
                 'libelle' => 'Salaire ' . $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom . ' - ' . $salaire->periode_formatee,
                 'montant' => $salaire->salaire_net,
