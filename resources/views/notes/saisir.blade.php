@@ -149,9 +149,13 @@
                             <th width="10%">MATRICULE</th>
                             <th width="15%">PRENOMS</th>
                             <th width="15%">NOM</th>
-                            <th width="20%">MATIERE</th>
+                            <th width="15%">MATIERE</th>
                             <th width="10%">COEFFICIENT</th>
-                            <th width="15%">NOTE</th>
+                            @if(!$classe->isPrimaire())
+                            <th width="12%">NOTE COURS</th>
+                            @endif
+                            <th width="12%">NOTE COMPO</th>
+                            <th width="13%">NOTE FINALE</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -188,16 +192,37 @@
                                        placeholder="Coeff."
                                        style="width: 80px;">
                             </td>
+                            @if(!$classe->isPrimaire())
                             <td>
                                 <input type="number" 
-                                       class="form-control note-input" 
+                                       class="form-control note-cours-input" 
+                                       name="notes[{{ $index }}][note_cours]" 
+                                       min="0" 
+                                       max="{{ $classe->note_max }}" 
+                                       step="0.25"
+                                       placeholder="0.00"
+                                       data-index="{{ $index }}">
+                            </td>
+                            @else
+                            <input type="hidden" name="notes[{{ $index }}][note_cours]" value="">
+                            @endif
+                            <td>
+                                <input type="number" 
+                                       class="form-control note-composition-input" 
                                        name="notes[{{ $index }}][note_composition]" 
                                        min="0" 
                                        max="{{ $classe->note_max }}" 
                                        step="0.25"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
-                                <input type="hidden" name="notes[{{ $index }}][note_cours]" value="">
+                            </td>
+                            <td>
+                                <input type="number" 
+                                       class="form-control note-finale-display" 
+                                       readonly
+                                       placeholder="Calculée"
+                                       data-index="{{ $index }}"
+                                       style="background-color: #f8f9fa;">
                             </td>
                         </tr>
                         @endforeach
@@ -388,27 +413,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fonction pour calculer la note finale selon la formule
     function calculerNoteFinale(noteCours, noteComposition) {
-        if (noteCours === null && noteComposition === null) {
+        const isPrimaire = {{ $classe->isPrimaire() ? 'true' : 'false' }};
+        
+        if (noteComposition === null) {
             return null;
         }
         
+        // Pour primaire : note finale = note composition
+        if (isPrimaire) {
+            return noteComposition;
+        }
+        
+        // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
         if (noteCours === null) {
             return noteComposition;
-        } else if (noteComposition === null) {
-            return noteCours;
         } else {
-            // Formule: (NotesCours + (NotesComposition * 2) / 3)
             return (noteCours + (noteComposition * 2)) / 3;
         }
     }
 
     // Calcul automatique de la note finale
     function calculerNoteFinaleLigne(index) {
+        const isPrimaire = {{ $classe->isPrimaire() ? 'true' : 'false' }};
         const noteCoursInput = document.querySelector(`.note-cours-input[data-index="${index}"]`);
         const noteCompositionInput = document.querySelector(`.note-composition-input[data-index="${index}"]`);
         const noteFinaleDisplay = document.querySelector(`.note-finale-display[data-index="${index}"]`);
         
-        const noteCours = noteCoursInput.value ? parseFloat(noteCoursInput.value) : null;
+        const noteCours = (noteCoursInput && noteCoursInput.value) ? parseFloat(noteCoursInput.value) : null;
         const noteComposition = noteCompositionInput.value ? parseFloat(noteCompositionInput.value) : null;
         
         const noteFinale = calculerNoteFinale(noteCours, noteComposition);

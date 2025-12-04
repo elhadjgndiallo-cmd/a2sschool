@@ -102,7 +102,7 @@
                     <div class="col-md-6 text-end">
                         <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
                             <h5 class="mb-0" style="font-weight: 800; font-size: 0.95rem; margin-bottom: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.2;">Rang: {{ $rang }}/{{ $eleve->classe->eleves->count() }}</h5>
-                            <p class="mb-0" style="font-size: 0.95rem; font-weight: 600; line-height: 1.2;">Moyenne: <strong>{{ number_format($moyenneGenerale, 2) }}/20</strong></p>
+                            <p class="mb-0" style="font-size: 0.95rem; font-weight: 600; line-height: 1.2;">Moyenne: <strong>{{ number_format($moyenneGenerale, 2) }}/{{ $eleve->classe->note_max }}</strong></p>
                         </div>
                     </div>
                 </div>
@@ -114,11 +114,15 @@
                             <tr>
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; font-size: 0.85rem; padding: 5px 4px;">Matière</th>
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Coef.</th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Cours</th>
+                                @endif
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Comp.</th>
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Finale</th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Points</th>
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Appréciation</th>
+                                @endif
+                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Mention</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -134,37 +138,31 @@
                                 <tr style="border-bottom: 1px solid #dee2e6;">
                                     <td style="font-weight: 600; padding: 5px 4px; background-color: #f8f9fa; font-size: 0.8rem;"><strong>{{ $data['matiere']->nom }}</strong></td>
                                     <td class="text-center" style="padding: 5px 4px; font-weight: 600; background-color: #e9ecef; font-size: 0.8rem;">{{ $data['coefficient'] }}</td>
+                                    @if(!$eleve->classe->isPrimaire())
                                     <td class="text-center notes-cell" style="padding: 5px 4px; font-size: 0.85rem;">
                                         <span class="note-value" style="font-size: 0.85rem; font-weight: 600; color: #2c3e50;">
-                                            {{ $noteCours > 0 ? number_format($noteCours, 2) : '-' }}/20
+                                            {{ $noteCours > 0 ? number_format($noteCours, 2) : '-' }}/{{ $eleve->classe->note_max }}
                                         </span>
                                     </td>
+                                    @endif
                                     <td class="text-center notes-cell" style="padding: 5px 4px; font-size: 0.85rem;">
                                         <span class="note-value" style="font-size: 0.85rem; font-weight: 600; color: #2c3e50;">
-                                            {{ $noteComposition > 0 ? number_format($noteComposition, 2) : '-' }}/20
+                                            {{ $noteComposition > 0 ? number_format($noteComposition, 2) : '-' }}/{{ $eleve->classe->note_max }}
                                         </span>
                                     </td>
                                     <td class="text-center notes-cell" style="padding: 5px 4px; font-size: 0.85rem;">
                                         <span class="note-value" style="font-size: 0.85rem; font-weight: 700; color: #2c3e50;">
-                                            {{ number_format($noteFinale, 2) }}/20
+                                            {{ number_format($noteFinale, 2) }}/{{ $eleve->classe->note_max }}
                                         </span>
                                     </td>
+                                    @if(!$eleve->classe->isPrimaire())
                                     <td class="text-center" style="padding: 5px 4px; font-weight: 600; background-color: #e9ecef; font-size: 0.8rem;">{{ $data['points'] }}</td>
+                                    @endif
                                     <td style="padding: 5px 4px; font-size: 0.75rem;">
                                         @php
                                             $appreciation = $eleve->classe->getAppreciation($noteFinale);
                                         @endphp
-                                        @if($noteFinale >= 16)
-                                            <span class="badge bg-success" style="font-size: 0.7rem; padding: 2px 6px;">Excellent</span>
-                                        @elseif($noteFinale >= 14)
-                                            <span class="badge bg-info" style="font-size: 0.7rem; padding: 2px 6px;">Très bien</span>
-                                        @elseif($noteFinale >= 12)
-                                            <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 2px 6px;">Bien</span>
-                                        @elseif($noteFinale >= 10)
-                                            <span class="badge bg-secondary" style="font-size: 0.7rem; padding: 2px 6px;">Assez bien</span>
-                                        @else
-                                            <span class="badge bg-danger" style="font-size: 0.7rem; padding: 2px 6px;">Insuffisant</span>
-                                        @endif
+                                        <span class="badge bg-{{ $appreciation['color'] }}" style="font-size: 0.7rem; padding: 2px 6px;">{{ $appreciation['label'] }}</span>
                                     </td>
                                 </tr>
                             @endforeach
@@ -173,14 +171,21 @@
                             <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #2c3e50;">
                                 <th style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #2c3e50;">MOYENNE GÉNÉRALE</th>
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #2c3e50;">{{ $totalCoeff }}</th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #6c757d;">-</th>
+                                @endif
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #6c757d;">-</th>
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px;">
-                                    <span class="badge {{ $moyenneGenerale >= 10 ? 'bg-success' : 'bg-danger' }}" style="font-size: 0.85rem; padding: 4px 10px; font-weight: 700;">
-                                        {{ number_format($moyenneGenerale, 2) }}/20
+                                    @php
+                                        $appreciationGeneraleBadge = $eleve->classe->getAppreciation($moyenneGenerale);
+                                    @endphp
+                                    <span class="badge bg-{{ $appreciationGeneraleBadge['color'] }}" style="font-size: 0.85rem; padding: 4px 10px; font-weight: 700;">
+                                        {{ number_format($moyenneGenerale, 2) }}/{{ $eleve->classe->note_max }}
                                     </span>
                                 </th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #2c3e50;">{{ round($totalPoints, 2) }}</th>
+                                @endif
                                 <th style="font-weight: 700; padding: 6px 4px;">
                                     @php $moy = $moyenneGenerale; @endphp
                                     @if($moy >= 16)
@@ -207,19 +212,8 @@
                     <div class="col-md-6" style="padding-right: 5px; padding-left: 0; width: 50%; flex: 0 0 50%; display: inline-block; vertical-align: top;">
                         <div style="border: 1px solid #2c3e50; border-radius: 2px; padding: 0px 2px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); height: 50px; overflow: hidden;">
                             <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 0px; border-bottom: 1px solid #2c3e50; padding-bottom: 0px; font-size: 0.45rem; line-height: 0.8;"><strong>Observations:</strong></h6>
-                            <div style="min-height: 6px; font-style: italic; color: #495057; line-height: 0.8; font-size: 0.42rem; height: 38px; overflow: hidden;">
-                                @php $moy = $moyenneGenerale; @endphp
-                                @if($moy >= 16)
-                                    <span style="color: #28a745; font-weight: 600;">Excellent travail. Félicitations pour ces très bons résultats.</span>
-                                @elseif($moy >= 14)
-                                    <span style="color: #17a2b8; font-weight: 600;">Bon travail. Continuez dans cette voie.</span>
-                                @elseif($moy >= 12)
-                                    <span style="color: #ffc107; font-weight: 600;">Travail satisfaisant. Peut mieux faire.</span>
-                                @elseif($moy >= 10)
-                                    <span style="color: #6c757d; font-weight: 600;">Résultats passables. Des efforts sont nécessaires.</span>
-                                @else
-                                    <span style="color: #dc3545; font-weight: 600;">Résultats insuffisants. Un travail sérieux s'impose.</span>
-                                @endif
+                            <div style="min-height: 6px; line-height: 0.8; font-size: 0.42rem; height: 38px; overflow: hidden;">
+                                &nbsp;
                             </div>
                         </div>
                     </div>
@@ -286,7 +280,7 @@
                                 <th>Note Composition</th>
                                 <th>Note Finale</th>
                                 <th>Points</th>
-                                <th>Appréciation</th>
+                                <th>Mention</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -297,14 +291,14 @@
                                 <td class="text-center">{{ $data['coefficient'] }}</td>
                                 <td class="text-center">
                                     @if($data['notes']->where('note_cours', '!=', null)->count() > 0)
-                                        {{ number_format($data['notes']->where('note_cours', '!=', null)->avg('note_cours'), 2) }}/20
+                                        {{ number_format($data['notes']->where('note_cours', '!=', null)->avg('note_cours'), 2) }}/{{ $eleve->classe->note_max }}
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($data['notes']->where('note_composition', '!=', null)->count() > 0)
-                                        {{ number_format($data['notes']->where('note_composition', '!=', null)->avg('note_composition'), 2) }}/20
+                                        {{ number_format($data['notes']->where('note_composition', '!=', null)->avg('note_composition'), 2) }}/{{ $eleve->classe->note_max }}
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
@@ -372,18 +366,20 @@
                                 </th>
                                 <th>
                                     <span class="text-{{ $appreciationGenerale['color'] }}">
-                                        @if($appreciationGenerale['label'] == 'Excellent')
+                                        @if($appreciationGenerale['label'] == 'Excellent' || $appreciationGenerale['label'] == 'Très bien')
                                             <i class="fas fa-star me-1"></i>
-                                        @elseif($appreciationGenerale['label'] == 'Très bien')
-                                            <i class="fas fa-thumbs-up me-1"></i>
                                         @elseif($appreciationGenerale['label'] == 'Bien')
-                                            <i class="fas fa-check me-1"></i>
+                                            <i class="fas fa-thumbs-up me-1"></i>
                                         @elseif($appreciationGenerale['label'] == 'Assez bien')
-                                            <i class="fas fa-exclamation me-1"></i>
+                                            <i class="fas fa-check me-1"></i>
                                         @elseif($appreciationGenerale['label'] == 'Passable')
+                                            <i class="fas fa-exclamation me-1"></i>
+                                        @elseif($appreciationGenerale['label'] == 'Insuffisant')
                                             <i class="fas fa-minus me-1"></i>
-                                        @else
+                                        @elseif($appreciationGenerale['label'] == 'Mal' || $appreciationGenerale['label'] == 'Médiocre')
                                             <i class="fas fa-times me-1"></i>
+                                        @else
+                                            <i class="fas fa-question me-1"></i>
                                         @endif
                                         {{ $appreciationGenerale['label'] }}
                                     </span>

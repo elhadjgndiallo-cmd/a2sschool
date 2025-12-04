@@ -330,8 +330,8 @@
 <script>
     // Calcul automatique de la note finale
     function calculerNoteFinale() {
-        const noteCours = parseFloat(document.getElementById('note_cours').value) || 2.0;
-        const noteComposition = parseFloat(document.getElementById('note_composition').value) || 2.0;
+        const noteCours = parseFloat(document.getElementById('note_cours').value) || 0.0;
+        const noteComposition = parseFloat(document.getElementById('note_composition').value) || 0.0;
         
         // Formule : (Note Cours + (Note Composition × 2)) ÷ 3
         const noteFinale = (noteCours + (noteComposition * 2)) / 3;

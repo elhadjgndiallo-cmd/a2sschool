@@ -104,7 +104,7 @@
                         <th width="20%">Prénom</th>
                         <th width="12%">Moyenne</th>
                         <th width="8%">Rang</th>
-                        <th width="15%">Appréciation</th>
+                        <th width="15%">Mention</th>
                         <th width="13%">Actions</th>
                     </tr>
                 </thead>
@@ -214,10 +214,22 @@
         @endphp
         
         <div class="row">
-            @foreach(['excellent', 'tres_bien', 'bien', 'assez_bien'] as $key)
+            @php
+                // Déterminer les clés selon le niveau
+                if ($classe->isPrimaire()) {
+                    $keys = ['tres_bien', 'bien', 'assez_bien', 'passable'];
+                } else {
+                    $keys = ['excellent', 'tres_bien', 'bien', 'assez_bien'];
+                }
+            @endphp
+            @foreach($keys as $key)
                 @php
-                    $seuil = $seuils[$key];
-                    $count = $statistiques->whereBetween('moyenne', [$seuil['min'], $seuil['max']])->count();
+                    if (isset($seuils[$key])) {
+                        $seuil = $seuils[$key];
+                        $count = $statistiques->whereBetween('moyenne', [$seuil['min'], $seuil['max']])->count();
+                    } else {
+                        continue;
+                    }
                 @endphp
                 <div class="col-md-3 text-center">
                     <div class="border rounded p-3">
@@ -230,26 +242,62 @@
         
         <div class="row mt-3">
             @php
-                $seuilPassable = $seuils['passable'];
-                $seuilInsuffisant = $seuils['insuffisant'];
-                $countPassable = $statistiques->whereBetween('moyenne', [$seuilPassable['min'], $seuilPassable['max']])->count();
-                $countInsuffisant = $statistiques->whereBetween('moyenne', [$seuilInsuffisant['min'], $seuilInsuffisant['max']])->count();
+                if (isset($seuils['passable'])) {
+                    $seuilPassable = $seuils['passable'];
+                    $countPassable = $statistiques->whereBetween('moyenne', [$seuilPassable['min'], $seuilPassable['max']])->count();
+                } else {
+                    $countPassable = 0;
+                }
+                
+                if (isset($seuils['insuffisant'])) {
+                    $seuilInsuffisant = $seuils['insuffisant'];
+                    $countInsuffisant = $statistiques->whereBetween('moyenne', [$seuilInsuffisant['min'], $seuilInsuffisant['max']])->count();
+                } else {
+                    $countInsuffisant = 0;
+                }
+                
+                // Pour primaire, ajouter les autres catégories
+                if ($classe->isPrimaire()) {
+                    $countMal = isset($seuils['mal']) ? $statistiques->whereBetween('moyenne', [$seuils['mal']['min'], $seuils['mal']['max']])->count() : 0;
+                    $countMediocre = isset($seuils['mediocre']) ? $statistiques->whereBetween('moyenne', [$seuils['mediocre']['min'], $seuils['mediocre']['max']])->count() : 0;
+                }
+                
                 $countAdmis = $statistiques->where('moyenne', '>=', $classe->seuil_reussite)->count();
             @endphp
             
-            <div class="col-md-4 text-center">
+            @if(isset($seuilPassable))
+            <div class="col-md-{{ $classe->isPrimaire() ? '3' : '4' }} text-center">
                 <div class="border rounded p-3">
                     <h4 class="text-{{ $seuilPassable['color'] }}">{{ $countPassable }}</h4>
                     <small>{{ $seuilPassable['label'] }} ({{ $seuilPassable['min'] }}-{{ $seuilPassable['max'] }})</small>
                 </div>
             </div>
-            <div class="col-md-4 text-center">
+            @endif
+            @if(isset($seuilInsuffisant))
+            <div class="col-md-{{ $classe->isPrimaire() ? '3' : '4' }} text-center">
                 <div class="border rounded p-3">
                     <h4 class="text-{{ $seuilInsuffisant['color'] }}">{{ $countInsuffisant }}</h4>
                     <small>{{ $seuilInsuffisant['label'] }} ({{ $seuilInsuffisant['min'] }}-{{ $seuilInsuffisant['max'] }})</small>
                 </div>
             </div>
-            <div class="col-md-4 text-center">
+            @endif
+            @if($classe->isPrimaire() && isset($seuils['mal']))
+            <div class="col-md-3 text-center">
+                <div class="border rounded p-3">
+                    <h4 class="text-{{ $seuils['mal']['color'] }}">{{ $countMal }}</h4>
+                    <small>{{ $seuils['mal']['label'] }} ({{ $seuils['mal']['min'] }}-{{ $seuils['mal']['max'] }})</small>
+                </div>
+            </div>
+            @endif
+            @if($classe->isPrimaire() && isset($seuils['mediocre']))
+            <div class="col-md-3 text-center">
+                <div class="border rounded p-3">
+                    <h4 class="text-{{ $seuils['mediocre']['color'] }}">{{ $countMediocre }}</h4>
+                    <small>{{ $seuils['mediocre']['label'] }} ({{ $seuils['mediocre']['min'] }}-{{ $seuils['mediocre']['max'] }})</small>
+                </div>
+            </div>
+            @endif
+            <div class="col-md-{{ $classe->isPrimaire() ? '3' : '4' }} text-center">
                 <div class="border rounded p-3">
                     <h4 class="text-success">{{ $countAdmis }}</h4>
                     <small>Admis (≥{{ $classe->seuil_reussite }})</small>

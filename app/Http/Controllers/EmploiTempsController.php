@@ -81,10 +81,46 @@ class EmploiTempsController extends Controller
             ->orderBy('heure_debut')
             ->get();
             
+        // Pour le primaire, inclure samedi, sinon seulement lundi-vendredi
         $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-        $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
         
-        return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'anneeScolaireActive'));
+        // Vérifier si la classe est primaire (vérification plus robuste)
+        $niveauClasse = strtolower(trim($classe->niveau ?? ''));
+        $isPrimaire = $classe->isPrimaire() || $niveauClasse === 'primaire';
+        
+        // Debug: logger pour vérifier
+        \Log::info('EmploiTemps Show - Classe ID: ' . $classe->id . ', Niveau: ' . $classe->niveau . ', isPrimaire: ' . ($isPrimaire ? 'Oui' : 'Non'));
+        
+        if ($isPrimaire) {
+            // Heures de début pour le primaire selon les horaires fournis
+            $heures = [
+                '08:00',  // 8h - 8h30
+                '08:30',  // 8h30 - 9h00
+                '09:00',  // 9h00 - 9h30
+                '09:30',  // 9h30 - 10h00
+                '10:00',  // 10h00-10h15 (récréation)
+                '10:15',  // 10h15-10h45
+                '10:45',  // 10h45-11h15
+                '11:15',  // 11h15-11h45
+                '11:45',  // 11h45-12h15
+                '12:30',  // 12h30-13h00
+                '13:00',  // 13h00-13h30
+                '13:30',  // 13h30-14h00
+                '15:00'   // 15h00-16h00
+            ];
+        } else {
+            $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
+        }
+        
+        // Organiser les emplois par jour
+        $emploisParJour = [];
+        foreach ($jours as $jour) {
+            $emploisParJour[$jour] = $emploisTemps->filter(function($emploi) use ($jour) {
+                return $emploi->jour_semaine === $jour;
+            })->sortBy('heure_debut')->values();
+        }
+        
+        return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive'));
     }
 
     /**
@@ -416,4 +452,5 @@ class EmploiTempsController extends Controller
         return redirect()->route('emplois-temps.index')
             ->with('success', 'Tous les emplois du temps ont été supprimés');
     }
+
 }

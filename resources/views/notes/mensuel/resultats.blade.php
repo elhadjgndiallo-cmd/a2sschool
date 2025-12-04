@@ -91,7 +91,7 @@
                         <th scope="col">Nom</th>
                         <th scope="col">Prénom</th>
                         <th scope="col" class="text-center">Moyenne</th>
-                        <th scope="col" class="text-center">Appréciation</th>
+                        <th scope="col" class="text-center">Mention</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -136,11 +136,11 @@
                         <td>{{ $eleve->nom }}</td>
                         <td>{{ $eleve->prenom }}</td>
                         <td class="text-center">
-                            <span class="badge bg-{{ $moyenne >= 10 ? 'success' : ($moyenne >= 5 ? 'warning' : 'danger') }} fs-6">
+                            <span class="badge bg-{{ $moyenne >= $classe->seuil_reussite ? 'success' : ($moyenne >= ($classe->seuil_reussite / 2) ? 'warning' : 'danger') }} fs-6">
                                 @if($moyenne == 0.00)
-                                    00/20
+                                    00/{{ $classe->note_max }}
                                 @else
-                                    {{ number_format($moyenne, 2) }}/20
+                                    {{ number_format($moyenne, 2) }}/{{ $classe->note_max }}
                                 @endif
                             </span>
                         </td>
@@ -198,7 +198,7 @@
                         <td>{{ $test->matiere->nom }}</td>
                         <td class="text-center">
                             <span class="badge bg-{{ $test->note >= 10 ? 'success' : ($test->note >= 5 ? 'warning' : 'danger') }}">
-                                {{ number_format($test->note, 2) }}/20
+                                {{ number_format($test->note, 2) }}/{{ $classe->note_max }}
                             </span>
                         </td>
                         <td class="text-center">{{ $test->coefficient }}</td>

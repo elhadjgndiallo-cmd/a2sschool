@@ -116,7 +116,7 @@
                             <th class="text-center">Note Composition</th>
                             <th class="text-center">Note Finale</th>
                             <th class="text-center">Points</th>
-                            <th class="text-center">Appréciation</th>
+                            <th class="text-center">Mention</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>

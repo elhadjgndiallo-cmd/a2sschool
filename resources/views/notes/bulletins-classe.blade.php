@@ -83,13 +83,13 @@
                             <div class="col-md-6">
                                 <h5 style="font-size: 1.2rem; margin-bottom: 4px; font-weight: 800; color: #2c3e50; line-height: 1.2;"><strong>{{ $bulletin['eleve']->nom_complet }}</strong></h5>
                                 <p class="mb-1" style="font-size: 1rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Numéro:</strong> <span style="font-weight: 500;">{{ $bulletin['eleve']->numero_etudiant }}</span></p>
-                                <p class="mb-1" style="font-size: 1rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Date de naissance:</strong> <span style="font-weight: 500;">{{ $bulletin['eleve']->date_naissance ? $bulletin['eleve']->date_naissance->format('d/m/Y') : 'Non renseignée' }}</span></p>
+                                <p class="mb-1" style="font-size: 1rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Date de naissance:</strong> <span style="font-weight: 500;">{{ $bulletin['eleve']->utilisateur->date_naissance ? \Carbon\Carbon::parse($bulletin['eleve']->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span></p>
                             </div>
                             <div class="col-md-6 text-end">
                                 <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
                                     <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 6px 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
                                         <h5 class="mb-0" style="font-weight: 800; font-size: 1.05rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.1;">Rang: {{ $bulletin['rang'] }}/{{ count($bulletins) }}</h5>
-                                        <p class="mb-0" style="font-size: 1.05rem; font-weight: 600; line-height: 1.1;">Moyenne: <strong>{{ number_format($bulletin['moyenne_generale'] ?? 0, 2) }}/20</strong></p>
+                                        <p class="mb-0" style="font-size: 1.05rem; font-weight: 600; line-height: 1.1;">Moyenne: <strong>{{ number_format($bulletin['moyenne_generale'] ?? 0, 2) }}/{{ $classe->note_max }}</strong></p>
                                     </div>
                                     <!-- QR Code de vérification -->
                                     <div style="background: white; padding: 4px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -109,11 +109,15 @@
                                     <tr>
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; font-size: 1rem; padding: 6px 5px;">Matière</th>
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Coef.</th>
+                                        @if(!$classe->isPrimaire())
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Cours</th>
+                                        @endif
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Comp.</th>
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Finale</th>
+                                        @if(!$classe->isPrimaire())
                                         <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Points</th>
-                                        <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Appréciation</th>
+                                        @endif
+                                        <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 1rem; padding: 6px 5px;">Mention</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -126,34 +130,31 @@
                                         <tr style="border-bottom: 1px solid #dee2e6;">
                                             <td style="font-weight: 600; padding: 6px 5px; background-color: #f8f9fa; font-size: 0.95rem;"><strong>{{ $matiere }}</strong></td>
                                             <td class="text-center" style="padding: 6px 5px; font-weight: 600; background-color: #e9ecef; font-size: 0.95rem;">{{ $data['coefficient'] }}</td>
+                                            @if(!$classe->isPrimaire())
                                             <td class="text-center notes-cell" style="padding: 6px 5px; font-size: 1rem;">
                                                 <span class="note-value" style="font-size: 1rem; font-weight: 600; color: #2c3e50;">
-                                                    {{ $data['note_cours'] > 0 ? number_format($data['note_cours'], 2) : '-' }}/20
+                                                    {{ $data['note_cours'] > 0 ? number_format($data['note_cours'], 2) : '-' }}/{{ $classe->note_max }}
                                                 </span>
                                             </td>
+                                            @endif
                                             <td class="text-center notes-cell" style="padding: 6px 5px; font-size: 1rem;">
                                                 <span class="note-value" style="font-size: 1rem; font-weight: 600; color: #2c3e50;">
-                                                    {{ $data['note_composition'] > 0 ? number_format($data['note_composition'], 2) : '-' }}/20
+                                                    {{ $data['note_composition'] > 0 ? number_format($data['note_composition'], 2) : '-' }}/{{ $classe->note_max }}
                                                 </span>
                                             </td>
                                             <td class="text-center notes-cell" style="padding: 6px 5px; font-size: 1rem;">
                                                 <span class="note-value" style="font-size: 1rem; font-weight: 700; color: #2c3e50;">
-                                                    {{ number_format($data['note_finale'], 2) }}/20
+                                                    {{ number_format($data['note_finale'], 2) }}/{{ $classe->note_max }}
                                                 </span>
                                             </td>
+                                            @if(!$classe->isPrimaire())
                                             <td class="text-center" style="padding: 6px 5px; font-weight: 600; background-color: #e9ecef; font-size: 0.95rem;">{{ $data['points'] }}</td>
+                                            @endif
                                             <td style="padding: 6px 5px; font-size: 0.85rem;">
-                                                @if($data['note_finale'] >= 16)
-                                                <span class="badge bg-success" style="font-size: 0.65rem; padding: 2px 4px;">Excellent</span>
-                                            @elseif($data['note_finale'] >= 14)
-                                                <span class="badge bg-info" style="font-size: 0.65rem; padding: 2px 4px;">Très bien</span>
-                                            @elseif($data['note_finale'] >= 12)
-                                                <span class="badge bg-warning text-dark" style="font-size: 0.65rem; padding: 2px 4px;">Bien</span>
-                                            @elseif($data['note_finale'] >= 10)
-                                                <span class="badge bg-secondary" style="font-size: 0.65rem; padding: 2px 4px;">Assez bien</span>
-                                            @else
-                                                <span class="badge bg-danger" style="font-size: 0.65rem; padding: 2px 4px;">Insuffisant</span>
-                                                @endif
+                                                @php
+                                                    $appreciationNote = $classe->getAppreciation($data['note_finale']);
+                                                @endphp
+                                                <span class="badge bg-{{ $appreciationNote['color'] }}" style="font-size: 0.65rem; padding: 2px 4px;">{{ $appreciationNote['label'] }}</span>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -162,27 +163,27 @@
                                     <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #2c3e50;">
                                         <th style="font-weight: 700; padding: 8px 5px; font-size: 1.05rem; color: #2c3e50;">MOYENNE GÉNÉRALE</th>
                                         <th class="text-center" style="font-weight: 700; padding: 8px 5px; font-size: 1.05rem; color: #2c3e50;">{{ $totalCoeff }}</th>
+                                        @if(!$classe->isPrimaire())
                                         <th class="text-center" style="font-weight: 700; padding: 8px 5px; font-size: 1.05rem; color: #6c757d;">-</th>
+                                        @endif
                                         <th class="text-center" style="font-weight: 700; padding: 8px 5px; font-size: 1.05rem; color: #6c757d;">-</th>
                                         <th class="text-center" style="font-weight: 700; padding: 8px 5px;">
-                                            <span class="badge {{ ($bulletin['moyenne_generale'] ?? 0) >= 10 ? 'bg-success' : 'bg-danger' }}" style="font-size: 1rem; padding: 5px 12px; font-weight: 700;">
-                                                {{ number_format($bulletin['moyenne_generale'] ?? 0, 2) }}/20
+                                            @php 
+                                                $moy = $bulletin['moyenne_generale'] ?? 0;
+                                                $appreciationGeneraleBadge = $classe->getAppreciation($moy);
+                                            @endphp
+                                            <span class="badge bg-{{ $appreciationGeneraleBadge['color'] }}" style="font-size: 1rem; padding: 5px 12px; font-weight: 700;">
+                                                {{ number_format($moy, 2) }}/{{ $classe->note_max }}
                                             </span>
                                         </th>
+                                        @if(!$classe->isPrimaire())
                                         <th class="text-center" style="font-weight: 700; padding: 8px 5px; font-size: 1.05rem; color: #2c3e50;">{{ round($totalPoints, 2) }}</th>
+                                        @endif
                                         <th style="font-weight: 700; padding: 8px 5px;">
-                                            @php $moy = $bulletin['moyenne_generale'] ?? 0; @endphp
-                                            @if($moy >= 16)
-                                                <span class="badge bg-success" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">Excellent</span>
-                                            @elseif($moy >= 14)
-                                                <span class="badge bg-info" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">Très bien</span>
-                                            @elseif($moy >= 12)
-                                                <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">Bien</span>
-                                            @elseif($moy >= 10)
-                                                <span class="badge bg-secondary" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">Assez bien</span>
-                                            @else
-                                                <span class="badge bg-danger" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">Insuffisant</span>
-                                            @endif
+                                            @php 
+                                                $appreciationGenerale = $classe->getAppreciation($moy);
+                                            @endphp
+                                            <span class="badge bg-{{ $appreciationGenerale['color'] }}" style="font-size: 0.7rem; padding: 2px 5px; font-weight: 700;">{{ $appreciationGenerale['label'] }}</span>
                                         </th>
                                     </tr>
                                 </tfoot>
@@ -196,19 +197,8 @@
                             <div class="col-md-6" style="padding-right: 8px; padding-left: 0; width: 50%; flex: 0 0 50%; display: inline-block; vertical-align: top;">
                                 <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 4px 6px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 60px;">
                                     <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; font-size: 14px; line-height: 1.2;"><strong>Observations:</strong></h6>
-                                    <div style="font-style: italic; color: #495057; line-height: 1.3; font-size: 14px; padding-top: 2px;">
-                                        @php $moy = $bulletin['moyenne_generale'] ?? 0; @endphp
-                                        @if($moy >= 16)
-                                            <span style="color: #28a745; font-weight: 600;">Excellent travail. Félicitations pour ces très bons résultats.</span>
-                                        @elseif($moy >= 14)
-                                            <span style="color: #17a2b8; font-weight: 600;">Bon travail. Continuez dans cette voie.</span>
-                                        @elseif($moy >= 12)
-                                            <span style="color: #ffc107; font-weight: 600;">Travail satisfaisant. Peut mieux faire.</span>
-                                        @elseif($moy >= 10)
-                                            <span style="color: #6c757d; font-weight: 600;">Résultats passables. Des efforts sont nécessaires.</span>
-                                        @else
-                                            <span style="color: #dc3545; font-weight: 600;">Résultats insuffisants. Un travail sérieux s'impose.</span>
-                                        @endif
+                                    <div style="line-height: 1.3; font-size: 14px; padding-top: 2px; min-height: 50px;">
+                                        &nbsp;
                                     </div>
                                 </div>
                             </div>

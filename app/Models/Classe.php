@@ -105,14 +105,15 @@ class Classe extends Model
     public function getSeuilsAppreciationAttribute()
     {
         if ($this->isPrimaire()) {
-            // Seuils pour primaire (sur 10)
+            // Seuils pour primaire (sur 10) selon la nouvelle échelle
             return [
-                'excellent' => ['min' => 9, 'max' => 10, 'label' => 'Excellent', 'color' => 'success'],
-                'tres_bien' => ['min' => 8, 'max' => 8.99, 'label' => 'Très bien', 'color' => 'primary'],
-                'bien' => ['min' => 7, 'max' => 7.99, 'label' => 'Bien', 'color' => 'info'],
-                'assez_bien' => ['min' => 6, 'max' => 6.99, 'label' => 'Assez bien', 'color' => 'warning'],
-                'passable' => ['min' => 5, 'max' => 5.99, 'label' => 'Passable', 'color' => 'secondary'],
-                'insuffisant' => ['min' => 0, 'max' => 4.99, 'label' => 'Insuffisant', 'color' => 'danger']
+                'tres_bien' => ['min' => 9, 'max' => 10, 'label' => 'Très bien', 'color' => 'success'],
+                'bien' => ['min' => 7, 'max' => 8.99, 'label' => 'Bien', 'color' => 'primary'],
+                'assez_bien' => ['min' => 6, 'max' => 6.99, 'label' => 'Assez bien', 'color' => 'info'],
+                'passable' => ['min' => 5, 'max' => 5.99, 'label' => 'Passable', 'color' => 'warning'],
+                'insuffisant' => ['min' => 4, 'max' => 4.99, 'label' => 'Insuffisant', 'color' => 'secondary'],
+                'mal' => ['min' => 3, 'max' => 3.99, 'label' => 'Mal', 'color' => 'danger'],
+                'mediocre' => ['min' => 0, 'max' => 2.99, 'label' => 'Médiocre', 'color' => 'danger']
             ];
         } else {
             // Seuils pour secondaire (sur 20)
@@ -132,15 +133,32 @@ class Classe extends Model
      */
     public function getAppreciation($note)
     {
+        if ($note === null) {
+            return ['label' => 'Non noté', 'color' => 'secondary'];
+        }
+        
         $seuils = $this->seuils_appreciation;
         
-        foreach ($seuils as $key => $seuil) {
-            if ($note >= $seuil['min'] && $note <= $seuil['max']) {
-                return $seuil;
+        // Vérifier dans l'ordre décroissant pour les primaires (du plus haut au plus bas)
+        if ($this->isPrimaire()) {
+            // Pour primaire, vérifier du plus haut au plus bas
+            $order = ['tres_bien', 'bien', 'assez_bien', 'passable', 'insuffisant', 'mal', 'mediocre'];
+            foreach ($order as $key) {
+                if (isset($seuils[$key]) && $note >= $seuils[$key]['min'] && $note <= $seuils[$key]['max']) {
+                    return $seuils[$key];
+                }
+            }
+        } else {
+            // Pour secondaire, vérifier normalement
+            foreach ($seuils as $key => $seuil) {
+                if ($note >= $seuil['min'] && $note <= $seuil['max']) {
+                    return $seuil;
+                }
             }
         }
         
-        return $seuils['insuffisant']; // Par défaut
+        // Par défaut, retourner le dernier seuil (le plus bas)
+        return end($seuils);
     }
 
     /**

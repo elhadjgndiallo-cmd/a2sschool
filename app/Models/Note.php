@@ -70,14 +70,25 @@ class Note extends Model
 
     /**
      * Calculer la note finale selon la formule
-     * Note finale = (NOTE DE COURS + NOTES DE COMPO * 2) / 3
+     * Pour primaire : note finale = note composition
+     * Pour collège/lycée : Note finale = (NOTE DE COURS + NOTES DE COMPO * 2) / 3
      */
     public function calculerNoteFinale()
     {
-        if ($this->note_cours === null && $this->note_composition === null) {
+        if ($this->note_composition === null) {
             return null;
         }
 
+        // Récupérer la classe pour déterminer le niveau
+        $classe = $this->eleve->classe ?? null;
+        $isPrimaire = $classe ? $classe->isPrimaire() : false;
+
+        // Pour primaire : note finale = note composition
+        if ($isPrimaire) {
+            return $this->note_composition;
+        }
+
+        // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
         $noteCours = $this->note_cours ?? 0;
         $noteComposition = $this->note_composition ?? 0;
         

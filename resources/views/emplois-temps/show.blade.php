@@ -45,54 +45,67 @@
                         <table class="table table-bordered table-striped">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Heure</th>
+                                    <th style="background-color: #6c757d; color: white; font-weight: bold;">Heure</th>
                                     @foreach($jours as $jour)
-                                        <th class="text-center">{{ ucfirst($jour) }}</th>
+                                        <th class="text-center" style="background-color: #343a40; color: white; font-weight: bold;">{{ ucfirst($jour) }}</th>
                                     @endforeach
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($heures as $heure)
+                                @if(empty($heures))
                                     <tr>
-                                        <td class="fw-bold">{{ $heure }}</td>
+                                        <td colspan="{{ count($jours) + 1 }}" class="text-center text-danger">
+                                            Erreur: Les heures ne sont pas définies. Classe niveau: {{ $classe->niveau ?? 'N/A' }}, isPrimaire: {{ $classe->isPrimaire() ? 'Oui' : 'Non' }}
+                                        </td>
+                                    </tr>
+                                @endif
+                                @foreach($heures as $heure)
+                                    <tr style="height: 100px;">
+                                        <td class="fw-bold" style="background-color: #f8f9fa; vertical-align: middle; height: 100px; font-size: 1rem;">{{ $heure }}</td>
                                         @foreach($jours as $jour)
-                                            <td class="text-center position-relative" style="min-height: 60px;">
+                                            <td class="text-center position-relative" style="min-height: 100px; height: 100px; vertical-align: middle; padding: 8px;">
                                                 @php
+                                                    // Chercher les créneaux qui commencent à cette heure exacte (créneaux de 30 min pour primaire)
                                                     $creneaux = $emploisTemps->where('jour_semaine', $jour)
                                                         ->filter(function($emploi) use ($heure) {
                                                             $heureDebut = \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i');
+                                                            // Pour le primaire, on cherche les créneaux qui commencent exactement à cette heure
+                                                            // ou qui chevauchent cette heure (début avant ou égal, fin après)
                                                             $heureFin = \Carbon\Carbon::parse($emploi->heure_fin)->format('H:i');
-                                                            return $heureDebut <= $heure && $heureFin > $heure;
+                                                            return $heureDebut == $heure || ($heureDebut <= $heure && $heureFin > $heure);
                                                         });
                                                 @endphp
                                                 
-                                                @if($creneaux->isNotEmpty())
+                                                @if($classe->isPrimaire() && $heure == '10:00')
+                                                    {{-- Afficher RÉCRÉATION pour le créneau 10:00-10:15 --}}
+                                                    <div class="text-center p-2" style="font-size: 0.85rem; font-weight: 600; color: #6c757d; font-style: italic;">
+                                                        RÉCRÉATION
+                                                    </div>
+                                                @elseif($creneaux->isNotEmpty())
                                                     @foreach($creneaux as $creneau)
                                                         <div class="creneau-item bg-primary text-white p-2 rounded mb-1" 
-                                                             style="font-size: 0.8rem;">
-                                                            <div class="fw-bold">{{ $creneau->matiere->nom }}</div>
-                                                            <div class="small">{{ $creneau->enseignant->utilisateur->nom ?? 'N/A' }}</div>
-                                                            <div class="small">{{ $creneau->salle ?? 'N/A' }}</div>
-                                                            <div class="small">
-                                                                {{ \Carbon\Carbon::parse($creneau->heure_debut)->format('H:i') }} - 
-                                                                {{ \Carbon\Carbon::parse($creneau->heure_fin)->format('H:i') }}
-                                                            </div>
-                                                            <div class="creneau-actions mt-1">
+                                                             style="font-size: 0.85rem; position: relative; background-color: #007bff !important;">
+                                                            <div class="fw-bold mb-1">{{ $creneau->matiere->nom }}</div>
+                                                            <div class="small mb-2">{{ strtoupper($creneau->enseignant->utilisateur->nom ?? 'N/A') }} {{ $creneau->enseignant->utilisateur->prenom ?? '' }}</div>
+                                                            <div class="creneau-actions d-flex gap-1 justify-content-center">
                                                                 <button class="btn btn-sm btn-outline-light" 
-                                                                        onclick="editCreneau({{ $creneau->id }})">
+                                                                        onclick="event.stopPropagation(); editCreneau({{ $creneau->id }})"
+                                                                        style="padding: 2px 6px; font-size: 0.7rem;">
                                                                     <i class="fas fa-edit"></i>
                                                                 </button>
                                                                 <button class="btn btn-sm btn-outline-danger" 
-                                                                        onclick="deleteCreneau({{ $creneau->id }})">
-                                                                    <i class="fas fa-trash"></i>
+                                                                        onclick="event.stopPropagation(); deleteCreneau({{ $creneau->id }})"
+                                                                        style="padding: 2px 6px; font-size: 0.7rem;">
+                                                                    <i class="fas fa-times"></i>
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     @endforeach
                                                 @else
                                                     <button class="btn btn-outline-secondary btn-sm w-100 h-100 d-flex align-items-center justify-content-center"
-                                                            onclick="addCreneau('{{ $jour }}', '{{ $heure }}')">
-                                                        <i class="fas fa-plus"></i>
+                                                            onclick="addCreneau('{{ $jour }}', '{{ $heure }}')"
+                                                            style="min-height: 90px; height: 90px; border: 1px dashed #dee2e6; background-color: transparent;">
+                                                        <span style="font-size: 1.5rem; color: #6c757d;">+</span>
                                                     </button>
                                                 @endif
                                             </td>
@@ -236,15 +249,19 @@ $(document).ready(function() {
 });
 
 // Fonction pour ajouter un créneau à une position spécifique
-function addCreneau(jour, heure) {
+function addCreneau(jour, heure, heureFin = null) {
     $('#jour').val(jour);
     $('#heure_debut').val(heure);
     
-    // Calculer l'heure de fin (2 heures plus tard)
-    const heureDebut = heure.split(':');
-    const heureFin = parseInt(heureDebut[0]) + 2;
-    const heureFinStr = heureFin.toString().padStart(2, '0') + ':' + heureDebut[1];
-    $('#heure_fin').val(heureFinStr);
+    if (heureFin) {
+        $('#heure_fin').val(heureFin);
+    } else {
+        // Calculer l'heure de fin (2 heures plus tard)
+        const heureDebut = heure.split(':');
+        const heureFinCalc = parseInt(heureDebut[0]) + 2;
+        const heureFinStr = heureFinCalc.toString().padStart(2, '0') + ':' + heureDebut[1];
+        $('#heure_fin').val(heureFinStr);
+    }
     
     $('#addCreneauModal').modal('show');
 }

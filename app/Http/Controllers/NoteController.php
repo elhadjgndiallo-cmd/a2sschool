@@ -230,7 +230,11 @@ class NoteController extends Controller
 
         $matieresAvecNotes = collect();
         
-        DB::transaction(function() use ($request, &$matieresAvecNotes) {
+        // Récupérer la classe pour déterminer le niveau
+        $classe = \App\Models\Classe::findOrFail($request->classe_id);
+        $isPrimaire = $classe->isPrimaire();
+        
+        DB::transaction(function() use ($request, &$matieresAvecNotes, $isPrimaire) {
             $classeId = $request->classe_id;
             
             foreach ($request->notes as $noteData) {
@@ -256,18 +260,32 @@ class NoteController extends Controller
                         ]);
                     }
                     
-                    // Déterminer les notes (par défaut 2/20 si aucune note saisie)
-                    $noteCours = !empty($noteData['note_cours']) ? $noteData['note_cours'] : 2.0;
-                    $noteComposition = !empty($noteData['note_composition']) ? $noteData['note_composition'] : 2.0;
+                    // Déterminer les notes
+                    $noteCours = !empty($noteData['note_cours']) ? $noteData['note_cours'] : null;
+                    $noteComposition = !empty($noteData['note_composition']) ? $noteData['note_composition'] : null;
                     
-                    // Si aucune note n'est saisie, utiliser la note par défaut
-                    if (empty($noteData['note_cours']) && empty($noteData['note_composition'])) {
-                        $noteCours = 2.0;
-                        $noteComposition = 2.0;
+                    // Si aucune note n'est saisie, utiliser la note par défaut 0.00
+                    if ($noteCours === null && $noteComposition === null) {
+                        $noteCours = null;
+                        $noteComposition = 0.00;
                     }
                     
-                    // Calculer la note finale (moyenne pondérée)
-                    $noteFinale = ($noteCours + $noteComposition) / 2;
+                    // Calculer la note finale selon le niveau
+                    if ($isPrimaire) {
+                        // Pour primaire : note finale = note composition
+                        $noteFinale = $noteComposition ?? null;
+                    } else {
+                        // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
+                        if ($noteCours === null && $noteComposition === null) {
+                            $noteFinale = null;
+                        } elseif ($noteCours === null) {
+                            $noteFinale = $noteComposition;
+                        } elseif ($noteComposition === null) {
+                            $noteFinale = $noteCours;
+                        } else {
+                            $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+                        }
+                    }
                     
                     // Créer la note avec les nouveaux champs
                     Note::create([
@@ -300,7 +318,7 @@ class NoteController extends Controller
             })->implode(', ');
             
             $message .= '. Les colonnes pour les matières suivantes ont été automatiquement créées dans le tableau complet : ' . $nomsMatieres;
-            $message .= '. Note : Les élèves sans notes saisies ont reçu une note par défaut de 2/20.';
+            $message .= '. Note : Les élèves sans notes saisies ont reçu une note par défaut de 0.00.';
             
             return redirect()->back()->with('success', $message);
         } else {
@@ -1033,19 +1051,35 @@ class NoteController extends Controller
             'periode' => 'required|string|in:trimestre1,trimestre2',
         ]);
 
-        // Déterminer les notes (par défaut 2/20 si aucune note saisie)
-        $noteCours = !empty($request->note_cours) ? $request->note_cours : 2.0;
-        $noteComposition = !empty($request->note_composition) ? $request->note_composition : 2.0;
+        // Récupérer la classe pour déterminer le niveau
+        $classe = $note->eleve->classe;
+        $isPrimaire = $classe->isPrimaire();
         
-        // Si aucune note n'est saisie, utiliser la note par défaut
-        if (empty($request->note_cours) && empty($request->note_composition)) {
-            $noteCours = 2.0;
-            $noteComposition = 2.0;
+        $noteCours = !empty($request->note_cours) ? $request->note_cours : null;
+        $noteComposition = !empty($request->note_composition) ? $request->note_composition : null;
+        
+        // Calculer la note finale selon le niveau
+        if ($isPrimaire) {
+            // Pour primaire : note finale = note composition
+            $noteFinale = $noteComposition ?? null;
+        } else {
+            // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
+            if ($noteCours === null && $noteComposition === null) {
+                $noteFinale = null;
+            } elseif ($noteCours === null) {
+                $noteFinale = $noteComposition;
+            } elseif ($noteComposition === null) {
+                $noteFinale = $noteCours;
+            } else {
+                $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+            }
         }
 
         $note->update([
             'note_cours' => $noteCours,
             'note_composition' => $noteComposition,
+            'note_finale' => $noteFinale,
+            'note_sur' => $noteFinale,
             'coefficient' => $request->coefficient,
             'type_evaluation' => $request->type_evaluation,
             'titre' => $request->titre,

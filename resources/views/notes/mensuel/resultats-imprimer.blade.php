@@ -134,7 +134,7 @@
                     <th style="width: 25%;">Nom</th>
                     <th style="width: 25%;">Prénom</th>
                     <th style="width: 12%;">Moyenne</th>
-                    <th style="width: 15%;">Appréciation</th>
+                    <th style="width: 15%;">Mention</th>
                 </tr>
             </thead>
             <tbody>
@@ -166,9 +166,9 @@
                     <td class="text-left">{{ $eleve->prenom }}</td>
                     <td class="bold">
                         @if($moyenne == 0.00)
-                            00/20
+                            00/{{ $classe->note_max }}
                         @else
-                            {{ number_format($moyenne, 2) }}/20
+                            {{ number_format($moyenne, 2) }}/{{ $classe->note_max }}
                         @endif
                     </td>
                     <td>{{ $appreciation }}</td>
