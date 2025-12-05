@@ -288,7 +288,7 @@ class EleveController extends Controller
                 $baseEmail = preg_replace('/[^a-z0-9.]/', '', $baseEmail);
                 $counter = 1;
                 do {
-                    $eleveEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@student.local';
+                    $eleveEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@gmail.com';
                     $counter++;
                 } while (Utilisateur::where('email', $eleveEmail)->exists());
             }
@@ -350,7 +350,7 @@ class EleveController extends Controller
                     $baseEmail = preg_replace('/[^a-z0-9.]/', '', $baseEmail); // Nettoyer l'email
                     $counter = 1;
                     do {
-                        $parentEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@parent.local';
+                        $parentEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@gmail.com';
                         $counter++;
                     } while (Utilisateur::where('email', $parentEmail)->exists());
                 }
@@ -718,7 +718,7 @@ class EleveController extends Controller
                         $baseEmail = preg_replace('/[^a-z0-9.]/', '', $baseEmail);
                         $counter = 1;
                         do {
-                            $parentEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@parent.local';
+                            $parentEmail = $baseEmail . ($counter > 1 ? $counter : '') . '@gmail.com';
                             $counter++;
                         } while (Utilisateur::where('email', $parentEmail)->exists());
                     }
@@ -1218,11 +1218,11 @@ class EleveController extends Controller
     private function generateStudentEmail($prenom, $nom)
     {
         $base = strtolower($prenom . '.' . $nom);
-        $base = str_replace(' ', '.', $base);
+        $base = preg_replace('/[^a-z0-9.]/', '', $base);
         $counter = 1;
         
         do {
-            $email = $base . ($counter > 1 ? $counter : '') . '@student.local';
+            $email = $base . ($counter > 1 ? $counter : '') . '@gmail.com';
             $counter++;
         } while (Utilisateur::where('email', $email)->exists());
         
@@ -1235,11 +1235,11 @@ class EleveController extends Controller
     private function generateParentEmail($prenom, $nom)
     {
         $base = strtolower($prenom . '.' . $nom);
-        $base = str_replace(' ', '.', $base);
+        $base = preg_replace('/[^a-z0-9.]/', '', $base);
         $counter = 1;
         
         do {
-            $email = $base . ($counter > 1 ? $counter : '') . '@parent.local';
+            $email = $base . ($counter > 1 ? $counter : '') . '@gmail.com';
             $counter++;
         } while (Utilisateur::where('email', $email)->exists());
         

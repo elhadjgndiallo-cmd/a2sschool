@@ -895,6 +895,12 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         // Routes pour la réinscription
         Route::get('/eleves-reinscription', [EleveController::class, 'showReinscription'])->name('eleves.reinscription');
         Route::post('/eleves-reinscription', [EleveController::class, 'processReinscription'])->name('eleves.reinscription.process');
+        
+        // Routes pour la gestion des parents
+        Route::get('/parents', [\App\Http\Controllers\ParentController::class, 'index'])->name('parents.index')->middleware('check.permission:eleves.view');
+        Route::get('/parents/{id}', [\App\Http\Controllers\ParentController::class, 'show'])->name('parents.show')->middleware('check.permission:eleves.view');
+        Route::get('/parents/{id}/edit', [\App\Http\Controllers\ParentController::class, 'edit'])->name('parents.edit')->middleware('check.permission:eleves.edit');
+        Route::put('/parents/{id}', [\App\Http\Controllers\ParentController::class, 'update'])->name('parents.update')->middleware('check.permission:eleves.edit');
     });
     
     // Routes pour la gestion des matières (Admin seulement)
@@ -902,6 +908,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::resource('matieres', MatiereController::class)->middleware('check.permission:matieres.view');
         Route::post('/matieres/delete-all', [MatiereController::class, 'deleteAll'])->name('matieres.delete-all')->middleware('check.permission:matieres.delete');
         Route::patch('/matieres/{matiere}/toggle-status', [MatiereController::class, 'toggleStatus'])->name('matieres.toggle-status')->middleware('check.permission:matieres.edit');
+        Route::delete('/matieres/{matiere}/permanent', [MatiereController::class, 'deletePermanently'])->name('matieres.delete-permanent')->middleware('check.permission:matieres.delete');
+        Route::patch('/matieres/{matiere}/deactivate', [MatiereController::class, 'deactivate'])->name('matieres.deactivate')->middleware('check.permission:matieres.delete');
         Route::patch('/matieres/{matiere}/reactivate', [MatiereController::class, 'reactivate'])->name('matieres.reactivate')->middleware('check.permission:matieres.edit');
         Route::get('/api/matiere/{matiere}/coefficient', [MatiereController::class, 'getCoefficient'])->name('api.matiere.coefficient')->middleware('check.permission:matieres.view');
     });
@@ -916,6 +924,9 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('classes/{classe}/edit', [ClasseController::class, 'edit'])->name('classes.edit')->middleware('check.permission:classes.edit');
         Route::put('classes/{classe}', [ClasseController::class, 'update'])->name('classes.update')->middleware('check.permission:classes.edit');
         Route::delete('classes/{classe}', [ClasseController::class, 'destroy'])->name('classes.destroy')->middleware('check.permission:classes.delete');
+        Route::delete('classes/{classe}/permanent', [ClasseController::class, 'deletePermanently'])->name('classes.delete-permanent')->middleware('check.permission:classes.delete');
+        Route::patch('classes/{classe}/deactivate', [ClasseController::class, 'deactivate'])->name('classes.deactivate')->middleware('check.permission:classes.delete');
+        Route::patch('classes/{classe}/reactivate', [ClasseController::class, 'reactivate'])->name('classes.reactivate')->middleware('check.permission:classes.edit');
     });
     
     // Routes pour la gestion de l'établissement (Admin seulement)

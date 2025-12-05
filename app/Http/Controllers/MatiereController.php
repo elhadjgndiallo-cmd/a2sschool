@@ -174,10 +174,32 @@ class MatiereController extends Controller
     }
 
     /**
-     * Supprimer définitivement une matière
+     * Désactiver une matière (destroy = désactiver)
      */
     public function destroy(Matiere $matiere)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('matieres.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à désactiver des matières.');
+        }
+        
+        // Désactiver la matière au lieu de la supprimer
+        $matiere->update(['actif' => false]);
+        
+        return redirect()->route('matieres.index')
+            ->with('success', 'Matière désactivée avec succès');
+    }
+
+    /**
+     * Supprimer définitivement une matière
+     */
+    public function deletePermanently(Matiere $matiere)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('matieres.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer des matières.');
+        }
+        
         // Supprimer les relations d'abord
         $matiere->enseignants()->detach();
         $matiere->notes()->delete();
@@ -192,10 +214,31 @@ class MatiereController extends Controller
     }
 
     /**
+     * Désactiver une matière
+     */
+    public function deactivate(Matiere $matiere)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('matieres.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à désactiver des matières.');
+        }
+        
+        $matiere->update(['actif' => false]);
+        
+        return redirect()->route('matieres.index')
+            ->with('success', 'Matière désactivée avec succès');
+    }
+
+    /**
      * Réactiver une matière
      */
     public function reactivate(Matiere $matiere)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('matieres.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à réactiver des matières.');
+        }
+        
         $matiere->update(['actif' => true]);
         
         return redirect()->route('matieres.index')

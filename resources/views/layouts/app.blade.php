@@ -29,6 +29,44 @@
     <link href="{{ asset('css/pagination-simple.css') }}" rel="stylesheet">
     
     <style>
+        /* Réduction de la taille des boutons */
+        .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        
+        .btn-sm {
+            padding: 0.2rem 0.4rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+        
+        .btn-group-sm > .btn,
+        .btn-group-sm .btn {
+            padding: 0.2rem 0.4rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+        
+        .btn i {
+            font-size: 0.875rem;
+        }
+        
+        .btn-sm i {
+            font-size: 0.75rem;
+        }
+        
+        /* Boutons dans les tableaux */
+        .table .btn {
+            padding: 0.2rem 0.4rem;
+            font-size: 0.75rem;
+        }
+        
+        .table .btn i {
+            font-size: 0.75rem;
+        }
+        
         /* Règles globales pour empêcher les gros chevrons */
         .pagination i,
         .pagination .fas,

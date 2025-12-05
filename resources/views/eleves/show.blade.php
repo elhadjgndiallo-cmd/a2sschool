@@ -3,6 +3,76 @@
 @section('title', 'Détails Élève')
 
 @section('content')
+<style>
+    /* Amélioration de l'affichage des numéros de téléphone sur mobile/tablette */
+    .phone-link {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+    
+    .phone-link:hover {
+        background-color: #f0f0f0;
+        transform: scale(1.05);
+    }
+    
+    .phone-number {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Sur mobile et tablette */
+    @media (max-width: 768px) {
+        .phone-number {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #0d6efd !important;
+            letter-spacing: 1px;
+        }
+        
+        .phone-link {
+            padding: 10px 16px;
+            background-color: #e7f3ff;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            min-height: 48px; /* Taille minimale pour faciliter le clic sur mobile */
+            margin: 4px 0;
+        }
+        
+        .phone-link i {
+            font-size: 20px;
+            color: #0d6efd;
+            margin-right: 10px;
+        }
+        
+        .phone-link:active {
+            background-color: #b3d9ff;
+            transform: scale(0.98);
+        }
+    }
+    
+    /* Sur très petits écrans */
+    @media (max-width: 576px) {
+        .phone-number {
+            font-size: 20px !important;
+            font-weight: 700 !important;
+        }
+        
+        .phone-link {
+            padding: 12px 18px;
+            width: 100%;
+            justify-content: center;
+            min-height: 52px;
+        }
+        
+        .phone-link i {
+            font-size: 22px;
+        }
+    }
+</style>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="fas fa-user-graduate me-2"></i>
@@ -72,7 +142,17 @@
                     <div><strong>Nom:</strong></div><div>{{ $eleve->utilisateur->nom ?? 'N/A' }}</div>
                     <div><strong>Prénom:</strong></div><div>{{ $eleve->utilisateur->prenom ?? 'N/A' }}</div>
                     <div><strong>Gmail:</strong></div><div>{{ $eleve->utilisateur->email ?? 'N/A' }}</div>
-                    <div><strong>Téléphone:</strong></div><div>{{ $eleve->utilisateur->telephone ?? 'N/A' }}</div>
+                    <div><strong>Téléphone:</strong></div>
+                    <div>
+                        @if($eleve->utilisateur->telephone)
+                            <a href="tel:{{ $eleve->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>
+                                <span class="phone-number">{{ $eleve->utilisateur->telephone }}</span>
+                            </a>
+                        @else
+                            <span class="text-muted">N/A</span>
+                        @endif
+                    </div>
                     <div><strong>Adresse:</strong></div><div>{{ $eleve->utilisateur->adresse ?? 'N/A' }}</div>
                     <div><strong>Lieu de naissance:</strong></div><div>{{ $eleve->utilisateur->lieu_naissance ?? 'N/A' }}</div>
                     <div><strong>Sexe:</strong></div><div>{{ ($eleve->utilisateur->sexe ?? '') === 'M' ? 'Masculin' : (($eleve->utilisateur->sexe ?? '') === 'F' ? 'Féminin' : 'N/A') }}</div>
@@ -84,7 +164,17 @@
                         @endif
                     </div>
                     <div><strong>Gmail du parent:</strong></div><div>{{ $parentUser->email ?? 'N/A' }}</div>
-                    <div><strong>Numéro du parent:</strong></div><div>{{ $parentUser->telephone ?? 'N/A' }}</div>
+                    <div><strong>Numéro du parent:</strong></div>
+                    <div>
+                        @if($parentUser && $parentUser->telephone)
+                            <a href="tel:{{ $parentUser->telephone }}" class="phone-link text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>
+                                <span class="phone-number">{{ $parentUser->telephone }}</span>
+                            </a>
+                        @else
+                            <span class="text-muted">N/A</span>
+                        @endif
+                    </div>
                     <div><strong>Mot de passe élève:</strong></div><div>student123</div>
                     <div><strong>Mot de passe parent:</strong></div><div>parent123</div>
                 </div>
@@ -180,7 +270,16 @@
                 
                 <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Téléphone:</div>
-                    <div class="col-md-8">{{ $eleve->utilisateur->telephone ?? 'Non défini' }}</div>
+                    <div class="col-md-8">
+                        @if($eleve->utilisateur->telephone)
+                            <a href="tel:{{ $eleve->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>
+                                <span class="phone-number">{{ $eleve->utilisateur->telephone }}</span>
+                            </a>
+                        @else
+                            <span class="text-muted">Non défini</span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="row mb-2">
@@ -336,8 +435,14 @@
                                     {{ $parent->utilisateur->email ?? 'Email non défini' }}
                                 </small>
                                 <small class="d-block">
-                                    <i class="fas fa-phone me-1"></i>
-                                    {{ $parent->utilisateur->telephone ?? 'Téléphone non défini' }}
+                                    @if($parent->utilisateur->telephone)
+                                        <a href="tel:{{ $parent->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>
+                                            <span class="phone-number">{{ $parent->utilisateur->telephone }}</span>
+                                        </a>
+                                    @else
+                                        <span class="text-muted">Téléphone non défini</span>
+                                    @endif
                                 </small>
                             @else
                                 <span class="text-muted">Contact non disponible</span>

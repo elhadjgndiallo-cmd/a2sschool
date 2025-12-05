@@ -8,8 +8,55 @@ use Illuminate\Support\Facades\Storage;
 
 @section('content')
 <style>
-    /* Styles responsive pour le tableau des enseignants */
+    /* Amélioration de l'affichage des numéros de téléphone sur mobile/tablette */
+    .phone-link {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+    
+    .phone-link:hover {
+        background-color: #f0f0f0;
+        transform: scale(1.05);
+    }
+    
+    .phone-number {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Sur mobile et tablette */
     @media (max-width: 768px) {
+        .phone-number {
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            color: #0d6efd !important;
+            letter-spacing: 1px;
+        }
+        
+        .phone-link {
+            padding: 8px 12px;
+            background-color: #e7f3ff;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px; /* Taille minimale pour faciliter le clic sur mobile */
+        }
+        
+        .phone-link i {
+            font-size: 18px;
+            color: #0d6efd;
+            margin-right: 8px;
+        }
+        
+        .phone-link:active {
+            background-color: #b3d9ff;
+            transform: scale(0.98);
+        }
+        
+        /* Styles responsive pour le tableau des enseignants */
         /* Masquer certaines colonnes sur mobile */
         .table th:nth-child(1),
         .table td:nth-child(1) {
@@ -37,6 +84,17 @@ use Illuminate\Support\Facades\Storage;
         .table th:nth-child(6),
         .table td:nth-child(6) {
             display: none;
+        }
+        
+        .phone-number {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+        }
+        
+        .phone-link {
+            padding: 10px 14px;
+            width: 100%;
+            justify-content: center;
         }
     }
 </style>
@@ -106,7 +164,16 @@ use Illuminate\Support\Facades\Storage;
                             <small class="text-muted">{{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}</small>
                         </td>
                         <td>{{ $enseignant->utilisateur->email }}</td>
-                        <td>{{ $enseignant->utilisateur->telephone }}</td>
+                        <td>
+                            @if($enseignant->utilisateur->telephone)
+                                <a href="tel:{{ $enseignant->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                    <i class="fas fa-phone me-1"></i>
+                                    <span class="phone-number">{{ $enseignant->utilisateur->telephone }}</span>
+                                </a>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </td>
                         <td>{{ $enseignant->specialite }}</td>
                         <td>
                             <span class="badge bg-{{ $enseignant->actif ? 'success' : 'danger' }}">

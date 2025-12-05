@@ -172,11 +172,14 @@
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 @if($matiere->actif)
-                                <button type="button" class="btn btn-outline-warning" 
-                                        onclick="confirmDeactivate({{ $matiere->id }}, '{{ $matiere->nom }}')" 
-                                        title="Désactiver">
-                                    <i class="fas fa-pause"></i>
-                                </button>
+                                <form method="POST" action="{{ route('matieres.deactivate', $matiere) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver la matière {{ $matiere->nom }} ?\n\nCette action rendra la matière inactive et elle ne pourra plus être utilisée pour les nouvelles notes.')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-outline-warning" title="Désactiver">
+                                        <i class="fas fa-pause"></i>
+                                    </button>
+                                </form>
                                 @else
                                 <form method="POST" action="{{ route('matieres.reactivate', $matiere) }}" class="d-inline">
                                     @csrf
@@ -186,11 +189,14 @@
                                     </button>
                                 </form>
                                 @endif
-                                <button type="button" class="btn btn-outline-danger" 
-                                        onclick="confirmDelete({{ $matiere->id }}, '{{ $matiere->nom }}')" 
-                                        title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <form method="POST" action="{{ route('matieres.delete-permanent', $matiere) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement la matière {{ $matiere->nom }} ?\n\nCette action supprimera :\n- La matière\n- Toutes les notes associées\n- Tous les emplois du temps associés\n- Toutes les absences associées\n- Toutes les associations avec les enseignants\n\nCette action est irréversible !')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer définitivement">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -223,56 +229,7 @@
     </div>
 </div>
 
-<!-- Modal de confirmation de désactivation -->
-<div class="modal fade" id="deactivateModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmer la désactivation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir désactiver la matière <strong id="deactivate-matiere-name"></strong> ?</p>
-                <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Cette action rendra la matière indisponible pour les nouvelles notes.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deactivate-form" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-warning">Désactiver</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">⚠️ Supprimer la matière</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <h6><i class="fas fa-exclamation-triangle me-2"></i>ATTENTION : Action irréversible</h6>
-                    <p class="mb-0">Êtes-vous sûr de vouloir supprimer définitivement la matière <strong id="delete-matiere-name"></strong> ?</p>
-                </div>
-                <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Cette action supprimera définitivement la matière et toutes ses données associées.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="delete-form" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Modal de confirmation de suppression totale -->
 <div class="modal fade" id="deleteAllModal" tabindex="-1">
@@ -308,18 +265,6 @@
 
 @push('scripts')
 <script>
-function confirmDeactivate(matiereId, matiereName) {
-    document.getElementById('deactivate-matiere-name').textContent = matiereName;
-    document.getElementById('deactivate-form').action = `/matieres/${matiereId}`;
-    new bootstrap.Modal(document.getElementById('deactivateModal')).show();
-}
-
-function confirmDelete(matiereId, matiereName) {
-    document.getElementById('delete-matiere-name').textContent = matiereName;
-    document.getElementById('delete-form').action = `/matieres/${matiereId}`;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
-
 function confirmDeleteAll() {
     new bootstrap.Modal(document.getElementById('deleteAllModal')).show();
 }

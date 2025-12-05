@@ -84,9 +84,32 @@
                                 <a href="{{ route('emplois-temps.show', $classe->id) }}" class="btn btn-outline-info" title="Emploi du temps">
                                     <i class="fas fa-calendar-alt"></i>
                                 </a>
-                                <button type="button" class="btn btn-outline-danger" onclick="confirmDelete({{ $classe->id }})" title="Désactiver">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                @if($classe->actif)
+                                <form method="POST" action="{{ route('classes.deactivate', $classe) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver la classe {{ $classe->nom }} ?\n\nCette action rendra la classe inactive.')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-outline-warning" title="Désactiver">
+                                        <i class="fas fa-pause"></i>
+                                    </button>
+                                </form>
+                                @else
+                                <form method="POST" action="{{ route('classes.reactivate', $classe) }}" class="d-inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-outline-success" title="Réactiver">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </form>
+                                @endif
+                                <form method="POST" action="{{ route('classes.delete-permanent', $classe) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement la classe {{ $classe->nom }} ?\n\nCette action supprimera :\n- La classe\n- Tous les emplois du temps associés\n\nNote : La classe ne peut pas être supprimée si elle contient des élèves.\n\nCette action est irréversible !')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer définitivement">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -116,38 +139,5 @@
     </div>
 </div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir désactiver cette classe ?</p>
-                <p class="text-danger"><small>Cette action ne supprimera pas la classe mais la désactivera.</small></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deleteForm" method="POST" action="">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Désactiver</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
-@section('scripts')
-<script>
-    function confirmDelete(id) {
-        const form = document.getElementById('deleteForm');
-        form.action = `/classes/${id}`;
-        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-        modal.show();
-    }
-</script>
-@endsection

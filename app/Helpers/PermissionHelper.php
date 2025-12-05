@@ -70,6 +70,7 @@ class PermissionHelper
                 ['href' => route('eleves.index'), 'icon' => 'fas fa-list', 'text' => 'Liste', 'permission' => 'eleves.view'],
                 ['href' => route('eleves.create'), 'icon' => 'fas fa-user-plus', 'text' => 'Inscription', 'permission' => 'eleves.create'],
                 ['href' => route('eleves.reinscription'), 'icon' => 'fas fa-user-edit', 'text' => 'Réinscription', 'permission' => 'eleves.edit'],
+                ['href' => route('parents.index'), 'icon' => 'fas fa-users', 'text' => 'Parents', 'permission' => 'eleves.view'],
                 ['href' => route('paiements.index'), 'icon' => 'fas fa-money-bill-wave', 'text' => 'Frais', 'permission' => 'paiements.view'],
                 ['href' => route('cartes-scolaires.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes scolaires', 'permission' => 'cartes-scolaires.view']
             ],

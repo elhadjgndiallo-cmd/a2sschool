@@ -125,20 +125,13 @@ class ClasseController extends Controller
     }
 
     /**
-     * Supprimer une classe
+     * Désactiver une classe (destroy = désactiver)
      */
     public function destroy(Classe $classe)
     {
-        // Vérifier si la classe a des élèves
-        if ($classe->eleves()->count() > 0) {
-            return redirect()->route('classes.index')
-                ->with('error', 'Impossible de supprimer cette classe car elle contient des élèves');
-        }
-        
-        // Vérifier si la classe a des emplois du temps
-        if ($classe->emploisTemps()->count() > 0) {
-            return redirect()->route('classes.index')
-                ->with('error', 'Impossible de supprimer cette classe car elle est utilisée dans des emplois du temps');
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('classes.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à désactiver des classes.');
         }
         
         // Désactiver la classe au lieu de la supprimer
@@ -146,5 +139,66 @@ class ClasseController extends Controller
         
         return redirect()->route('classes.index')
             ->with('success', 'Classe désactivée avec succès');
+    }
+
+    /**
+     * Supprimer définitivement une classe
+     */
+    public function deletePermanently(Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('classes.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer des classes.');
+        }
+        
+        // Vérifier si la classe a des élèves
+        if ($classe->eleves()->count() > 0) {
+            return redirect()->route('classes.index')
+                ->with('error', 'Impossible de supprimer cette classe car elle contient des élèves. Veuillez d\'abord transférer ou supprimer les élèves.');
+        }
+        
+        // Vérifier si la classe a des emplois du temps
+        if ($classe->emploisTemps()->count() > 0) {
+            // Supprimer les emplois du temps associés
+            $classe->emploisTemps()->delete();
+        }
+        
+        // Supprimer la classe
+        $classe->delete();
+        
+        return redirect()->route('classes.index')
+            ->with('success', 'Classe supprimée définitivement avec succès');
+    }
+
+    /**
+     * Désactiver une classe
+     */
+    public function deactivate(Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('classes.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à désactiver des classes.');
+        }
+        
+        $classe->update(['actif' => false]);
+        
+        return redirect()->route('classes.index')
+            ->with('success', 'Classe désactivée avec succès');
+    }
+
+    /**
+     * Réactiver une classe
+     */
+    public function reactivate(Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('classes.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à réactiver des classes.');
+        }
+        
+        $classe->update(['actif' => true]);
+        
+        return redirect()->route('classes.index')
+            ->with('success', 'Classe réactivée avec succès');
     }
 }
