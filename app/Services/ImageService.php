@@ -25,13 +25,22 @@ class ImageService
         // Générer un nom de fichier unique
         $filename = uniqid('img_') . '.' . $image->getClientOriginalExtension();
         $fullPath = $path . '/' . $filename;
+
+        // Si l'extension GD n'est pas disponible, enregistrer l'image originale sans traitement
+        if (!extension_loaded('gd')) {
+            Storage::disk('public')->putFileAs($path, $image, $filename);
+            event(new ImageUploaded($fullPath));
+            return $fullPath;
+        }
         
         // Créer une image à partir du fichier téléchargé
         $sourceImage = $this->createImageFromFile($image);
         
         if (!$sourceImage) {
             // Si l'image ne peut pas être créée, enregistrer l'original
-            return $image->store($path, 'public');
+            Storage::disk('public')->putFileAs($path, $image, $filename);
+            event(new ImageUploaded($fullPath));
+            return $fullPath;
         }
         
         // Obtenir les dimensions de l'image source
@@ -78,6 +87,10 @@ class ImageService
      */
     private function createImageFromFile(UploadedFile $file)
     {
+        // Sécurité : si GD n'est pas chargé, on ne tente pas de créer une ressource image
+        if (!extension_loaded('gd')) {
+            return false;
+        }
         $extension = strtolower($file->getClientOriginalExtension());
         $path = $file->getPathname();
         

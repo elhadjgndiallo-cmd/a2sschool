@@ -230,6 +230,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/teacher/notes/classe/{classe}', [NoteController::class, 'teacherSaisir'])->name('teacher.notes.saisir')->middleware('role:teacher');
         Route::post('/notes', [NoteController::class, 'store'])->name('notes.store')->middleware('check.permission:notes.create');
         Route::get('/notes/eleve/{eleve}', [NoteController::class, 'eleveNotes'])->name('notes.eleve')->middleware('check.permission:notes.view');
+        Route::get('/notes/eleve/{eleve}/create', [NoteController::class, 'createForEleve'])->name('notes.eleve.create')->middleware('check.permission:notes.create');
+        Route::post('/notes/eleve/{eleve}/store', [NoteController::class, 'storeForEleve'])->name('notes.eleve.store')->middleware('check.permission:notes.create');
         Route::get('/notes/bulletin/eleve/{eleve}', [NoteController::class, 'bulletin'])->name('notes.bulletin.eleve')->middleware('check.permission:notes.view');
         // Route pour la sélection de la fiche de notes
         Route::get('/notes/fiche', [NoteController::class, 'ficheNotesSelection'])->name('notes.fiche.selection')->middleware('check.permission:notes.view');
@@ -260,11 +262,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/mensuel/classe/{classe}', [NoteController::class, 'mensuelClasse'])->name('notes.mensuel.classe')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/saisir/{classe}', [NoteController::class, 'mensuelSaisir'])->name('notes.mensuel.saisir')->middleware('check.permission:notes.create');
         Route::post('/notes/mensuel', [NoteController::class, 'mensuelStore'])->name('notes.mensuel.store')->middleware('check.permission:notes.create');
+        Route::get('/notes/mensuel/eleve/{eleve}/create', [NoteController::class, 'mensuelCreateForEleve'])->name('notes.mensuel.eleve.create')->middleware('check.permission:notes.create');
+        Route::post('/notes/mensuel/eleve/{eleve}/store', [NoteController::class, 'mensuelStoreForEleve'])->name('notes.mensuel.eleve.store')->middleware('check.permission:notes.create');
         Route::get('/notes/mensuel/modifier/{classe}', [NoteController::class, 'mensuelModifier'])->name('notes.mensuel.modifier')->middleware('check.permission:notes.edit');
         Route::put('/notes/mensuel/{test}', [NoteController::class, 'mensuelUpdate'])->name('notes.mensuel.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/mensuel/{test}', [NoteController::class, 'mensuelDestroy'])->name('notes.mensuel.destroy')->middleware('check.permission:notes.delete');
         Route::get('/notes/mensuel/resultats/{classe}', [NoteController::class, 'mensuelResultats'])->name('notes.mensuel.resultats')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/resultats/{classe}/imprimer', [NoteController::class, 'mensuelResultatsImprimer'])->name('notes.mensuel.resultats.imprimer')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/eleve/{eleve}/details', [NoteController::class, 'mensuelEleveDetails'])->name('notes.mensuel.eleve.details')->middleware('check.permission:notes.view');
     });
     
     // Routes pour la gestion des absences (Admin, Enseignants et Personnel Admin)

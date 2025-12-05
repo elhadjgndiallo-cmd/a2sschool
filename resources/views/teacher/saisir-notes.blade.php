@@ -288,6 +288,48 @@
     </div>
 </form>
 
+<!-- Modal pour ajouter une note pour un élève -->
+<div class="modal fade" id="addNoteModal" tabindex="-1" aria-labelledby="addNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNoteModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Ajouter une note pour un élève
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="eleve_select" class="form-label">Sélectionner un élève <span class="text-danger">*</span></label>
+                    <select class="form-select" id="eleve_select" required>
+                        <option value="">Choisir un élève</option>
+                        @foreach($classe->eleves as $eleve)
+                            <option value="{{ $eleve->id }}" data-url="{{ route('notes.eleve.create', $eleve->id) }}">
+                                {{ $eleve->numero_etudiant }} - {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback" id="eleve_select_error" style="display: none;">
+                        Veuillez sélectionner un élève
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Vous serez redirigé vers la page de saisie de note pour l'élève sélectionné.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="goToAddNote">
+                    <i class="fas fa-arrow-right me-1"></i>
+                    Continuer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -469,6 +511,72 @@ document.addEventListener('DOMContentLoaded', function() {
         const coefficient = selectedOption.dataset.coefficient || 1;
         document.getElementById('coefficient_global').value = coefficient;
     });
+    
+    // Gestion de la modal pour ajouter une note pour un élève
+    const eleveSelect = document.getElementById('eleve_select');
+    const goToAddNoteBtn = document.getElementById('goToAddNote');
+    const errorDiv = document.getElementById('eleve_select_error');
+    
+    // Fonction pour valider et rediriger
+    function handleGoToAddNote() {
+        const selectedValue = eleveSelect.value;
+        
+        if (!selectedValue || selectedValue === '') {
+            eleveSelect.classList.add('is-invalid');
+            if (errorDiv) errorDiv.style.display = 'block';
+            eleveSelect.focus();
+            return false;
+        }
+        
+        // Trouver l'option sélectionnée
+        const selectedOption = eleveSelect.options[eleveSelect.selectedIndex];
+        
+        if (!selectedOption) {
+            alert('Erreur : option non trouvée');
+            return false;
+        }
+        
+        // Récupérer l'URL depuis l'attribut data-url
+        const url = selectedOption.getAttribute('data-url');
+        
+        if (!url || url === '') {
+            alert('Erreur : URL non trouvée pour cet élève. Veuillez contacter l\'administrateur.');
+            console.error('URL manquante pour l\'élève:', selectedValue);
+            return false;
+        }
+        
+        // Rediriger vers la page de création de note
+        window.location.href = url;
+        return true;
+    }
+    
+    if (goToAddNoteBtn && eleveSelect) {
+        // Gestion du clic sur le bouton Continuer
+        goToAddNoteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleGoToAddNote();
+        });
+        
+        // Gestion de la touche Entrée dans le select
+        eleveSelect.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleGoToAddNote();
+            }
+        });
+        
+        // Réinitialiser l'erreur quand on change de sélection
+        eleveSelect.addEventListener('change', function() {
+            eleveSelect.classList.remove('is-invalid');
+            if (errorDiv) errorDiv.style.display = 'none';
+        });
+    } else {
+        console.error('Éléments de la modal non trouvés:', {
+            eleveSelect: !!eleveSelect,
+            goToAddNoteBtn: !!goToAddNoteBtn
+        });
+    }
 });
 </script>
 @endpush

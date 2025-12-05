@@ -92,6 +92,7 @@
                         <th scope="col">Prénom</th>
                         <th scope="col" class="text-center">Moyenne</th>
                         <th scope="col" class="text-center">Mention</th>
+                        <th scope="col" class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -132,9 +133,9 @@
                                 <span class="badge bg-light text-dark">{{ $rang }}ème</span>
                             @endif
                         </td>
-                        <td class="fw-bold">{{ $eleve->matricule }}</td>
-                        <td>{{ $eleve->nom }}</td>
-                        <td>{{ $eleve->prenom }}</td>
+                        <td class="fw-bold">{{ $eleve->numero_etudiant }}</td>
+                        <td>{{ $eleve->utilisateur->nom }}</td>
+                        <td>{{ $eleve->utilisateur->prenom }}</td>
                         <td class="text-center">
                             <span class="badge bg-{{ $moyenne >= $classe->seuil_reussite ? 'success' : ($moyenne >= ($classe->seuil_reussite / 2) ? 'warning' : 'danger') }} fs-6">
                                 @if($moyenne == 0.00)
@@ -146,6 +147,22 @@
                         </td>
                         <td class="text-center">
                             <span class="badge bg-{{ $color }}">{{ $appreciation }}</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ route('notes.mensuel.eleve.details', $eleve->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
+                                   class="btn btn-outline-info" 
+                                   title="Voir les détails">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                @if(auth()->user()->hasPermission('notes.edit'))
+                                <a href="{{ route('notes.mensuel.modifier', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
+                                   class="btn btn-outline-warning" 
+                                   title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @endforeach
@@ -192,9 +209,9 @@
                 <tbody>
                     @foreach($tests as $test)
                     <tr>
-                        <td class="fw-bold">{{ $test->eleve->matricule }}</td>
-                        <td>{{ $test->eleve->nom }}</td>
-                        <td>{{ $test->eleve->prenom }}</td>
+                        <td class="fw-bold">{{ $test->eleve->numero_etudiant }}</td>
+                        <td>{{ $test->eleve->utilisateur->nom }}</td>
+                        <td>{{ $test->eleve->utilisateur->prenom }}</td>
                         <td>{{ $test->matiere->nom }}</td>
                         <td class="text-center">
                             <span class="badge bg-{{ $test->note >= 10 ? 'success' : ($test->note >= 5 ? 'warning' : 'danger') }}">

@@ -11,6 +11,12 @@
             Notes de {{ $eleve->nom_complet }}
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
+            @if(auth()->user()->hasPermission('notes.create'))
+                <a href="{{ route('notes.eleve.create', $eleve->id) }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-1"></i>
+                    Ajouter une note
+                </a>
+            @endif
             @if(auth()->user()->hasPermission('notes.edit'))
                 <a href="{{ route('notes.saisir', $eleve->classe_id) }}" class="btn btn-primary me-2">
                     <i class="fas fa-edit me-1"></i>

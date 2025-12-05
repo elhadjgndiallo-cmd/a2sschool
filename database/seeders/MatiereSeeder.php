@@ -12,8 +12,8 @@ class MatiereSeeder extends Seeder
      */
     public function run(): void
     {
-        // Supprimer toutes les matières existantes
-        Matiere::truncate();
+        // Supprimer toutes les matières existantes sans TRUNCATE pour éviter le blocage par les clés étrangères
+        Matiere::query()->delete();
 
         $matieres = [
             ['nom' => 'Anglais', 'code' => 'ANG', 'coefficient' => 3, 'couleur' => '#FF6B6B', 'description' => 'Langue anglaise et littérature', 'actif' => true],

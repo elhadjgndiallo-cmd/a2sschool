@@ -1093,6 +1093,112 @@ class NoteController extends Controller
     }
 
     /**
+     * Afficher le formulaire pour ajouter une note à un élève individuel
+     */
+    public function createForEleve($eleveId)
+    {
+        $user = auth()->user();
+        $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+        
+        // Vérifier les permissions
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $eleve->classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                abort(403, 'Vous n\'avez pas accès à cet élève.');
+            }
+            
+            $enseignants = collect([$enseignant]);
+            $matieres = $enseignant->matieres()->actif()->get();
+        } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
+            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+            $matieres = Matiere::actif()->get();
+        } else {
+            abort(403, 'Vous n\'êtes pas autorisé.');
+        }
+        
+        return view('notes.create-eleve', compact('eleve', 'matieres', 'enseignants'));
+    }
+
+    /**
+     * Enregistrer une note pour un élève individuel
+     */
+    public function storeForEleve(Request $request, $eleveId)
+    {
+        $request->validate([
+            'matiere_id' => 'required|exists:matieres,id',
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'note_cours' => 'nullable|numeric|min:0|max:20',
+            'note_composition' => 'nullable|numeric|min:0|max:20',
+            'coefficient' => 'required|numeric|min:1|max:10',
+            'type_evaluation' => 'required|in:devoir,controle,examen,oral,tp',
+            'periode' => 'required|in:trimestre1,trimestre2,trimestre3',
+            'date_evaluation' => 'required|date',
+            'titre' => 'nullable|string|max:255',
+            'commentaire' => 'nullable|string|max:1000',
+        ]);
+
+        $eleve = Eleve::with('utilisateur')->findOrFail($eleveId);
+        $classe = $eleve->classe;
+        $isPrimaire = $classe->isPrimaire();
+        
+        // Vérifier les permissions
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                abort(403, 'Vous n\'avez pas accès à cet élève.');
+            }
+        }
+        
+        $noteCours = !empty($request->note_cours) ? $request->note_cours : null;
+        $noteComposition = !empty($request->note_composition) ? $request->note_composition : null;
+        
+        // Calculer la note finale selon le niveau
+        if ($isPrimaire) {
+            // Pour primaire : note finale = note composition
+            $noteFinale = $noteComposition ?? null;
+        } else {
+            // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
+            if ($noteCours === null && $noteComposition === null) {
+                $noteFinale = null;
+            } elseif ($noteCours === null) {
+                $noteFinale = $noteComposition;
+            } elseif ($noteComposition === null) {
+                $noteFinale = $noteCours;
+            } else {
+                $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+            }
+        }
+        
+        Note::create([
+            'eleve_id' => $eleveId,
+            'matiere_id' => $request->matiere_id,
+            'enseignant_id' => $request->enseignant_id,
+            'note_cours' => $noteCours,
+            'note_composition' => $noteComposition,
+            'note_finale' => $noteFinale,
+            'note_sur' => $noteFinale ?? 20,
+            'type_evaluation' => $request->type_evaluation,
+            'titre' => $request->titre,
+            'commentaire' => $request->commentaire,
+            'date_evaluation' => $request->date_evaluation,
+            'periode' => $request->periode,
+            'coefficient' => $request->coefficient,
+        ]);
+
+        return redirect()->route('notes.eleve', $eleveId)
+            ->with('success', 'Note ajoutée avec succès pour ' . $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom . '.');
+    }
+
+    /**
      * Supprimer une note
      */
     public function destroy(Note $note)
@@ -1495,6 +1601,163 @@ class NoteController extends Controller
                 ->with('error', 'Erreur lors de l\'enregistrement des tests mensuels: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Afficher le formulaire pour ajouter un test mensuel à un élève individuel
+     */
+    public function mensuelCreateForEleve($eleveId)
+    {
+        $user = auth()->user();
+        $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+        
+        // Vérifier les permissions
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $eleve->classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                abort(403, 'Vous n\'avez pas accès à cet élève.');
+            }
+            
+            $enseignants = collect([$enseignant]);
+            $matieres = $enseignant->matieres()->actif()->get();
+        } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
+            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+            $matieres = Matiere::actif()->get();
+        } else {
+            abort(403, 'Vous n\'êtes pas autorisé.');
+        }
+        
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+        
+        // Récupérer l'année scolaire active pour déterminer l'année par défaut
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $annee = $anneeScolaireActive ? $anneeScolaireActive->date_debut->year : date('Y');
+        
+        return view('notes.mensuel.create-eleve', compact('eleve', 'matieres', 'enseignants', 'moisListe', 'annee'));
+    }
+
+    /**
+     * Enregistrer un test mensuel pour un élève individuel
+     */
+    public function mensuelStoreForEleve(Request $request, $eleveId)
+    {
+        $request->validate([
+            'matiere_id' => 'required|exists:matieres,id',
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'mois' => 'required|integer|between:1,12',
+            'annee' => 'required|integer|min:2020|max:2030',
+            'note' => 'required|numeric|min:0|max:20',
+            'coefficient' => 'required|integer|min:1|max:10',
+        ]);
+
+        $eleve = Eleve::with(['classe', 'utilisateur'])->findOrFail($eleveId);
+        
+        // Vérifier les permissions
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $eleve->classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                abort(403, 'Vous n\'avez pas accès à cet élève.');
+            }
+        }
+        
+        // Vérifier si un test existe déjà pour cet élève, cette matière, ce mois et cette année
+        $testExistant = TestMensuel::where('eleve_id', $eleveId)
+            ->where('matiere_id', $request->matiere_id)
+            ->where('mois', $request->mois)
+            ->where('annee', $request->annee)
+            ->first();
+
+        if ($testExistant) {
+            // Mettre à jour le test existant
+            $testExistant->update([
+                'enseignant_id' => $request->enseignant_id,
+                'note' => $request->note,
+                'coefficient' => $request->coefficient
+            ]);
+            
+            $message = 'Test mensuel mis à jour avec succès pour ' . $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom . '.';
+        } else {
+            // Créer un nouveau test
+            TestMensuel::create([
+                'eleve_id' => $eleveId,
+                'classe_id' => $eleve->classe_id,
+                'matiere_id' => $request->matiere_id,
+                'enseignant_id' => $request->enseignant_id,
+                'mois' => $request->mois,
+                'annee' => $request->annee,
+                'note' => $request->note,
+                'coefficient' => $request->coefficient,
+                'created_by' => auth()->id()
+            ]);
+            
+            $message = 'Test mensuel ajouté avec succès pour ' . $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom . '.';
+        }
+
+        return redirect()->route('notes.mensuel.classe', $eleve->classe_id)
+            ->with('success', $message)
+            ->with('mois', $request->mois)
+            ->with('annee', $request->annee);
+    }
+
+    /**
+     * Afficher les détails des tests mensuels d'un élève
+     */
+    public function mensuelEleveDetails(Request $request, $eleveId)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+        
+        // Vérifier l'accès à l'élève pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $eleve->classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cet élève.');
+            }
+        }
+
+        // Récupérer les tests mensuels de l'élève pour le mois/année
+        $tests = TestMensuel::with(['matiere', 'enseignant.utilisateur'])
+            ->where('eleve_id', $eleveId)
+            ->parPeriode($mois, $annee)
+            ->get();
+
+        // Calculer la moyenne
+        $moyenne = TestMensuel::calculerMoyenneMensuelle($eleveId, $mois, $annee) ?? 0.00;
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.eleve-details', compact('eleve', 'tests', 'moyenne', 'mois', 'annee', 'moisListe'));
     }
 
     /**
