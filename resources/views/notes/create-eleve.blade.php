@@ -56,7 +56,7 @@
                     <p class="mb-1"><strong>Classe:</strong> {{ $eleve->classe->nom }}</p>
                 </div>
                 <div class="col-md-3">
-                    <p class="mb-1"><strong>Niveau:</strong> {{ $eleve->classe->isPrimaire() ? 'Primaire' : 'Collège/Lycée' }}</p>
+                    <p class="mb-1"><strong>Niveau:</strong> {{ $eleve->classe->isPrimaire() ? ($eleve->classe->niveau == 'Préscolaire' ? 'Préscolaire' : 'Primaire') : 'Collège/Lycée' }}</p>
                 </div>
             </div>
         </div>

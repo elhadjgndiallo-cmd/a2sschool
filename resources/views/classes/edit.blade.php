@@ -51,6 +51,7 @@
                         <label for="niveau" class="form-label">Niveau *</label>
                         <select class="form-select @error('niveau') is-invalid @enderror" id="niveau" name="niveau" required>
                             <option value="">Sélectionner un niveau</option>
+                            <option value="Préscolaire" {{ old('niveau', $classe->niveau) == 'Préscolaire' ? 'selected' : '' }}>Préscolaire</option>
                             <option value="Primaire" {{ old('niveau', $classe->niveau) == 'Primaire' ? 'selected' : '' }}>Primaire</option>
                             <option value="Collège" {{ old('niveau', $classe->niveau) == 'Collège' ? 'selected' : '' }}>Collège</option>
                             <option value="Lycée" {{ old('niveau', $classe->niveau) == 'Lycée' ? 'selected' : '' }}>Lycée</option>

@@ -68,11 +68,12 @@ class Classe extends Model
     }
 
     /**
-     * Déterminer si la classe est primaire
+     * Déterminer si la classe est primaire ou préscolaire
      */
     public function isPrimaire()
     {
-        return strtolower($this->niveau) === 'primaire';
+        $niveauLower = strtolower($this->niveau);
+        return in_array($niveauLower, ['primaire', 'préscolaire', 'prescolaire']);
     }
 
     /**
