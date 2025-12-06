@@ -267,10 +267,21 @@
                 </table>
             </div>
             
-            <!-- Pagination -->
-            <div class="card-footer">
-                {{ $parents->links() }}
-            </div>
+            <!-- Pagination des parents -->
+            @if($parents->hasPages())
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                Affichage de {{ $parents->firstItem() ?? 0 }} à {{ $parents->lastItem() ?? 0 }} sur {{ $parents->total() }} parent{{ $parents->total() > 1 ? 's' : '' }}
+                            </small>
+                        </div>
+                        <div>
+                            {{ $parents->appends(request()->query())->links('vendor.pagination.custom') }}
+                        </div>
+                    </div>
+                </div>
+            @endif
             @else
             <div class="text-center py-5">
                 <i class="fas fa-users fa-3x text-muted mb-3"></i>
