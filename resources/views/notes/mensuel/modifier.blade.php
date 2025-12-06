@@ -102,9 +102,9 @@
                 <tbody>
                     @foreach($tests as $test)
                     <tr>
-                        <td class="fw-bold">{{ $test->eleve->matricule }}</td>
-                        <td>{{ $test->eleve->nom }}</td>
-                        <td>{{ $test->eleve->prenom }}</td>
+                        <td class="fw-bold">{{ $test->eleve->numero_etudiant ?? 'N/A' }}</td>
+                        <td>{{ $test->eleve->utilisateur->nom ?? 'N/A' }}</td>
+                        <td>{{ $test->eleve->utilisateur->prenom ?? 'N/A' }}</td>
                         <td>{{ $test->matiere->nom }}</td>
                         <td>
                             @if($test->enseignant)
@@ -122,13 +122,11 @@
                         <td>{{ $test->created_at->format('d/m/Y H:i') }}</td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" 
-                                        class="btn btn-outline-primary" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#editModal{{ $test->id }}"
-                                        title="Modifier">
+                                <a href="{{ route('notes.mensuel.edit', $test->id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   title="Modifier">
                                     <i class="fas fa-edit"></i>
-                                </button>
+                                </a>
                                 <button type="button" 
                                         class="btn btn-outline-danger" 
                                         onclick="confirmDelete({{ $test->id }})"
@@ -157,66 +155,6 @@
     </div>
 </div>
 
-<!-- Modales de modification -->
-@foreach($tests as $test)
-<div class="modal fade" id="editModal{{ $test->id }}" tabindex="-1" aria-labelledby="editModalLabel{{ $test->id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel{{ $test->id }}">
-                    Modifier la note - {{ $test->eleve->nom }} {{ $test->eleve->prenom }}
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="{{ route('notes.mensuel.update', $test->id) }}">
-                @csrf
-                @method('PUT')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Élève</label>
-                        <input type="text" class="form-control" value="{{ $test->eleve->matricule }} - {{ $test->eleve->nom }} {{ $test->eleve->prenom }}" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Matière</label>
-                        <input type="text" class="form-control" value="{{ $test->matiere->nom }}" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="note{{ $test->id }}" class="form-label">Note <span class="text-danger">*</span></label>
-                        <input type="number" 
-                               class="form-control" 
-                               id="note{{ $test->id }}" 
-                               name="note" 
-                               value="{{ $test->note }}" 
-                               min="0" 
-                               max="20" 
-                               step="0.01" 
-                               required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="coefficient{{ $test->id }}" class="form-label">Coefficient <span class="text-danger">*</span></label>
-                        <input type="number" 
-                               class="form-control" 
-                               id="coefficient{{ $test->id }}" 
-                               name="coefficient" 
-                               value="{{ $test->coefficient }}" 
-                               min="1" 
-                               max="10" 
-                               required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i>
-                        Enregistrer
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endforeach
-
 <!-- Formulaire de suppression caché -->
 <form id="deleteForm" method="POST" style="display: none;">
     @csrf
@@ -226,8 +164,41 @@
 <script>
 function confirmDelete(testId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.')) {
-        const form = document.getElementById('deleteForm');
+        // Récupérer le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        if (!csrfToken) {
+            alert('Erreur : Token CSRF non trouvé. Veuillez recharger la page.');
+            return;
+        }
+        
+        // Créer un formulaire dynamique et le soumettre
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = '{{ route("notes.mensuel.destroy", ":id") }}'.replace(':id', testId);
+        form.style.display = 'none';
+        
+        // Ajouter le token CSRF
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        // Ajouter le formulaire au body et le soumettre
+        document.body.appendChild(form);
+        
+        console.log('Soumission de la suppression pour le test ID:', testId);
+        console.log('Action:', form.action);
+        
+        // Soumettre le formulaire
         form.submit();
     }
 }

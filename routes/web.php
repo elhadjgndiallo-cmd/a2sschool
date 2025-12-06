@@ -265,6 +265,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/mensuel/eleve/{eleve}/create', [NoteController::class, 'mensuelCreateForEleve'])->name('notes.mensuel.eleve.create')->middleware('check.permission:notes.create');
         Route::post('/notes/mensuel/eleve/{eleve}/store', [NoteController::class, 'mensuelStoreForEleve'])->name('notes.mensuel.eleve.store')->middleware('check.permission:notes.create');
         Route::get('/notes/mensuel/modifier/{classe}', [NoteController::class, 'mensuelModifier'])->name('notes.mensuel.modifier')->middleware('check.permission:notes.edit');
+        Route::get('/notes/mensuel/{test}/edit', [NoteController::class, 'mensuelEdit'])->name('notes.mensuel.edit')->middleware('check.permission:notes.edit');
         Route::put('/notes/mensuel/{test}', [NoteController::class, 'mensuelUpdate'])->name('notes.mensuel.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/mensuel/{test}', [NoteController::class, 'mensuelDestroy'])->name('notes.mensuel.destroy')->middleware('check.permission:notes.delete');
         Route::get('/notes/mensuel/resultats/{classe}', [NoteController::class, 'mensuelResultats'])->name('notes.mensuel.resultats')->middleware('check.permission:notes.view');

@@ -1966,6 +1966,22 @@ class NoteController extends Controller
     }
 
     /**
+     * Afficher le formulaire de modification d'un test mensuel
+     */
+    public function mensuelEdit(TestMensuel $test)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Charger les relations nécessaires
+        $test->load(['eleve.utilisateur', 'eleve.classe', 'matiere', 'enseignant.utilisateur']);
+        
+        return view('notes.mensuel.edit', compact('test'));
+    }
+
+    /**
      * Mettre à jour un test mensuel
      */
     public function mensuelUpdate(Request $request, TestMensuel $test)
@@ -1987,9 +2003,21 @@ class NoteController extends Controller
 
         // Rafraîchir le modèle pour s'assurer que les données sont à jour
         $test->refresh();
+        
+        // Charger la relation eleve si nécessaire pour obtenir la classe
+        if (!$test->relationLoaded('eleve')) {
+            $test->load('eleve');
+        }
+        
+        // Obtenir l'ID de la classe (depuis le test ou depuis l'élève)
+        $classeId = $test->classe_id ?? $test->eleve->classe_id ?? null;
+        
+        if (!$classeId) {
+            return redirect()->back()->with('error', 'Impossible de déterminer la classe. Veuillez réessayer.');
+        }
 
         return redirect()->route('notes.mensuel.modifier', [
-            'classe' => $test->classe_id,
+            'classe' => $classeId,
             'mois' => $test->mois,
             'annee' => $test->annee
         ])
