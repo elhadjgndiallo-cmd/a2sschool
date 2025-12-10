@@ -123,7 +123,7 @@ class Note extends Model
 
     /**
      * Calculer la moyenne générale d'un élève pour un trimestre
-     * Moyenne générale = somme de tous les Notes finales / somme de tous les coefficients
+     * Formule: Somme de (note finale × coefficient) / Somme des coefficients
      */
     public static function calculerMoyenneGenerale($eleveId, $periode)
     {
@@ -132,19 +132,19 @@ class Note extends Model
             ->with('matiere')
             ->get();
 
-        $totalPoints = 0;
-        $totalCoefficients = 0;
+        $sommeNoteCoefficient = 0;
+        $sommeCoefficients = 0;
 
         foreach ($notes as $note) {
             $noteFinale = $note->calculerNoteFinale();
             if ($noteFinale !== null) {
                 $coefMatiere = $note->matiere ? ($note->matiere->coefficient ?? 1) : 1;
-                $totalPoints += $noteFinale * $coefMatiere;
-                $totalCoefficients += $coefMatiere;
+                $sommeNoteCoefficient += $noteFinale * $coefMatiere;
+                $sommeCoefficients += $coefMatiere;
             }
         }
 
-        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+        return $sommeCoefficients > 0 ? round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
     }
 
     /**

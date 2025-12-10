@@ -84,15 +84,84 @@ class EmploiTempsController extends Controller
         // Pour le primaire, inclure samedi, sinon seulement lundi-vendredi
         $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
         
-        // Vérifier si la classe est primaire (vérification plus robuste)
+        // Vérifier si la classe est primaire (vérification robuste)
         $niveauClasse = strtolower(trim($classe->niveau ?? ''));
-        $isPrimaire = $classe->isPrimaire() || $niveauClasse === 'primaire';
+        $nomClasse = strtolower(trim($classe->nom ?? ''));
         
-        // Debug: logger pour vérifier
-        \Log::info('EmploiTemps Show - Classe ID: ' . $classe->id . ', Niveau: ' . $classe->niveau . ', isPrimaire: ' . ($isPrimaire ? 'Oui' : 'Non'));
+        // Détection améliorée pour primaire - LOGIQUE STRICTE
+        $isPrimaire = false;
         
+        // PRIORITÉ 1: Vérifier par niveau (le plus fiable) - EXACTEMENT "primaire"
+        if ($niveauClasse === 'primaire') {
+            $isPrimaire = true;
+        }
+        
+        // PRIORITÉ 2: Vérifier par méthode isPrimaire() seulement si niveau n'est pas défini
+        if (!$isPrimaire && $classe->isPrimaire()) {
+            $isPrimaire = true;
+        }
+        
+        // PRIORITÉ 3: Vérifier par nom de classe - DÉTECTION FORTE pour CP, CE, CM
+        // Si le nom est exactement "CP", "CE", ou "CM" (ou avec variations), c'est primaire
+        if (!$isPrimaire) {
+            // Vérifier d'abord les classes primaires classiques (CP, CE, CM) - correspondance exacte ou au début
+            if (preg_match('/^(cp|ce|cm)(\s|$)/i', $nomClasse) || 
+                $nomClasse === 'cp' || $nomClasse === 'ce' || $nomClasse === 'cm') {
+                $isPrimaire = true;
+            }
+        }
+        
+        // PRIORITÉ 4: Vérifier par nom de classe UNIQUEMENT si niveau n'est pas "lycée" ou "college" ou "secondaire"
+        // ET si le niveau est vide ou contient "primaire"
+        if (!$isPrimaire && 
+            !in_array($niveauClasse, ['lycée', 'college', 'college', 'secondaire', 'lycee', 'lycee']) &&
+            ($niveauClasse === '' || str_contains($niveauClasse, 'primaire'))) {
+            
+            // Patterns spécifiques pour primaire (éviter les faux positifs)
+            $patternsPrimaire = [
+                '2 eme', '2eme', '2ème', '2ème',
+                'cp', 'ce', 'cm', 
+                '1ère', '1ere', '1er', 
+                'premiere', 'première', 
+                'deuxieme', 'deuxième',
+                'troisieme', 'troisième',
+                'quatrieme', 'quatrième',
+                'cinquieme', 'cinquième',
+                'sixieme', 'sixième'
+            ];
+            
+            foreach ($patternsPrimaire as $pattern) {
+                if (str_contains($nomClasse, $pattern)) {
+                    $isPrimaire = true;
+                    break;
+                }
+            }
+            
+            // Détection par regex pour "2 eme", "3eme", etc. (avec ou sans espace)
+            if (!$isPrimaire && preg_match('/\d+\s*(eme|ème)(\s|$)/i', $nomClasse)) {
+                $isPrimaire = true;
+            }
+        }
+        
+        // FORCER la détection si le niveau est "Primaire" (même avec majuscule)
+        if (!$isPrimaire && strtolower(trim($classe->niveau ?? '')) === 'primaire') {
+            $isPrimaire = true;
+        }
+        
+        // Log pour debug
+        \Log::info('Détection primaire - Nom: "' . $classe->nom . '", Niveau: "' . $classe->niveau . '", isPrimaire: ' . ($isPrimaire ? 'Oui' : 'Non'));
+        
+        // Organiser les emplois par jour
+        $emploisParJour = [];
+        foreach ($jours as $jour) {
+            $emploisParJour[$jour] = $emploisTemps->filter(function($emploi) use ($jour) {
+                return $emploi->jour_semaine === $jour;
+            })->sortBy('heure_debut')->values();
+        }
+        
+        // Si c'est une classe primaire, utiliser la vue spéciale pour primaire
         if ($isPrimaire) {
-            // Heures de début pour le primaire selon les horaires fournis
+            // Heures spéciales pour le primaire
             $heures = [
                 '08:00',  // 8h - 8h30
                 '08:30',  // 8h30 - 9h00
@@ -108,17 +177,12 @@ class EmploiTempsController extends Controller
                 '13:30',  // 13h30-14h00
                 '15:00'   // 15h00-16h00
             ];
-        } else {
-            $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
+            
+            return view('emplois-temps.show-primaire', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive'));
         }
         
-        // Organiser les emplois par jour
-        $emploisParJour = [];
-        foreach ($jours as $jour) {
-            $emploisParJour[$jour] = $emploisTemps->filter(function($emploi) use ($jour) {
-                return $emploi->jour_semaine === $jour;
-            })->sortBy('heure_debut')->values();
-        }
+        // Pour le secondaire, utiliser la vue standard
+        $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
         
         return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive'));
     }

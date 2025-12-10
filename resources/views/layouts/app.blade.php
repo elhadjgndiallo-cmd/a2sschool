@@ -240,6 +240,109 @@
             z-index: 10;
         }
         
+        /* Empêcher le dropdown du profil d'affecter le sidebar */
+        .navbar-nav .nav-item.dropdown {
+            position: relative;
+        }
+        
+        /* Style amélioré pour le dropdown du profil */
+        #profileDropdownMenu {
+            position: absolute;
+            right: 0;
+            left: auto;
+            margin-top: 0.5rem;
+            min-width: 220px;
+            background: #ffffff !important;
+            border: 2px solid #667eea !important;
+            border-radius: 10px !important;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3) !important;
+            padding: 8px 0 !important;
+            z-index: 1050 !important;
+            animation: dropdownFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes dropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Style des items du dropdown */
+        #profileDropdownMenu .dropdown-item {
+            padding: 12px 20px !important;
+            color: #495057 !important;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            margin: 2px 8px;
+            border-radius: 6px;
+        }
+        
+        #profileDropdownMenu .dropdown-item:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: #ffffff !important;
+            border-left: 3px solid #ffffff;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        #profileDropdownMenu .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            font-size: 1rem;
+        }
+        
+        /* Style du séparateur */
+        #profileDropdownMenu .dropdown-divider {
+            margin: 8px 12px;
+            border-top: 1px solid #e9ecef;
+            opacity: 0.5;
+        }
+        
+        /* Style spécial pour le bouton de déconnexion */
+        #profileDropdownMenu #logoutBtn,
+        #profileDropdownMenu #logoutForm button {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+        
+        #profileDropdownMenu #logoutBtn:hover,
+        #profileDropdownMenu #logoutForm button:hover {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: #ffffff !important;
+            border-left: 3px solid #ffffff;
+        }
+        
+        /* Style du toggle du dropdown */
+        #profileDropdownToggle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            padding: 8px 12px !important;
+        }
+        
+        #profileDropdownToggle:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-2px);
+        }
+        
+        /* Empêcher que le dropdown déclenche le collapse de la navbar */
+        #profileDropdown,
+        #profileDropdown * {
+            pointer-events: auto;
+        }
+        
+        /* Empêcher que le collapse se déclenche quand on clique sur le dropdown */
+        .navbar-collapse:has(#profileDropdown.show) {
+            /* Ne pas fermer le collapse si le dropdown est ouvert */
+        }
+        
         /* Laisser Bootstrap gérer la position/z-index des modals */
         
         /* Désactiver l'assombrissement (gris) du fond quand un modal s'affiche */
@@ -383,6 +486,18 @@
                 padding: 0.75rem 1rem;
                 font-size: 0.9rem;
             }
+            
+            /* Style spécifique pour le dropdown du profil sur mobile */
+            #profileDropdownMenu {
+                position: absolute !important;
+                right: 0 !important;
+                left: auto !important;
+                min-width: 200px !important;
+                max-width: 90vw !important;
+                margin-top: 0.5rem !important;
+                border: 2px solid #667eea !important;
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+            }
         }
     </style>
     
@@ -403,7 +518,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar" id="navbarToggler">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
@@ -533,8 +648,8 @@
                     </li>
                     
                     <!-- Profil utilisateur -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+                    <li class="nav-item dropdown" id="profileDropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="true" id="profileDropdownToggle">
                             @if(auth()->user()->photo_profil && Storage::disk('public')->exists(auth()->user()->photo_profil))
                                 <img src="{{ asset('storage/' . auth()->user()->photo_profil) }}" 
                                      alt="Photo de profil" 
@@ -546,7 +661,7 @@
                             {{ auth()->user()->nom }} {{ auth()->user()->prenom }}
                             <span class="badge bg-light text-dark ms-2">{{ ucfirst(auth()->user()->role) }}</span>
                         </a>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end" id="profileDropdownMenu">
                             <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
                             <li><a class="dropdown-item" href="{{ route('password.change.form') }}"><i class="fas fa-key me-2"></i>Changer le mot de passe</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -711,6 +826,11 @@
             // Gestion des clics sur les menus principaux
             document.querySelectorAll('[data-menu]').forEach(link => {
                 link.addEventListener('click', function(e) {
+                    // Ne pas traiter les clics sur les dropdowns
+                    if (this.closest('.dropdown') || this.classList.contains('dropdown-toggle')) {
+                        return;
+                    }
+                    
                     const menuType = this.getAttribute('data-menu');
                     
                     // Si c'est un lien direct (pas de sous-menu), ne pas empêcher le comportement par défaut
@@ -836,6 +956,7 @@
                 function adjustMainContentPadding() {
                     if (window.innerWidth <= 768) {
                         const navbarHeight = navbar.offsetHeight;
+                        // Ne considérer que le collapse de la navbar principale, pas les dropdowns
                         const isExpanded = navbarCollapse.classList.contains('show') || navbarCollapse.classList.contains('collapsing');
                         
                         if (isExpanded) {
@@ -852,15 +973,59 @@
                     }
                 }
                 
-                // Écouter les événements de collapse Bootstrap
-                navbarCollapse.addEventListener('show.bs.collapse', adjustMainContentPadding);
+                // Écouter uniquement les événements de collapse Bootstrap de la navbar principale
+                // Mais empêcher que les clics sur le dropdown déclenchent le collapse
+                navbarCollapse.addEventListener('show.bs.collapse', function(e) {
+                    // Vérifier si l'événement vient du dropdown du profil
+                    const profileDropdown = document.getElementById('profileDropdown');
+                    if (profileDropdown && (e.target === profileDropdown || profileDropdown.contains(e.target))) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                    adjustMainContentPadding();
+                });
+                
                 navbarCollapse.addEventListener('shown.bs.collapse', adjustMainContentPadding);
-                navbarCollapse.addEventListener('hide.bs.collapse', adjustMainContentPadding);
+                navbarCollapse.addEventListener('hide.bs.collapse', function(e) {
+                    // Vérifier si l'événement vient du dropdown du profil
+                    const profileDropdown = document.getElementById('profileDropdown');
+                    if (profileDropdown && (e.target === profileDropdown || profileDropdown.contains(e.target))) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                    adjustMainContentPadding();
+                });
                 navbarCollapse.addEventListener('hidden.bs.collapse', adjustMainContentPadding);
                 
                 // Ajuster au chargement et au redimensionnement
                 adjustMainContentPadding();
                 window.addEventListener('resize', adjustMainContentPadding);
+                
+                // Empêcher les dropdowns d'affecter le padding et le collapse
+                document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+                    toggle.addEventListener('click', function(e) {
+                        // Ne pas empêcher le comportement par défaut du dropdown
+                        // Mais empêcher la propagation vers d'autres gestionnaires
+                        e.stopPropagation();
+                        
+                        // Si c'est le dropdown du profil, empêcher le collapse
+                        if (this.id === 'profileDropdownToggle' || this.closest('#profileDropdown')) {
+                            e.stopImmediatePropagation();
+                            
+                            // Empêcher que le collapse se déclenche
+                            if (window.innerWidth <= 992 && navbarCollapse.classList.contains('show')) {
+                                // Ne pas fermer le collapse sur mobile/tablette
+                                const clickEvent = new MouseEvent('click', {
+                                    bubbles: false,
+                                    cancelable: true
+                                });
+                                e.preventDefault();
+                            }
+                        }
+                    });
+                });
             }
         });
 
@@ -874,6 +1039,68 @@
                     e.preventDefault();
                     console.log('Tentative de déconnexion...');
                     logoutForm.submit();
+                });
+            }
+            
+            // Empêcher le clic sur le dropdown du profil d'affecter le sidebar et le collapse de la navbar
+            const profileDropdown = document.getElementById('profileDropdown');
+            const profileDropdownToggle = document.getElementById('profileDropdownToggle');
+            const profileDropdownMenu = document.getElementById('profileDropdownMenu');
+            const navbarCollapse = document.getElementById('topNavbar');
+            
+            if (profileDropdown && profileDropdownToggle && navbarCollapse) {
+                // Intercepter les clics sur le dropdown AVANT que Bootstrap ne les traite
+                // Utiliser la phase de capture pour intercepter avant Bootstrap
+                profileDropdown.addEventListener('click', function(e) {
+                    // Empêcher la propagation pour que le collapse ne se déclenche pas
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }, true); // true = capture phase (avant la phase de bubbling)
+                
+                // Empêcher spécifiquement que le toggle déclenche le collapse
+                profileDropdownToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }, true);
+                
+                // Empêcher que le menu dropdown déclenche le collapse
+                if (profileDropdownMenu) {
+                    profileDropdownMenu.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    }, true);
+                }
+                
+                // Empêcher que les clics en dehors du dropdown ferment le collapse
+                // mais seulement si le collapse est ouvert à cause du dropdown
+                document.addEventListener('click', function(e) {
+                    // Si on clique sur le dropdown ou ses enfants, ne pas fermer le collapse
+                    if (profileDropdown.contains(e.target)) {
+                        // Empêcher que le collapse se ferme
+                        if (window.innerWidth <= 992 && navbarCollapse.classList.contains('show')) {
+                            e.stopPropagation();
+                        }
+                    }
+                }, true);
+                
+                // Empêcher que le collapse se ferme quand le dropdown est ouvert
+                let isDropdownOpen = false;
+                
+                profileDropdown.addEventListener('show.bs.dropdown', function() {
+                    isDropdownOpen = true;
+                });
+                
+                profileDropdown.addEventListener('hidden.bs.dropdown', function() {
+                    isDropdownOpen = false;
+                });
+                
+                // Intercepter l'événement hide.bs.collapse pour empêcher la fermeture si le dropdown est ouvert
+                navbarCollapse.addEventListener('hide.bs.collapse', function(e) {
+                    if (isDropdownOpen && window.innerWidth <= 992) {
+                        // Empêcher que le collapse se ferme si le dropdown est ouvert
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
                 });
             }
         });

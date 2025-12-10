@@ -141,6 +141,7 @@ class TestMensuel extends Model
 
     /**
      * Calculer la moyenne mensuelle d'un élève
+     * Formule: Somme de (note × coefficient) / Somme des coefficients
      */
     public static function calculerMoyenneMensuelle($eleveId, $mois, $annee)
     {
@@ -152,14 +153,14 @@ class TestMensuel extends Model
             return null;
         }
 
-        $totalPoints = 0;
-        $totalCoefficients = 0;
+        $sommeNoteCoefficient = 0;
+        $sommeCoefficients = 0;
 
         foreach ($tests as $test) {
-            $totalPoints += $test->note * $test->coefficient;
-            $totalCoefficients += $test->coefficient;
+            $sommeNoteCoefficient += $test->note * $test->coefficient;
+            $sommeCoefficients += $test->coefficient;
         }
 
-        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+        return $sommeCoefficients > 0 ? round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
     }
 }

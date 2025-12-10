@@ -27,7 +27,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-calendar-alt me-2"></i>
-                        Emploi du temps - {{ $classe->nom }}
+                        Emploi du temps - {{ $classe->nom }} (Primaire)
                     </h5>
                     <div>
                         <a href="{{ route('classes.index') }}" class="btn btn-secondary">
@@ -41,33 +41,6 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    @php
-                        // Debug: vérifier les variables
-                        $debugInfo = [
-                            'heures_isset' => isset($heures),
-                            'heures_empty' => empty($heures),
-                            'heures_count' => isset($heures) ? count($heures) : 0,
-                            'heures_values' => isset($heures) ? $heures : [],
-                            'isPrimaire' => $classe->isPrimaire(),
-                            'niveau' => $classe->niveau ?? 'N/A',
-                            'nom' => $classe->nom ?? 'N/A'
-                        ];
-                    @endphp
-                    @php
-                        $niveauClasse = strtolower(trim($classe->niveau ?? ''));
-                        $nomClasse = strtolower(trim($classe->nom ?? ''));
-                        $isPrimaireDebug = $classe->isPrimaire() || $niveauClasse === 'primaire' || str_contains($niveauClasse, 'primaire') || str_contains($nomClasse, '2 eme') || str_contains($nomClasse, '2eme');
-                    @endphp
-                    <div class="alert alert-info mb-2">
-                        <strong>Debug:</strong> 
-                        Classe: "{{ $classe->nom }}", 
-                        Niveau: "{{ $classe->niveau }}", 
-                        isPrimaire(): {{ $classe->isPrimaire() ? 'Oui' : 'Non' }}, 
-                        NiveauClasse: "{{ $niveauClasse }}", 
-                        NomClasse: "{{ $nomClasse }}", 
-                        Détection: {{ $isPrimaireDebug ? 'PRIMAIRE' : 'SECONDAIRE' }}, 
-                        Heures: {{ isset($heures) ? count($heures) : 0 }}
-                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">
                             <thead class="table-dark">
@@ -79,31 +52,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if(empty($heures) || !isset($heures))
-                                    <tr>
-                                        <td colspan="{{ count($jours) + 1 }}" class="text-center text-danger">
-                                            Erreur: Les heures ne sont pas définies. Classe: {{ $classe->nom ?? 'N/A' }}, Niveau: {{ $classe->niveau ?? 'N/A' }}, isPrimaire: {{ $classe->isPrimaire() ? 'Oui' : 'Non' }}
-                                        </td>
-                                    </tr>
-                                @else
                                 @foreach($heures as $heure)
                                     <tr style="height: 100px;">
                                         <td class="fw-bold" style="background-color: #f8f9fa; vertical-align: middle; height: 100px; font-size: 1rem;">{{ $heure }}</td>
                                         @foreach($jours as $jour)
                                             <td class="text-center position-relative" style="min-height: 100px; height: 100px; vertical-align: middle; padding: 8px;">
                                                 @php
-                                                    // Chercher les créneaux qui commencent à cette heure exacte (créneaux de 30 min pour primaire)
+                                                    // Chercher les créneaux qui commencent à cette heure exacte
                                                     $creneaux = $emploisTemps->where('jour_semaine', $jour)
                                                         ->filter(function($emploi) use ($heure) {
                                                             $heureDebut = \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i');
-                                                            // Pour le primaire, on cherche les créneaux qui commencent exactement à cette heure
-                                                            // ou qui chevauchent cette heure (début avant ou égal, fin après)
                                                             $heureFin = \Carbon\Carbon::parse($emploi->heure_fin)->format('H:i');
                                                             return $heureDebut == $heure || ($heureDebut <= $heure && $heureFin > $heure);
                                                         });
                                                 @endphp
                                                 
-                                                @if($classe->isPrimaire() && $heure == '10:00')
+                                                @if($heure == '10:00')
                                                     {{-- Afficher RÉCRÉATION pour le créneau 10:00-10:15 --}}
                                                     <div class="text-center p-2" style="font-size: 0.85rem; font-weight: 600; color: #6c757d; font-style: italic;">
                                                         RÉCRÉATION
@@ -245,13 +209,8 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.success) {
-                    // Afficher un message de succès
                     showAlert('success', response.message);
-                    
-                    // Fermer le modal
                     $('#addCreneauModal').modal('hide');
-                    
-                    // Recharger la page pour afficher le nouveau créneau
                     location.reload();
                 } else {
                     showAlert('error', response.message || 'Erreur lors de l\'ajout du créneau');
@@ -283,10 +242,17 @@ function addCreneau(jour, heure, heureFin = null) {
     if (heureFin) {
         $('#heure_fin').val(heureFin);
     } else {
-        // Calculer l'heure de fin (2 heures plus tard)
+        // Pour le primaire, calculer l'heure de fin (30 minutes plus tard)
         const heureDebut = heure.split(':');
-        const heureFinCalc = parseInt(heureDebut[0]) + 2;
-        const heureFinStr = heureFinCalc.toString().padStart(2, '0') + ':' + heureDebut[1];
+        let heureFinCalc = parseInt(heureDebut[0]);
+        let minuteFinCalc = parseInt(heureDebut[1]) + 30;
+        
+        if (minuteFinCalc >= 60) {
+            heureFinCalc += 1;
+            minuteFinCalc -= 60;
+        }
+        
+        const heureFinStr = heureFinCalc.toString().padStart(2, '0') + ':' + minuteFinCalc.toString().padStart(2, '0');
         $('#heure_fin').val(heureFinStr);
     }
     
@@ -327,35 +293,14 @@ function showAlert(type, message) {
         </div>
     `;
     
-    // Insérer l'alerte en haut de la page
     $('.container-fluid').prepend(alertHtml);
     
-    // Supprimer automatiquement après 5 secondes
     setTimeout(function() {
         $('.alert').fadeOut();
     }, 5000);
 }
 </script>
 @endsection
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
