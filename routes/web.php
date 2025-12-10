@@ -241,6 +241,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/notes/{note}', [NoteController::class, 'update'])->name('notes.update')->middleware('check.permission:notes.edit');
         Route::delete('/notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy')->middleware('check.permission:notes.delete');
         Route::get('/notes/statistiques', [NoteController::class, 'statistiques'])->name('notes.statistiques')->middleware('check.permission:notes.view');
+        Route::get('/notes/statistiques/imprimer', [NoteController::class, 'statistiquesImprimer'])->name('notes.statistiques.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/statistiques/{classe}', [NoteController::class, 'statistiquesClasse'])->name('notes.statistiques.classe')->middleware('check.permission:notes.view');
         Route::get('/notes/statistiques/{classe}/imprimer', [NoteController::class, 'statistiquesClasseImprimable'])->name('notes.statistiques.classe.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletins', [NoteController::class, 'bulletins'])->name('notes.bulletins')->middleware('check.permission:notes.view');

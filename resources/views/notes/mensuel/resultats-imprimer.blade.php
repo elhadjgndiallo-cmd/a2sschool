@@ -125,6 +125,57 @@
     
     @if(count($resultats) > 0)
     <div class="info-section">
+        <h3>Tableau statistique</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2" class="text-left">Statistiques</th>
+                    <th colspan="2">Effectifs</th>
+                    <th colspan="2">Composés</th>
+                    <th colspan="2">Non composés</th>
+                    <th colspan="4">Moyennant</th>
+                    <th colspan="4">Non moyennant</th>
+                </tr>
+                <tr>
+                    <th>Total</th>
+                    <th>Filles</th>
+                    <th>Total</th>
+                    <th>Filles</th>
+                    <th>Total</th>
+                    <th>Filles</th>
+                    <th>Total</th>
+                    <th>Filles</th>
+                    <th>% Total</th>
+                    <th>% Filles</th>
+                    <th>Total</th>
+                    <th>Filles</th>
+                    <th>% Total</th>
+                    <th>% Filles</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-left bold">Classe</td>
+                    <td>{{ $stats['effectifs']['total'] }}</td>
+                    <td>{{ $stats['effectifs']['filles'] }}</td>
+                    <td>{{ $stats['composes']['total'] }}</td>
+                    <td>{{ $stats['composes']['filles'] }}</td>
+                    <td>{{ $stats['non_composes']['total'] }}</td>
+                    <td>{{ $stats['non_composes']['filles'] }}</td>
+                    <td>{{ $stats['moyennant']['total'] }}</td>
+                    <td>{{ $stats['moyennant']['filles'] }}</td>
+                    <td>{{ $stats['moyennant']['pct_total'] }}%</td>
+                    <td>{{ $stats['moyennant']['pct_filles'] }}%</td>
+                    <td>{{ $stats['non_moyennant']['total'] }}</td>
+                    <td>{{ $stats['non_moyennant']['filles'] }}</td>
+                    <td>{{ $stats['non_moyennant']['pct_total'] }}%</td>
+                    <td>{{ $stats['non_moyennant']['pct_filles'] }}%</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="info-section">
         <h3>Classement des élèves</h3>
         <table>
             <thead>

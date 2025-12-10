@@ -161,6 +161,7 @@
                             <option value="">Toutes les périodes</option>
                             <option value="trimestre1">Trimestre 1</option>
                             <option value="trimestre2">Trimestre 2</option>
+                            <option value="trimestre3">Trimestre 3</option>
                         </select>
                     </div>
                 </form>

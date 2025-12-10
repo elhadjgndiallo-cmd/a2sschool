@@ -312,6 +312,9 @@ class TeacherController extends Controller
     {
         $request->validate([
             'classe_id' => 'required|exists:classes,id',
+            'periode' => 'required|in:trimestre1,trimestre2,trimestre3',
+            'type_evaluation' => 'required|in:devoir,controle,examen,oral,tp',
+            'date_evaluation' => 'required|date',
             'notes' => 'required|array',
             'notes.*.eleve_id' => 'required|exists:eleves,id',
             'notes.*.matiere_id' => 'required|exists:matieres,id',
@@ -340,9 +343,9 @@ class TeacherController extends Controller
                             'note_composition' => $noteData['note_composition'],
                             'coefficient' => $noteData['coefficient'],
                             'commentaire' => $noteData['commentaire'],
-                            'date_evaluation' => now()->toDateString(),
-                            'type_evaluation' => 'devoir',
-                            'periode' => 'trimestre1'
+                            'date_evaluation' => $request->date_evaluation,
+                            'type_evaluation' => $request->type_evaluation,
+                            'periode' => $request->periode
                         ]);
                     }
                 }

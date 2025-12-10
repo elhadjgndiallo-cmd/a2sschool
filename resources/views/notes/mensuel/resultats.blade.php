@@ -71,6 +71,69 @@
     </div>
 </div>
 
+@if(isset($stats))
+<!-- Tableau statistique -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">
+            <i class="fas fa-table me-2"></i>
+            Tableau statistique - {{ $moisListe[$mois] }} {{ $annee }}
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0 text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th rowspan="2" class="text-start">Statistiques</th>
+                        <th colspan="2">Effectifs</th>
+                        <th colspan="2">Composés</th>
+                        <th colspan="2">Non composés</th>
+                        <th colspan="4">Moyennant</th>
+                        <th colspan="4">Non moyennant</th>
+                    </tr>
+                    <tr>
+                        <th>Total</th>
+                        <th>Filles</th>
+                        <th>Total</th>
+                        <th>Filles</th>
+                        <th>Total</th>
+                        <th>Filles</th>
+                        <th>Total</th>
+                        <th>Filles</th>
+                        <th>% Total</th>
+                        <th>% Filles</th>
+                        <th>Total</th>
+                        <th>Filles</th>
+                        <th>% Total</th>
+                        <th>% Filles</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-start fw-bold">Classe</td>
+                        <td>{{ $stats['effectifs']['total'] }}</td>
+                        <td>{{ $stats['effectifs']['filles'] }}</td>
+                        <td>{{ $stats['composes']['total'] }}</td>
+                        <td>{{ $stats['composes']['filles'] }}</td>
+                        <td>{{ $stats['non_composes']['total'] }}</td>
+                        <td>{{ $stats['non_composes']['filles'] }}</td>
+                        <td class="text-success fw-bold">{{ $stats['moyennant']['total'] }}</td>
+                        <td class="text-success fw-bold">{{ $stats['moyennant']['filles'] }}</td>
+                        <td class="text-success">{{ $stats['moyennant']['pct_total'] }}%</td>
+                        <td class="text-success">{{ $stats['moyennant']['pct_filles'] }}%</td>
+                        <td class="text-danger fw-bold">{{ $stats['non_moyennant']['total'] }}</td>
+                        <td class="text-danger fw-bold">{{ $stats['non_moyennant']['filles'] }}</td>
+                        <td class="text-danger">{{ $stats['non_moyennant']['pct_total'] }}%</td>
+                        <td class="text-danger">{{ $stats['non_moyennant']['pct_filles'] }}%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Résultats -->
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">

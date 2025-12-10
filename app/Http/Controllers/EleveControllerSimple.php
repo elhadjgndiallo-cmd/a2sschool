@@ -76,6 +76,26 @@ class EleveControllerSimple extends Controller
                 'name' => $request->prenom . ' ' . $request->nom,
             ];
             
+            // Ajouter les champs optionnels s'ils sont présents
+            if ($request->has('sexe')) {
+                $userData['sexe'] = $request->sexe;
+            }
+            if ($request->has('date_naissance')) {
+                $userData['date_naissance'] = $request->date_naissance;
+            }
+            if ($request->has('lieu_naissance')) {
+                $userData['lieu_naissance'] = $request->lieu_naissance;
+            }
+            if ($request->has('telephone')) {
+                $userData['telephone'] = $request->telephone;
+            }
+            if ($request->has('adresse')) {
+                $userData['adresse'] = $request->adresse;
+            }
+            if ($request->has('email')) {
+                $userData['email'] = $request->email;
+            }
+            
             // Gérer l'upload de la photo de profil
             if ($request->hasFile('photo_profil')) {
                 \Log::info('Upload de nouvelle photo détecté');
