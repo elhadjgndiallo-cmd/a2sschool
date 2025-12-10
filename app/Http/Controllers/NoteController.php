@@ -801,8 +801,8 @@ class NoteController extends Controller
             ->get()
             ->groupBy('matiere_id');
             
-        $totalPoints = 0;
-        $totalCoefficients = 0;
+        $sommeNoteCoefficient = 0;
+        $sommeCoefficients = 0;
         
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
@@ -821,12 +821,13 @@ class NoteController extends Controller
             
             if ($nombreNotes > 0) {
                 $moyenne = $sommeNotesFinales / $nombreNotes;
-                $totalPoints += $moyenne * $matiere->coefficient;
-                $totalCoefficients += $matiere->coefficient;
+                // Formule: Somme de (moyenne × coefficient) / Somme des coefficients
+                $sommeNoteCoefficient += $moyenne * $matiere->coefficient;
+                $sommeCoefficients += $matiere->coefficient;
             }
         }
         
-        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+        return $sommeCoefficients > 0 ? round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
     }
 
     /**
@@ -840,8 +841,8 @@ class NoteController extends Controller
             ->groupBy('matiere_id');
             
         $moyennes = [];
-        $totalPoints = 0;
-        $totalCoefficients = 0;
+        $sommeNoteCoefficient = 0;
+        $sommeCoefficients = 0;
         
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
@@ -865,13 +866,14 @@ class NoteController extends Controller
                     'coefficient' => $matiere->coefficient
                 ];
                 
-                $totalPoints += $moyenne * $matiere->coefficient;
-                $totalCoefficients += $matiere->coefficient;
+                // Formule: Somme de (moyenne × coefficient) / Somme des coefficients
+                $sommeNoteCoefficient += $moyenne * $matiere->coefficient;
+                $sommeCoefficients += $matiere->coefficient;
             }
         }
         
-        $moyennes['generale'] = $totalCoefficients > 0 ? 
-            round($totalPoints / $totalCoefficients, 2) : 0;
+        $moyennes['generale'] = $sommeCoefficients > 0 ? 
+            round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
             
         return $moyennes;
     }
