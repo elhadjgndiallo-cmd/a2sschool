@@ -228,6 +228,9 @@
                                         <option value="trimestre2" {{ old('periode', $note->periode) == 'trimestre2' ? 'selected' : '' }}>
                                             Trimestre 2
                                         </option>
+                                        <option value="trimestre3" {{ old('periode', $note->periode) == 'trimestre3' ? 'selected' : '' }}>
+                                            Trimestre 3
+                                        </option>
                                     </select>
                                     @error('periode')
                                         <div class="invalid-feedback">{{ $error }}</div>
