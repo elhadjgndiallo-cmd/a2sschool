@@ -662,7 +662,9 @@
                             <span class="badge bg-light text-dark ms-2">{{ ucfirst(auth()->user()->role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" id="profileDropdownMenu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
+                            @if(auth()->user()->canAccessAdmin() && auth()->user()->hasPermission('etablissement.view'))
+                            <li><a class="dropdown-item" href="{{ route('etablissement.informations') }}"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
+                            @endif
                             <li><a class="dropdown-item" href="{{ route('password.change.form') }}"><i class="fas fa-key me-2"></i>Changer le mot de passe</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
@@ -1049,26 +1051,44 @@
             const navbarCollapse = document.getElementById('topNavbar');
             
             if (profileDropdown && profileDropdownToggle && navbarCollapse) {
-                // Intercepter les clics sur le dropdown AVANT que Bootstrap ne les traite
-                // Utiliser la phase de capture pour intercepter avant Bootstrap
-                profileDropdown.addEventListener('click', function(e) {
-                    // Empêcher la propagation pour que le collapse ne se déclenche pas
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                }, true); // true = capture phase (avant la phase de bubbling)
-                
                 // Empêcher spécifiquement que le toggle déclenche le collapse
                 profileDropdownToggle.addEventListener('click', function(e) {
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                 }, true);
                 
-                // Empêcher que le menu dropdown déclenche le collapse
+                // Permettre les clics sur les liens du menu dropdown sans empêcher la navigation
                 if (profileDropdownMenu) {
+                    // Permettre les clics sur les liens (pas de stopPropagation pour les liens)
                     profileDropdownMenu.addEventListener('click', function(e) {
+                        // Si c'est un lien ou un bouton dans un formulaire, permettre la navigation
+                        const link = e.target.closest('a.dropdown-item');
+                        const button = e.target.closest('button.dropdown-item');
+                        
+                        if (link || button) {
+                            // Laisser le lien/bouton fonctionner normalement
+                            // Ne pas empêcher la propagation pour permettre la navigation
+                            return true;
+                        }
+                        
+                        // Pour les autres éléments, empêcher la propagation
                         e.stopPropagation();
-                    }, true);
+                    }, false); // false = bubbling phase (après la phase de capture)
                 }
+                
+                // Intercepter les clics sur le conteneur dropdown (mais pas sur les liens)
+                profileDropdown.addEventListener('click', function(e) {
+                    // Si c'est un lien ou un bouton, ne pas empêcher
+                    if (e.target.closest('a.dropdown-item') || e.target.closest('button.dropdown-item')) {
+                        return true;
+                    }
+                    
+                    // Si c'est le toggle, empêcher la propagation
+                    if (e.target === profileDropdownToggle || profileDropdownToggle.contains(e.target)) {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    }
+                }, true);
                 
                 // Empêcher que les clics en dehors du dropdown ferment le collapse
                 // mais seulement si le collapse est ouvert à cause du dropdown
