@@ -468,14 +468,14 @@
                                     
                                     <!-- Totaux -->
                                     <tr class="table-dark">
-                                        <td colspan="2" class="fw-bold text-white">TOTAUX</td>
-                                        <td class="text-end fw-bold text-white">
+                                        <td colspan="2" class="fw-bold">TOTAUX</td>
+                                        <td class="text-end fw-bold">
                                             {{ number_format($totalEntrees, 0, ',', ' ') }} GNF
                                         </td>
-                                        <td class="text-end fw-bold text-white">
+                                        <td class="text-end fw-bold">
                                             {{ number_format($totalSorties, 0, ',', ' ') }} GNF
                                         </td>
-                                        <td class="text-end fw-bold text-white">
+                                        <td class="text-end fw-bold">
                                             {{ number_format($soldeFinal, 0, ',', ' ') }} GNF
                                         </td>
                                     </tr>
@@ -550,6 +550,26 @@
             display: none !important;
         }
         
+        /* Masquer les scrollbars et éléments de navigation */
+        ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+        
+        * {
+            overflow: visible !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        
+        .table-responsive,
+        .table-wrapper,
+        [class*="scroll"],
+        [class*="overflow"] {
+            overflow: visible !important;
+        }
+        
         /* Styles de base pour l'impression */
         @page {
             size: A4 portrait;
@@ -563,6 +583,11 @@
             line-height: 1.4;
             color: #000;
             background: white !important;
+            overflow: visible !important;
+        }
+        
+        html {
+            overflow: visible !important;
         }
         
         .container-fluid {
@@ -638,14 +663,34 @@
         
         .card-body {
             padding: 10px !important;
+            overflow: visible !important;
         }
         
-        /* Tableau */
+        .card-body .table-responsive {
+            overflow: visible !important;
+        }
+        
+        /* Tableau - Masquer les scrollbars */
+        .table-responsive {
+            overflow: visible !important;
+            display: block !important;
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+        }
+        
+        .table-responsive::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+        
         .table {
             width: 100%;
             font-size: 10px;
             border-collapse: collapse;
             margin-bottom: 10px;
+            display: table !important;
+            overflow: visible !important;
         }
         
         .table th,
@@ -653,12 +698,14 @@
             border: 1px solid #000;
             padding: 6px 4px;
             text-align: left;
+            overflow: visible !important;
         }
         
         .table th {
             background-color: #f5f5f5 !important;
             font-weight: bold;
             text-align: center;
+            color: #000 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -667,16 +714,33 @@
             text-align: right;
         }
         
-        .table-dark {
-            background-color: #333 !important;
-            color: white !important;
+        /* En-tête du tableau en noir */
+        .table-dark thead th,
+        thead.table-dark th {
+            background-color: #f5f5f5 !important;
+            color: #000 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         
-        .table-dark th,
-        .table-dark td {
+        /* Ligne des totaux avec fond gris clair et texte noir */
+        .table-dark tbody tr,
+        tbody .table-dark tr {
+            background-color: #f5f5f5 !important;
+            color: #000 !important;
+        }
+        
+        .table-dark tbody td,
+        tbody .table-dark td {
             border-color: #000;
+            color: #000 !important;
+            background-color: #f5f5f5 !important;
+        }
+        
+        /* S'assurer que le texte blanc dans les cellules des totaux devient noir */
+        .table-dark tbody td.text-white,
+        tbody .table-dark td.text-white {
+            color: #000 !important;
         }
         
         /* Couleurs pour l'impression */
@@ -846,3 +910,4 @@ window.addEventListener('afterprint', function() {
 });
 </script>
 @endpush
+
