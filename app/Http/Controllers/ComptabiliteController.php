@@ -12,6 +12,7 @@ use App\Models\Classe;
 use App\Models\SalaireEnseignant;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ComptabiliteController extends Controller
 {
@@ -1791,6 +1792,50 @@ class ComptabiliteController extends Controller
         // Solde final = Entrées - Sorties
         $soldeFinal = $totalEntrees - $totalSorties;
         
+        // Vérifier si on doit générer un PDF
+        $format = $request->get('format', 'html');
+        
+        if ($format === 'pdf') {
+            // Générer le nom du fichier PDF
+            $fileName = 'rapport-journalier';
+            if ($type === 'jour') {
+                $fileName .= '-' . $dateCarbon->format('Y-m-d');
+            } elseif ($type === 'mois') {
+                $fileName .= '-' . $dateCarbon->format('Y-m');
+            } else {
+                $fileName .= '-' . $year;
+            }
+            $fileName .= '.pdf';
+            
+            // Générer le PDF avec une vue standalone (sans layout pour éviter Font Awesome)
+            $pdf = Pdf::loadView('comptabilite.rapport-journalier-pdf', compact(
+                'journal',
+                'date',
+                'dateCarbon',
+                'soldeInitial',
+                'totalEntrees',
+                'totalSorties',
+                'soldeFinal',
+                'type'
+            ));
+            
+            // Configurer les options du PDF
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->setOption('enable-local-file-access', true);
+            $pdf->setOption('isHtml5ParserEnabled', true);
+            $pdf->setOption('isRemoteEnabled', true);
+            $pdf->setOption('defaultFont', 'Arial');
+            $pdf->setOption('fontHeightRatio', 1.1);
+            
+            // S'assurer que le répertoire fonts existe
+            $fontsPath = storage_path('fonts');
+            if (!is_dir($fontsPath)) {
+                mkdir($fontsPath, 0755, true);
+            }
+            
+            return $pdf->download($fileName);
+        }
+        
         return view('comptabilite.rapport-journalier', compact(
             'journal',
             'date',
@@ -1798,7 +1843,8 @@ class ComptabiliteController extends Controller
             'soldeInitial',
             'totalEntrees',
             'totalSorties',
-            'soldeFinal'
+            'soldeFinal',
+            'type'
         ));
     }
     

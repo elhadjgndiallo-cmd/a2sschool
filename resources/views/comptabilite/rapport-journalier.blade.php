@@ -4,7 +4,7 @@
 
 @section('content')
 <style>
-    /* Styles pour l'impression */
+    /* Styles pour l'impression et PDF */
     @media print {
         @page {
             size: A4 portrait;
@@ -19,6 +19,11 @@
             line-height: 1.4;
             color: #000;
             background: white;
+        }
+        
+        /* Masquer les icônes Font Awesome dans le PDF */
+        .fas, .far, .fab, .fa, [class*="fa-"], i[class*="fa-"] {
+            display: none !important;
         }
         
         .no-print {
@@ -200,12 +205,27 @@
                     <span class="d-none d-sm-inline">Rapport Journalier</span>
                     <span class="d-sm-none">Rapport</span>
                 </h2>
-                <div class="btn-group w-100 w-md-auto">
-                    <button onclick="window.print()" class="btn btn-outline-primary">
-                        <i class="fas fa-print me-1"></i><span class="d-none d-sm-inline">Imprimer</span>
+                <div class="btn-group w-100 w-md-auto" role="group">
+                    <a href="{{ route('comptabilite.rapport-journalier', array_merge(request()->all(), ['format' => 'pdf'])) }}" 
+                       class="btn btn-outline-danger" 
+                       title="Télécharger le rapport en format PDF">
+                        <i class="fas fa-file-pdf me-1"></i>
+                        <span class="d-none d-sm-inline">Télécharger PDF</span>
+                        <span class="d-sm-none">PDF</span>
+                    </a>
+                    <button onclick="imprimerRapport()" 
+                            class="btn btn-outline-primary" 
+                            title="Imprimer le rapport journalier (Ctrl+P ou Cmd+P)"
+                            id="btnImprimer">
+                        <i class="fas fa-print me-1"></i>
+                        <span class="d-none d-sm-inline">Imprimer</span>
+                        <span class="d-sm-none">Impr.</span>
                     </button>
-                    <a href="{{ route('comptabilite.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i><span class="d-none d-sm-inline">Retour</span>
+                    <a href="{{ route('comptabilite.index') }}" 
+                       class="btn btn-outline-secondary"
+                       title="Retour à la page de comptabilité">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        <span class="d-none d-sm-inline">Retour</span>
                     </a>
                 </div>
             </div>
@@ -239,9 +259,12 @@
             <!-- Titre du document -->
             <div class="document-title">
                 <h2>
-                    @if(request('type') == 'mois')
+                    @php
+                        $reportType = $type ?? request('type', 'jour');
+                    @endphp
+                    @if($reportType == 'mois')
                         RAPPORT MENSUEL DE COMPTABILITÉ
-                    @elseif(request('type') == 'annee')
+                    @elseif($reportType == 'annee')
                         RAPPORT ANNUEL DE COMPTABILITÉ
                     @else
                         RAPPORT JOURNALIER DE COMPTABILITÉ
@@ -253,9 +276,12 @@
             <div class="document-info">
                 <p class="generation-info">
                     Généré le {{ now()->format('d/m/Y à H:i') }} | 
-                    @if(request('type') == 'mois')
+                    @php
+                        $reportType = $type ?? request('type', 'jour');
+                    @endphp
+                    @if($reportType == 'mois')
                         Période: {{ \Carbon\Carbon::parse(request('month', now()->format('Y-m')))->format('F Y') }}
-                    @elseif(request('type') == 'annee')
+                    @elseif($reportType == 'annee')
                         Année: {{ request('year', now()->year) }}
                     @else
                         Date: {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
@@ -442,14 +468,14 @@
                                     
                                     <!-- Totaux -->
                                     <tr class="table-dark">
-                                        <td colspan="2" class="fw-bold">TOTAUX</td>
-                                        <td class="text-end fw-bold text-success">
+                                        <td colspan="2" class="fw-bold text-white">TOTAUX</td>
+                                        <td class="text-end fw-bold text-white">
                                             {{ number_format($totalEntrees, 0, ',', ' ') }} GNF
                                         </td>
-                                        <td class="text-end fw-bold text-danger">
+                                        <td class="text-end fw-bold text-white">
                                             {{ number_format($totalSorties, 0, ',', ' ') }} GNF
                                         </td>
-                                        <td class="text-end fw-bold text-primary">
+                                        <td class="text-end fw-bold text-white">
                                             {{ number_format($soldeFinal, 0, ',', ' ') }} GNF
                                         </td>
                                     </tr>
@@ -508,37 +534,214 @@
 @push('styles')
 <style>
     @media print {
-        .btn-group, .card-header .btn, .navbar, .sidebar {
+        /* Masquer les éléments non nécessaires */
+        .no-print,
+        .btn-group,
+        .card-header .btn,
+        .navbar,
+        .sidebar,
+        .breadcrumb,
+        .alert {
             display: none !important;
+        }
+        
+        /* Masquer les icônes Font Awesome */
+        .fas, .far, .fab, .fa, [class*="fa-"], i[class*="fa-"] {
+            display: none !important;
+        }
+        
+        /* Styles de base pour l'impression */
+        @page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #000;
+            background: white !important;
         }
         
         .container-fluid {
             padding: 0 !important;
+            max-width: 100% !important;
         }
         
+        /* En-tête d'impression */
+        .header.print-only {
+            display: block !important;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+        
+        .header-content {
+            text-align: center;
+        }
+        
+        .school-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+        
+        .school-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .school-slogan {
+            font-size: 11px;
+            color: #666;
+            margin: 2px 0 0 0;
+        }
+        
+        .document-title h2 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 8px 0;
+            text-transform: uppercase;
+        }
+        
+        .generation-info {
+            font-size: 10px;
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        /* Cards et conteneurs */
         .card {
             border: none !important;
             box-shadow: none !important;
+            page-break-inside: avoid;
         }
         
+        .card-header {
+            background-color: #f5f5f5 !important;
+            border-bottom: 1px solid #000 !important;
+            padding: 8px !important;
+        }
+        
+        .card-header h5 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        
+        .card-body {
+            padding: 10px !important;
+        }
+        
+        /* Tableau */
         .table {
-            font-size: 12px;
+            width: 100%;
+            font-size: 10px;
+            border-collapse: collapse;
+            margin-bottom: 10px;
         }
         
-        .table th, .table td {
-            padding: 8px 4px !important;
+        .table th,
+        .table td {
+            border: 1px solid #000;
+            padding: 6px 4px;
+            text-align: left;
         }
         
-        body {
-            font-size: 12px;
+        .table th {
+            background-color: #f5f5f5 !important;
+            font-weight: bold;
+            text-align: center;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
+        .table .text-end {
+            text-align: right;
+        }
+        
+        .table-dark {
+            background-color: #333 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .table-dark th,
+        .table-dark td {
+            border-color: #000;
+        }
+        
+        /* Couleurs pour l'impression */
+        .text-success {
+            color: #000 !important;
+            font-weight: bold;
+        }
+        
+        .text-danger {
+            color: #000 !important;
+            font-weight: bold;
+        }
+        
+        .text-primary {
+            color: #000 !important;
+            font-weight: bold;
+        }
+        
+        .fw-bold {
+            font-weight: bold;
+        }
+        
+        /* Pied de page */
+        .footer.print-only {
+            display: block !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            font-size: 9px;
+            color: #666;
+            padding: 5px;
+            background-color: white;
+            border-top: 1px solid #ccc;
+        }
+        
+        /* Éviter les sauts de page dans les lignes du tableau */
+        .table tr {
+            page-break-inside: avoid;
+        }
+        
+        /* Titres */
         h2 {
             font-size: 18px;
+            margin: 10px 0;
         }
         
         h5 {
             font-size: 14px;
+            margin: 8px 0;
+        }
+        
+        /* Espacement */
+        .mb-4 {
+            margin-bottom: 15px !important;
+        }
+        
+        /* Masquer les éléments de résumé à l'écran mais les garder pour référence */
+        .row.mb-4.no-print {
+            display: none !important;
+        }
+    }
+    
+    /* Styles pour l'aperçu avant impression */
+    @media screen {
+        .print-preview {
+            display: none;
         }
     }
 </style>
@@ -575,6 +778,64 @@ function toggleDateInputs() {
 // Initialiser l'affichage au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
     toggleDateInputs();
+    
+    // Ajouter le raccourci clavier Ctrl+P / Cmd+P pour l'impression
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+P (Windows/Linux) ou Cmd+P (Mac)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            imprimerRapport();
+        }
+    });
+});
+
+/**
+ * Fonction améliorée pour imprimer le rapport
+ */
+function imprimerRapport() {
+    // Préparer la page pour l'impression
+    document.body.classList.add('printing');
+    
+    // Afficher les éléments d'impression
+    const printElements = document.querySelectorAll('.print-only');
+    printElements.forEach(el => {
+        el.style.display = 'block';
+    });
+    
+    // Masquer les éléments non nécessaires
+    const noPrintElements = document.querySelectorAll('.no-print');
+    noPrintElements.forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Attendre un court instant pour que les styles s'appliquent
+    setTimeout(() => {
+        // Ouvrir la boîte de dialogue d'impression
+        window.print();
+        
+        // Restaurer l'affichage après l'impression
+        setTimeout(() => {
+            document.body.classList.remove('printing');
+            noPrintElements.forEach(el => {
+                el.style.display = '';
+            });
+        }, 500);
+    }, 100);
+}
+
+// Gérer l'événement avant impression
+window.addEventListener('beforeprint', function() {
+    // S'assurer que tous les éléments d'impression sont visibles
+    const printElements = document.querySelectorAll('.print-only');
+    printElements.forEach(el => {
+        el.style.display = 'block';
+    });
+});
+
+// Gérer l'événement après impression
+window.addEventListener('afterprint', function() {
+    // Restaurer l'affichage normal
+    document.body.classList.remove('printing');
 });
 </script>
 @endpush
