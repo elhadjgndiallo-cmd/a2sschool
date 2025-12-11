@@ -573,9 +573,11 @@
         /* En-tête d'impression */
         .header.print-only {
             display: block !important;
+            visibility: visible !important;
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 2px solid #000;
+            page-break-after: avoid;
         }
         
         .header-content {
@@ -700,6 +702,7 @@
         /* Pied de page */
         .footer.print-only {
             display: block !important;
+            visibility: visible !important;
             position: fixed;
             bottom: 0;
             left: 0;
@@ -735,6 +738,12 @@
         /* Masquer les éléments de résumé à l'écran mais les garder pour référence */
         .row.mb-4.no-print {
             display: none !important;
+        }
+        
+        /* Forcer l'affichage des éléments d'impression */
+        .print-only {
+            display: block !important;
+            visibility: visible !important;
         }
     }
     
@@ -793,49 +802,47 @@ document.addEventListener('DOMContentLoaded', function() {
  * Fonction améliorée pour imprimer le rapport
  */
 function imprimerRapport() {
-    // Préparer la page pour l'impression
-    document.body.classList.add('printing');
-    
-    // Afficher les éléments d'impression
-    const printElements = document.querySelectorAll('.print-only');
-    printElements.forEach(el => {
-        el.style.display = 'block';
-    });
-    
-    // Masquer les éléments non nécessaires
-    const noPrintElements = document.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => {
-        el.style.display = 'none';
-    });
-    
-    // Attendre un court instant pour que les styles s'appliquent
-    setTimeout(() => {
-        // Ouvrir la boîte de dialogue d'impression
-        window.print();
-        
-        // Restaurer l'affichage après l'impression
-        setTimeout(() => {
-            document.body.classList.remove('printing');
-            noPrintElements.forEach(el => {
-                el.style.display = '';
-            });
-        }, 500);
-    }, 100);
+    // Utiliser directement window.print() car les styles CSS @media print
+    // gèrent déjà l'affichage/masquage des éléments
+    window.print();
 }
 
-// Gérer l'événement avant impression
+// Gérer l'événement avant impression (pour certains navigateurs)
+if (window.matchMedia) {
+    const mediaQueryList = window.matchMedia('print');
+    mediaQueryList.addListener(function(mql) {
+        if (mql.matches) {
+            // Avant impression
+            const printElements = document.querySelectorAll('.print-only');
+            printElements.forEach(el => {
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+            });
+        } else {
+            // Après impression
+            const printElements = document.querySelectorAll('.print-only');
+            printElements.forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+    });
+}
+
+// Gérer l'événement avant impression (pour compatibilité)
 window.addEventListener('beforeprint', function() {
-    // S'assurer que tous les éléments d'impression sont visibles
     const printElements = document.querySelectorAll('.print-only');
     printElements.forEach(el => {
         el.style.display = 'block';
+        el.style.visibility = 'visible';
     });
 });
 
 // Gérer l'événement après impression
 window.addEventListener('afterprint', function() {
-    // Restaurer l'affichage normal
-    document.body.classList.remove('printing');
+    const printElements = document.querySelectorAll('.print-only');
+    printElements.forEach(el => {
+        el.style.display = 'none';
+    });
 });
 </script>
 @endpush
