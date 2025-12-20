@@ -100,7 +100,9 @@ class PermissionHelper
                 ['href' => $getRoute('rapports.unifies'), 'icon' => 'fas fa-chart-line', 'text' => 'Tous les Rapports', 'permission' => 'rapports.view']
             ],
             'cartes' => [
-                ['href' => $getRoute('cartes-scolaires.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes Scolaires', 'permission' => 'cartes-scolaires.view']
+                ['href' => $getRoute('cartes-scolaires.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes Scolaires', 'permission' => 'cartes-scolaires.view'],
+                ['href' => $getRoute('cartes-enseignants.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes Enseignants', 'permission' => 'cartes-enseignants.view'],
+                ['href' => $getRoute('cartes-personnel-administration.index'), 'icon' => 'fas fa-id-card', 'text' => 'Cartes Personnel Administration', 'permission' => 'cartes-personnel-administration.view']
             ],
             'parametres' => [
                 ['href' => $getRoute('etablissement.informations'), 'icon' => 'fas fa-info-circle', 'text' => 'Informations', 'permission' => 'etablissement.view'],

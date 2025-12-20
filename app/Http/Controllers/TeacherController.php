@@ -317,10 +317,10 @@ class TeacherController extends Controller
             'date_evaluation' => 'required|date',
             'notes' => 'required|array',
             'notes.*.eleve_id' => 'required|exists:eleves,id',
-            'notes.*.matiere_id' => 'required|exists:matieres,id',
+            'notes.*.matiere_id' => 'nullable|exists:matieres,id',
             'notes.*.note_cours' => 'nullable|numeric|min:0|max:20',
             'notes.*.note_composition' => 'nullable|numeric|min:0|max:20',
-            'notes.*.coefficient' => 'required|numeric|min:1|max:10',
+            'notes.*.coefficient' => 'nullable|numeric|min:1|max:10',
             'notes.*.commentaire' => 'nullable|string|max:500',
         ]);
 
@@ -331,18 +331,68 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
+        $classe = Classe::findOrFail($request->classe_id);
+        $isPrimaire = $classe->isPrimaire();
+        $noteMax = $isPrimaire ? 10 : 20;
+        $niveauTexte = $isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+        
+        // Validation supplémentaire selon le niveau
+        foreach ($request->notes as $index => $noteData) {
+            if (isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] > $noteMax) {
+                return redirect()->back()
+                    ->with('error', "⚠️ Erreur : Une note de cours supérieure à {$noteMax} a été détectée. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                    ->withInput();
+            }
+            if (isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] > $noteMax) {
+                return redirect()->back()
+                    ->with('error', "⚠️ Erreur : Une note de composition supérieure à {$noteMax} a été détectée. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                    ->withInput();
+            }
+        }
+
         try {
-            DB::transaction(function() use ($request, $enseignant) {
+            
+            DB::transaction(function() use ($request, $enseignant, $isPrimaire) {
                 foreach ($request->notes as $noteData) {
-                    if ($noteData['note_cours'] || $noteData['note_composition']) {
+                    // Vérifier qu'une matière et un coefficient sont sélectionnés
+                    if (!empty($noteData['matiere_id']) && !empty($noteData['coefficient'])) {
+                        // Déterminer les notes
+                        $noteCours = !empty($noteData['note_cours']) ? $noteData['note_cours'] : null;
+                        $noteComposition = !empty($noteData['note_composition']) ? $noteData['note_composition'] : null;
+                        
+                        // Si aucune note n'est saisie, utiliser la note par défaut 0.00
+                        if ($noteCours === null && $noteComposition === null) {
+                            $noteCours = 00;
+                            $noteComposition = 0.00;
+                        }
+                        
+                        // Calculer la note finale selon le niveau
+                        if ($isPrimaire) {
+                            // Pour primaire : note finale = note composition
+                            $noteFinale = $noteComposition ?? null;
+                        } else {
+                            // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
+                            if ($noteCours === null && $noteComposition === null) {
+                                $noteFinale = null;
+                            } elseif ($noteCours === null) {
+                                $noteFinale = $noteComposition;
+                            } elseif ($noteComposition === null) {
+                                $noteFinale = $noteCours;
+                            } else {
+                                $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+                            }
+                        }
+                        
                         Note::create([
                             'eleve_id' => $noteData['eleve_id'],
                             'matiere_id' => $noteData['matiere_id'],
                             'enseignant_id' => $enseignant->id,
-                            'note_cours' => $noteData['note_cours'],
-                            'note_composition' => $noteData['note_composition'],
+                            'note_cours' => $noteCours,
+                            'note_composition' => $noteComposition,
+                            'note_finale' => $noteFinale,
+                            'note_sur' => $noteFinale ?? 20,
                             'coefficient' => $noteData['coefficient'],
-                            'commentaire' => $noteData['commentaire'],
+                            'commentaire' => $noteData['commentaire'] ?? null,
                             'date_evaluation' => $request->date_evaluation,
                             'type_evaluation' => $request->type_evaluation,
                             'periode' => $request->periode

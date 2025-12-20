@@ -496,11 +496,74 @@ document.addEventListener('DOMContentLoaded', function() {
         calculerStatistiques();
     }
 
+    // Validation des notes selon le niveau
+    const NOTE_MAX_PRIMAIRE_PRESCOLAIRE = 10;
+    const NOTE_MAX_COLLEGE_LYCEE = 20;
+    const noteMax = isPrimaire ? NOTE_MAX_PRIMAIRE_PRESCOLAIRE : NOTE_MAX_COLLEGE_LYCEE;
+    const niveauTexte = isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+    
+    function validerNote(input) {
+        const valeur = parseFloat(input.value);
+        if (!isNaN(valeur) && valeur > noteMax) {
+            input.classList.add('is-invalid');
+            const message = `⚠️ Vous avez une note supérieure à ${noteMax}. La note maximale pour le ${niveauTexte} est ${noteMax}.`;
+            
+            // Afficher le message d'avertissement
+            let alertDiv = input.parentElement.querySelector('.note-warning');
+            if (!alertDiv) {
+                alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-warning alert-sm note-warning mt-1 mb-0';
+                alertDiv.style.fontSize = '0.85rem';
+                alertDiv.style.padding = '0.25rem 0.5rem';
+                input.parentElement.appendChild(alertDiv);
+            }
+            alertDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + message;
+            
+            return false;
+        } else {
+            input.classList.remove('is-invalid');
+            const alertDiv = input.parentElement.querySelector('.note-warning');
+            if (alertDiv) {
+                alertDiv.remove();
+            }
+            return true;
+        }
+    }
+
     // Écouter les changements de notes cours et composition (délégation d'événements)
     document.addEventListener('input', function(e) {
         if (e.target.classList.contains('note-cours-input') || e.target.classList.contains('note-composition-input')) {
             const index = e.target.dataset.index;
+            
+            // Valider la note avant de calculer
+            validerNote(e.target);
+            
             calculerNoteFinaleLigne(index);
+        }
+    });
+    
+    // Validation avant soumission du formulaire
+    document.getElementById('notesForm').addEventListener('submit', function(e) {
+        let hasError = false;
+        const errors = [];
+        
+        document.querySelectorAll('.note-cours-input, .note-composition-input').forEach(function(input) {
+            const valeur = parseFloat(input.value);
+            if (!isNaN(valeur) && valeur > noteMax) {
+                hasError = true;
+                input.classList.add('is-invalid');
+                const row = input.closest('tr');
+                const eleveNom = row.querySelector('td:nth-child(2)').textContent.trim() + ' ' + row.querySelector('td:nth-child(3)').textContent.trim();
+                errors.push(`L'élève ${eleveNom} a une note supérieure à ${noteMax} (${valeur})`);
+            }
+        });
+        
+        if (hasError) {
+            e.preventDefault();
+            let errorMessage = `⚠️ Erreur : Vous avez des notes supérieures à ${noteMax}. La note maximale pour le ${niveauTexte} est ${noteMax}.\n\n`;
+            errorMessage += errors.join('\n');
+            alert(errorMessage);
+            return false;
         }
     });
 

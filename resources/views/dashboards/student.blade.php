@@ -104,7 +104,9 @@
                                     <th>Date</th>
                                     <th>Matière</th>
                                     <th>Évaluation</th>
+                                    @if($dernieresNotes->isNotEmpty() && !$dernieresNotes->first()->eleve->classe->isPrimaire())
                                     <th>Note Cours</th>
+                                    @endif
                                     <th>Note Comp.</th>
                                     <th>Note Finale</th>
                                     <th>Enseignant</th>
@@ -120,6 +122,7 @@
                                         </span>
                                     </td>
                                     <td>{{ $note->titre ?? ucfirst($note->type_evaluation) }}</td>
+                                    @if(!$note->eleve->classe->isPrimaire())
                                     <td class="text-center">
                                         @if($note->note_cours !== null)
                                             @php
@@ -132,6 +135,7 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
+                                    @endif
                                     <td class="text-center">
                                         @if($note->note_composition !== null)
                                             @php

@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Storage;
         Gestion des Comptes Administrateurs
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ route('cartes-personnel-administration.index') }}" class="btn btn-success me-2">
+            <i class="fas fa-id-card me-1"></i>
+            Cartes Administrateurs
+        </a>
         <a href="{{ route('admin.accounts.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>
             Créer un Compte Administrateur
@@ -128,6 +132,10 @@ use Illuminate\Support\Facades\Storage;
                                    class="btn btn-outline-primary" title="Gérer permissions">
                                     <i class="fas fa-key"></i>
                                 </a>
+                                <a href="{{ route('cartes-personnel-administration.create') }}?personnel_administration_id={{ $account->id }}" 
+                                   class="btn btn-outline-success" title="Créer une carte">
+                                    <i class="fas fa-id-card"></i>
+                                </a>
                                 <button type="button" 
                                         class="btn btn-outline-secondary" 
                                         onclick="resetPassword({{ $account->id }})"
@@ -141,12 +149,16 @@ use Illuminate\Support\Facades\Storage;
                                         title="{{ $account->statut === 'actif' ? 'Désactiver' : 'Activer' }}">
                                     <i class="fas fa-{{ $account->statut === 'actif' ? 'ban' : 'check' }}"></i>
                                 </button>
-                                <button type="button" 
-                                        class="btn btn-outline-danger" 
-                                        onclick="confirmDelete({{ $account->id }})"
-                                        title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <form method="POST" action="{{ route('admin.accounts.destroy', $account) }}" class="d-inline" 
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement le compte administrateur {{ $account->utilisateur->prenom }} {{ $account->utilisateur->nom }} ?\n\nCette action supprimera :\n- Le compte administrateur et son compte utilisateur\n- Toutes ses cartes\n- Sa photo de profil\n\nCette action est irréversible !')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="btn btn-outline-danger" 
+                                            title="Supprimer définitivement">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                                 @endif
                             </div>
                         </td>
@@ -177,36 +189,8 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                Êtes-vous sûr de vouloir supprimer ce compte administrateur ? Cette action est irréversible.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deleteForm" method="POST" style="display: inline;">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Supprimer</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 @push('scripts')
 <script>
-function confirmDelete(id) {
-    const form = document.getElementById('deleteForm');
-    form.action = `{{ url('/admin/accounts') }}/${id}`;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
 
 function resetPassword(id) {
     if (confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de ce compte administrateur ?')) {

@@ -276,10 +276,14 @@
                             <tr>
                                 <th>Matière</th>
                                 <th>Coefficient</th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th>Note Cours</th>
+                                @endif
                                 <th>Note Composition</th>
                                 <th>Note Finale</th>
+                                @if(!$eleve->classe->isPrimaire())
                                 <th>Points</th>
+                                @endif
                                 <th>Mention</th>
                                 <th>Actions</th>
                             </tr>
@@ -289,6 +293,7 @@
                             <tr>
                                 <td><strong>{{ $data['matiere']->nom }}</strong></td>
                                 <td class="text-center">{{ $data['coefficient'] }}</td>
+                                @if(!$eleve->classe->isPrimaire())
                                 <td class="text-center">
                                     @if($data['notes']->where('note_cours', '!=', null)->count() > 0)
                                         {{ number_format($data['notes']->where('note_cours', '!=', null)->avg('note_cours'), 2) }}/{{ $eleve->classe->note_max }}
@@ -296,6 +301,7 @@
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
+                                @endif
                                 <td class="text-center">
                                     @if($data['notes']->where('note_composition', '!=', null)->count() > 0)
                                         {{ number_format($data['notes']->where('note_composition', '!=', null)->avg('note_composition'), 2) }}/{{ $eleve->classe->note_max }}
@@ -308,7 +314,9 @@
                                         {{ number_format($data['moyenne'], 2) }}/{{ $eleve->classe->note_max }}
                                     </span>
                                 </td>
+                                @if(!$eleve->classe->isPrimaire())
                                 <td class="text-center">{{ number_format($data['points'], 2) }}</td>
+                                @endif
                                 <td>
                                     @php
                                         $appreciationMatiere = $eleve->classe->getAppreciation($data['moyenne']);
@@ -422,7 +430,9 @@
                                                 <tr>
                                                     <th>Date</th>
                                                     <th>Type</th>
+                                                    @if(!$eleve->classe->isPrimaire())
                                                     <th>Note Cours</th>
+                                                    @endif
                                                     <th>Note Composition</th>
                                                     <th>Note Finale</th>
                                                     <th>Enseignant</th>
@@ -436,6 +446,7 @@
                                                     <td>
                                                         <span class="badge bg-info">{{ ucfirst($note->type_evaluation) }}</span>
                                                     </td>
+                                                    @if(!$eleve->classe->isPrimaire())
                                                     <td class="text-center">
                                                         @if($note->note_cours !== null)
                                                             @php
@@ -448,6 +459,7 @@
                                                             <span class="text-muted">-</span>
                                                         @endif
                                                     </td>
+                                                    @endif
                                                     <td class="text-center">
                                                         @if($note->note_composition !== null)
                                                             @php

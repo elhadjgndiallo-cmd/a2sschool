@@ -18,6 +18,7 @@ use App\Http\Controllers\SalaireEnseignantController;
 use App\Http\Controllers\TarifClasseController;
 use App\Http\Controllers\CarteScolaireController;
 use App\Http\Controllers\CarteEnseignantController;
+use App\Http\Controllers\CartePersonnelAdministrationController;
 use App\Http\Controllers\ParentPaiementController;
 use App\Http\Controllers\StatistiqueController;
 use App\Http\Controllers\NotificationController;
@@ -821,10 +822,13 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         })->name('test.permissions');
         
         // Gestion du personnel d'administration
-        Route::resource('personnel-administration', \App\Http\Controllers\PersonnelAdministrationController::class);
         Route::get('/personnel-administration/{personnelAdministration}/permissions', [\App\Http\Controllers\PersonnelAdministrationController::class, 'managePermissions'])->name('personnel-administration.permissions');
         Route::put('/personnel-administration/{personnelAdministration}/permissions', [\App\Http\Controllers\PersonnelAdministrationController::class, 'updatePermissions'])->name('personnel-administration.update-permissions');
         Route::post('/personnel-administration/{personnelAdministration}/reset-password', [\App\Http\Controllers\PersonnelAdministrationController::class, 'resetPassword'])->name('personnel-administration.reset-password');
+        Route::post('/personnel-administration/{id}/reactivate', [\App\Http\Controllers\PersonnelAdministrationController::class, 'reactivate'])->name('personnel-administration.reactivate');
+        Route::delete('/personnel-administration/{personnelAdministration}', [\App\Http\Controllers\PersonnelAdministrationController::class, 'destroy'])->name('personnel-administration.destroy');
+        Route::delete('/personnel-administration/{personnelAdministration}/permanent', [\App\Http\Controllers\PersonnelAdministrationController::class, 'deletePermanently'])->name('personnel-administration.delete-permanent');
+        Route::resource('personnel-administration', \App\Http\Controllers\PersonnelAdministrationController::class)->except(['destroy']);
         
         // Gestion des comptes administrateurs
         Route::get('accounts', [\App\Http\Controllers\AdminAccountController::class, 'index'])->name('admin.accounts.index')->middleware('check.permission:admin.accounts.view');
@@ -1166,6 +1170,11 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/cartes-enseignants/{cartes_enseignant}/imprimer', [CarteEnseignantController::class, 'imprimer'])->name('cartes-enseignants.imprimer');
         Route::get('/cartes-enseignants/{cartes_enseignant}/renouveler', [CarteEnseignantController::class, 'renouveler'])->name('cartes-enseignants.renouveler');
         Route::post('/cartes-enseignants/{cartes_enseignant}/traiter-renouvellement', [CarteEnseignantController::class, 'traiterRenouvellement'])->name('cartes-enseignants.traiter-renouvellement');
+        
+        Route::resource('cartes-personnel-administration', CartePersonnelAdministrationController::class);
+        Route::get('/cartes-personnel-administration/{cartes_personnel_administration}/imprimer', [CartePersonnelAdministrationController::class, 'imprimer'])->name('cartes-personnel-administration.imprimer');
+        Route::get('/cartes-personnel-administration/{cartes_personnel_administration}/renouveler', [CartePersonnelAdministrationController::class, 'renouveler'])->name('cartes-personnel-administration.renouveler');
+        Route::post('/cartes-personnel-administration/{cartes_personnel_administration}/traiter-renouvellement', [CartePersonnelAdministrationController::class, 'traiterRenouvellement'])->name('cartes-personnel-administration.traiter-renouvellement');
     });
     
     // Routes pour les parents - consultation des informations de leurs enfants

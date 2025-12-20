@@ -11,9 +11,14 @@
                     <h3 class="card-title mb-0">
                         <i class="fas fa-users-cog me-2"></i>Personnel d'Administration
                     </h3>
-                    <a href="{{ route('personnel-administration.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i>Nouveau Personnel
-                    </a>
+                    <div>
+                        <a href="{{ route('cartes-personnel-administration.index') }}" class="btn btn-success me-2">
+                            <i class="fas fa-id-card me-1"></i>Cartes Personnel
+                        </a>
+                        <a href="{{ route('personnel-administration.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Nouveau Personnel
+                        </a>
+                    </div>
                 </div>
                 
                 <div class="card-body">
@@ -105,6 +110,10 @@
                                                    class="btn btn-sm btn-outline-primary" title="Permissions">
                                                     <i class="fas fa-key"></i>
                                                 </a>
+                                                <a href="{{ route('cartes-personnel-administration.create') }}?personnel_administration_id={{ $p->id }}" 
+                                                   class="btn btn-sm btn-outline-success" title="Créer une carte">
+                                                    <i class="fas fa-id-card"></i>
+                                                </a>
                                                 <form method="POST" action="{{ route('personnel-administration.reset-password', $p) }}" 
                                                       class="d-inline" 
                                                       onsubmit="return confirm('Réinitialiser le mot de passe ?')">
@@ -113,13 +122,38 @@
                                                         <i class="fas fa-key"></i>
                                                     </button>
                                                 </form>
-                                                <form method="POST" action="{{ route('personnel-administration.destroy', $p) }}" 
-                                                      class="d-inline" 
-                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce personnel ?')">
+                                                @if($p->statut === 'actif')
+                                                    <form method="POST" action="{{ route('personnel-administration.destroy', $p) }}" class="d-inline" 
+                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver le personnel {{ $p->utilisateur->prenom }} {{ $p->utilisateur->nom }} ?\n\nCette action rendra le personnel inactif et il ne pourra plus accéder à son compte.')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" 
+                                                                class="btn btn-sm btn-outline-danger" 
+                                                                title="Désactiver">
+                                                            <i class="fas fa-pause"></i>
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <form action="{{ route('personnel-administration.reactivate', $p->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" 
+                                                                class="btn btn-sm btn-outline-success" 
+                                                                title="Réactiver"
+                                                                onclick="return confirm('Êtes-vous sûr de vouloir réactiver ce personnel ?')">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                                
+                                                <!-- Bouton de suppression définitive -->
+                                                <form method="POST" action="{{ route('personnel-administration.delete-permanent', $p) }}" class="d-inline" 
+                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement le personnel {{ $p->utilisateur->prenom }} {{ $p->utilisateur->nom }} ?\n\nCette action supprimera :\n- Le personnel et son compte utilisateur\n- Toutes ses cartes\n- Sa photo de profil\n\nCette action est irréversible !')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
+                                                    <button type="submit" 
+                                                            class="btn btn-sm btn-outline-danger" 
+                                                            title="Supprimer définitivement">
+                                                        <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
                                             </div>

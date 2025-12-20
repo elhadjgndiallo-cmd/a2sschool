@@ -121,10 +121,14 @@
                         <tr>
                             <th>Matière</th>
                             <th class="text-center">Coefficient</th>
+                            @if(!$eleve->classe->isPrimaire())
                             <th class="text-center">Note Cours</th>
+                            @endif
                             <th class="text-center">Note Composition</th>
                             <th class="text-center">Note Finale</th>
+                            @if(!$eleve->classe->isPrimaire())
                             <th class="text-center">Points</th>
+                            @endif
                             <th class="text-center">Mention</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -139,6 +143,7 @@
                         <tr id="matiere-{{ $matiereId }}">
                             <td><strong>{{ $data['matiere']->nom }}</strong></td>
                             <td class="text-center">{{ $data['coefficient'] }}</td>
+                            @if(!$eleve->classe->isPrimaire())
                             <td class="text-center">
                                 @if($noteCours > 0)
                                     <span class="badge bg-info">{{ number_format($noteCours, 2) }}/{{ $eleve->classe->note_max }}</span>
@@ -146,6 +151,7 @@
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
+                            @endif
                             <td class="text-center">
                                 @if($noteComposition > 0)
                                     <span class="badge bg-info">{{ number_format($noteComposition, 2) }}/{{ $eleve->classe->note_max }}</span>
@@ -156,7 +162,9 @@
                             <td class="text-center">
                                 <span class="badge bg-primary fs-6">{{ number_format($data['moyenne'], 2) }}/{{ $eleve->classe->note_max }}</span>
                             </td>
+                            @if(!$eleve->classe->isPrimaire())
                             <td class="text-center"><strong>{{ number_format($data['points'], 2) }}</strong></td>
+                            @endif
                             <td class="text-center">
                                 <span class="text-{{ $appreciationMatiere['color'] }}">
                                     @if($appreciationMatiere['label'] == 'Excellent')
@@ -264,7 +272,9 @@
                         <tr>
                             <th>Date</th>
                             <th class="text-center">Type</th>
+                            @if(!$eleve->classe->isPrimaire())
                             <th class="text-center">Note Cours</th>
+                            @endif
                             <th class="text-center">Note Composition</th>
                             <th class="text-center">Note Finale</th>
                             <th class="text-center">Enseignant</th>
@@ -282,6 +292,7 @@
                             <td class="text-center">
                                 <span class="badge bg-secondary">{{ ucfirst($note->type_evaluation ?? 'N/A') }}</span>
                             </td>
+                            @if(!$eleve->classe->isPrimaire())
                             <td class="text-center">
                                 @if($note->note_cours)
                                     <span class="badge bg-info">{{ number_format($note->note_cours, 2) }}/{{ $eleve->classe->note_max }}</span>
@@ -289,6 +300,7 @@
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
+                            @endif
                             <td class="text-center">
                                 @if($note->note_composition)
                                     <span class="badge bg-info">{{ number_format($note->note_composition, 2) }}/{{ $eleve->classe->note_max }}</span>

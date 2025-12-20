@@ -72,7 +72,9 @@
                                                 <th>Matière</th>
                                                 <th class="text-center">Coef.</th>
                                                 <th class="text-center">Note Finale</th>
+                                                @if(isset($classe) && !$classe->isPrimaire())
                                                 <th class="text-center">Points</th>
+                                                @endif
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -81,7 +83,9 @@
                                                 <td><strong>{{ $matiere }}</strong></td>
                                                 <td class="text-center">{{ $data['coefficient'] }}</td>
                                                 <td class="text-center">{{ number_format($data['note_finale'], 2) }}/20</td>
+                                                @if(isset($classe) && !$classe->isPrimaire())
                                                 <td class="text-center">{{ $data['points'] }}</td>
+                                                @endif
                                             </tr>
                                             @endforeach
                                         </tbody>

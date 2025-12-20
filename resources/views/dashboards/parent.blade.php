@@ -145,7 +145,9 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Matière</th>
+                                            @if($enfant->notes->isNotEmpty() && !$enfant->notes->first()->eleve->classe->isPrimaire())
                                             <th>Note Cours</th>
+                                            @endif
                                             <th>Note Comp.</th>
                                             <th>Note Finale</th>
                                             <th>Type</th>
@@ -156,6 +158,7 @@
                                         <tr>
                                             <td>{{ $note->date_evaluation->format('d/m') }}</td>
                                             <td>{{ $note->matiere->nom }}</td>
+                                            @if(!$note->eleve->classe->isPrimaire())
                                             <td class="text-center">
                                                 @if($note->note_cours !== null)
                                                     @php
@@ -168,6 +171,7 @@
                                                     <span class="text-muted">-</span>
                                                 @endif
                                             </td>
+                                            @endif
                                             <td class="text-center">
                                                 @if($note->note_composition !== null)
                                                     @php

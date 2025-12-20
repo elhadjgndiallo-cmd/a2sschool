@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carte Enseignant - {{ $cartes_enseignant->enseignant->utilisateur->nom }}</title>
+    <title>Carte Personnel Administration - {{ $cartes_personnel_administration->personnelAdministration->utilisateur->nom }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -61,96 +61,6 @@
             display: flex;
             flex-direction: column;
         }
-        
-        .enseignant-info {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .photo-container {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #d4af37;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-            flex-shrink: 0;
-        }
-        
-        .enseignant-details {
-            flex: 1;
-            font-size: 9px;
-        }
-        
-        .enseignant-name {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 2px;
-        }
-        
-        .enseignant-meta {
-            color: #6c757d;
-            font-size: 8px;
-        }
-        
-        .qr-container {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
-        
-        .card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 8px;
-            color: #6c757d;
-            margin-top: 4px;
-            padding-top: 4px;
-            border-top: 1px solid #dee2e6;
-        }
-        
-        .numero-carte {
-            font-weight: bold;
-            color: #d4af37;
-        }
-        
-        .date-expiration {
-            color: #dc3545;
-        }
-        
-        .status-badge {
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 7px;
-            font-weight: bold;
-        }
-        
-        .status-active {
-            background: #d1e7dd;
-            color: #0f5132;
-        }
-        
-        .status-expiree {
-            background: #f8d7da;
-            color: #842029;
-        }
-        
-        .status-suspendue {
-            background: #fff3cd;
-            color: #664d03;
-        }
-        
-        .status-annulee {
-            background: #d1d3d4;
-            color: #495057;
-        }
     </style>
 </head>
 <body>
@@ -162,12 +72,12 @@
                     <button onclick="window.print()" class="btn btn-primary me-2">
                         <i class="fas fa-print me-2"></i>Imprimer
                     </button>
-                    <a href="{{ route('cartes-enseignants.index') }}" class="btn btn-secondary">
+                    <a href="{{ route('cartes-personnel-administration.index') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
                 </div>
 
-                <!-- Carte enseignant style Guinée -->
+                <!-- Carte personnel administration style Guinée -->
                 <div class="card-container">
                     <!-- En-tête avec drapeau et devise -->
                     <div class="card-header text-center">
@@ -187,49 +97,49 @@
                         <!-- Nom de l'école -->
                         <div class="text-center mb-1">
                             <div style="font-size: 9px; font-weight: bold; color: #d4af37; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $schoolInfo['school_name'] }}</div>
-                            <div style="font-size: 7px; color: #6c757d;">CARTE D'ENSEIGNANT</div>
+                            <div style="font-size: 7px; color: #6c757d;">CARTE PERSONNEL ADMINISTRATION</div>
                         </div>
                         
                         <!-- Contenu principal -->
                         <div class="d-flex align-items-center" style="height: 100%; gap: 4px;">
-                            <!-- Photo de l'enseignant - Gauche -->
+                            <!-- Photo du personnel - Gauche -->
                             <div style="width: 50px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #d4af37; border-radius: 4px; overflow: hidden;">
-                                @if($cartes_enseignant->enseignant->utilisateur->photo_profil)
-                                    <img src="{{ asset('storage/' . $cartes_enseignant->enseignant->utilisateur->photo_profil) }}" 
-                                         alt="Photo enseignant" 
+                                @if($cartes_personnel_administration->personnelAdministration->utilisateur->photo_profil)
+                                    <img src="{{ asset('storage/' . $cartes_personnel_administration->personnelAdministration->utilisateur->photo_profil) }}" 
+                                         alt="Photo personnel" 
                                          style="width: 100%; height: 100%; object-fit: cover;"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                     <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); display: none; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: bold;">
-                                        {{ substr($cartes_enseignant->enseignant->utilisateur->nom, 0, 1) }}{{ substr($cartes_enseignant->enseignant->utilisateur->prenom, 0, 1) }}
+                                        {{ substr($cartes_personnel_administration->personnelAdministration->utilisateur->nom, 0, 1) }}{{ substr($cartes_personnel_administration->personnelAdministration->utilisateur->prenom, 0, 1) }}
                                     </div>
                                 @else
                                     <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: bold;">
-                                        {{ substr($cartes_enseignant->enseignant->utilisateur->nom, 0, 1) }}{{ substr($cartes_enseignant->enseignant->utilisateur->prenom, 0, 1) }}
+                                        {{ substr($cartes_personnel_administration->personnelAdministration->utilisateur->nom, 0, 1) }}{{ substr($cartes_personnel_administration->personnelAdministration->utilisateur->prenom, 0, 1) }}
                                     </div>
                                 @endif
                             </div>
                             
-                            <!-- Informations de l'enseignant - Droite -->
+                            <!-- Informations du personnel - Droite -->
                             <div style="flex: 1; font-size: 8px; line-height: 1.2; display: flex; flex-direction: column; justify-content: center;">
                                 <div style="margin-bottom: 1px;">
                                     <span style="font-weight: bold;">Nom:</span>
-                                    <span>{{ $cartes_enseignant->enseignant->utilisateur->nom }}</span>
+                                    <span>{{ $cartes_personnel_administration->personnelAdministration->utilisateur->nom }}</span>
                                 </div>
                                 <div style="margin-bottom: 1px;">
                                     <span style="font-weight: bold;">Prénom:</span>
-                                    <span>{{ $cartes_enseignant->enseignant->utilisateur->prenom }}</span>
+                                    <span>{{ $cartes_personnel_administration->personnelAdministration->utilisateur->prenom }}</span>
                                 </div>
                                 <div style="margin-bottom: 1px;">
-                                    <span style="font-weight: bold;">Spécialité:</span>
-                                    <span>{{ $cartes_enseignant->enseignant->specialite ?? 'Non renseigné' }}</span>
+                                    <span style="font-weight: bold;">Poste:</span>
+                                    <span>{{ $cartes_personnel_administration->personnelAdministration->poste ?? 'Non renseigné' }}</span>
                                 </div>
                                 <div style="margin-bottom: 1px;">
-                                    <span style="font-weight: bold;">N° Employé:</span>
-                                    <span>{{ $cartes_enseignant->enseignant->numero_employe }}</span>
+                                    <span style="font-weight: bold;">Département:</span>
+                                    <span>{{ $cartes_personnel_administration->personnelAdministration->departement ?? 'Non renseigné' }}</span>
                                 </div>
                                 <div style="margin-bottom: 1px;">
                                     <span style="font-weight: bold;">Téléphone:</span>
-                                    <span>{{ $cartes_enseignant->enseignant->utilisateur->telephone ?? 'Non renseigné' }}</span>
+                                    <span>{{ $cartes_personnel_administration->personnelAdministration->utilisateur->telephone ?? 'Non renseigné' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -238,17 +148,17 @@
                         <div style="margin-top: 2px; padding: 2px; border-top: 1px solid #d4af37; line-height: 1.1; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <div style="background: #d4af37; color: white; padding: 1px 3px; border-radius: 2px; font-weight: bold; font-size: 7px;">
-                                    N°: {{ $cartes_enseignant->numero_carte }}
+                                    N°: {{ $cartes_personnel_administration->numero_carte }}
                                 </div>
                                 <div style="color: #6c757d; font-size: 7px;">
-                                    Exp: {{ $cartes_enseignant->date_expiration->format('m/Y') }}
+                                    Exp: {{ $cartes_personnel_administration->date_expiration->format('m/Y') }}
                                 </div>
                             </div>
                             <div class="text-center" style="font-size: 6px; color: #6c757d; margin-top: 1px;">
-                                @if($address && trim($address) !== '')
+                                @if(!empty(trim($address)))
                                     <div style="margin-bottom: 1px;">{{ $address }}</div>
                                 @endif
-                                @if($phone && trim($phone) !== '')
+                                @if(!empty(trim($phone)))
                                     <div>Tél: {{ $phone }}</div>
                                 @endif
                             </div>
@@ -265,24 +175,24 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <p><strong>Numéro de carte:</strong> {{ $cartes_enseignant->numero_carte }}</p>
-                                    <p><strong>Type:</strong> {{ $cartes_enseignant->type_carte_libelle }}</p>
-                                    <p><strong>Date d'émission:</strong> {{ $cartes_enseignant->date_emission->format('d/m/Y') }}</p>
+                                    <p><strong>Numéro de carte:</strong> {{ $cartes_personnel_administration->numero_carte }}</p>
+                                    <p><strong>Type:</strong> {{ $cartes_personnel_administration->type_carte_libelle }}</p>
+                                    <p><strong>Date d'émission:</strong> {{ $cartes_personnel_administration->date_emission->format('d/m/Y') }}</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p><strong>Date d'expiration:</strong> {{ $cartes_enseignant->date_expiration->format('d/m/Y') }}</p>
+                                    <p><strong>Date d'expiration:</strong> {{ $cartes_personnel_administration->date_expiration->format('d/m/Y') }}</p>
                                     <p><strong>Statut:</strong> 
-                                        <span class="status-badge status-{{ $cartes_enseignant->statut }}">
-                                            {{ $cartes_enseignant->statut_libelle }}
+                                        <span class="badge bg-{{ $cartes_personnel_administration->statut === 'active' ? 'success' : ($cartes_personnel_administration->statut === 'expiree' ? 'danger' : 'warning') }}">
+                                            {{ $cartes_personnel_administration->statut_libelle }}
                                         </span>
                                     </p>
-                                    <p><strong>Émise par:</strong> {{ $cartes_enseignant->emisePar->nom ?? 'Non défini' }}</p>
+                                    <p><strong>Émise par:</strong> {{ $cartes_personnel_administration->emisePar->nom ?? 'Non défini' }}</p>
                                 </div>
                             </div>
-                            @if($cartes_enseignant->observations)
+                            @if($cartes_personnel_administration->observations)
                                 <div class="mt-3">
                                     <p><strong>Observations:</strong></p>
-                                    <p class="text-muted">{{ $cartes_enseignant->observations }}</p>
+                                    <p class="text-muted">{{ $cartes_personnel_administration->observations }}</p>
                                 </div>
                             @endif
                         </div>
@@ -295,5 +205,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
 

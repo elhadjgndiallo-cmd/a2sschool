@@ -82,23 +82,25 @@
                         </div>
                     </form>
 
-                    @if($stats && $classe && $periode)
+                    @if(!empty($stats) && $periode)
                     <div class="mt-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0">
-                                Tableau statistique - {{ $classe->nom }} - {{ $periode->nom }} ({{ $periode->date_debut->format('d/m/Y') }} - {{ $periode->date_fin->format('d/m/Y') }})
+                                Tableau statistique - {{ $periode->nom }} ({{ $periode->date_debut->format('d/m/Y') }} - {{ $periode->date_fin->format('d/m/Y') }})
                             </h6>
-                            <a href="{{ route('notes.statistiques.imprimer') }}?classe_id={{ $classe->id }}&periode_id={{ $periode->id }}" 
+                            @if($classeId)
+                            <a href="{{ route('notes.statistiques.imprimer') }}?classe_id={{ $classeId }}&periode_id={{ $periode->id }}" 
                                class="btn btn-sm btn-primary" target="_blank">
                                 <i class="fas fa-print me-1"></i>
                                 Imprimer
                             </a>
+                            @endif
                         </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped mb-0 text-center align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th rowspan="2" class="text-start align-middle" style="min-width: 150px;">Statistiques</th>
+                                        <th rowspan="2" class="text-start align-middle" style="min-width: 150px;">Classe</th>
                                         <th colspan="2">Effectifs</th>
                                         <th colspan="2">Composés</th>
                                         <th colspan="2">Non composés</th>
@@ -123,28 +125,30 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @foreach($stats as $classeIdStat => $stat)
                                     <tr>
-                                        <td class="text-start fw-bold">Classe</td>
-                                        <td class="fw-bold">{{ $stats['effectifs']['total'] }}</td>
-                                        <td class="fw-bold">{{ $stats['effectifs']['filles'] }}</td>
-                                        <td>{{ $stats['composes']['total'] }}</td>
-                                        <td>{{ $stats['composes']['filles'] }}</td>
-                                        <td>{{ $stats['non_composes']['total'] }}</td>
-                                        <td>{{ $stats['non_composes']['filles'] }}</td>
-                                        <td class="text-success fw-bold">{{ $stats['moyennant']['total'] }}</td>
-                                        <td class="text-success fw-bold">{{ $stats['moyennant']['filles'] }}</td>
-                                        <td class="text-success">{{ $stats['moyennant']['pct_total'] }}%</td>
-                                        <td class="text-success">{{ $stats['moyennant']['pct_filles'] }}%</td>
-                                        <td class="text-danger fw-bold">{{ $stats['non_moyennant']['total'] }}</td>
-                                        <td class="text-danger fw-bold">{{ $stats['non_moyennant']['filles'] }}</td>
-                                        <td class="text-danger">{{ $stats['non_moyennant']['pct_total'] }}%</td>
-                                        <td class="text-danger">{{ $stats['non_moyennant']['pct_filles'] }}%</td>
+                                        <td class="text-start fw-bold">{{ $stat['classe']->nom }}</td>
+                                        <td class="fw-bold">{{ $stat['effectifs']['total'] }}</td>
+                                        <td class="fw-bold">{{ $stat['effectifs']['filles'] }}</td>
+                                        <td>{{ $stat['composes']['total'] }}</td>
+                                        <td>{{ $stat['composes']['filles'] }}</td>
+                                        <td>{{ $stat['non_composes']['total'] }}</td>
+                                        <td>{{ $stat['non_composes']['filles'] }}</td>
+                                        <td class="text-success fw-bold">{{ $stat['moyennant']['total'] }}</td>
+                                        <td class="text-success fw-bold">{{ $stat['moyennant']['filles'] }}</td>
+                                        <td class="text-success">{{ $stat['moyennant']['pct_total'] }}%</td>
+                                        <td class="text-success">{{ $stat['moyennant']['pct_filles'] }}%</td>
+                                        <td class="text-danger fw-bold">{{ $stat['non_moyennant']['total'] }}</td>
+                                        <td class="text-danger fw-bold">{{ $stat['non_moyennant']['filles'] }}</td>
+                                        <td class="text-danger">{{ $stat['non_moyennant']['pct_total'] }}%</td>
+                                        <td class="text-danger">{{ $stat['non_moyennant']['pct_filles'] }}%</td>
                                     </tr>
+                                    @endforeach
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    @elseif($classeId || $periodeId)
+                    @elseif($periodeId)
                     <div class="alert alert-info mt-3">
                         <i class="fas fa-info-circle me-2"></i>
                         Aucune donnée disponible pour cette classe et ce trimestre.

@@ -234,6 +234,22 @@ class NoteController extends Controller
         // Récupérer la classe pour déterminer le niveau
         $classe = \App\Models\Classe::findOrFail($request->classe_id);
         $isPrimaire = $classe->isPrimaire();
+        $noteMax = $isPrimaire ? 10 : 20;
+        $niveauTexte = $isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+        
+        // Validation supplémentaire selon le niveau
+        foreach ($request->notes as $index => $noteData) {
+            if (isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] > $noteMax) {
+                return redirect()->back()
+                    ->with('error', "⚠️ Erreur : Une note de cours supérieure à {$noteMax} a été détectée. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                    ->withInput();
+            }
+            if (isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] > $noteMax) {
+                return redirect()->back()
+                    ->with('error', "⚠️ Erreur : Une note de composition supérieure à {$noteMax} a été détectée. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                    ->withInput();
+            }
+        }
         
         DB::transaction(function() use ($request, &$matieresAvecNotes, $isPrimaire) {
             $classeId = $request->classe_id;
@@ -1059,163 +1075,176 @@ class NoteController extends Controller
         $classeId = $request->get('classe_id');
         $periodeId = $request->get('periode_id');
         
-        $stats = null;
-        $classe = null;
+        $stats = [];
         $periode = null;
         
-        if ($classeId && $periodeId) {
-            $classe = Classe::find($classeId);
+        // Si un trimestre est sélectionné, calculer les statistiques
+        if ($periodeId) {
             $periode = \App\Models\PeriodeScolaire::find($periodeId);
             
-            if ($classe && $periode) {
-                // Vider le cache pour s'assurer que les données sont à jour
-                \Cache::forget('tests_trimestriels_' . $classe->id . '_' . $periode->id);
-                \Cache::forget('eleves_classe_' . $classe->id);
-
-                // Récupérer les élèves de la classe pour l'année scolaire active
-                // Utiliser fresh() pour éviter le cache Eloquent
-                $eleves = $classe->eleves()
-                    ->where('annee_scolaire_id', $anneeScolaireActive->id)
-                    ->get()
-                    ->map(function($eleve) {
-                        // Recharger chaque élève depuis la base de données
-                        $eleve = $eleve->fresh(['utilisateur']);
-                        // Forcer le rechargement de l'utilisateur
-                        if ($eleve->utilisateur) {
-                            $eleve->utilisateur = $eleve->utilisateur->fresh();
-                        }
-                        return $eleve;
-                    });
-
-                // Calculer les moyennes trimestrielles
-                // Convertir le nom de la période en format trimestre (trimestre1, trimestre2, trimestre3)
-                $periodeCode = 'trimestre1'; // Par défaut
-                
-                // Méthode 1: Utiliser le champ ordre si disponible (plus fiable)
-                if (isset($periode->ordre) && $periode->ordre >= 1 && $periode->ordre <= 3) {
-                    $periodeCode = 'trimestre' . $periode->ordre;
-                } else {
-                    // Méthode 2: Extraire du nom
-                    $periodeNom = strtolower(trim($periode->nom));
-                    
-                    // Chercher le numéro du trimestre dans le nom (éviter les dates)
-                    // Pattern: "trimestre" suivi d'espace(s) et d'un chiffre, ou chiffre au début suivi de parenthèse
-                    if (preg_match('/trimestre\s+3\b/i', $periodeNom) || preg_match('/^trimestre\s*3\b/i', $periodeNom)) {
-                        $periodeCode = 'trimestre3';
-                    } elseif (preg_match('/trimestre\s+2\b/i', $periodeNom) || preg_match('/^trimestre\s*2\b/i', $periodeNom)) {
-                        $periodeCode = 'trimestre2';
-                    } elseif (preg_match('/trimestre\s+1\b/i', $periodeNom) || preg_match('/^trimestre\s*1\b/i', $periodeNom)) {
-                        $periodeCode = 'trimestre1';
+            if ($periode) {
+                // Déterminer les classes à traiter
+                $classesATraiter = $classes;
+                if ($classeId) {
+                    // Si une classe spécifique est sélectionnée, ne traiter que celle-ci
+                    $classeSpecifique = Classe::find($classeId);
+                    if ($classeSpecifique) {
+                        $classesATraiter = collect([$classeSpecifique]);
                     }
                 }
                 
-                // Log pour débogage
-                \Log::info('Détection période', [
-                    'periode_id' => $periode->id,
-                    'periode_nom' => $periode->nom,
-                    'periode_ordre' => $periode->ordre ?? 'N/A',
-                    'periode_code' => $periodeCode
-                ]);
-                
-                $resultats = [];
-                foreach ($eleves as $eleve) {
-                    // Utiliser les notes normales (comme dans statistiquesClasse) pour être cohérent
-                    $moyenne = Note::calculerMoyenneGenerale($eleve->id, $periodeCode);
+                // Calculer les statistiques pour chaque classe
+                foreach ($classesATraiter as $classe) {
+                    // Vider le cache pour s'assurer que les données sont à jour
+                    \Cache::forget('tests_trimestriels_' . $classe->id . '_' . $periode->id);
+                    \Cache::forget('eleves_classe_' . $classe->id);
+
+                    // Récupérer les élèves de la classe pour l'année scolaire active
+                    // Utiliser fresh() pour éviter le cache Eloquent
+                    $eleves = $classe->eleves()
+                        ->where('annee_scolaire_id', $anneeScolaireActive->id)
+                        ->get()
+                        ->map(function($eleve) {
+                            // Recharger chaque élève depuis la base de données
+                            $eleve = $eleve->fresh(['utilisateur']);
+                            // Forcer le rechargement de l'utilisateur
+                            if ($eleve->utilisateur) {
+                                $eleve->utilisateur = $eleve->utilisateur->fresh();
+                            }
+                            return $eleve;
+                        });
+
+                    // Calculer les moyennes trimestrielles
+                    // Convertir le nom de la période en format trimestre (trimestre1, trimestre2, trimestre3)
+                    $periodeCode = 'trimestre1'; // Par défaut
                     
-                    // Si pas de notes normales, utiliser les tests mensuels comme fallback
-                    if ($moyenne === null || $moyenne == 0) {
-                        $moyenneTestMensuel = $this->calculerMoyenneTrimestrielle($eleve->id, $periode);
-                        if ($moyenneTestMensuel !== null && $moyenneTestMensuel > 0) {
-                            $moyenne = $moyenneTestMensuel;
+                    // Méthode 1: Utiliser le champ ordre si disponible (plus fiable)
+                    if (isset($periode->ordre) && $periode->ordre >= 1 && $periode->ordre <= 3) {
+                        $periodeCode = 'trimestre' . $periode->ordre;
+                    } else {
+                        // Méthode 2: Extraire du nom
+                        $periodeNom = strtolower(trim($periode->nom));
+                        
+                        // Chercher le numéro du trimestre dans le nom (éviter les dates)
+                        // Pattern: "trimestre" suivi d'espace(s) et d'un chiffre, ou chiffre au début suivi de parenthèse
+                        if (preg_match('/trimestre\s+3\b/i', $periodeNom) || preg_match('/^trimestre\s*3\b/i', $periodeNom)) {
+                            $periodeCode = 'trimestre3';
+                        } elseif (preg_match('/trimestre\s+2\b/i', $periodeNom) || preg_match('/^trimestre\s*2\b/i', $periodeNom)) {
+                            $periodeCode = 'trimestre2';
+                        } elseif (preg_match('/trimestre\s+1\b/i', $periodeNom) || preg_match('/^trimestre\s*1\b/i', $periodeNom)) {
+                            $periodeCode = 'trimestre1';
                         }
                     }
                     
-                    if ($moyenne === null) {
-                        $moyenne = 0.00;
+                    // Log pour débogage
+                    \Log::info('Détection période', [
+                        'periode_id' => $periode->id,
+                        'periode_nom' => $periode->nom,
+                        'periode_ordre' => $periode->ordre ?? 'N/A',
+                        'periode_code' => $periodeCode
+                    ]);
+                    
+                    $resultats = [];
+                    foreach ($eleves as $eleve) {
+                        // Utiliser les notes normales (comme dans statistiquesClasse) pour être cohérent
+                        $moyenne = Note::calculerMoyenneGenerale($eleve->id, $periodeCode);
+                        
+                        // Si pas de notes normales, utiliser les tests mensuels comme fallback
+                        if ($moyenne === null || $moyenne == 0) {
+                            $moyenneTestMensuel = $this->calculerMoyenneTrimestrielle($eleve->id, $periode);
+                            if ($moyenneTestMensuel !== null && $moyenneTestMensuel > 0) {
+                                $moyenne = $moyenneTestMensuel;
+                            }
+                        }
+                        
+                        if ($moyenne === null) {
+                            $moyenne = 0.00;
+                        }
+                        $resultats[] = [
+                            'eleve' => $eleve,
+                            'moyenne' => $moyenne
+                        ];
                     }
-                    $resultats[] = [
-                        'eleve' => $eleve,
-                        'moyenne' => $moyenne
+
+                    // Calcul des statistiques
+                    $effectifTotal = $eleves->count();
+                    $isFilleFn = function($sexe) {
+                        if (!$sexe) return false;
+                        $s = strtolower(trim($sexe));
+                        return in_array($s, ['f', 'fille', 'femme', 'feminin', 'féminin']);
+                    };
+
+                    $effectifFilles = $eleves->filter(function($eleve) use ($isFilleFn) {
+                        return $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
+                    })->count();
+
+                    $seuilReussite = $classe->seuil_reussite;
+
+                    $nonComposeTotal = 0;
+                    $nonComposeFilles = 0;
+                    $moyennantTotal = 0;
+                    $moyennantFilles = 0;
+
+                    foreach ($resultats as $res) {
+                        $eleve = $res['eleve'];
+                        $moyenne = $res['moyenne'];
+                        $isFille = $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
+
+                        $nonCompose = ($moyenne == 0);
+                        if ($nonCompose) {
+                            $nonComposeTotal++;
+                            if ($isFille) {
+                                $nonComposeFilles++;
+                            }
+                        }
+
+                        $moyennant = ($moyenne >= $seuilReussite);
+                        if ($moyennant) {
+                            $moyennantTotal++;
+                            if ($isFille) {
+                                $moyennantFilles++;
+                            }
+                        }
+                    }
+
+                    $composesTotal = max(0, $effectifTotal - $nonComposeTotal);
+                    $composesFilles = max(0, $effectifFilles - $nonComposeFilles);
+
+                    $nonMoyennantTotal = max(0, $effectifTotal - $moyennantTotal);
+                    $nonMoyennantFilles = max(0, $effectifFilles - $moyennantFilles);
+
+                    $stats[$classe->id] = [
+                        'classe' => $classe,
+                        'effectifs' => [
+                            'total' => $effectifTotal,
+                            'filles' => $effectifFilles,
+                        ],
+                        'composes' => [
+                            'total' => $composesTotal,
+                            'filles' => $composesFilles,
+                        ],
+                        'non_composes' => [
+                            'total' => $nonComposeTotal,
+                            'filles' => $nonComposeFilles,
+                        ],
+                        'moyennant' => [
+                            'total' => $moyennantTotal,
+                            'filles' => $moyennantFilles,
+                            'pct_total' => $effectifTotal > 0 ? round(($moyennantTotal / $effectifTotal) * 100, 1) : 0,
+                            'pct_filles' => $effectifFilles > 0 ? round(($moyennantFilles / $effectifFilles) * 100, 1) : 0,
+                        ],
+                        'non_moyennant' => [
+                            'total' => $nonMoyennantTotal,
+                            'filles' => $nonMoyennantFilles,
+                            'pct_total' => $effectifTotal > 0 ? round(($nonMoyennantTotal / $effectifTotal) * 100, 1) : 0,
+                            'pct_filles' => $effectifFilles > 0 ? round(($nonMoyennantFilles / $effectifFilles) * 100, 1) : 0,
+                        ],
                     ];
                 }
-
-                // Calcul des statistiques
-                $effectifTotal = $eleves->count();
-                $isFilleFn = function($sexe) {
-                    if (!$sexe) return false;
-                    $s = strtolower(trim($sexe));
-                    return in_array($s, ['f', 'fille', 'femme', 'feminin', 'féminin']);
-                };
-
-                $effectifFilles = $eleves->filter(function($eleve) use ($isFilleFn) {
-                    return $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
-                })->count();
-
-                $seuilReussite = $classe->seuil_reussite;
-
-                $nonComposeTotal = 0;
-                $nonComposeFilles = 0;
-                $moyennantTotal = 0;
-                $moyennantFilles = 0;
-
-                foreach ($resultats as $res) {
-                    $eleve = $res['eleve'];
-                    $moyenne = $res['moyenne'];
-                    $isFille = $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
-
-                    $nonCompose = ($moyenne == 0);
-                    if ($nonCompose) {
-                        $nonComposeTotal++;
-                        if ($isFille) {
-                            $nonComposeFilles++;
-                        }
-                    }
-
-                    $moyennant = ($moyenne >= $seuilReussite);
-                    if ($moyennant) {
-                        $moyennantTotal++;
-                        if ($isFille) {
-                            $moyennantFilles++;
-                        }
-                    }
-                }
-
-                $composesTotal = max(0, $effectifTotal - $nonComposeTotal);
-                $composesFilles = max(0, $effectifFilles - $nonComposeFilles);
-
-                $nonMoyennantTotal = max(0, $effectifTotal - $moyennantTotal);
-                $nonMoyennantFilles = max(0, $effectifFilles - $moyennantFilles);
-
-                $stats = [
-                    'effectifs' => [
-                        'total' => $effectifTotal,
-                        'filles' => $effectifFilles,
-                    ],
-                    'composes' => [
-                        'total' => $composesTotal,
-                        'filles' => $composesFilles,
-                    ],
-                    'non_composes' => [
-                        'total' => $nonComposeTotal,
-                        'filles' => $nonComposeFilles,
-                    ],
-                    'moyennant' => [
-                        'total' => $moyennantTotal,
-                        'filles' => $moyennantFilles,
-                        'pct_total' => $effectifTotal > 0 ? round(($moyennantTotal / $effectifTotal) * 100, 1) : 0,
-                        'pct_filles' => $effectifFilles > 0 ? round(($moyennantFilles / $effectifFilles) * 100, 1) : 0,
-                    ],
-                    'non_moyennant' => [
-                        'total' => $nonMoyennantTotal,
-                        'filles' => $nonMoyennantFilles,
-                        'pct_total' => $effectifTotal > 0 ? round(($nonMoyennantTotal / $effectifTotal) * 100, 1) : 0,
-                        'pct_filles' => $effectifFilles > 0 ? round(($nonMoyennantFilles / $effectifFilles) * 100, 1) : 0,
-                    ],
-                ];
             }
         }
         
-        return view('notes.statistiques', compact('classes', 'anneeScolaireActive', 'classe', 'stats', 'periodes', 'periode', 'classeId', 'periodeId'));
+        return view('notes.statistiques', compact('classes', 'anneeScolaireActive', 'stats', 'periodes', 'periode', 'classeId', 'periodeId'));
     }
     
     /**
@@ -1512,6 +1541,20 @@ class NoteController extends Controller
         // Récupérer la classe pour déterminer le niveau
         $classe = $note->eleve->classe;
         $isPrimaire = $classe->isPrimaire();
+        $noteMax = $isPrimaire ? 10 : 20;
+        $niveauTexte = $isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+        
+        // Validation supplémentaire selon le niveau
+        if (isset($request->note_cours) && $request->note_cours !== null && $request->note_cours > $noteMax) {
+            return redirect()->back()
+                ->with('error', "⚠️ Erreur : La note de cours ne peut pas être supérieure à {$noteMax}. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                ->withInput();
+        }
+        if (isset($request->note_composition) && $request->note_composition !== null && $request->note_composition > $noteMax) {
+            return redirect()->back()
+                ->with('error', "⚠️ Erreur : La note de composition ne peut pas être supérieure à {$noteMax}. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                ->withInput();
+        }
         
         $noteCours = !empty($request->note_cours) ? $request->note_cours : null;
         $noteComposition = !empty($request->note_composition) ? $request->note_composition : null;
@@ -1602,6 +1645,20 @@ class NoteController extends Controller
         $eleve = Eleve::with('utilisateur')->findOrFail($eleveId);
         $classe = $eleve->classe;
         $isPrimaire = $classe->isPrimaire();
+        $noteMax = $isPrimaire ? 10 : 20;
+        $niveauTexte = $isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+        
+        // Validation supplémentaire selon le niveau
+        if (isset($request->note_cours) && $request->note_cours !== null && $request->note_cours > $noteMax) {
+            return redirect()->back()
+                ->with('error', "⚠️ Erreur : La note de cours ne peut pas être supérieure à {$noteMax}. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                ->withInput();
+        }
+        if (isset($request->note_composition) && $request->note_composition !== null && $request->note_composition > $noteMax) {
+            return redirect()->back()
+                ->with('error', "⚠️ Erreur : La note de composition ne peut pas être supérieure à {$noteMax}. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                ->withInput();
+        }
         
         // Vérifier les permissions
         $user = auth()->user();

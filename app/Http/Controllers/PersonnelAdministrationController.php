@@ -7,6 +7,7 @@ use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class PersonnelAdministrationController extends Controller
 {
@@ -189,26 +190,51 @@ class PersonnelAdministrationController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Supprimer un personnel d'administration (désactivation)
      */
-    public function destroy(PersonnelAdministration $personnelAdministration)
+    public function destroy($id)
     {
-        try {
-            // Supprimer la photo de profil
-            if ($personnelAdministration->utilisateur->photo_profil) {
-                Storage::disk('public')->delete($personnelAdministration->utilisateur->photo_profil);
+        $personnelAdministration = PersonnelAdministration::findOrFail($id);
+        
+        DB::transaction(function() use ($personnelAdministration) {
+            // Désactiver au lieu de supprimer
+            $personnelAdministration->update(['statut' => 'inactif']);
+            $personnelAdministration->utilisateur->update(['actif' => false]);
+        });
+
+        return redirect()->route('personnel-administration.index')
+            ->with('success', 'Personnel d\'administration désactivé avec succès');
+    }
+
+    /**
+     * Supprimer définitivement un personnel d'administration
+     */
+    public function deletePermanently($id)
+    {
+        $personnelAdministration = PersonnelAdministration::findOrFail($id);
+        
+        DB::transaction(function() use ($personnelAdministration) {
+            // Supprimer les cartes associées
+            $personnelAdministration->cartesPersonnelAdministration()->delete();
+            
+            // Supprimer la photo de profil si elle existe
+            if ($personnelAdministration->utilisateur && $personnelAdministration->utilisateur->photo_profil) {
+                if (Storage::disk('public')->exists($personnelAdministration->utilisateur->photo_profil)) {
+                    Storage::disk('public')->delete($personnelAdministration->utilisateur->photo_profil);
+                }
             }
+            
+            // Supprimer l'utilisateur associé
+            if ($personnelAdministration->utilisateur) {
+                $personnelAdministration->utilisateur->delete();
+            }
+            
+            // Supprimer le personnel d'administration
+            $personnelAdministration->delete();
+        });
 
-            // Supprimer l'utilisateur (cascade supprimera le personnel d'administration)
-            $personnelAdministration->utilisateur->delete();
-
-            return redirect()->route('personnel-administration.index')
-                ->with('success', 'Personnel d\'administration supprimé avec succès');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
-        }
+        return redirect()->route('personnel-administration.index')
+            ->with('success', 'Personnel d\'administration supprimé définitivement avec succès');
     }
 
     /**
@@ -292,6 +318,22 @@ class PersonnelAdministrationController extends Controller
             \Log::error('Erreur lors de la sauvegarde:', ['error' => $e->getMessage()]);
             return back()->withErrors(['permissions' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Réactiver un personnel d'administration
+     */
+    public function reactivate($id)
+    {
+        $personnel = PersonnelAdministration::findOrFail($id);
+        
+        DB::transaction(function() use ($personnel) {
+            $personnel->update(['statut' => 'actif']);
+            $personnel->utilisateur->update(['actif' => true]);
+        });
+
+        return redirect()->route('personnel-administration.index')
+            ->with('success', 'Personnel d\'administration réactivé avec succès');
     }
 
     /**

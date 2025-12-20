@@ -331,6 +331,41 @@
 
 @section('scripts')
 <script>
+    // Validation des notes selon le niveau
+    const isPrimaire = {{ $note->eleve->classe->isPrimaire() ? 'true' : 'false' }};
+    const NOTE_MAX_PRIMAIRE_PRESCOLAIRE = 10;
+    const NOTE_MAX_COLLEGE_LYCEE = 20;
+    const noteMax = isPrimaire ? NOTE_MAX_PRIMAIRE_PRESCOLAIRE : NOTE_MAX_COLLEGE_LYCEE;
+    const niveauTexte = isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
+    
+    function validerNote(input) {
+        const valeur = parseFloat(input.value);
+        if (!isNaN(valeur) && valeur > noteMax) {
+            input.classList.add('is-invalid');
+            const message = `⚠️ Vous avez une note supérieure à ${noteMax}. La note maximale pour le ${niveauTexte} est ${noteMax}.`;
+            
+            // Afficher le message d'avertissement
+            let alertDiv = input.parentElement.querySelector('.note-warning');
+            if (!alertDiv) {
+                alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-warning alert-sm note-warning mt-1 mb-0';
+                alertDiv.style.fontSize = '0.85rem';
+                alertDiv.style.padding = '0.25rem 0.5rem';
+                input.parentElement.appendChild(alertDiv);
+            }
+            alertDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + message;
+            
+            return false;
+        } else {
+            input.classList.remove('is-invalid');
+            const alertDiv = input.parentElement.querySelector('.note-warning');
+            if (alertDiv) {
+                alertDiv.remove();
+            }
+            return true;
+        }
+    }
+    
     // Calcul automatique de la note finale
     function calculerNoteFinale() {
         const noteCours = parseFloat(document.getElementById('note_cours').value) || 0.0;
@@ -343,11 +378,34 @@
     }
 
     // Écouter les changements sur les champs de notes
-    document.getElementById('note_cours').addEventListener('input', calculerNoteFinale);
-    document.getElementById('note_composition').addEventListener('input', calculerNoteFinale);
+    const noteCoursInput = document.getElementById('note_cours');
+    const noteCompositionInput = document.getElementById('note_composition');
+    
+    noteCoursInput.addEventListener('input', function() {
+        validerNote(this);
+        calculerNoteFinale();
+    });
+    
+    noteCompositionInput.addEventListener('input', function() {
+        validerNote(this);
+        calculerNoteFinale();
+    });
 
     // Calcul initial
     calculerNoteFinale();
+    
+    // Validation avant soumission du formulaire
+    document.querySelector('form[action*="notes.update"]').addEventListener('submit', function(e) {
+        const noteCours = parseFloat(noteCoursInput.value);
+        const noteComposition = parseFloat(noteCompositionInput.value);
+        
+        if ((!isNaN(noteCours) && noteCours > noteMax) || 
+            (!isNaN(noteComposition) && noteComposition > noteMax)) {
+            e.preventDefault();
+            alert(`⚠️ Erreur : Vous avez une note supérieure à ${noteMax}. La note maximale pour le ${niveauTexte} est ${noteMax}.`);
+            return false;
+        }
+    });
 
     // Confirmation de suppression
     function confirmDelete() {

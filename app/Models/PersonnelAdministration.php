@@ -112,6 +112,14 @@ class PersonnelAdministration extends Model
     }
 
     /**
+     * Relation avec les cartes personnel d'administration
+     */
+    public function cartesPersonnelAdministration()
+    {
+        return $this->hasMany(CartePersonnelAdministration::class);
+    }
+
+    /**
      * Obtenir le nom complet
      */
     public function getNomCompletAttribute(): string
