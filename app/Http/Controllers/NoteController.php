@@ -930,7 +930,7 @@ class NoteController extends Controller
     /**
      * Afficher les statistiques des notes par classe
      */
-    public function statistiques()
+    public function statistiques(Request $request)
     {
         // Récupérer l'année scolaire active
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
@@ -2678,5 +2678,127 @@ class NoteController extends Controller
                 'message' => 'Erreur lors de la vérification: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Calculer la moyenne trimestrielle d'un élève à partir des tests mensuels
+     */
+    private function calculerMoyenneTrimestrielle($eleveId, $periode)
+    {
+        if (!$periode || !$periode->date_debut || !$periode->date_fin) {
+            return null;
+        }
+
+        // Récupérer tous les tests mensuels de l'élève dans la période
+        $dateDebut = \Carbon\Carbon::parse($periode->date_debut);
+        $dateFin = \Carbon\Carbon::parse($periode->date_fin);
+
+        // Récupérer tous les tests mensuels de l'élève
+        $tests = \App\Models\TestMensuel::where('eleve_id', $eleveId)
+            ->get()
+            ->filter(function($test) use ($dateDebut, $dateFin) {
+                // Créer une date à partir du mois et de l'année du test
+                $testDate = \Carbon\Carbon::create($test->annee, $test->mois, 1);
+                // Vérifier si cette date est dans la période
+                return $testDate->between($dateDebut, $dateFin);
+            });
+
+        if ($tests->isEmpty()) {
+            return null;
+        }
+
+        // Calculer la moyenne générale : Somme(note × coefficient) / Somme(coefficients)
+        $sommeNoteCoefficient = 0;
+        $sommeCoefficients = 0;
+
+        foreach ($tests as $test) {
+            $sommeNoteCoefficient += $test->note * $test->coefficient;
+            $sommeCoefficients += $test->coefficient;
+        }
+
+        return $sommeCoefficients > 0 ? round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
+    }
+
+    /**
+     * S'assurer que les périodes trimestrielles existent pour l'année scolaire
+     */
+    private function ensurePeriodesTrimestrielles($anneeScolaire)
+    {
+        if (!$anneeScolaire) {
+            return collect();
+        }
+
+        // Vérifier si les périodes existent déjà
+        $periodes = \App\Models\PeriodeScolaire::whereIn('nom', ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'])
+            ->orderBy('ordre')
+            ->get();
+
+        // Si les trois trimestres existent déjà, les retourner
+        if ($periodes->count() >= 3) {
+            return $periodes;
+        }
+
+        // Calculer les dates basées sur l'année scolaire
+        $dateDebutAnnee = \Carbon\Carbon::parse($anneeScolaire->date_debut);
+        $dateFinAnnee = \Carbon\Carbon::parse($anneeScolaire->date_fin);
+
+        // Calculer les dates pour chaque trimestre
+        // Trimestre 1 : Septembre - Décembre (environ 3 mois)
+        $trimestre1Debut = $dateDebutAnnee->copy();
+        $trimestre1Fin = $trimestre1Debut->copy()->addMonths(3)->subDay();
+        $trimestre1Conseil = $trimestre1Fin->copy()->addDays(5);
+
+        // Trimestre 2 : Janvier - Mars (environ 3 mois)
+        $trimestre2Debut = $trimestre1Fin->copy()->addDay();
+        $trimestre2Fin = $trimestre2Debut->copy()->addMonths(3)->subDay();
+        $trimestre2Conseil = $trimestre2Fin->copy()->addDays(5);
+
+        // Trimestre 3 : Avril - Juin (jusqu'à la fin de l'année)
+        $trimestre3Debut = $trimestre2Fin->copy()->addDay();
+        $trimestre3Fin = $dateFinAnnee->copy();
+        $trimestre3Conseil = $trimestre3Fin->copy()->addDays(5);
+
+        // Créer les périodes si elles n'existent pas
+        $periodesData = [
+            [
+                'nom' => 'Trimestre 1',
+                'date_debut' => $trimestre1Debut->format('Y-m-d'),
+                'date_fin' => $trimestre1Fin->format('Y-m-d'),
+                'date_conseil' => $trimestre1Conseil->format('Y-m-d'),
+                'couleur' => 'primary',
+                'actif' => true,
+                'ordre' => 1,
+            ],
+            [
+                'nom' => 'Trimestre 2',
+                'date_debut' => $trimestre2Debut->format('Y-m-d'),
+                'date_fin' => $trimestre2Fin->format('Y-m-d'),
+                'date_conseil' => $trimestre2Conseil->format('Y-m-d'),
+                'couleur' => 'success',
+                'actif' => true,
+                'ordre' => 2,
+            ],
+            [
+                'nom' => 'Trimestre 3',
+                'date_debut' => $trimestre3Debut->format('Y-m-d'),
+                'date_fin' => $trimestre3Fin->format('Y-m-d'),
+                'date_conseil' => $trimestre3Conseil->format('Y-m-d'),
+                'couleur' => 'warning',
+                'actif' => true,
+                'ordre' => 3,
+            ],
+        ];
+
+        foreach ($periodesData as $periodeData) {
+            \App\Models\PeriodeScolaire::updateOrCreate(
+                ['nom' => $periodeData['nom']],
+                $periodeData
+            );
+        }
+
+        // Retourner toutes les périodes
+        return \App\Models\PeriodeScolaire::whereIn('nom', ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'])
+            ->orderBy('ordre')
+            ->get();
     }
 }
