@@ -272,6 +272,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/notes/mensuel/{test}', [NoteController::class, 'mensuelDestroy'])->name('notes.mensuel.destroy')->middleware('check.permission:notes.delete');
         Route::get('/notes/mensuel/resultats/{classe}', [NoteController::class, 'mensuelResultats'])->name('notes.mensuel.resultats')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/resultats/{classe}/imprimer', [NoteController::class, 'mensuelResultatsImprimer'])->name('notes.mensuel.resultats.imprimer')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/resultats/{classe}/detail-notes/imprimer', [NoteController::class, 'mensuelDetailNotesImprimer'])->name('notes.mensuel.detail-notes.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/eleve/{eleve}/details', [NoteController::class, 'mensuelEleveDetails'])->name('notes.mensuel.eleve.details')->middleware('check.permission:notes.view');
     });
     

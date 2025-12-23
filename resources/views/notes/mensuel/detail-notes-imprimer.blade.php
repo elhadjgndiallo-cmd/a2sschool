@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Résultats Tests Mensuels - {{ $classe->nom }}</title>
+    <title>Détail des Notes - Tests Mensuels - {{ $classe->nom }}</title>
     <style>
         @page {
-            size: A4 portrait;
+            size: A4 landscape;
             margin: 1cm;
         }
         
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             line-height: 1.4;
             margin: 0;
             padding: 0;
@@ -41,12 +41,6 @@
             margin-bottom: 15px;
         }
         
-        .info-section h3 {
-            margin: 0 0 5px 0;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        
         .info-section p {
             margin: 2px 0;
             font-size: 11px;
@@ -60,7 +54,7 @@
         
         th, td {
             border: 1px solid #333;
-            padding: 4px;
+            padding: 5px;
             text-align: center;
             font-size: 10px;
         }
@@ -72,10 +66,6 @@
         
         .text-left {
             text-align: left;
-        }
-        
-        .text-right {
-            text-align: right;
         }
         
         .bold {
@@ -140,119 +130,47 @@
     </a>
     
     <div class="header">
-        <h1>RÉSULTATS DES TESTS MENSUELS</h1>
+        <h1>DÉTAIL DES NOTES - TESTS MENSUELS</h1>
         <h2>Classe: {{ $classe->nom }} - {{ $moisListe[$mois] }} {{ $annee }}</h2>
     </div>
     
     <div class="info-section">
-        <h3>Informations générales</h3>
         <p><strong>Classe:</strong> {{ $classe->nom }}</p>
         <p><strong>Niveau:</strong> {{ $classe->niveau }}</p>
         <p><strong>Période:</strong> {{ $moisListe[$mois] }} {{ $annee }}</p>
-        <p><strong>Effectif:</strong> {{ count($resultats) }} élèves classés</p>
+        <p><strong>Nombre de notes:</strong> {{ count($tests) }}</p>
         <p><strong>Date d'impression:</strong> {{ date('d/m/Y à H:i') }}</p>
     </div>
     
-    @if(count($resultats) > 0)
+    @if(count($tests) > 0)
     <div class="info-section">
-        <h3>Tableau statistique</h3>
+        <h3 style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">Détail des notes par élève</h3>
         <table>
             <thead>
                 <tr>
-                    <th rowspan="2" class="text-left">Statistiques</th>
-                    <th colspan="2">Effectifs</th>
-                    <th colspan="2">Composés</th>
-                    <th colspan="2">Non composés</th>
-                    <th colspan="4">Moyennant</th>
-                    <th colspan="4">Non moyennant</th>
-                </tr>
-                <tr>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>% Total</th>
-                    <th>% Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>% Total</th>
-                    <th>% Filles</th>
+                    <th style="width: 10%;">Matricule</th>
+                    <th style="width: 20%;" class="text-left">Nom</th>
+                    <th style="width: 20%;" class="text-left">Prénom</th>
+                    <th style="width: 25%;" class="text-left">Matière</th>
+                    <th style="width: 10%;">Note</th>
+                    <th style="width: 10%;">Coefficient</th>
+                    <th style="width: 5%;">Enseignant</th>
                 </tr>
             </thead>
             <tbody>
+                @foreach($tests as $test)
                 <tr>
-                    <td class="text-left bold">Classe</td>
-                    <td>{{ $stats['effectifs']['total'] }}</td>
-                    <td>{{ $stats['effectifs']['filles'] }}</td>
-                    <td>{{ $stats['composes']['total'] }}</td>
-                    <td>{{ $stats['composes']['filles'] }}</td>
-                    <td>{{ $stats['non_composes']['total'] }}</td>
-                    <td>{{ $stats['non_composes']['filles'] }}</td>
-                    <td>{{ $stats['moyennant']['total'] }}</td>
-                    <td>{{ $stats['moyennant']['filles'] }}</td>
-                    <td>{{ $stats['moyennant']['pct_total'] }}%</td>
-                    <td>{{ $stats['moyennant']['pct_filles'] }}%</td>
-                    <td>{{ $stats['non_moyennant']['total'] }}</td>
-                    <td>{{ $stats['non_moyennant']['filles'] }}</td>
-                    <td>{{ $stats['non_moyennant']['pct_total'] }}%</td>
-                    <td>{{ $stats['non_moyennant']['pct_filles'] }}%</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="info-section">
-        <h3>Classement des élèves</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 8%;">Rang</th>
-                    <th style="width: 15%;">Matricule</th>
-                    <th style="width: 25%;">Nom</th>
-                    <th style="width: 25%;">Prénom</th>
-                    <th style="width: 12%;">Moyenne</th>
-                    <th style="width: 15%;">Mention</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($resultats as $resultat)
-                @php
-                    $eleve = $resultat['eleve'];
-                    $moyenne = $resultat['moyenne'];
-                    $rang = $resultat['rang'];
-                    
-                    // Déterminer l'appréciation selon la moyenne
-                    if ($moyenne >= 16) {
-                        $appreciation = 'Excellent';
-                    } elseif ($moyenne >= 14) {
-                        $appreciation = 'Très bien';
-                    } elseif ($moyenne >= 12) {
-                        $appreciation = 'Bien';
-                    } elseif ($moyenne >= 10) {
-                        $appreciation = 'Assez bien';
-                    } elseif ($moyenne >= 8) {
-                        $appreciation = 'Passable';
-                    } else {
-                        $appreciation = 'Insuffisant';
-                    }
-                @endphp
-                <tr>
-                    <td class="bold">{{ $rang }}{{ $rang == 1 ? 'er' : 'ème' }}</td>
-                    <td class="bold">{{ $eleve->matricule }}</td>
-                    <td class="text-left">{{ $eleve->nom }}</td>
-                    <td class="text-left">{{ $eleve->prenom }}</td>
+                    <td class="bold">{{ $test->eleve->numero_etudiant }}</td>
+                    <td class="text-left">{{ $test->eleve->utilisateur->nom }}</td>
+                    <td class="text-left">{{ $test->eleve->utilisateur->prenom }}</td>
+                    <td class="text-left">{{ $test->matiere->nom }}</td>
                     <td class="bold">
-                        @if($moyenne == 0.00)
-                            00/{{ $classe->note_max }}
-                        @else
-                            {{ number_format($moyenne, 2) }}/{{ $classe->note_max }}
-                        @endif
+                        {{ number_format($test->note, 2) }}/{{ $classe->note_max }}
                     </td>
-                    <td>{{ $appreciation }}</td>
+                    <td>{{ $test->coefficient }}</td>
+                    <td class="text-left" style="font-size: 9px;">
+                        {{ $test->enseignant->utilisateur->prenom }} {{ $test->enseignant->utilisateur->nom }}
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -284,3 +202,4 @@
     </script>
 </body>
 </html>
+

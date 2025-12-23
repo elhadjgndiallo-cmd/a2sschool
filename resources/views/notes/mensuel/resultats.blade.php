@@ -20,6 +20,11 @@
                 <i class="fas fa-print me-1"></i>
                 Imprimer
             </a>
+            <a href="{{ route('notes.mensuel.detail-notes.imprimer', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
+               class="btn btn-sm btn-info" target="_blank">
+                <i class="fas fa-file-alt me-1"></i>
+                Imprimer Détail des notes
+            </a>
         </div>
         <a href="{{ route('notes.mensuel.classe', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
            class="btn btn-sm btn-outline-secondary">

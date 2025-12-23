@@ -2300,6 +2300,80 @@ class NoteController extends Controller
             $resultat['rang'] = $rang++;
         }
 
+        // Calcul des statistiques
+        $effectifTotal = $eleves->count();
+        $isFilleFn = function($sexe) {
+            if (!$sexe) return false;
+            $s = strtolower(trim($sexe));
+            return in_array($s, ['f', 'fille', 'femme', 'feminin', 'féminin']);
+        };
+
+        $effectifFilles = $eleves->filter(function($eleve) use ($isFilleFn) {
+            return $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
+        })->count();
+
+        $seuilReussite = $classe->seuil_reussite ?? 10;
+
+        $nonComposeTotal = 0;
+        $nonComposeFilles = 0;
+        $moyennantTotal = 0;
+        $moyennantFilles = 0;
+
+        foreach ($resultats as $res) {
+            $eleve = $res['eleve'];
+            $moyenne = $res['moyenne'];
+            $isFille = $eleve->utilisateur && $isFilleFn($eleve->utilisateur->sexe);
+
+            $nonCompose = ($moyenne == 0);
+            if ($nonCompose) {
+                $nonComposeTotal++;
+                if ($isFille) {
+                    $nonComposeFilles++;
+                }
+            }
+
+            $moyennant = ($moyenne >= $seuilReussite);
+            if ($moyennant) {
+                $moyennantTotal++;
+                if ($isFille) {
+                    $moyennantFilles++;
+                }
+            }
+        }
+
+        $composesTotal = max(0, $effectifTotal - $nonComposeTotal);
+        $composesFilles = max(0, $effectifFilles - $nonComposeFilles);
+
+        $nonMoyennantTotal = max(0, $effectifTotal - $moyennantTotal);
+        $nonMoyennantFilles = max(0, $effectifFilles - $moyennantFilles);
+
+        $stats = [
+            'effectifs' => [
+                'total' => $effectifTotal,
+                'filles' => $effectifFilles,
+            ],
+            'composes' => [
+                'total' => $composesTotal,
+                'filles' => $composesFilles,
+            ],
+            'non_composes' => [
+                'total' => $nonComposeTotal,
+                'filles' => $nonComposeFilles,
+            ],
+            'moyennant' => [
+                'total' => $moyennantTotal,
+                'filles' => $moyennantFilles,
+                'pct_total' => $effectifTotal > 0 ? round(($moyennantTotal / $effectifTotal) * 100, 1) : 0,
+                'pct_filles' => $effectifFilles > 0 ? round(($moyennantFilles / $effectifFilles) * 100, 1) : 0,
+            ],
+            'non_moyennant' => [
+                'total' => $nonMoyennantTotal,
+                'filles' => $nonMoyennantFilles,
+                'pct_total' => $effectifTotal > 0 ? round(($nonMoyennantTotal / $effectifTotal) * 100, 1) : 0,
+                'pct_filles' => $effectifFilles > 0 ? round(($nonMoyennantFilles / $effectifFilles) * 100, 1) : 0,
+            ],
+        ];
+
         // Créer un tableau des mois
         $moisListe = [
             1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
@@ -2307,7 +2381,54 @@ class NoteController extends Controller
             9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
         ];
 
-        return view('notes.mensuel.resultats-imprimer', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe'));
+        return view('notes.mensuel.resultats-imprimer', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe', 'stats'));
+    }
+
+    /**
+     * Afficher la version imprimable du détail des notes
+     */
+    public function mensuelDetailNotesImprimer(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        $mois = $request->get('mois', date('n'));
+        $annee = $request->get('annee', date('Y'));
+
+        // Vider le cache pour s'assurer que les données sont à jour
+        \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
+
+        // Récupérer les tests mensuels de la classe
+        $tests = TestMensuel::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+            ->parClasse($classe->id)
+            ->parPeriode($mois, $annee)
+            ->orderBy('eleve_id')
+            ->orderBy('matiere_id')
+            ->get();
+
+        // Créer un tableau des mois
+        $moisListe = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        return view('notes.mensuel.detail-notes-imprimer', compact('classe', 'tests', 'mois', 'annee', 'moisListe'));
     }
 
     /**
