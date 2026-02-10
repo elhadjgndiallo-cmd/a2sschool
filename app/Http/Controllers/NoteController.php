@@ -11,6 +11,7 @@ use App\Models\Enseignant;
 use App\Models\TestMensuel;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class NoteController extends Controller
 {
@@ -364,31 +365,43 @@ class NoteController extends Controller
 
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
-            
-            // Calculer la moyenne de la matière en utilisant les notes finales
-            $sommeNotesFinales = 0;
-            $nombreNotes = 0;
-            
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            // Moyenne pondérée par le coefficient de chaque note (modifiable)
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
+
             foreach ($notesMatiere as $note) {
-                $noteFinale = $note->calculerNoteFinale();
-                if ($noteFinale !== null) {
-                    $sommeNotesFinales += $noteFinale;
-                    $nombreNotes++;
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale === null) {
+                    continue;
                 }
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) {
+                    $coefNote = $coefMatiereDefaut;
+                }
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
             }
-            
-            $moyenneMatiere = $nombreNotes > 0 ? $sommeNotesFinales / $nombreNotes : 0;
-            
+
+            if ($sommeCoeff <= 0) {
+                continue;
+            }
+
+            $moyenneMatiere = $sommeNoteCoeff / $sommeCoeff;
+            $coefficientMatiere = $sommeCoeff; // Coefficient effectif = somme des coef des notes
+            $points = $moyenneMatiere * $coefficientMatiere;
+
             $moyennesParMatiere[$matiereId] = [
                 'matiere' => $matiere,
                 'notes' => $notesMatiere,
                 'moyenne' => $moyenneMatiere,
-                'coefficient' => $matiere->coefficient,
-                'points' => $moyenneMatiere * $matiere->coefficient
+                'coefficient' => $coefficientMatiere,
+                'points' => $points
             ];
 
-            $totalPoints += $moyenneMatiere * $matiere->coefficient;
-            $totalCoefficients += $matiere->coefficient;
+            $totalPoints += $points;
+            $totalCoefficients += $coefficientMatiere;
         }
 
         // Moyenne générale
@@ -432,40 +445,37 @@ class NoteController extends Controller
 
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
-            
-            // Calculer la moyenne de la matière en utilisant les notes finales
-            $sommeNotesFinales = 0;
-            $nombreNotes = 0;
-            
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
             foreach ($notesMatiere as $note) {
-                $noteFinale = $note->calculerNoteFinale();
-                if ($noteFinale !== null) {
-                    $sommeNotesFinales += $noteFinale;
-                    $nombreNotes++;
-                }
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale === null) continue;
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
             }
-            
-            $moyenneMatiere = $nombreNotes > 0 ? $sommeNotesFinales / $nombreNotes : 0;
-            
+            if ($sommeCoeff <= 0) continue;
+
+            $moyenneMatiere = $sommeNoteCoeff / $sommeCoeff;
+            $coefficientMatiere = $sommeCoeff;
+            $points = $moyenneMatiere * $coefficientMatiere;
+
             $moyennesParMatiere[$matiereId] = [
                 'matiere' => $matiere,
                 'notes' => $notesMatiere,
                 'moyenne' => $moyenneMatiere,
-                'coefficient' => $matiere->coefficient,
-                'points' => $moyenneMatiere * $matiere->coefficient
+                'coefficient' => $coefficientMatiere,
+                'points' => $points
             ];
-
-            $totalPoints += $moyenneMatiere * $matiere->coefficient;
-            $totalCoefficients += $matiere->coefficient;
+            $totalPoints += $points;
+            $totalCoefficients += $coefficientMatiere;
         }
 
-        // Moyenne générale
         $moyenneGenerale = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-
-        // Calculer l'appréciation générale
         $appreciationGenerale = $eleve->classe->getAppreciation($moyenneGenerale);
-
-        // Calculer le rang dans la classe
         $rang = $this->calculerRang($eleve->classe_id, $periode, $moyenneGenerale);
 
         return view('notes.bulletin', compact(
@@ -601,6 +611,77 @@ class NoteController extends Controller
         });
         
         return view('notes.bulletins-classe', compact('classe', 'bulletins', 'periode', 'anneeScolaireActive'));
+    }
+
+    /**
+     * Télécharger les bulletins de la classe en PDF (même format et design qu'à l'écran)
+     */
+    public function bulletinsClassePdf(Request $request, $classeId)
+    {
+        set_time_limit(180);
+
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+        $periode = $request->input('periode', 'trimestre1');
+        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
+            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+        }, 'eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
+            $q->where('periode', $periode)->with('matiere');
+        }])->findOrFail($classeId);
+        $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
+            return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
+        });
+        $bulletins = [];
+        foreach ($elevesActifs as $eleve) {
+            $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
+            $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
+            $rang = $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id);
+            $dataToHash = $eleve->id . '|' . $classeId . '|' . $periode . '|' . $anneeScolaireActive->id . '|' . number_format($moyenneGenerale, 2);
+            $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
+            $token = base64_encode(json_encode([
+                'e' => $eleve->id,
+                'c' => $classeId,
+                'p' => $periode,
+                'a' => $anneeScolaireActive->id,
+                'h' => $verificationHash
+            ]));
+            $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+            $bulletins[] = [
+                'eleve' => $eleve,
+                'notes' => $notesDetaillees,
+                'moyenne_generale' => $moyenneGenerale,
+                'rang' => $rang,
+                'verification_token' => $token,
+                'verification_url' => $verificationUrl
+            ];
+        }
+        usort($bulletins, function($a, $b) {
+            if ($a['rang'] != $b['rang']) return $a['rang'] <=> $b['rang'];
+            return $b['moyenne_generale'] <=> $a['moyenne_generale'];
+        });
+
+        $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+        $logoDataUri = null;
+        if ($schoolInfo && !empty($schoolInfo->logo)) {
+            $logoPath = storage_path('app/public/' . $schoolInfo->logo);
+            if (is_file($logoPath)) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $logoPath) ?: 'image/png';
+                finfo_close($finfo);
+                $logoDataUri = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+        }
+
+        $pdf = Pdf::loadView('notes.bulletins-classe-pdf', compact('classe', 'bulletins', 'periode', 'anneeScolaireActive', 'logoDataUri'));
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', false);
+        $pdf->setOption('defaultFont', 'DejaVu Sans');
+        $fileName = 'bulletins-' . \Str::slug($classe->nom) . '-' . $periode . '-' . now()->format('Y-m-d') . '.pdf';
+        return $pdf->download($fileName);
     }
 
     /**
@@ -759,14 +840,23 @@ class NoteController extends Controller
         
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
-            
-            // Calculer les moyennes des notes cours et composition
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            // Moyenne pondérée par le coefficient de chaque note
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
             $sommeNoteCours = 0;
-            $sommeNoteComposition = 0;
             $nombreNotesCours = 0;
+            $sommeNoteComposition = 0;
             $nombreNotesComposition = 0;
-            
+
             foreach ($notesMatiere as $note) {
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale === null) continue;
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
                 if ($note->note_cours !== null) {
                     $sommeNoteCours += $note->note_cours;
                     $nombreNotesCours++;
@@ -776,29 +866,21 @@ class NoteController extends Controller
                     $nombreNotesComposition++;
                 }
             }
-            
+
             $moyenneNoteCours = $nombreNotesCours > 0 ? $sommeNoteCours / $nombreNotesCours : 0;
             $moyenneNoteComposition = $nombreNotesComposition > 0 ? $sommeNoteComposition / $nombreNotesComposition : 0;
-            
-            // Calculer la note finale selon la formule : (NOTE DE COURS + NOTES DE COMPO * 2) / 3
-            $noteFinale = 0;
-            if ($moyenneNoteCours > 0 && $moyenneNoteComposition > 0) {
-                $noteFinale = ($moyenneNoteCours + ($moyenneNoteComposition * 2)) / 3;
-            } elseif ($moyenneNoteCours > 0) {
-                $noteFinale = $moyenneNoteCours;
-            } elseif ($moyenneNoteComposition > 0) {
-                $noteFinale = $moyenneNoteComposition;
-            }
-            
-            // Calculer les points : Note finale * Coefficient
-            $points = $noteFinale * $matiere->coefficient;
-            
+
+            if ($sommeCoeff <= 0) continue;
+
+            $noteFinaleMatiere = $sommeNoteCoeff / $sommeCoeff;
+            $points = $noteFinaleMatiere * $sommeCoeff;
+
             $notesParMatiere[$matiere->nom] = [
                 'matiere' => $matiere,
-                'coefficient' => $matiere->coefficient,
+                'coefficient' => $sommeCoeff,
                 'note_cours' => round($moyenneNoteCours, 2),
                 'note_composition' => round($moyenneNoteComposition, 2),
-                'note_finale' => round($noteFinale, 2),
+                'note_finale' => round($noteFinaleMatiere, 2),
                 'points' => round($points, 2)
             ];
         }
@@ -822,24 +904,23 @@ class NoteController extends Controller
         
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
-            
-            // Calculer la moyenne de la matière
-            $sommeNotesFinales = 0;
-            $nombreNotes = 0;
-            
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
             foreach ($notesMatiere as $note) {
-                $noteFinale = $note->calculerNoteFinale();
-                if ($noteFinale !== null) {
-                    $sommeNotesFinales += $noteFinale;
-                    $nombreNotes++;
-                }
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale === null) continue;
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
             }
-            
-            if ($nombreNotes > 0) {
-                $moyenne = $sommeNotesFinales / $nombreNotes;
-                $totalPoints += $moyenne * $matiere->coefficient;
-                $totalCoefficients += $matiere->coefficient;
-            }
+            if ($sommeCoeff <= 0) continue;
+
+            $moyenne = $sommeNoteCoeff / $sommeCoeff;
+            $totalPoints += $moyenne * $sommeCoeff;
+            $totalCoefficients += $sommeCoeff;
         }
         
         return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
@@ -861,29 +942,27 @@ class NoteController extends Controller
         
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
-            
-            // Calculer la moyenne de la matière en utilisant les notes finales
-            $sommeNotesFinales = 0;
-            $nombreNotes = 0;
-            
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
             foreach ($notesMatiere as $note) {
-                $noteFinale = $note->calculerNoteFinale();
-                if ($noteFinale !== null) {
-                    $sommeNotesFinales += $noteFinale;
-                    $nombreNotes++;
-                }
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale === null) continue;
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
             }
-            
-            if ($nombreNotes > 0) {
-                $moyenne = $sommeNotesFinales / $nombreNotes;
-                $moyennes[$matiere->nom] = [
-                    'moyenne' => round($moyenne, 2),
-                    'coefficient' => $matiere->coefficient
-                ];
-                
-                $totalPoints += $moyenne * $matiere->coefficient;
-                $totalCoefficients += $matiere->coefficient;
-            }
+            if ($sommeCoeff <= 0) continue;
+
+            $moyenne = $sommeNoteCoeff / $sommeCoeff;
+            $moyennes[$matiere->nom] = [
+                'moyenne' => round($moyenne, 2),
+                'coefficient' => $sommeCoeff
+            ];
+            $totalPoints += $moyenne * $sommeCoeff;
+            $totalCoefficients += $sommeCoeff;
         }
         
         $moyennes['generale'] = $totalCoefficients > 0 ? 
@@ -1412,7 +1491,7 @@ class NoteController extends Controller
             'titre' => 'nullable|string|max:255',
             'commentaire' => 'nullable|string|max:1000',
             'date_evaluation' => 'required|date',
-            'periode' => 'required|string|in:trimestre1,trimestre2',
+            'periode' => 'required|string|in:trimestre1,trimestre2,trimestre3',
         ]);
 
         // Récupérer la classe pour déterminer le niveau
@@ -1466,8 +1545,8 @@ class NoteController extends Controller
             'periode' => $request->periode,
         ]);
 
-        return redirect()->route('notes.eleve', $note->eleve_id)
-            ->with('success', 'Note mise à jour avec succès.');
+        return redirect()->route('notes.eleve', ['eleve' => $note->eleve_id, 'periode' => $note->periode])
+            ->with('success', 'Note mise à jour avec succès. La moyenne et le coefficient ont été recalculés.');
     }
 
     /**

@@ -9,9 +9,12 @@
             <div class="d-flex justify-content-between align-items-center mb-4 no-print">
                 <h2><i class="fas fa-file-alt me-2"></i>Bulletins de Notes - {{ $classe->nom }}</h2>
                 <div class="no-print">
-                    <button onclick="window.print()" class="btn btn-primary">
+                    <button onclick="window.print()" class="btn btn-primary me-2">
                         <i class="fas fa-print me-2"></i>Imprimer
                     </button>
+                    <a href="{{ route('notes.bulletins.classe.pdf', $classe->id) }}?periode={{ $periode }}" class="btn btn-success me-2">
+                        <i class="fas fa-download me-2"></i>Télécharger
+                    </a>
                     <a href="{{ route('notes.index') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
@@ -227,6 +230,7 @@
         </div>
     </div>
 </div>
+@endsection
 
 @push('styles')
 <style>
@@ -801,5 +805,10 @@
 }
 </style>
 @endpush
+
+@section('scripts')
+<script>
+// Scripts optionnels si nécessaire
+</script>
 @endsection
 

@@ -32,7 +32,7 @@ class Note extends Model
         'note_finale' => 'decimal:2',
         'note_sur' => 'decimal:2',
         'date_evaluation' => 'date',
-        'coefficient' => 'integer',
+        'coefficient' => 'float',
         'rattrapage' => 'boolean'
     ];
 
@@ -125,16 +125,11 @@ class Note extends Model
      * Calculer la moyenne générale d'un élève pour un trimestre
      *
      * IMPORTANT :
-     * - Cette méthode DOIT donner exactement la même moyenne que
-     *   celle affichée dans "Récapitulatif des notes par matière"
-     *   (vue `notes.eleve`) afin que :
-     *   - le classement par ordre de mérite
-     *   - les bulletins individuels et de classe
-     * utilisent TOUS la même moyenne.
-     *
-     * Formule alignée sur `NoteController@eleveNotes` :
-     *  1) Pour chaque matière : moyenneMatiere = moyenne des notes finales de cette matière
-     *  2) Moyenne générale = Somme(moyenneMatiere × coefficient_matiere) / Somme(coefficients)
+     * - Utilise le coefficient de chaque NOTE (modifiable par l'enseignant).
+     * - Si une note n'a pas de coefficient, on utilise celui de la matière.
+     * - Formule : pour chaque matière, moyenne = sum(note_finale × coef_note) / sum(coef_note)
+     *   puis moyenne générale = sum(moyenne_matiere × coef_matiere) / sum(coef_matiere)
+     *   où coef_matiere = sum(coefficients des notes de cette matière).
      */
     public static function calculerMoyenneGenerale($eleveId, $periode)
     {
@@ -149,29 +144,32 @@ class Note extends Model
 
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere ?? null;
-            $coefMatiere = $matiere ? ($matiere->coefficient ?? 1) : 1;
+            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
 
-            // Calculer la moyenne de la matière en utilisant les notes finales
-            $sommeNotesFinales = 0;
-            $nombreNotes = 0;
+            // Moyenne pondérée par le coefficient de chaque note
+            $sommeNoteCoeff = 0;
+            $sommeCoeff = 0;
 
             foreach ($notesMatiere as $note) {
-                // Utiliser la note_finale si déjà calculée, sinon la recalculer
                 $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
-                if ($noteFinale !== null) {
-                    $sommeNotesFinales += $noteFinale;
-                    $nombreNotes++;
+                if ($noteFinale === null) {
+                    continue;
                 }
+                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+                if ($coefNote <= 0) {
+                    $coefNote = $coefMatiereDefaut;
+                }
+                $sommeNoteCoeff += $noteFinale * $coefNote;
+                $sommeCoeff += $coefNote;
             }
 
-            if ($nombreNotes === 0) {
+            if ($sommeCoeff <= 0) {
                 continue;
             }
 
-            $moyenneMatiere = $sommeNotesFinales / $nombreNotes;
-
-            $totalPoints += $moyenneMatiere * $coefMatiere;
-            $totalCoefficients += $coefMatiere;
+            $moyenneMatiere = $sommeNoteCoeff / $sommeCoeff;
+            $totalPoints += $moyenneMatiere * $sommeCoeff;
+            $totalCoefficients += $sommeCoeff;
         }
 
         return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;

@@ -247,6 +247,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/statistiques/{classe}/imprimer', [NoteController::class, 'statistiquesClasseImprimable'])->name('notes.statistiques.classe.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletins', [NoteController::class, 'bulletins'])->name('notes.bulletins')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletins/{classe}', [NoteController::class, 'genererBulletins'])->name('notes.bulletins.classe')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletins/{classe}/pdf', [NoteController::class, 'bulletinsClassePdf'])->name('notes.bulletins.classe.pdf')->middleware('check.permission:notes.view');
         Route::get('/notes/bulletin/verifier/{token}', [NoteController::class, 'verifierBulletin'])->name('notes.bulletin.verify');
         Route::get('/notes/rapport-global', [NoteController::class, 'rapportGlobal'])->name('notes.rapport-global')->middleware('check.permission:notes.view');
         Route::get('/notes/export', [NoteController::class, 'exporterNotes'])->name('notes.export')->middleware('check.permission:notes.view');

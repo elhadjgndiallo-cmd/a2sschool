@@ -272,6 +272,7 @@
                         <tr>
                             <th>Date</th>
                             <th class="text-center">Type</th>
+                            <th class="text-center">Coeff.</th>
                             @if(!$eleve->classe->isPrimaire())
                             <th class="text-center">Note Cours</th>
                             @endif
@@ -292,6 +293,7 @@
                             <td class="text-center">
                                 <span class="badge bg-secondary">{{ ucfirst($note->type_evaluation ?? 'N/A') }}</span>
                             </td>
+                            <td class="text-center"><strong>{{ $note->coefficient ?? $data['matiere']->coefficient ?? 1 }}</strong></td>
                             @if(!$eleve->classe->isPrimaire())
                             <td class="text-center">
                                 @if($note->note_cours)

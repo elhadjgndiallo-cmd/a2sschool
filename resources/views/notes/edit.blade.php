@@ -171,6 +171,9 @@
                                     @error('coefficient')
                                         <div class="invalid-feedback">{{ $error }}</div>
                                     @enderror
+                                    <small class="form-text text-muted">
+                                        Modifiable. La moyenne sera recalculée automatiquement après enregistrement.
+                                    </small>
                                 </div>
                             </div>
 
