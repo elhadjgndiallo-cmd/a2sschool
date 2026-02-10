@@ -340,6 +340,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Récupérer toutes les matières pour le filtrage
     const allMatieres = @json($matieres);
+    // Indique si la classe est en primaire / préscolaire (disponible partout dans ce script)
+    const isPrimaire = {{ $classe->isPrimaire() ? 'true' : 'false' }};
     
     // Fonction pour filtrer les matières selon l'enseignant
     function filtrerMatieres(matieresEnseignant) {
@@ -456,8 +458,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fonction pour calculer la note finale selon la formule
     function calculerNoteFinale(noteCours, noteComposition) {
-        const isPrimaire = {{ $classe->isPrimaire() ? 'true' : 'false' }};
-        
         if (noteComposition === null) {
             return null;
         }
@@ -477,7 +477,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Calcul automatique de la note finale
     function calculerNoteFinaleLigne(index) {
-        const isPrimaire = {{ $classe->isPrimaire() ? 'true' : 'false' }};
         const noteCoursInput = document.querySelector(`.note-cours-input[data-index="${index}"]`);
         const noteCompositionInput = document.querySelector(`.note-composition-input[data-index="${index}"]`);
         const noteFinaleDisplay = document.querySelector(`.note-finale-display[data-index="${index}"]`);

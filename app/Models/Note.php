@@ -123,28 +123,58 @@ class Note extends Model
 
     /**
      * Calculer la moyenne générale d'un élève pour un trimestre
-     * Formule: Somme de (note finale × coefficient) / Somme des coefficients
+     *
+     * IMPORTANT :
+     * - Cette méthode DOIT donner exactement la même moyenne que
+     *   celle affichée dans "Récapitulatif des notes par matière"
+     *   (vue `notes.eleve`) afin que :
+     *   - le classement par ordre de mérite
+     *   - les bulletins individuels et de classe
+     * utilisent TOUS la même moyenne.
+     *
+     * Formule alignée sur `NoteController@eleveNotes` :
+     *  1) Pour chaque matière : moyenneMatiere = moyenne des notes finales de cette matière
+     *  2) Moyenne générale = Somme(moyenneMatiere × coefficient_matiere) / Somme(coefficients)
      */
     public static function calculerMoyenneGenerale($eleveId, $periode)
     {
         $notes = self::where('eleve_id', $eleveId)
             ->where('periode', $periode)
             ->with('matiere')
-            ->get();
+            ->get()
+            ->groupBy('matiere_id');
 
-        $sommeNoteCoefficient = 0;
-        $sommeCoefficients = 0;
+        $totalPoints = 0;
+        $totalCoefficients = 0;
 
-        foreach ($notes as $note) {
-            $noteFinale = $note->calculerNoteFinale();
-            if ($noteFinale !== null) {
-                $coefMatiere = $note->matiere ? ($note->matiere->coefficient ?? 1) : 1;
-                $sommeNoteCoefficient += $noteFinale * $coefMatiere;
-                $sommeCoefficients += $coefMatiere;
+        foreach ($notes as $matiereId => $notesMatiere) {
+            $matiere = $notesMatiere->first()->matiere ?? null;
+            $coefMatiere = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+            // Calculer la moyenne de la matière en utilisant les notes finales
+            $sommeNotesFinales = 0;
+            $nombreNotes = 0;
+
+            foreach ($notesMatiere as $note) {
+                // Utiliser la note_finale si déjà calculée, sinon la recalculer
+                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+                if ($noteFinale !== null) {
+                    $sommeNotesFinales += $noteFinale;
+                    $nombreNotes++;
+                }
             }
+
+            if ($nombreNotes === 0) {
+                continue;
+            }
+
+            $moyenneMatiere = $sommeNotesFinales / $nombreNotes;
+
+            $totalPoints += $moyenneMatiere * $coefMatiere;
+            $totalCoefficients += $coefMatiere;
         }
 
-        return $sommeCoefficients > 0 ? round($sommeNoteCoefficient / $sommeCoefficients, 2) : 0;
+        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
     }
 
     /**
