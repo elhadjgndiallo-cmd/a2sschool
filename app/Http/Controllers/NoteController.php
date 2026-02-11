@@ -2920,6 +2920,33 @@ class NoteController extends Controller
     }
 
     /**
+     * Supprimer toutes les notes d'une matière pour un élève
+     */
+    public function supprimerNotesMatiere(Request $request, $eleveId, $matiereId)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer des notes.');
+        }
+
+        $eleve = Eleve::findOrFail($eleveId);
+        $matiere = Matiere::findOrFail($matiereId);
+        $periode = $request->input('periode', 'trimestre1');
+
+        // Supprimer toutes les notes de cette matière pour cet élève
+        $notesSupprimees = Note::where('eleve_id', $eleveId)
+            ->where('matiere_id', $matiereId)
+            ->where('periode', $periode)
+            ->delete();
+
+        if ($notesSupprimees > 0) {
+            return redirect()->back()->with('success', "Les {$notesSupprimees} note(s) de la matière {$matiere->nom} ont été supprimées avec succès.");
+        } else {
+            return redirect()->back()->with('info', "Aucune note trouvée pour la matière {$matiere->nom} à supprimer.");
+        }
+    }
+
+    /**
      * S'assurer que les périodes trimestrielles existent pour l'année scolaire
      */
     private function ensurePeriodesTrimestrielles($anneeScolaire)

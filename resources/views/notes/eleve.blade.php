@@ -195,6 +195,14 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     @endif
+                                    @if($data['notes']->count() > 0 && auth()->user()->hasPermission('notes.delete'))
+                                        <button type="button" 
+                                                class="btn btn-outline-danger" 
+                                                title="Supprimer toutes les notes de {{ $data['matiere']->nom }}"
+                                                onclick="confirmDeleteMatiere({{ $eleve->id }}, {{ $matiereId }}, '{{ $data['matiere']->nom }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    @endif
                                     <button type="button" 
                                             class="btn btn-outline-info" 
                                             title="Voir les détails des notes"
@@ -379,6 +387,41 @@ function confirmDeleteNote(noteId, matiereNom) {
         csrfToken.name = '_token';
         csrfToken.value = '{{ csrf_token() }}';
         form.appendChild(csrfToken);
+        
+        // Ajouter la méthode DELETE
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        form.appendChild(methodField);
+        
+        // Soumettre le formulaire
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Fonction pour confirmer la suppression de toutes les notes d'une matière
+function confirmDeleteMatiere(eleveId, matiereId, matiereNom) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer TOUTES les notes de la matière ' + matiereNom + ' ?\n\nCette action supprimera toutes les notes de cette matière pour cette période et est irréversible.')) {
+        // Créer un formulaire de suppression
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route("notes.supprimer.matiere", [":eleveId", ":matiereId"]) }}'.replace(':eleveId', eleveId).replace(':matiereId', matiereId);
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        
+        // Ajouter la période actuelle
+        const periodeField = document.createElement('input');
+        periodeField.type = 'hidden';
+        periodeField.name = 'periode';
+        periodeField.value = '{{ $periode }}';
+        form.appendChild(periodeField);
         
         // Ajouter la méthode DELETE
         const methodField = document.createElement('input');
