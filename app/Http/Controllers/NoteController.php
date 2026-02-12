@@ -212,6 +212,130 @@ class NoteController extends Controller
     }
 
     /**
+     * Valider les doublons de notes pour éviter les répétitions
+     * 
+     * @param array $notes Les notes à valider
+     * @param bool $isPrimaire Si la classe est au niveau primaire
+     * @return true|string Retourne true si valide, sinon message d'erreur
+     */
+    private function validerDoublonsNotes($notes, $isPrimaire)
+    {
+        $groupedNotes = [];
+        
+        // Grouper les notes par élève, matière et période
+        foreach ($notes as $noteData) {
+            if (empty($noteData['matiere_id']) || empty($noteData['eleve_id'])) {
+                continue;
+            }
+            
+            $key = $noteData['eleve_id'] . '_' . $noteData['matiere_id'] . '_' . ($noteData['periode'] ?? 'trimestre1');
+            
+            if (!isset($groupedNotes[$key])) {
+                $groupedNotes[$key] = [
+                    'eleve_id' => $noteData['eleve_id'],
+                    'matiere_id' => $noteData['matiere_id'],
+                    'periode' => $noteData['periode'] ?? 'trimestre1',
+                    'has_note_cours' => false,
+                    'has_note_composition' => false,
+                    'matiere_nom' => null
+                ];
+            }
+            
+            // Vérifier si une note de cours est présente
+            if (isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] !== '') {
+                $groupedNotes[$key]['has_note_cours'] = true;
+            }
+            
+            // Vérifier si une note de composition est présente
+            if (isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] !== '') {
+                $groupedNotes[$key]['has_note_composition'] = true;
+            }
+        }
+        
+        // Vérifier les doublons pour chaque groupe
+        foreach ($groupedNotes as $group) {
+            $eleve = \App\Models\Eleve::find($group['eleve_id']);
+            $matiere = \App\Models\Matiere::find($group['matiere_id']);
+            
+            if (!$eleve || !$matiere) {
+                continue;
+            }
+            
+            $group['matiere_nom'] = $matiere->nom;
+            $eleveNom = $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom;
+            
+            // Vérifier les notes existantes dans la base de données
+            $notesExistantes = Note::where('eleve_id', $group['eleve_id'])
+                ->where('matiere_id', $group['matiere_id'])
+                ->where('periode', $group['periode'])
+                ->get();
+            
+            foreach ($notesExistantes as $noteExistante) {
+                // Pour le primaire : seulement une note de composition par matière
+                if ($isPrimaire) {
+                    if ($group['has_note_composition'] && $noteExistante->note_composition !== null) {
+                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de composition par matière au primaire.";
+                    }
+                } 
+                // Pour le collège/lycée : une note de cours et une note de composition par matière
+                else {
+                    if ($group['has_note_cours'] && $noteExistante->note_cours !== null) {
+                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de cours pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de cours par matière au collège/lycée.";
+                    }
+                    if ($group['has_note_composition'] && $noteExistante->note_composition !== null) {
+                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de composition par matière au collège/lycée.";
+                    }
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Valider les doublons de notes pour éviter les répétitions (pour mise à jour)
+     * 
+     * @param Request $request La requête de mise à jour
+     * @param Note $note La note actuelle à modifier
+     * @param bool $isPrimaire Si la classe est au niveau primaire
+     * @return true|string Retourne true si valide, sinon message d'erreur
+     */
+    private function validerDoublonsNotesUpdate($request, $note, $isPrimaire)
+    {
+        $eleve = $note->eleve;
+        $matiere = $note->matiere;
+        $eleveNom = $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom;
+        $periode = $request->periode ?? $note->periode;
+        
+        // Vérifier les notes existantes dans la base de données (sauf la note actuelle)
+        $notesExistantes = Note::where('eleve_id', $note->eleve_id)
+            ->where('matiere_id', $note->matiere_id)
+            ->where('periode', $periode)
+            ->where('id', '!=', $note->id)
+            ->get();
+        
+        foreach ($notesExistantes as $noteExistente) {
+            // Pour le primaire : seulement une note de composition par matière
+            if ($isPrimaire) {
+                if (isset($request->note_composition) && $request->note_composition !== null && $request->note_composition !== '' && $noteExistente->note_composition !== null) {
+                    return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$periode}. Un élève ne peut avoir qu'une seule note de composition par matière au primaire.";
+                }
+            } 
+            // Pour le collège/lycée : une note de cours et une note de composition par matière
+            else {
+                if (isset($request->note_cours) && $request->note_cours !== null && $request->note_cours !== '' && $noteExistente->note_cours !== null) {
+                    return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de cours pour la matière {$matiere->nom} en {$periode}. Un élève ne peut avoir qu'une seule note de cours par matière au collège/lycée.";
+                }
+                if (isset($request->note_composition) && $request->note_composition !== null && $request->note_composition !== '' && $noteExistente->note_composition !== null) {
+                    return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$periode}. Un élève ne peut avoir qu'une seule note de composition par matière au collège/lycée.";
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    /**
      * Enregistrer les notes saisies
      */
     public function store(Request $request)
@@ -249,6 +373,14 @@ class NoteController extends Controller
                     ->with('error', "⚠️ Erreur : Une note de composition supérieure à {$noteMax} a été détectée. La note maximale pour le {$niveauTexte} est {$noteMax}.")
                     ->withInput();
             }
+        }
+        
+        // Validation pour éviter les doublons de notes
+        $validationDoublons = $this->validerDoublonsNotes($request->notes, $isPrimaire);
+        if ($validationDoublons !== true) {
+            return redirect()->back()
+                ->with('error', $validationDoublons)
+                ->withInput();
         }
         
         DB::transaction(function() use ($request, &$matieresAvecNotes, $isPrimaire) {
@@ -1509,6 +1641,14 @@ class NoteController extends Controller
         if (isset($request->note_composition) && $request->note_composition !== null && $request->note_composition > $noteMax) {
             return redirect()->back()
                 ->with('error', "⚠️ Erreur : La note de composition ne peut pas être supérieure à {$noteMax}. La note maximale pour le {$niveauTexte} est {$noteMax}.")
+                ->withInput();
+        }
+        
+        // Validation pour éviter les doublons de notes
+        $validationDoublons = $this->validerDoublonsNotesUpdate($request, $note, $isPrimaire);
+        if ($validationDoublons !== true) {
+            return redirect()->back()
+                ->with('error', $validationDoublons)
                 ->withInput();
         }
         
