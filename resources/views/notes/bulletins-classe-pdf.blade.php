@@ -23,6 +23,25 @@
         .bg-danger { background-color: #dc3545; color: #fff; }
         .bg-info { background-color: #0dcaf0; color: #000; }
         .bg-secondary { background-color: #6c757d; color: #fff; }
+        
+        /* Styles pour forcer l'affichage horizontal */
+        .bulletin-footer {
+            display: block !important;
+            width: 100% !important;
+        }
+        
+        .bulletin-footer > div:first-child {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 2% !important;
+            width: 100% !important;
+            align-items: stretch !important;
+        }
+        
+        .bulletin-footer .footer-section {
+            flex: 1 !important;
+            max-width: 48% !important;
+        }
     </style>
 </head>
 <body>
@@ -122,26 +141,39 @@
         </table>
     </div>
     <div class="bulletin-footer">
-        <div style="width: 48%; float: left; margin-right: 4%; border: 1px solid #2c3e50; border-radius: 4px; padding: 6px; background: #f8f9fa;">
-            <strong>Observations:</strong>
-            <div style="min-height: 40px;">&nbsp;</div>
-        </div>
-        <div style="width: 48%; float: left; border: 1px solid #2c3e50; border-radius: 4px; padding: 6px; background: #f8f9fa;">
-            <strong>Signatures:</strong>
-            <div style="margin-top: 6px;">
-                <div style="width: 48%; float: left; text-align: center;">
-                    <div style="font-weight: 700; margin-bottom: 4px;">Directeur</div>
-                    <div style="height: 30px; border-bottom: 1px solid #2c3e50;"></div>
-                    <div style="font-size: 10px; color: #6c757d;">Date: _____</div>
-                </div>
-                <div style="width: 48%; float: left; text-align: center;">
-                    <div style="font-weight: 700; margin-bottom: 4px;">Parent</div>
-                    <div style="height: 30px; border-bottom: 1px solid #2c3e50;"></div>
-                    <div style="font-size: 10px; color: #6c757d;">Date: _____</div>
-                </div>
-            </div>
-        </div>
-        <div style="clear: both;"></div>
+        <table style="width: 100%; border-collapse: collapse; border: none;">
+            <tr>
+                <td style="width: 48%; padding: 0; vertical-align: top; padding-right: 2%;">
+                    <!-- Section Observations -->
+                    <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 2px 4px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 55px; box-sizing: border-box;">
+                        <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 1px; border-bottom: 1px solid #2c3e50; padding-bottom: 1px; font-size: 10px; line-height: 1.0;"><strong>Observations:</strong></h6>
+                        <div style="line-height: 1.1; font-size: 9px; padding-top: 1px; min-height: 40px;">
+                            &nbsp;
+                        </div>
+                    </div>
+                </td>
+                <td style="width: 48%; padding: 0; vertical-align: top; padding-left: 2%;">
+                    <!-- Section Signatures -->
+                    <div style="border: 1px solid #2c3e50; border-radius: 4px; padding: 2px 4px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 55px; box-sizing: border-box;">
+                        <h6 style="color: #2c3e50; font-weight: 700; margin-bottom: 1px; border-bottom: 1px solid #2c3e50; padding-bottom: 1px; font-size: 10px; line-height: 1.0;"><strong>Signatures:</strong></h6>
+                        <table style="width: 100%; border-collapse: collapse; border: none; margin-top: 1px;">
+                            <tr>
+                                <td style="width: 48%; padding: 0; text-align: center; padding-right: 2%;">
+                                    <p style="text-align: center; font-weight: 700; color: #2c3e50; margin-bottom: 1px; font-size: 9px; line-height: 1.0;">Directeur</p>
+                                    <div style="height: 20px; border-bottom: 1px solid #2c3e50; margin-bottom: 1px;"></div>
+                                    <div style="text-align: center; color: #6c757d; font-size: 8px; line-height: 1.0;">Date: _____</div>
+                                </td>
+                                <td style="width: 48%; padding: 0; text-align: center; padding-left: 2%;">
+                                    <p style="text-align: center; font-weight: 700; color: #2c3e50; margin-bottom: 1px; font-size: 9px; line-height: 1.0;">Parent</p>
+                                    <div style="height: 20px; border-bottom: 1px solid #2c3e50; margin-bottom: 1px;"></div>
+                                    <div style="text-align: center; color: #6c757d; font-size: 8px; line-height: 1.0;">Date: _____</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 </div>
 @endforeach
