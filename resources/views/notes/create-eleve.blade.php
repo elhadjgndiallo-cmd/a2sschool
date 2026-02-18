@@ -151,7 +151,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="note_cours" class="form-label">Note de cours</label>
-                        <input type="number" class="form-control @error('note_cours') is-invalid @enderror" id="note_cours" name="note_cours" min="0" max="{{ $eleve->classe->note_max }}" step="0.25" value="{{ old('note_cours') }}" placeholder="0.00">
+                        <input type="number" class="form-control @error('note_cours') is-invalid @enderror" id="note_cours" name="note_cours" min="0" max="{{ $eleve->classe->note_max }}" step="0.01" value="{{ old('note_cours') }}" placeholder="0.00">
                         <small class="form-text text-muted">Note sur {{ $eleve->classe->note_max }}</small>
                         @error('note_cours')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -160,7 +160,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label for="note_composition" class="form-label">Note de composition</label>
-                        <input type="number" class="form-control @error('note_composition') is-invalid @enderror" id="note_composition" name="note_composition" min="0" max="{{ $eleve->classe->note_max }}" step="0.25" value="{{ old('note_composition') }}" placeholder="0.00">
+                        <input type="number" class="form-control @error('note_composition') is-invalid @enderror" id="note_composition" name="note_composition" min="0" max="{{ $eleve->classe->note_max }}" step="0.01" value="{{ old('note_composition') }}" placeholder="0.00">
                         <small class="form-text text-muted">Note sur {{ $eleve->classe->note_max }}</small>
                         @error('note_composition')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -171,7 +171,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="note_composition" class="form-label">Note de composition</label>
-                        <input type="number" class="form-control @error('note_composition') is-invalid @enderror" id="note_composition" name="note_composition" min="0" max="{{ $eleve->classe->note_max }}" step="0.25" value="{{ old('note_composition') }}" placeholder="0.00">
+                        <input type="number" class="form-control @error('note_composition') is-invalid @enderror" id="note_composition" name="note_composition" min="0" max="{{ $eleve->classe->note_max }}" step="0.01" value="{{ old('note_composition') }}" placeholder="0.00">
                         <small class="form-text text-muted">Note sur {{ $eleve->classe->note_max }}</small>
                         @error('note_composition')
                             <div class="invalid-feedback">{{ $message }}</div>

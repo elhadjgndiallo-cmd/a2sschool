@@ -91,7 +91,7 @@
                                            value="{{ old('note_cours', $note->note_cours) }}"
                                            min="0" 
                                            max="{{ $note->eleve->classe->note_max }}" 
-                                           step="0.1"
+                                           step="0.01"
                                            placeholder="Ex: 15.5">
                                     @error('note_cours')
                                         <div class="invalid-feedback">{{ $error }}</div>
@@ -117,7 +117,7 @@
                                            value="{{ old('note_composition', $note->note_composition) }}"
                                            min="0" 
                                            max="{{ $note->eleve->classe->note_max }}" 
-                                           step="0.1"
+                                           step="0.01"
                                            placeholder="Ex: 16.0">
                                     @error('note_composition')
                                         <div class="invalid-feedback">{{ $error }}</div>
@@ -166,7 +166,7 @@
                                            value="{{ old('coefficient', $note->coefficient) }}"
                                            min="0.1" 
                                            max="10" 
-                                           step="0.1"
+                                           step="0.01"
                                            required>
                                     @error('coefficient')
                                         <div class="invalid-feedback">{{ $error }}</div>

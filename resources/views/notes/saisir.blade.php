@@ -200,7 +200,7 @@
                                        name="notes[{{ $index }}][note_cours]" 
                                        min="0" 
                                        max="{{ $classe->note_max }}" 
-                                       step="0.25"
+                                       step="0.01"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
                             </td>
@@ -213,7 +213,7 @@
                                        name="notes[{{ $index }}][note_composition]" 
                                        min="0" 
                                        max="{{ $classe->note_max }}" 
-                                       step="0.25"
+                                       step="0.01"
                                        placeholder="0.00"
                                        data-index="{{ $index }}">
                             </td>
