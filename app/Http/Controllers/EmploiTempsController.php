@@ -206,9 +206,18 @@ class EmploiTempsController extends Controller
             'salle' => 'nullable|string|max:50'
         ]);
 
+        // Debug pour voir les données reçues et les erreurs
+        \Log::info('=== DEBUG EMPLOI TEMPS STORE ===');
+        \Log::info('Données reçues:', $request->all());
+        
         if ($validator->fails()) {
+            \Log::error('Erreurs de validation:', $validator->errors()->toArray());
+            \Log::error('=== FIN DEBUG EMPLOI TEMPS ===');
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
+        
+        \Log::info('Validation réussie');
+        \Log::info('=== FIN DEBUG EMPLOI TEMPS ===');
 
         // Vérifier les conflits d'horaires (sauf si on force)
         if (!$request->has('force') || !$request->force) {

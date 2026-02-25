@@ -234,6 +234,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/eleve/{eleve}/create', [NoteController::class, 'createForEleve'])->name('notes.eleve.create')->middleware('check.permission:notes.create');
         Route::post('/notes/eleve/{eleve}/store', [NoteController::class, 'storeForEleve'])->name('notes.eleve.store')->middleware('check.permission:notes.create');
         Route::get('/notes/bulletin/eleve/{eleve}', [NoteController::class, 'bulletin'])->name('notes.bulletin.eleve')->middleware('check.permission:notes.view');
+        // Route pour le bulletin annuel
+        Route::get('/notes/bulletin/annuel/eleve/{eleve}', [NoteController::class, 'bulletinAnnuel'])->name('notes.bulletin.annuel')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletin/annuel-formate/eleve/{eleve}', [NoteController::class, 'bulletinAnnuelFormate'])->name('notes.bulletin.annuel.formate')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletins/annuels-formates/{classe}', [NoteController::class, 'bulletinsAnnuelsFormates'])->name('notes.bulletins.annuels.formates')->middleware('check.permission:notes.view');
+        Route::get('/notes/bulletins/annuel/{classe}/pdf', [NoteController::class, 'bulletinsAnnuelPdf'])->name('notes.bulletins.annuel.pdf')->middleware('check.permission:notes.view');
         // Route pour la sélection de la fiche de notes
         Route::get('/notes/fiche', [NoteController::class, 'ficheNotesSelection'])->name('notes.fiche.selection')->middleware('check.permission:notes.view');
         // Route pour la fiche de notes à imprimer (A4 paysage) - doit être avant /notes/{note}

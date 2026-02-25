@@ -7,11 +7,12 @@
     <div class="row">
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-file-alt me-2"></i>Bulletins de Notes</h2>
-                <a href="{{ route('notes.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Retour
-                </a>
-            </div>
+        <h2><i class="fas fa-file-alt me-2"></i>Bulletins Scolaires</h2>
+        <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>
+            Retour aux Notes
+        </a>
+    </div>
 
             <div class="row justify-content-center">
                 <div class="col-md-8">
@@ -63,6 +64,11 @@
                                                        class="btn btn-primary btn-sm generate-bulletins"
                                                        data-base-url="{{ route('notes.bulletins.classe', $classe->id) }}">
                                                         <i class="fas fa-file-alt me-1"></i>Générer les bulletins
+                                                    </a>
+                                                    <a href="{{ route('notes.bulletins.annuels.formates', $classe->id) }}" 
+                                                       class="btn btn-success btn-sm generate-bulletins-annuels"
+                                                       data-base-url="{{ route('notes.bulletins.annuels.formates', $classe->id) }}">
+                                                        <i class="fas fa-file-alt me-1"></i>Générer Bulletin Annuel
                                                     </a>
                                                 </div>
                                             </div>
