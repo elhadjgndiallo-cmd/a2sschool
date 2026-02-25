@@ -200,11 +200,68 @@ class NoteController extends Controller
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
         
-        // Enseignant voit seulement ses matières assignées
-        $matieres = $enseignant->matieres()->actif()->get();
+        // Enseignant voit seulement ses matières assignées dans son emploi du temps pour cette classe
+        $emploisTempsQuery = \App\Models\EmploiTemps::where('enseignant_id', $enseignant->id)
+            ->where('classe_id', $classe->id)
+            ->where('actif', true);
             
-        $enseignants = collect([$enseignant])->map(function($enseignant) {
+        // Debug de la requête
+        \Log::error('Requête emplois du temps: ' . $emploisTempsQuery->toSql());
+        \Log::error('Bindings: ' . json_encode($emploisTempsQuery->getBindings()));
+        
+        $emploisTemps = $emploisTempsQuery->get();
+        \Log::error('Emplois du temps trouvés: ' . $emploisTemps->count());
+        \Log::error('Emplois du temps data: ', $emploisTemps->toArray());
+        
+        $matiereIds = $emploisTemps->pluck('matiere_id')->unique();
+        
+        // Si aucun emploi du temps trouvé, forcer un tableau vide
+        if ($matiereIds->isEmpty()) {
+            $matieres = collect([]);
+            // Message pour l'enseignant
+            session()->flash('warning', '⚠️ Aucune matière assignée dans votre emploi du temps pour cette classe. Veuillez contacter l\'administration pour configurer votre emploi du temps.');
+            
+            // Debug forcé
+            \Log::error('AUCUN EMPLOI DU TROUVÉ - Matières forcées à vide');
+        } else {
+            $matieres = \App\Models\Matiere::whereIn('id', $matiereIds)->get();
+            \Log::error('EMPLOIS DU TROUVÉS - Matières filtrées: ' . $matieres->count());
+        }
+            
+        // Debug simple qui s'affiche toujours
+        \Log::error('=== DEBUG TEACHER SAISIR ===');
+        \Log::error('Enseignant ID: ' . $enseignant->id);
+        \Log::error('Classe ID: ' . $classe->id);
+        \Log::error('Matières count: ' . $matieres->count());
+        \Log::error('Matières: ' . $matieres->pluck('nom')->implode(', '));
+        \Log::error('=== FIN DEBUG ===');
+        
+        // Log de débogage
+        \Log::info('Enseignant: ' . $enseignant->id . ' - Classe: ' . $classe->id . ' - Matière IDs: ' . json_encode($matiereIds));
+        \Log::info('Matières finales: ' . $matieres->count());
+        
+        // Debug dump pour voir les matières exactes
+        \Log::info('Matières envoyées à la vue: ', $matieres->toArray());
+        
+        // Temporaire : forcer le dump pour voir ce qui est envoyé
+        if (request()->has('debug')) {
+            dd([
+                'enseignant_id' => $enseignant->id,
+                'classe_id' => $classe->id,
+                'matiere_ids' => $matiereIds,
+                'matieres' => $matieres,
+                'matieres_count' => $matieres->count()
+            ]);
+        }
+            
+        $enseignants = collect([$enseignant])->map(function($enseignant) use ($classe) {
             $enseignant->nom_complet = $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
+            $enseignant->matieres_classe = $enseignant->emploisTemps
+                ->where('classe_id', $classe->id)
+                ->where('actif', true)
+                ->pluck('matiere_id')
+                ->unique()
+                ->toArray();
             return $enseignant;
         });
         
@@ -220,72 +277,44 @@ class NoteController extends Controller
      */
     private function validerDoublonsNotes($notes, $isPrimaire)
     {
-        $groupedNotes = [];
-        
-        // Grouper les notes par élève, matière et période
+        // Vérifier chaque note individuellement sans regroupement
         foreach ($notes as $noteData) {
+            // Ignorer les lignes vides
             if (empty($noteData['matiere_id']) || empty($noteData['eleve_id'])) {
                 continue;
             }
             
-            $key = $noteData['eleve_id'] . '_' . $noteData['matiere_id'] . '_' . ($noteData['periode'] ?? 'trimestre1');
+            // Ignorer si aucune note n'est saisie
+            $hasNoteCours = isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] !== '';
+            $hasNoteComposition = isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] !== '';
             
-            if (!isset($groupedNotes[$key])) {
-                $groupedNotes[$key] = [
-                    'eleve_id' => $noteData['eleve_id'],
-                    'matiere_id' => $noteData['matiere_id'],
-                    'periode' => $noteData['periode'] ?? 'trimestre1',
-                    'has_note_cours' => false,
-                    'has_note_composition' => false,
-                    'matiere_nom' => null
-                ];
+            if (!$hasNoteCours && !$hasNoteComposition) {
+                continue;
             }
             
-            // Vérifier si une note de cours est présente
-            if (isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] !== '') {
-                $groupedNotes[$key]['has_note_cours'] = true;
-            }
-            
-            // Vérifier si une note de composition est présente
-            if (isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] !== '') {
-                $groupedNotes[$key]['has_note_composition'] = true;
-            }
-        }
-        
-        // Vérifier les doublons pour chaque groupe
-        foreach ($groupedNotes as $group) {
-            $eleve = \App\Models\Eleve::find($group['eleve_id']);
-            $matiere = \App\Models\Matiere::find($group['matiere_id']);
+            $eleve = \App\Models\Eleve::find($noteData['eleve_id']);
+            $matiere = \App\Models\Matiere::find($noteData['matiere_id']);
             
             if (!$eleve || !$matiere) {
                 continue;
             }
             
-            $group['matiere_nom'] = $matiere->nom;
-            $eleveNom = $eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom;
-            
             // Vérifier les notes existantes dans la base de données
-            $notesExistantes = Note::where('eleve_id', $group['eleve_id'])
-                ->where('matiere_id', $group['matiere_id'])
-                ->where('periode', $group['periode'])
+            $notesExistantes = Note::where('eleve_id', $noteData['eleve_id'])
+                ->where('matiere_id', $noteData['matiere_id'])
+                ->where('periode', $noteData['periode'] ?? 'trimestre1')
                 ->get();
             
-            foreach ($notesExistantes as $noteExistante) {
-                // Pour le primaire : seulement une note de composition par matière
-                if ($isPrimaire) {
-                    if ($group['has_note_composition'] && $noteExistante->note_composition !== null) {
-                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de composition par matière au primaire.";
-                    }
-                } 
-                // Pour le collège/lycée : une note de cours et une note de composition par matière
-                else {
-                    if ($group['has_note_cours'] && $noteExistante->note_cours !== null) {
-                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de cours pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de cours par matière au collège/lycée.";
-                    }
-                    if ($group['has_note_composition'] && $noteExistante->note_composition !== null) {
-                        return "⚠️ Erreur : L'élève {$eleveNom} a déjà une note de composition pour la matière {$matiere->nom} en {$group['periode']}. Un élève ne peut avoir qu'une seule note de composition par matière au collège/lycée.";
-                    }
-                }
+            // Log de débogage
+            \Log::info('Vérification doublons - Élève: ' . $noteData['eleve_id'] . 
+                      ' - Matière: ' . $noteData['matiere_id'] . 
+                      ' - Période: ' . ($noteData['periode'] ?? 'trimestre1') . 
+                      ' - Notes existantes: ' . $notesExistantes->count());
+            
+            // Si l'élève a déjà des notes dans cette matière pour cette période, bloquer
+            if ($notesExistantes->isNotEmpty()) {
+                \Log::info('Doublon détecté pour élève ' . $noteData['eleve_id'] . ' matière ' . $noteData['matiere_id']);
+                return "les notes de cette matier a été déjà enregistrée rendez vous a la direction pour une modification";
             }
         }
         
@@ -378,8 +407,12 @@ class NoteController extends Controller
         // Validation pour éviter les doublons de notes
         $validationDoublons = $this->validerDoublonsNotes($request->notes, $isPrimaire);
         if ($validationDoublons !== true) {
+            // Log de débogage
+            \Log::info('Validation doublons bloquée - User: ' . auth()->user()->email . ' - Erreur: ' . $validationDoublons);
+            \Log::info('Notes reçues: ', $request->notes);
+            
             return redirect()->back()
-                ->with('error', $validationDoublons)
+                ->with('error', 'les notes de cette matier a été déjà enregistrée rendez vous a la direction pour une modification')
                 ->withInput();
         }
         
@@ -409,14 +442,78 @@ class NoteController extends Controller
                         ]);
                     }
                     
-                    // Déterminer les notes
-                    $noteCours = !empty($noteData['note_cours']) ? $noteData['note_cours'] : null;
-                    $noteComposition = !empty($noteData['note_composition']) ? $noteData['note_composition'] : null;
+                    // Vérifier si l'élève a déjà une note dans cette matière pour cette période
+                    $noteExistante = Note::where('eleve_id', $noteData['eleve_id'])
+                        ->where('matiere_id', $noteData['matiere_id'])
+                        ->where('periode', $noteData['periode'])
+                        ->first();
                     
-                    // Si aucune note n'est saisie, utiliser la note par défaut 0.00
-                    if ($noteCours === null && $noteComposition === null) {
-                        $noteCours = null;
+                    // Si l'élève a déjà une note, passer au suivant
+                    if ($noteExistante) {
+                        continue;
+                    }
+                    
+                    // Vérifier si c'est une saisie individuelle ou de groupe
+                    $isIndividualSaisie = isset($noteData['note_cours']) || isset($noteData['note_composition']);
+                    
+                    // Si ce n'est pas une saisie individuelle et que l'élève n'a pas de note, créer une note par défaut 00
+                    if (!$isIndividualSaisie) {
+                        $matiere = \App\Models\Matiere::find($noteData['matiere_id']);
+                        
+                        // Pour le primaire : vérifier que le coefficient n'est pas 2 ou plus
+                        if ($isPrimaire && $matiere && $matiere->coefficient >= 2) {
+                            // Ne pas créer de note 00 pour les matières à coefficient élevé au primaire
+                            continue;
+                        }
+                        
+                        // Créer une note par défaut 00
+                        $noteCours = $isPrimaire ? null : 0.00;
                         $noteComposition = 0.00;
+                        
+                        // Calculer la note finale
+                        if ($isPrimaire) {
+                            $noteFinale = $noteComposition;
+                        } else {
+                            $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+                        }
+                        
+                        // Créer la note par défaut
+                        Note::create([
+                            'eleve_id' => $noteData['eleve_id'],
+                            'matiere_id' => $noteData['matiere_id'],
+                            'enseignant_id' => $noteData['enseignant_id'] ?? auth()->user()->enseignant->id,
+                            'note_cours' => $noteCours,
+                            'note_composition' => $noteComposition,
+                            'note_finale' => $noteFinale,
+                            'note_sur' => $noteFinale ?? 20,
+                            'type_evaluation' => $noteData['type_evaluation'] ?? 'devoir',
+                            'titre' => $noteData['titre'] ?? 'Note par défaut',
+                            'commentaire' => $noteData['commentaire'] ?? '',
+                            'date_evaluation' => $noteData['date_evaluation'] ?? now()->format('Y-m-d'),
+                            'periode' => $noteData['periode'],
+                            'coefficient' => $noteData['coefficient'] ?? 1,
+                        ]);
+                        
+                        continue; // Passer à l'élève suivant
+                    }
+                    
+                    // Déterminer les notes
+                    $noteCours = !empty($noteData['note_cours']) && $noteData['note_cours'] !== '' ? $noteData['note_cours'] : null;
+                    $noteComposition = !empty($noteData['note_composition']) && $noteData['note_composition'] !== '' ? $noteData['note_composition'] : null;
+                    
+                    // Pour le primaire : ne créer une note que si une note de composition est saisie
+                    if ($isPrimaire) {
+                        if ($noteComposition === null) {
+                            // Ne pas créer de note si aucune note de composition n'est saisie au primaire
+                            continue;
+                        }
+                        $noteCours = null; // Forcer null pour note_cours au primaire
+                    } else {
+                        // Pour collège/lycée : ne créer une note que si au moins une des deux notes est saisie
+                        if ($noteCours === null && $noteComposition === null) {
+                            // Ne pas créer de note si aucune note n'est saisie
+                            continue;
+                        }
                     }
                     
                     // Calculer la note finale selon le niveau
@@ -471,7 +568,7 @@ class NoteController extends Controller
             
             return redirect()->back()->with('success', $message);
         } else {
-            return redirect()->back()->with('error', 'Aucune note n\'a été enregistrée. Veuillez sélectionner au moins une matière pour au moins un élève.');
+            return redirect()->back()->with('error', 'les notes de cette matier a été déjà enregistrée rendez vous a la direction pour une modification');
         }
     }
 
@@ -630,15 +727,43 @@ class NoteController extends Controller
 
         foreach ($eleves as $eleve) {
             $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
-            $moyennes[] = $moyenneGenerale;
+            $moyennes[] = [
+                'eleve_id' => $eleve->id,
+                'moyenne' => $moyenneGenerale
+            ];
         }
 
         // Trier les moyennes par ordre décroissant
-        rsort($moyennes);
+        usort($moyennes, function($a, $b) {
+            return $b['moyenne'] <=> $a['moyenne'];
+        });
         
-        // Trouver la position de la moyenne de l'élève
-        $rang = array_search($moyenneEleve, $moyennes);
-        return $rang !== false ? $rang + 1 : count($moyennes);
+        // Calculer le rang en gérant les ex-aequo
+        $rang = 0;
+        $moyennePrecedente = null;
+        $rangPrecedent = 0;
+        
+        foreach ($moyennes as $index => $moyenneData) {
+            $moyenneActuelle = $moyenneData['moyenne'];
+            
+            // Si c'est la première itération ou une nouvelle moyenne
+            if ($moyennePrecedente === null || $moyenneActuelle < $moyennePrecedente) {
+                $rang = $index + 1;
+                $rangPrecedent = $rang;
+            } else {
+                // Même moyenne que le précédent, même rang
+                $rang = $rangPrecedent;
+            }
+            
+            // Vérifier si c'est l'élève actuel
+            if ($moyenneData['moyenne'] == $moyenneEleve) {
+                return $rang;
+            }
+            
+            $moyennePrecedente = $moyenneActuelle;
+        }
+        
+        return count($moyennes); // Par défaut, dernier rang
     }
 
     /**
@@ -685,6 +810,7 @@ class NoteController extends Controller
         }
         
         $periode = $request->input('periode', 'trimestre1');
+        $eleveId = $request->input('eleve'); // Récupérer l'ID de l'élève si spécifié
         
         // Filtrer les élèves par année scolaire active
         $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
@@ -697,6 +823,13 @@ class NoteController extends Controller
         $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
             return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
         });
+        
+        // Si un élève spécifique est demandé, filtrer pour ne garder que cet élève
+        if ($eleveId) {
+            $elevesActifs = $elevesActifs->filter(function($eleve) use ($eleveId) {
+                return $eleve->id == $eleveId;
+            });
+        }
         
         // Logique de génération des bulletins
         $bulletins = [];
@@ -756,15 +889,27 @@ class NoteController extends Controller
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
         }
+        
         $periode = $request->input('periode', 'trimestre1');
+        $eleveId = $request->input('eleve'); // Récupérer l'ID de l'élève si spécifié
+        
         $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
             $query->where('annee_scolaire_id', $anneeScolaireActive->id);
         }, 'eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
             $q->where('periode', $periode)->with('matiere');
         }])->findOrFail($classeId);
+        
         $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
             return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
         });
+        
+        // Si un élève spécifique est demandé, filtrer pour ne garder que cet élève
+        if ($eleveId) {
+            $elevesActifs = $elevesActifs->filter(function($eleve) use ($eleveId) {
+                return $eleve->id == $eleveId;
+            });
+        }
+        
         $bulletins = [];
         foreach ($elevesActifs as $eleve) {
             $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
@@ -1769,8 +1914,18 @@ class NoteController extends Controller
             }
         }
         
-        $noteCours = !empty($request->note_cours) ? $request->note_cours : null;
-        $noteComposition = !empty($request->note_composition) ? $request->note_composition : null;
+        $noteCours = !empty($request->note_cours) && $request->note_cours !== '' ? $request->note_cours : null;
+        $noteComposition = !empty($request->note_composition) && $request->note_composition !== '' ? $request->note_composition : null;
+        
+        // Pour le primaire : ne créer une note que si une note de composition est saisie
+        if ($isPrimaire) {
+            if ($noteComposition === null) {
+                return redirect()->back()
+                    ->with('error', "⚠️ Erreur : Au primaire, une note de composition doit être saisie. Laissez vide si vous ne souhaitez pas enregistrer de note.")
+                    ->withInput();
+            }
+            $noteCours = null; // Forcer null pour note_cours au primaire
+        }
         
         // Calculer la note finale selon le niveau
         if ($isPrimaire) {

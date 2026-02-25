@@ -23,9 +23,9 @@
                     Modifier les notes
                 </a>
             @endif
-            <a href="{{ route('notes.bulletin.eleve', ['eleve' => $eleve->id, 'periode' => $periode]) }}" class="btn btn-outline-info me-2" target="_blank">
-                <i class="fas fa-print me-1"></i>
-                Imprimer
+            <a href="{{ route('notes.bulletins.classe.pdf', ['classe' => $eleve->classe_id, 'periode' => $periode, 'eleve' => $eleve->id]) }}" class="btn btn-success me-2">
+                <i class="fas fa-download me-1"></i>
+                Télécharger bulletin
             </a>
             <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>

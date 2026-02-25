@@ -350,6 +350,18 @@ class TeacherController extends Controller
             }
         }
 
+        // Validation pour éviter les doublons de notes
+        $validationDoublons = $this->validerDoublonsNotes($request->notes, $isPrimaire);
+        if ($validationDoublons !== true) {
+            // Log de débogage
+            \Log::info('Validation doublons bloquée - Teacher: ' . auth()->user()->email . ' - Erreur: ' . $validationDoublons);
+            \Log::info('Notes reçues: ', $request->notes);
+            
+            return redirect()->back()
+                ->with('error', 'les notes de cette matier a été déjà enregistrée rendez vous a la direction pour une modification')
+                ->withInput();
+        }
+
         try {
             
             DB::transaction(function() use ($request, $enseignant, $isPrimaire) {
@@ -451,5 +463,58 @@ class TeacherController extends Controller
         }
 
         return view('teacher.profil-eleve', compact('eleve', 'statistiques'));
+    }
+
+    /**
+     * Valider les doublons de notes pour éviter les répétitions
+     * 
+     * @param array $notes Les notes à valider
+     * @param bool $isPrimaire Si la classe est au niveau primaire
+     * @return true|string Retourne true si valide, sinon message d'erreur
+     */
+    private function validerDoublonsNotes($notes, $isPrimaire)
+    {
+        // Vérifier chaque note individuellement sans regroupement
+        foreach ($notes as $noteData) {
+            // Ignorer les lignes vides
+            if (empty($noteData['matiere_id']) || empty($noteData['eleve_id'])) {
+                continue;
+            }
+            
+            // Ignorer si aucune note n'est saisie
+            $hasNoteCours = isset($noteData['note_cours']) && $noteData['note_cours'] !== null && $noteData['note_cours'] !== '';
+            $hasNoteComposition = isset($noteData['note_composition']) && $noteData['note_composition'] !== null && $noteData['note_composition'] !== '';
+            
+            if (!$hasNoteCours && !$hasNoteComposition) {
+                continue;
+            }
+            
+            $eleve = \App\Models\Eleve::find($noteData['eleve_id']);
+            $matiere = \App\Models\Matiere::find($noteData['matiere_id']);
+            
+            if (!$eleve || !$matiere) {
+                continue;
+            }
+            
+            // Vérifier les notes existantes dans la base de données
+            $notesExistantes = \App\Models\Note::where('eleve_id', $noteData['eleve_id'])
+                ->where('matiere_id', $noteData['matiere_id'])
+                ->where('periode', $noteData['periode'] ?? 'trimestre1')
+                ->get();
+            
+            // Log de débogage
+            \Log::info('Vérification doublons Teacher - Élève: ' . $noteData['eleve_id'] . 
+                      ' - Matière: ' . $noteData['matiere_id'] . 
+                      ' - Période: ' . ($noteData['periode'] ?? 'trimestre1') . 
+                      ' - Notes existantes: ' . $notesExistantes->count());
+            
+            // Si l'élève a déjà des notes dans cette matière pour cette période, bloquer
+            if ($notesExistantes->isNotEmpty()) {
+                \Log::info('Doublon détecté pour élève ' . $noteData['eleve_id'] . ' matière ' . $noteData['matiere_id']);
+                return "les notes de cette matier a été déjà enregistrée rendez vous a la direction pour une modification";
+            }
+        }
+        
+        return true;
     }
 }

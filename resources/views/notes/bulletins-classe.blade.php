@@ -91,7 +91,7 @@
                             <div class="col-md-6 text-end">
                                 <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
                                     <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 6px 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
-                                        <h5 class="mb-0" style="font-weight: 800; font-size: 1.05rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.1;">Rang: {{ $bulletin['rang'] }}/{{ count($bulletins) }}</h5>
+                                        <h5 class="mb-0" style="font-weight: 800; font-size: 1.05rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.1;">Rang: {{ $bulletin['rang'] }}/{{ $classe->eleves->count() }}</h5>
                                         <p class="mb-0" style="font-size: 1.05rem; font-weight: 600; line-height: 1.1;">Moyenne: <strong>{{ number_format($bulletin['moyenne_generale'] ?? 0, 2) }}/{{ $classe->note_max }}</strong></p>
                                     </div>
                                     <!-- QR Code de vérification -->

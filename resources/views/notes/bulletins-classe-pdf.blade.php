@@ -88,7 +88,7 @@
             </div>
             <div style="float: right; text-align: right;">
                 <div style="background: #2980b9; color: white; padding: 6px 10px; border-radius: 5px; display: inline-block;">
-                    <div style="font-weight: 800;">Rang: {{ $bulletin['rang'] }}/{{ count($bulletins) }}</div>
+                    <div style="font-weight: 800;">Rang: {{ $bulletin['rang'] }}/{{ $classe->eleves->count() }}</div>
                     <div>Moyenne: <strong>{{ number_format($bulletin['moyenne_generale'] ?? 0, 2) }}/{{ $classe->note_max }}</strong></div>
                 </div>
             </div>

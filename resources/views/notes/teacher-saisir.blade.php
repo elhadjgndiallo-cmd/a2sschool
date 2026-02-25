@@ -2,7 +2,23 @@
 
 @section('title', 'Saisie des Notes - ' . $classe->nom)
 
+@php
+// Debug dans la vue
+\Log::error('=== DEBUG VUE TEACHER SAISIR ===');
+\Log::error('Matieres reçues dans la vue: ' . $matieres->count());
+\Log::error('Matieres dans la vue: ' . $matieres->pluck('nom')->implode(', '));
+\Log::error('=== FIN DEBUG VUE ===')
+@endphp
+
 @section('content')
+<!-- Select d'enseignant caché pour le JavaScript (méthode mensuel/saisir) -->
+<input type="hidden" id="enseignant_id" value="{{ $enseignants->first()->id }}" 
+       data-matieres="{{ $enseignants->first()->matieres_classe ?? [] }}">
+
+<script>
+// Variable contenant les matières filtrées (comme dans mensuel/saisir)
+const allMatieres = @json($matieres);
+</script>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="fas fa-edit me-2"></i>
@@ -100,11 +116,7 @@
                     <label for="matiere_globale" class="form-label">Matière pour tous les élèves</label>
                     <select class="form-select" id="matiere_globale">
                         <option value="">Choisir une matière</option>
-                        @foreach($matieres as $matiere)
-                        <option value="{{ $matiere->id }}" data-coefficient="{{ $matiere->coefficient }}">
-                            {{ $matiere->nom }}
-                        </option>
-                        @endforeach
+                        <!-- Les options seront ajoutées par JavaScript -->
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -286,6 +298,91 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Fonction pour filtrer les matières selon l'enseignant
+    function filtrerMatieres(matieresEnseignant) {
+        // Filtrer le select global de matière (Application rapide)
+        const matiereGlobale = document.getElementById('matiere_globale');
+        if (matiereGlobale) {
+            const currentValue = matiereGlobale.value;
+            matiereGlobale.innerHTML = '<option value="">Choisir une matière</option>';
+            
+            // Pour les enseignants, n'afficher que leurs matières
+            if (matieresEnseignant && matieresEnseignant.length > 0) {
+                allMatieres.forEach(matiere => {
+                    if (matieresEnseignant.includes(matiere.id)) {
+                        const option = document.createElement('option');
+                        option.value = matiere.id;
+                        option.textContent = matiere.nom;
+                        option.dataset.coefficient = matiere.coefficient;
+                        matiereGlobale.appendChild(option);
+                    }
+                });
+            }
+            
+            // Restaurer la valeur précédente si elle existe toujours
+            if (currentValue && matieresEnseignant && matieresEnseignant.includes(parseInt(currentValue))) {
+                matiereGlobale.value = currentValue;
+            }
+        }
+        
+        // Filtrer les matières dans tous les selects de matière du tableau
+        document.querySelectorAll('.matiere-select').forEach(function(select) {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Choisir une matière</option>';
+            
+            // Pour les enseignants, n'afficher que leurs matières
+            if (matieresEnseignant && matieresEnseignant.length > 0) {
+                allMatieres.forEach(matiere => {
+                    if (matieresEnseignant.includes(matiere.id)) {
+                        const option = document.createElement('option');
+                        option.value = matiere.id;
+                        option.textContent = matiere.nom;
+                        option.dataset.coefficient = matiere.coefficient;
+                        select.appendChild(option);
+                    }
+                });
+            }
+            
+            // Restaurer la valeur précédente si elle existe toujours
+            if (currentValue && matieresEnseignant && matieresEnseignant.includes(parseInt(currentValue))) {
+                select.value = currentValue;
+            }
+        });
+    }
+    
+    // Appliquer le filtrage avec les matières de l'enseignant connecté (méthode admin + mensuel)
+    const enseignantSelect = document.getElementById('enseignant_id');
+    if (enseignantSelect) {
+        // Déclencher le changement si un enseignant est déjà sélectionné (logique admin)
+        if (enseignantSelect.value) {
+            enseignantSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Écouter les changements sur l'enseignant (comme dans admin + mensuel)
+    if (enseignantSelect) {
+        enseignantSelect.addEventListener('change', function() {
+            const enseignantId = this.value;
+            
+            if (enseignantId) {
+                // Récupérer les matières de l'enseignant sélectionné
+                const selectedOption = this.options[this.selectedIndex] || this;
+                const matieresEnseignant = JSON.parse(selectedOption.dataset.matieres || '[]');
+                
+                console.log('=== DEBUG ADMIN + MENSUEL ===');
+                console.log('Enseignant ID:', enseignantId);
+                console.log('Matières enseignant:', matieresEnseignant);
+                console.log('=== FIN DEBUG ===');
+                
+                // Filtrer toutes les matières (tableau + application rapide)
+                filtrerMatieres(matieresEnseignant);
+            } else {
+                // Si aucun enseignant sélectionné, afficher toutes les matières
+                filtrerMatieres(null);
+            }
+        });
+    }
+    
     // Gestion du changement de matière
     document.querySelectorAll('.matiere-select').forEach(function(select) {
         select.addEventListener('change', function() {
