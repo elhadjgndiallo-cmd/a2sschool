@@ -3350,9 +3350,6 @@ class NoteController extends Controller
         foreach ($periodes as $periode) {
             $notes = $eleve->notes()
                 ->where('periode', $periode)
-                ->whereHas('matiere', function($query) use ($classe) {
-                    $query->where('niveau_id', $classe->niveau_id);
-                })
                 ->with('matiere')
                 ->get();
                 
@@ -3440,9 +3437,6 @@ class NoteController extends Controller
         foreach ($periodes as $periode) {
             $notes = $eleve->notes()
                 ->where('periode', $periode)
-                ->whereHas('matiere', function($query) use ($classe) {
-                    $query->where('niveau_id', $classe->niveau_id);
-                })
                 ->with('matiere')
                 ->get();
                 
@@ -3528,14 +3522,29 @@ class NoteController extends Controller
         // Préparer les bulletins pour chaque élève
         $bulletins = [];
         $isPrimaire = $classe->isPrimaire();
-        $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
         
         foreach ($eleves as $eleve) {
+            // Déterminer les périodes disponibles pour cet élève
+            $periodesDisponibles = [];
+            $periodesPossibles = ['trimestre1', 'trimestre2', 'trimestre3'];
+            
+            foreach ($periodesPossibles as $periode) {
+                $notesCount = $eleve->notes()->where('periode', $periode)->count();
+                if ($notesCount > 0) {
+                    $periodesDisponibles[] = $periode;
+                }
+            }
+            
+            // Si aucune période disponible, passer à l'élève suivant
+            if (empty($periodesDisponibles)) {
+                continue;
+            }
+            
             $notesParPeriode = [];
             $moyennesParPeriode = [];
             $totalCoefficientsParPeriode = [];
             
-            foreach ($periodes as $periode) {
+            foreach ($periodesDisponibles as $periode) {
                 $notes = $eleve->notes()
                     ->where('periode', $periode)
                     ->with('matiere')
@@ -3559,23 +3568,20 @@ class NoteController extends Controller
                 $totalCoefficientsParPeriode[$periode] = $totalCoefficients;
             }
             
-            // Calculer la moyenne annuelle
-            $totalPointsAnnuel = 0;
-            $totalCoefficientsAnnuel = 0;
-            
-            foreach ($periodes as $periode) {
-                $totalPointsAnnuel += $moyennesParPeriode[$periode] * $totalCoefficientsParPeriode[$periode];
-                $totalCoefficientsAnnuel += $totalCoefficientsParPeriode[$periode];
+            // Calculer la moyenne annuelle comme la moyenne des moyennes trimestrielles
+            $moyenneAnnuelle = 0;
+            if (!empty($moyennesParPeriode)) {
+                $sommeMoyennes = array_sum($moyennesParPeriode);
+                $nombrePeriodes = count($moyennesParPeriode);
+                $moyenneAnnuelle = $sommeMoyennes / $nombrePeriodes;
             }
-            
-            $moyenneAnnuelle = $totalCoefficientsAnnuel > 0 ? $totalPointsAnnuel / $totalCoefficientsAnnuel : 0;
             
             // Calculer le rang annuel
             $rangAnnuel = $this->calculerRangAnnuel($classe->id, $anneeScolaireActive->id, $moyenneAnnuelle, $isPrimaire);
             
             // Calculer les rangs par période
             $rangsParPeriode = [];
-            foreach ($periodes as $periode) {
+            foreach ($periodesDisponibles as $periode) {
                 $rangsParPeriode[$periode] = $this->calculerRangPeriode($classe->id, $anneeScolaireActive->id, $moyennesParPeriode[$periode], $isPrimaire, $periode);
             }
             
@@ -3593,7 +3599,7 @@ class NoteController extends Controller
             
             $bulletins[] = [
                 'eleve' => $eleve,
-                'periodes' => $periodes,
+                'periodes' => $periodesDisponibles,
                 'notesParPeriode' => $notesParPeriode,
                 'moyennesParPeriode' => $moyennesParPeriode,
                 'moyenneAnnuelle' => $moyenneAnnuelle,
@@ -3624,11 +3630,28 @@ class NoteController extends Controller
         $moyennesAnnuelles = [];
         
         foreach ($eleves as $eleve) {
-            $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
-            $totalPoints = 0;
-            $totalCoefficients = 0;
+            // Déterminer les périodes disponibles pour cet élève
+            $periodesDisponibles = [];
+            $periodesPossibles = ['trimestre1', 'trimestre2', 'trimestre3'];
             
-            foreach ($periodes as $periode) {
+            foreach ($periodesPossibles as $periode) {
+                $notesCount = $eleve->notes()->where('periode', $periode)->count();
+                if ($notesCount > 0) {
+                    $periodesDisponibles[] = $periode;
+                }
+            }
+            
+            // Si aucune période disponible, passer à l'élève suivant
+            if (empty($periodesDisponibles)) {
+                continue;
+            }
+            
+            // Calculer la moyenne pour chaque période disponible
+            $moyennesPeriode = [];
+            foreach ($periodesDisponibles as $periode) {
+                $totalPoints = 0;
+                $totalCoefficients = 0;
+                
                 $notes = $eleve->notes()->where('periode', $periode)->get();
                 
                 foreach ($notes as $note) {
@@ -3638,9 +3661,17 @@ class NoteController extends Controller
                         $totalCoefficients += $coefficient;
                     }
                 }
+                
+                $moyennesPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
             }
             
-            $moyenneAnnuelle = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+            // Calculer la moyenne annuelle comme la moyenne des moyennes trimestrielles
+            $moyenneAnnuelle = 0;
+            if (!empty($moyennesPeriode)) {
+                $sommeMoyennes = array_sum($moyennesPeriode);
+                $nombrePeriodes = count($moyennesPeriode);
+                $moyenneAnnuelle = $sommeMoyennes / $nombrePeriodes;
+            }
             $moyennesAnnuelles[] = [
                 'eleve_id' => $eleve->id,
                 'moyenne' => $moyenneAnnuelle
@@ -3656,9 +3687,6 @@ class NoteController extends Controller
         $rang = 1;
         foreach ($moyennesAnnuelles as $index => $moyenneData) {
             if ($moyenneData['moyenne'] == $moyenneEleve) {
-                if ($index > 0 && $moyennesAnnuelles[$index - 1]['moyenne'] == $moyenneEleve) {
-                    continue;
-                }
                 $rang = $index + 1;
                 break;
             }
@@ -3710,9 +3738,6 @@ class NoteController extends Controller
         $rang = 1;
         foreach ($moyennesPeriode as $index => $moyenneData) {
             if ($moyenneData['moyenne'] == $moyenneEleve) {
-                if ($index > 0 && $moyennesPeriode[$index - 1]['moyenne'] == $moyenneEleve) {
-                    continue;
-                }
                 $rang = $index + 1;
                 break;
             }

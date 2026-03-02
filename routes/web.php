@@ -151,7 +151,7 @@ Route::get('/debug/emploi-temps', function() {
     return response()->json($data);
 })->middleware('auth');
 
-// Route spéciale pour servir les images sur le serveur LWS
+// Route spéciale pour servir les images sur le serveur 
 Route::get('/image/{path}', function($path) {
     $imagePath = storage_path('app/public/' . $path);
     
