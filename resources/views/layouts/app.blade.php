@@ -124,14 +124,14 @@
         
         /* Menu horizontal en haut */
         .top-navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu horizontal */
+            background: linear-gradient(135deg, {{ $couleurs['general']['header_bg'] ?? '#667eea' }} 0%, {{ $couleurs['general']['primary_color'] ?? '#764ba2' }} 100%); /* couleur de fond du menu horizontal */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 100;
             min-height: 60px;
         }
         
         .top-navbar .nav-link {
-            color: white !important;
+            color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
             font-weight: 500;
             padding: 0.5rem 0.75rem;
             transition: all 0.3s ease;
@@ -158,7 +158,7 @@
         .sidebar {
             min-height: calc(100vh - 60px);
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); /* couleur de fond du menu latéral */
-            border-right: 2px solid #e9ecef;
+            border-right: 2px solid {{ $couleurs['general']['secondary_color'] ?? '#e9ecef' }};
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
             padding: 20px 0;
@@ -184,17 +184,17 @@
         }
         
         .sidebar .nav-link:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* couleur de fond du menu latéral */
-            color: white !important;
+            background: linear-gradient(135deg, {{ $couleurs['general']['header_bg'] ?? '#667eea' }} 0%, {{ $couleurs['general']['primary_color'] ?? '#764ba2' }} 100%); /* couleur de fond du menu latéral */
+            color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
             transform: translateX(10px);
-            border-left: 4px solid #ffffff;
+            border-left: 4px solid {{ $couleurs['general']['header_text'] ?? '#ffffff' }};
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
         
         .sidebar .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            border-left: 4px solid #ffffff;
+            background: linear-gradient(135deg, {{ $couleurs['general']['header_bg'] ?? '#667eea' }} 0%, {{ $couleurs['general']['primary_color'] ?? '#764ba2' }} 100%);
+            color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
+            border-left: 4px solid {{ $couleurs['general']['header_text'] ?? '#ffffff' }};
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
         
@@ -284,9 +284,9 @@
         }
         
         #profileDropdownMenu .dropdown-item:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: #ffffff !important;
-            border-left: 3px solid #ffffff;
+            background: linear-gradient(135deg, {{ $couleurs['general']['header_bg'] ?? '#667eea' }} 0%, {{ $couleurs['general']['primary_color'] ?? '#764ba2' }} 100%) !important;
+            color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
+            border-left: 3px solid {{ $couleurs['general']['header_text'] ?? '#ffffff' }};
             transform: translateX(5px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
@@ -314,9 +314,9 @@
         
         #profileDropdownMenu #logoutBtn:hover,
         #profileDropdownMenu #logoutForm button:hover {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-            color: #ffffff !important;
-            border-left: 3px solid #ffffff;
+            background: linear-gradient(135deg, {{ $couleurs['general']['danger_color'] ?? '#dc3545' }} 0%, #c82333 100%) !important;
+            color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
+            border-left: 3px solid {{ $couleurs['general']['header_text'] ?? '#ffffff' }};
         }
         
         /* Style du toggle du dropdown */
@@ -508,7 +508,7 @@
     <!-- Menu horizontal en haut -->
     <nav class="navbar navbar-expand-lg top-navbar fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand text-white" href="{{ route('dashboard') }}">
+            <a class="navbar-brand" style="color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;" href="{{ route('dashboard') }}">
                 <i class="fas fa-graduation-cap me-2"></i>
                 A2School
             </a>

@@ -112,7 +112,8 @@ class PermissionHelper
                 ['href' => $getRoute('tarifs.tableau'), 'icon' => 'fas fa-chart-line', 'text' => 'Tableau des Tarifs', 'permission' => 'tarifs.view'],
                 ['href' => $getRoute('evenements.index'), 'icon' => 'fas fa-calendar-check', 'text' => 'Événements', 'permission' => 'evenements.view'],
                 ['href' => $getRoute('evenements.create'), 'icon' => 'fas fa-plus', 'text' => 'Créer Événement', 'permission' => 'evenements.create'],
-                ['href' => $getRoute('admin.accounts.index'), 'icon' => 'fas fa-user-shield', 'text' => 'Comptes Administrateurs', 'permission' => 'admin.accounts.view']
+                ['href' => $getRoute('admin.accounts.index'), 'icon' => 'fas fa-user-shield', 'text' => 'Comptes Administrateurs', 'permission' => 'admin.accounts.view'],
+                ['href' => $getRoute('parametres.couleurs.index'), 'icon' => 'fas fa-palette', 'text' => 'Personnalisation des couleurs', 'permission' => 'etablissement.view']
             ]
         ];
 

@@ -10,6 +10,7 @@ use App\Models\Matiere;
 use App\Models\Enseignant;
 use App\Models\TestMensuel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -660,6 +661,14 @@ class NoteController extends Controller
         $periode = $request->input('periode', $periode);
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
         
+        // Partager les couleurs avec la vue
+        View::share('couleurs', [
+            'general' => \App\Models\CouleurParametre::getCouleursParCategorie('general'),
+            'bulletin' => \App\Models\CouleurParametre::getCouleursParCategorie('bulletin'),
+            'resultat' => \App\Models\CouleurParametre::getCouleursParCategorie('resultat'),
+            'document' => \App\Models\CouleurParametre::getCouleursParCategorie('document'),
+        ]);
+        
         // Récupérer les notes de l'élève pour la période
         $notes = Note::where('eleve_id', $eleveId)
             ->where('periode', $periode)
@@ -805,6 +814,14 @@ class NoteController extends Controller
         // Récupérer l'année scolaire active
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
+        // Partager les couleurs avec la vue
+        View::share('couleurs', [
+            'general' => \App\Models\CouleurParametre::getCouleursParCategorie('general'),
+            'bulletin' => \App\Models\CouleurParametre::getCouleursParCategorie('bulletin'),
+            'resultat' => \App\Models\CouleurParametre::getCouleursParCategorie('resultat'),
+            'document' => \App\Models\CouleurParametre::getCouleursParCategorie('document'),
+        ]);
+        
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
@@ -884,6 +901,14 @@ class NoteController extends Controller
     public function bulletinsClassePdf(Request $request, $classeId)
     {
         set_time_limit(180);
+
+        // Partager les couleurs avec la vue
+        View::share('couleurs', [
+            'general' => \App\Models\CouleurParametre::getCouleursParCategorie('general'),
+            'bulletin' => \App\Models\CouleurParametre::getCouleursParCategorie('bulletin'),
+            'resultat' => \App\Models\CouleurParametre::getCouleursParCategorie('resultat'),
+            'document' => \App\Models\CouleurParametre::getCouleursParCategorie('document'),
+        ]);
 
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         if (!$anneeScolaireActive) {
@@ -3332,6 +3357,14 @@ class NoteController extends Controller
         $eleve = Eleve::with(['utilisateur', 'classe.niveau', 'notes.matiere'])->findOrFail($eleveId);
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
+        // Partager les couleurs avec la vue
+        View::share('couleurs', [
+            'general' => \App\Models\CouleurParametre::getCouleursParCategorie('general'),
+            'bulletin' => \App\Models\CouleurParametre::getCouleursParCategorie('bulletin'),
+            'resultat' => \App\Models\CouleurParametre::getCouleursParCategorie('resultat'),
+            'document' => \App\Models\CouleurParametre::getCouleursParCategorie('document'),
+        ]);
+        
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
         }
@@ -3510,6 +3543,14 @@ class NoteController extends Controller
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
         }
+        
+        // Partager les couleurs avec la vue
+        View::share('couleurs', [
+            'general' => \App\Models\CouleurParametre::getCouleursParCategorie('general'),
+            'bulletin' => \App\Models\CouleurParametre::getCouleursParCategorie('bulletin'),
+            'resultat' => \App\Models\CouleurParametre::getCouleursParCategorie('resultat'),
+            'document' => \App\Models\CouleurParametre::getCouleursParCategorie('document'),
+        ]);
         
         // Filtrer les élèves par année scolaire active
         $eleves = Eleve::where('classe_id', $classeId)

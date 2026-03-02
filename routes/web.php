@@ -26,7 +26,7 @@ use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\EvenementController;
 use App\Http\Controllers\ComptabiliteController;
-use App\Http\Controllers\EnseignantSimpleController;
+use App\Http\Controllers\CouleurParametreController;
 
 // Route d'accueil - redirection vers dashboard si connecté, sinon vers login ou setup
 Route::get('/', function () {
@@ -309,8 +309,8 @@ Route::middleware('auth')->group(function () {
         Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
         Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware(['ensure.authenticated', 'check.permission:enseignants.edit']);
         // Routes pour la modification simplifiée
-        Route::get('enseignants/{enseignant}/edit-simple', [EnseignantSimpleController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');
-        Route::put('enseignants/{enseignant}/update-simple', [EnseignantSimpleController::class, 'updateSimple'])->name('enseignants.update-simple')->middleware('check.permission:enseignants.edit');
+        // Route::get('enseignants/{enseignant}/edit-simple', [EnseignantSimpleController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');
+        // Route::put('enseignants/{enseignant}/update-simple', [EnseignantSimpleController::class, 'updateSimple'])->name('enseignants.update-simple')->middleware('check.permission:enseignants.edit');
         
         // Route de test temporaire sans middleware
         Route::put('enseignants/{enseignant}/test-update', [EnseignantController::class, 'update'])->name('enseignants.test-update');
@@ -866,6 +866,13 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/api/admin/messages/compteur-non-lues', [AdminNotificationController::class, 'compterNonLues'])->name('admin.notifications.compteur-non-lues');
         Route::get('/parametres', [\App\Http\Controllers\AdminController::class, 'parametres'])->name('admin.parametres');
         Route::put('/parametres', [\App\Http\Controllers\AdminController::class, 'updateParametres'])->name('admin.parametres.update');
+        
+        // Gestion des couleurs personnalisées
+        Route::get('/parametres/couleurs', [CouleurParametreController::class, 'index'])->name('parametres.couleurs.index');
+        Route::put('/parametres/couleurs', [CouleurParametreController::class, 'update'])->name('parametres.couleurs.update');
+        Route::post('/parametres/couleurs/reset', [CouleurParametreController::class, 'reset'])->name('parametres.couleurs.reset');
+        Route::get('/api/couleurs', [CouleurParametreController::class, 'getCouleurs'])->name('api.couleurs');
+        Route::get('/api/couleurs/{categorie}', [CouleurParametreController::class, 'getCouleursByCategorie'])->name('api.couleurs.categorie');
         
         // Gestion des utilisateurs
         Route::get('/utilisateurs', [\App\Http\Controllers\AdminController::class, 'utilisateurs'])->name('admin.utilisateurs');

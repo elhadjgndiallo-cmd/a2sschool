@@ -29,9 +29,9 @@
             @endphp
 
             @foreach($bulletins as $bulletin)
-            <div class="bulletin-page" style="border: 3px solid #2c3e50; border-radius: 8px; box-sizing: border-box;">
+            <div class="bulletin-page" style="border: 3px solid {{ $couleurs['document']['document_border'] ?? '#2c3e50' }}; border-radius: 8px; box-sizing: border-box;">
                 <div class="card" style="border: none; border-radius: 0; overflow: hidden; height: 100%;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 8px 15px; position: relative; width: 100%; box-sizing: border-box;">
+                    <div class="card-header" style="background: linear-gradient(135deg, {{ $couleurs['bulletin']['bulletin_header_bg'] ?? '#28a745' }} 0%, {{ $couleurs['bulletin']['bulletin_header_bg'] ?? '#20c997' }} 100%); color: {{ $couleurs['bulletin']['bulletin_header_text'] ?? '#ffffff' }}; border: none; padding: 8px 15px; position: relative; width: 100%; box-sizing: border-box;">
                         <!-- Logo aux angles -->
                         <div style="position: absolute; top: 8px; left: 15px;">
                             @if($logoUrl)
@@ -81,21 +81,21 @@
                                     $isPrimaire = $classe->isPrimaire();
                                     $nombreTrimestres = $isPrimaire ? 3 : 2;
                                 @endphp
-                                <thead style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); color: white;">
+                                <thead style="background: linear-gradient(135deg, {{ $couleurs['bulletin']['bulletin_table_header_bg'] ?? '#34495e' }} 0%, {{ $couleurs['bulletin']['bulletin_table_header_bg'] ?? '#2c3e50' }} 100%); color: {{ $couleurs['bulletin']['bulletin_table_header_text'] ?? '#ffffff' }};">
                                     <tr>
-                                        <th style="font-weight: 700; border: 1px solid #2c3e50; font-size: 0.7rem; padding: 4px 2px; width: {{ $nombreTrimestres == 3 ? '24%' : '28%' }}; min-width: 110px;">Matière</th>
-                                        <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 6%; min-width: 25px;">Coef.</th>
+                                        <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; font-size: 0.7rem; padding: 4px 2px; width: {{ $nombreTrimestres == 3 ? '24%' : '28%' }}; min-width: 110px;">Matière</th>
+                                        <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 6%; min-width: 25px;">Coef.</th>
                                         @if($isPrimaire)
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 2</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 3</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Moy. Annuelle</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 22%; min-width: 50px;">Mention</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 1</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 2</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Trimestre 3</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 12%; min-width: 50px;">Moy. Annuelle</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 22%; min-width: 50px;">Mention</th>
                                         @else
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Trimestre 2</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Moy. Annuelle</th>
-                                            <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 18%; min-width: 50px;">Mention</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Trimestre 1</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Trimestre 2</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 50px;">Moy. Annuelle</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 18%; min-width: 50px;">Mention</th>
                                         @endif
                                     </tr>
                                 </thead>
@@ -158,40 +158,40 @@
                                         }
                                         @endphp
                                         <tr>
-                                            <td style="font-weight: 600; border: 1px solid #dee2e6; padding: 4px 2px; background-color: #f8f9fa; font-size: 0.65rem; width: {{ $nombreTrimestres == 3 ? '24%' : '28%' }}; min-width: 110px;">{{ $matiere->nom }}</td>
-                                            <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-weight: 600; background-color: #e9ecef; font-size: 0.75rem; width: 6%; min-width: 25px;">{{ $coefficient }}</td>
+                                            <td style="font-weight: 600; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 4px 2px; background-color: {{ $couleurs['bulletin']['bulletin_table_body_bg'] ?? '#f8f9fa' }}; font-size: 0.65rem; width: {{ $nombreTrimestres == 3 ? '24%' : '28%' }}; min-width: 110px;">{{ $matiere->nom }}</td>
+                                            <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-weight: 600; background-color: {{ $couleurs['bulletin']['bulletin_table_body_bg'] ?? '#e9ecef' }}; font-size: 0.75rem; width: 6%; min-width: 25px;">{{ $coefficient }}</td>
                                             @if($isPrimaire)
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT1Finale >= ($noteMax * 0.5) ? 'color: #155724;' : 'color: #dc3545;' }}">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT1Finale >= ($noteMax * 0.5) ? 'color: ' . ($couleurs['bulletin']['bulletin_success_text'] ?? '#28a745') . ';' : 'color: ' . ($couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545') . ';' }}">
                                                     {{ $noteT1Finale ? number_format($noteT1Finale, 2) : '-' }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT2Finale >= ($noteMax * 0.5) ? 'color: #155724;' : 'color: #dc3545;' }}">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT2Finale >= ($noteMax * 0.5) ? 'color: ' . ($couleurs['bulletin']['bulletin_success_text'] ?? '#28a745') . ';' : 'color: ' . ($couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545') . ';' }}">
                                                     {{ $noteT2Finale ? number_format($noteT2Finale, 2) : '-' }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT3Finale >= ($noteMax * 0.5) ? 'color: #155724;' : 'color: #dc3545;' }}">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 12%; min-width: 50px; {{ $noteT3Finale >= ($noteMax * 0.5) ? 'color: ' . ($couleurs['bulletin']['bulletin_success_text'] ?? '#28a745') . ';' : 'color: ' . ($couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545') . ';' }}">
                                                     {{ $noteT3Finale ? number_format($noteT3Finale, 2) : '-' }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 700; color: #28a745; background: #f8f9fa; width: 12%; min-width: 50px;">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 700; color: {{ $couleurs['bulletin']['bulletin_success_text'] ?? '#28a745' }}; background: {{ $couleurs['bulletin']['bulletin_success_bg'] ?? '#f8f9fa' }}; width: 12%; min-width: 50px;">
                                                     {{ number_format($moyenneMatiere, 2) }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.7rem; width: 22%; min-width: 50px;">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.7rem; width: 22%; min-width: 50px;">
                                                     <span class="badge" style="font-size: 0.5rem; padding: 1px 2px; 
-                                                        @if($mention == 'Excellent') background-color: #28a745; @elseif($mention == 'Très Bien') background-color: #007bff; @elseif($mention == 'Bien') background-color: #17a2b8; @elseif($mention == 'Assez Bien') background-color: #ffc107; color: #212529; @else background-color: #dc3545; @endif">
+                                                        @if($mention == 'Excellent') background-color: {{ $couleurs['bulletin']['bulletin_excellent_bg'] ?? '#28a745' }}; @elseif($mention == 'Très Bien') background-color: {{ $couleurs['bulletin']['bulletin_tres_bien_bg'] ?? '#007bff' }}; @elseif($mention == 'Bien') background-color: {{ $couleurs['bulletin']['bulletin_bien_bg'] ?? '#17a2b8' }}; @elseif($mention == 'Assez Bien') background-color: {{ $couleurs['bulletin']['bulletin_assez_bien_bg'] ?? '#ffc107' }}; color: {{ $couleurs['bulletin']['bulletin_assez_bien_text'] ?? '#212529' }}; @else background-color: {{ $couleurs['bulletin']['bulletin_a_ameliorer_bg'] ?? '#dc3545' }}; @endif">
                                                         {{ $mention }}
                                                     </span>
                                                 </td>
                                             @else
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 16%; min-width: 50px; {{ $noteT1Finale >= ($noteMax * 0.5) ? 'color: #155724;' : 'color: #dc3545;' }}">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 16%; min-width: 50px; {{ $noteT1Finale >= ($noteMax * 0.5) ? 'color: ' . ($couleurs['bulletin']['bulletin_success_text'] ?? '#28a745') . ';' : 'color: ' . ($couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545') . ';' }}">
                                                     {{ $noteT1Finale ? number_format($noteT1Finale, 2) : '-' }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 16%; min-width: 50px; {{ $noteT2Finale >= ($noteMax * 0.5) ? 'color: #155724;' : 'color: #dc3545;' }}">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 600; width: 16%; min-width: 50px; {{ $noteT2Finale >= ($noteMax * 0.5) ? 'color: ' . ($couleurs['bulletin']['bulletin_success_text'] ?? '#28a745') . ';' : 'color: ' . ($couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545') . ';' }}">
                                                     {{ $noteT2Finale ? number_format($noteT2Finale, 2) : '-' }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.85rem; font-weight: 700; color: #28a745; background: #f8f9fa; width: 16%; min-width: 50px;">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.85rem; font-weight: 700; color: {{ $couleurs['bulletin']['bulletin_success_text'] ?? '#28a745' }}; background: {{ $couleurs['bulletin']['bulletin_success_bg'] ?? '#f8f9fa' }}; width: 16%; min-width: 50px;">
                                                     {{ number_format($moyenneMatiere, 2) }}
                                                 </td>
-                                                <td style="text-align: center; border: 1px solid #dee2e6; padding: 5px 3px; font-size: 0.7rem; width: 18%; min-width: 50px;">
+                                                <td style="text-align: center; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#dee2e6' }}; padding: 5px 3px; font-size: 0.7rem; width: 18%; min-width: 50px;">
                                                     <span class="badge" style="font-size: 0.5rem; padding: 1px 2px; 
-                                                        @if($mention == 'Excellent') background-color: #28a745; @elseif($mention == 'Très Bien') background-color: #007bff; @elseif($mention == 'Bien') background-color: #17a2b8; @elseif($mention == 'Assez Bien') background-color: #ffc107; color: #212529; @else background-color: #dc3545; @endif">
+                                                        @if($mention == 'Excellent') background-color: {{ $couleurs['bulletin']['bulletin_excellent_bg'] ?? '#28a745' }}; @elseif($mention == 'Très Bien') background-color: {{ $couleurs['bulletin']['bulletin_tres_bien_bg'] ?? '#007bff' }}; @elseif($mention == 'Bien') background-color: {{ $couleurs['bulletin']['bulletin_bien_bg'] ?? '#17a2b8' }}; @elseif($mention == 'Assez Bien') background-color: {{ $couleurs['bulletin']['bulletin_assez_bien_bg'] ?? '#ffc107' }}; color: {{ $couleurs['bulletin']['bulletin_assez_bien_text'] ?? '#212529' }}; @else background-color: {{ $couleurs['bulletin']['bulletin_a_ameliorer_bg'] ?? '#dc3545' }}; @endif">
                                                         {{ $mention }}
                                                     </span>
                                                 </td>
