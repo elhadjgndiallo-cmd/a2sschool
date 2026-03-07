@@ -309,8 +309,8 @@ Route::middleware('auth')->group(function () {
         Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
         Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware(['ensure.authenticated', 'check.permission:enseignants.edit']);
         // Routes pour la modification simplifiée
-        // Route::get('enseignants/{enseignant}/edit-simple', [EnseignantSimpleController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');
-        // Route::put('enseignants/{enseignant}/update-simple', [EnseignantSimpleController::class, 'updateSimple'])->name('enseignants.update-simple')->middleware('check.permission:enseignants.edit');
+        Route::get('enseignants/{enseignant}/edit-simple', [EnseignantController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');
+        Route::put('enseignants/{enseignant}/update-simple', [EnseignantController::class, 'updateSimple'])->name('enseignants.update-simple')->middleware('check.permission:enseignants.edit');
         
         // Route de test temporaire sans middleware
         Route::put('enseignants/{enseignant}/test-update', [EnseignantController::class, 'update'])->name('enseignants.test-update');

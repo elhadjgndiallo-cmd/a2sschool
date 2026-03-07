@@ -43,38 +43,54 @@
             .school-info {
                 display: flex;
                 align-items: center;
-                justify-content: center;
+                justify-content: flex-start;
                 margin-bottom: 5px;
-                gap: 8px;
+                gap: 15px;
             }
             
             .school-logo {
                 flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             
             .logo-image {
-                max-width: 35px;
-                max-height: 35px;
+                max-width: 50px;
+                max-height: 50px;
                 object-fit: contain;
+                background: white;
+                padding: 3px;
+                border-radius: 3px;
+                border: 1px solid #ddd;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
             
             .school-details {
-                text-align: left;
+                text-align: center;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                margin-right: 60px; /* Équilibrer l'espace pour que le texte reste centré */
             }
             
             .school-name {
                 margin: 0;
-                font-size: 18px;
+                font-size: 20px;
                 font-weight: bold;
                 color: #000;
-                line-height: 1.1;
+                line-height: 1.2;
+                text-align: center;
             }
             
             .school-slogan {
-                margin: 1px 0 0 0;
-                font-size: 11px;
+                margin: 2px 0 0 0;
+                font-size: 12px;
                 color: #666;
                 font-style: italic;
+                text-align: center;
             }
             
             .document-title {

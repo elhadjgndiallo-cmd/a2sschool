@@ -80,8 +80,8 @@
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="bulletin_header_bg" class="form-label">En-tête du bulletin</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_header_bg" name="couleurs[bulletin_header_bg]" value="{{ $couleurs['bulletin']['bulletin_header_bg'] ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['bulletin']['bulletin_header_bg'] ?? '#34495e' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="bulletin_header_bg" name="couleurs[bulletin_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_header_bg') ?? '#34495e' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_header_bg') ?? '#34495e' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
@@ -94,22 +94,22 @@
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="bulletin_table_border" class="form-label">Bordures des tableaux</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_table_border" name="couleurs[bulletin_table_border]" value="{{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="bulletin_table_border" name="couleurs[bulletin_table_border]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_border') ?? '#2c3e50' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_border') ?? '#2c3e50' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="bulletin_success_text" class="form-label">Texte de succès</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_success_text" name="couleurs[bulletin_success_text]" value="{{ $couleurs['bulletin']['bulletin_success_text'] ?? '#28a745' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['bulletin']['bulletin_success_text'] ?? '#28a745' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="bulletin_success_text" name="couleurs[bulletin_success_text]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_success_text') ?? '#28a745' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_success_text') ?? '#28a745' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="bulletin_danger_text" class="form-label">Texte de danger</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_danger_text" name="couleurs[bulletin_danger_text]" value="{{ $couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['bulletin']['bulletin_danger_text'] ?? '#dc3545' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="bulletin_danger_text" name="couleurs[bulletin_danger_text]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_danger_text') ?? '#dc3545' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_danger_text') ?? '#dc3545' }}" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -125,22 +125,22 @@
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="resultat_header_bg" class="form-label">En-tête des résultats</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_header_bg" name="couleurs[resultat_header_bg]" value="{{ $couleurs['resultat']['resultat_header_bg'] ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['resultat']['resultat_header_bg'] ?? '#34495e' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="resultat_header_bg" name="couleurs[resultat_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_header_bg') ?? '#34495e' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_header_bg') ?? '#34495e' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="resultat_moyenne_text" class="form-label">Texte des moyennes</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_moyenne_text" name="couleurs[resultat_moyenne_text]" value="{{ $couleurs['resultat']['resultat_moyenne_text'] ?? '#28a745' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['resultat']['resultat_moyenne_text'] ?? '#28a745' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="resultat_moyenne_text" name="couleurs[resultat_moyenne_text]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_moyenne_text') ?? '#28a745' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_moyenne_text') ?? '#28a745' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="resultat_rang_text" class="form-label">Texte des rangs</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_rang_text" name="couleurs[resultat_rang_text]" value="{{ $couleurs['resultat']['resultat_rang_text'] ?? '#007bff' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['resultat']['resultat_rang_text'] ?? '#007bff' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="resultat_rang_text" name="couleurs[resultat_rang_text]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_rang_text') ?? '#007bff' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_rang_text') ?? '#007bff' }}" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -156,22 +156,22 @@
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="document_header_bg" class="form-label">En-tête des documents</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_header_bg" name="couleurs[document_header_bg]" value="{{ $couleurs['document']['document_header_bg'] ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['document']['document_header_bg'] ?? '#34495e' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="document_header_bg" name="couleurs[document_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('document_header_bg') ?? '#34495e' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_header_bg') ?? '#34495e' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="document_title_bg" class="form-label">Titres des documents</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_title_bg" name="couleurs[document_title_bg]" value="{{ $couleurs['document']['document_title_bg'] ?? '#6c757d' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['document']['document_title_bg'] ?? '#6c757d' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="document_title_bg" name="couleurs[document_title_bg]" value="{{ App\Models\CouleurParametre::getCouleur('document_title_bg') ?? '#6c757d' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_title_bg') ?? '#6c757d' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <label for="document_border" class="form-label">Bordures des documents</label>
                                     <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_border" name="couleurs[document_border]" value="{{ $couleurs['document']['document_border'] ?? '#2c3e50' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['document']['document_border'] ?? '#2c3e50' }}" readonly>
+                                        <input type="color" class="form-control form-control-color" id="document_border" name="couleurs[document_border]" value="{{ App\Models\CouleurParametre::getCouleur('document_border') ?? '#2c3e50' }}">
+                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_border') ?? '#2c3e50' }}" readonly>
                                     </div>
                                 </div>
                             </div>

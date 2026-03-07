@@ -669,5 +669,62 @@ class EnseignantController extends Controller
                 ->with('error', 'Erreur lors de la suppression de l\'enseignant: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Afficher le formulaire de modification simplifiée d'un enseignant
+     */
+    public function editSimple(Enseignant $enseignant)
+    {
+        try {
+            // Charger l'enseignant avec ses relations
+            $enseignant->load(['utilisateur', 'matieres']);
+            
+            // Charger les matières disponibles
+            $matieres = Matiere::orderBy('nom')->get();
+            
+            return view('enseignants.edit-simple', compact('enseignant', 'matieres'));
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'affichage du formulaire de modification simplifiée: ' . $e->getMessage());
+            return redirect()->route('enseignants.index')
+                ->with('error', 'Erreur lors du chargement du formulaire de modification');
+        }
+    }
+
+    /**
+     * Mettre à jour un enseignant (version simplifiée)
+     */
+    public function updateSimple(Request $request, Enseignant $enseignant)
+    {
+        try {
+            $request->validate([
+                'telephone' => 'nullable|string|max:20',
+                'adresse' => 'nullable|string|max:255',
+                'email' => 'nullable|email|max:255|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
+                'matiere_ids' => 'nullable|array',
+                'matiere_ids.*' => 'exists:matieres,id'
+            ]);
+
+            // Mettre à jour l'utilisateur
+            $utilisateur = $enseignant->utilisateur;
+            $utilisateur->update([
+                'telephone' => $request->telephone,
+                'adresse' => $request->adresse,
+                'email' => $request->email
+            ]);
+
+            // Mettre à jour les matières si spécifiées
+            if ($request->has('matiere_ids')) {
+                $enseignant->matieres()->sync($request->matiere_ids);
+            }
+
+            return redirect()->route('enseignants.index')
+                ->with('success', 'Enseignant modifié avec succès');
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la modification simplifiée de l\'enseignant: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Erreur lors de la modification: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
 }
 
