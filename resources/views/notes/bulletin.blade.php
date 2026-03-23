@@ -36,13 +36,21 @@
         $schoolName = $schoolInfo && isset($schoolInfo->nom) ? $schoolInfo->nom : 'École';
         $schoolSlogan = $schoolInfo && isset($schoolInfo->slogan) ? $schoolInfo->slogan : '';
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
-
+        $headerBg = $couleurs['bulletin']['bulletin_header_bg'] ?? '#1a5490';
+        $headerText = $couleurs['bulletin']['bulletin_header_text'] ?? '#ffffff';
+        $tableHeaderBg = $couleurs['bulletin']['bulletin_table_header_bg'] ?? '#34495e';
+        $tableHeaderText = $couleurs['bulletin']['bulletin_table_header_text'] ?? '#ffffff';
+        $tableBorder = $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50';
+        $resultatBg = $couleurs['resultat']['resultat_rang_bg'] ?? '#3498db';
+        $resultatText = $couleurs['resultat']['resultat_rang_text'] ?? '#ffffff';
+        $docFooterBg = $couleurs['document']['document_footer_bg'] ?? '#f8f9fa';
+        $docFooterText = $couleurs['document']['document_footer_text'] ?? '#2c3e50';
     @endphp
 
     <!-- En-tête avec logo et nom de l'école pour l'impression -->
     <div class="bulletin-page">
         <div class="card">
-            <div class="card-header" style="background: linear-gradient(135deg, #1a5490 0%, #2c3e50 100%); color: white; border: none; padding: 8px 15px; position: relative;">
+            <div class="card-header" style="background: linear-gradient(135deg, {{ $headerBg }} 0%, {{ $headerBg }} 100%); color: {{ $headerText }}; border: none; padding: 8px 15px; position: relative;">
                 <!-- Logo aux angles -->
                 <div style="position: absolute; top: 8px; left: 15px;">
                     @if($logoUrl)
@@ -100,7 +108,7 @@
                         <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Date de naissance:</strong> <span style="font-weight: 500;">{{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span></p>
                     </div>
                     <div class="col-md-6 text-end">
-                        <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
+                        <div style="background: linear-gradient(135deg, {{ $resultatBg }} 0%, {{ $resultatBg }} 100%); color: {{ $resultatText }}; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
                             <h5 class="mb-0" style="font-weight: 800; font-size: 0.95rem; margin-bottom: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.2;">Rang: {{ $rang }}/{{ $eleve->classe->eleves->count() }}</h5>
                             <p class="mb-0" style="font-size: 0.95rem; font-weight: 600; line-height: 1.2;">Moyenne: <strong>{{ number_format($moyenneGenerale, 2) }}/{{ $eleve->classe->note_max }}</strong></p>
                         </div>
@@ -110,19 +118,19 @@
                 <!-- Tableau des notes par matière -->
                 <div class="table-responsive">
                     <table class="table table-bordered" style="margin-bottom: 8px;">
-                        <thead style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); color: white;">
+                        <thead style="background: linear-gradient(135deg, {{ $tableHeaderBg }} 0%, {{ $tableHeaderBg }} 100%); color: {{ $tableHeaderText }};">
                             <tr>
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; font-size: 0.85rem; padding: 5px 4px;">Matière</th>
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Coef.</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; font-size: 0.85rem; padding: 5px 4px;">Matière</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Coef.</th>
                                 @if(!$eleve->classe->isPrimaire())
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Cours</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Cours</th>
                                 @endif
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Comp.</th>
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Finale</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Comp.</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Finale</th>
                                 @if(!$eleve->classe->isPrimaire())
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Points</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Points</th>
                                 @endif
-                                <th style="font-weight: 700; border: 1px solid #2c3e50; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Mention</th>
+                                <th style="font-weight: 700; border: 1px solid {{ $tableBorder }}; text-align: center; font-size: 0.85rem; padding: 5px 4px;">Mention</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -168,9 +176,9 @@
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #2c3e50;">
-                                <th style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #2c3e50;">MOYENNE GÉNÉRALE</th>
-                                <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #2c3e50;">{{ $totalCoeff }}</th>
+                            <tr style="background: linear-gradient(135deg, {{ $docFooterBg }} 0%, {{ $docFooterBg }} 100%); border-top: 3px solid {{ $tableBorder }};">
+                                <th style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: {{ $docFooterText }};">MOYENNE GÉNÉRALE</th>
+                                <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: {{ $docFooterText }};">{{ $totalCoeff }}</th>
                                 @if(!$eleve->classe->isPrimaire())
                                 <th class="text-center" style="font-weight: 700; padding: 6px 4px; font-size: 0.9rem; color: #6c757d;">-</th>
                                 @endif

@@ -28,8 +28,13 @@ class CouleurParametre extends Model
     /**
      * Définir la valeur d'un paramètre de couleur
      */
-    public static function setCouleur($cle, $valeur, $description = null, $categorie = 'general')
+    public static function setCouleur($cle, $valeur, $description = null, $categorie = null)
     {
+        // Déterminer automatiquement la catégorie à partir de la clé
+        if ($categorie === null) {
+            $categorie = self::detecterCategorieParCle($cle);
+        }
+
         return self::updateOrCreate(
             ['cle' => $cle],
             [
@@ -45,7 +50,42 @@ class CouleurParametre extends Model
      */
     public static function getCouleursParCategorie($categorie)
     {
-        return self::where('categorie', $categorie)->pluck('valeur', 'cle')->toArray();
+        // Tolérance: récupérer la catégorie + les clés cohérentes même si
+        // certaines lignes ont été enregistrées avec une mauvaise catégorie.
+        $query = self::query()->where('categorie', $categorie);
+
+        if ($categorie === 'bulletin') {
+            $query->orWhere('cle', 'like', 'bulletin\_%');
+        } elseif ($categorie === 'resultat') {
+            $query->orWhere('cle', 'like', 'resultat\_%');
+        } elseif ($categorie === 'document') {
+            $query->orWhere('cle', 'like', 'document\_%');
+        } elseif ($categorie === 'general') {
+            $query->orWhere(function ($q) {
+                $q->where('cle', 'not like', 'bulletin\_%')
+                  ->where('cle', 'not like', 'resultat\_%')
+                  ->where('cle', 'not like', 'document\_%');
+            });
+        }
+
+        return $query->pluck('valeur', 'cle')->toArray();
+    }
+
+    /**
+     * Détecter la catégorie à partir du nom de la clé
+     */
+    private static function detecterCategorieParCle($cle)
+    {
+        if (strpos($cle, 'bulletin_') === 0) {
+            return 'bulletin';
+        }
+        if (strpos($cle, 'resultat_') === 0) {
+            return 'resultat';
+        }
+        if (strpos($cle, 'document_') === 0) {
+            return 'document';
+        }
+        return 'general';
     }
 
     /**
