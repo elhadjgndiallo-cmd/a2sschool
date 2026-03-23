@@ -391,7 +391,8 @@ class EnseignantController extends Controller
                 'prenom_apres_refresh' => $enseignant->utilisateur->prenom
             ]);
             
-            $response = redirect()->route('enseignants.show', $enseignant)
+            // Après modification, revenir à la liste des enseignants
+            $response = redirect()->route('enseignants.index')
                 ->with('success', 'Enseignant mis à jour avec succès');
             
             // Ajouter des headers pour empêcher la mise en cache
@@ -695,36 +696,10 @@ class EnseignantController extends Controller
      */
     public function updateSimple(Request $request, Enseignant $enseignant)
     {
-        try {
-            $request->validate([
-                'telephone' => 'nullable|string|max:20',
-                'adresse' => 'nullable|string|max:255',
-                'email' => 'nullable|email|max:255|unique:utilisateurs,email,' . $enseignant->utilisateur_id,
-                'matiere_ids' => 'nullable|array',
-                'matiere_ids.*' => 'exists:matieres,id'
-            ]);
-
-            // Mettre à jour l'utilisateur
-            $utilisateur = $enseignant->utilisateur;
-            $utilisateur->update([
-                'telephone' => $request->telephone,
-                'adresse' => $request->adresse,
-                'email' => $request->email
-            ]);
-
-            // Mettre à jour les matières si spécifiées
-            if ($request->has('matiere_ids')) {
-                $enseignant->matieres()->sync($request->matiere_ids);
-            }
-
-            return redirect()->route('enseignants.index')
-                ->with('success', 'Enseignant modifié avec succès');
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la modification simplifiée de l\'enseignant: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la modification: ' . $e->getMessage())
-                ->withInput();
-        }
+        // Pour éviter deux logiques différentes, on réutilise la même mise à jour
+        // complète que la méthode update(), ce qui garantit que toutes les
+        // informations visibles dans le formulaire simple sont bien enregistrées.
+        return $this->update($request, $enseignant);
     }
 }
 

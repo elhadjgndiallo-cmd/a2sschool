@@ -14,10 +14,6 @@
                 <i class="fas fa-arrow-left me-1"></i>
                 Retour aux Notes
             </a>
-            <a href="{{ route('notes.bulletins.annuel.pdf', $classe->id) }}?eleve={{ $eleve->id }}" class="btn btn-primary" target="_blank">
-                <i class="fas fa-download me-1"></i>
-                Télécharger PDF
-            </a>
         </div>
     </div>
 

@@ -306,7 +306,7 @@ Route::middleware('auth')->group(function () {
         
         // Routes génériques pour les enseignants
         Route::get('enseignants/{enseignant}', [EnseignantController::class, 'show'])->name('enseignants.show')->middleware('check.permission:enseignants.view');
-        Route::get('enseignants/{enseignant}/edit', [EnseignantController::class, 'edit'])->name('enseignants.edit')->middleware('check.permission:enseignants.edit');
+        // On ne garde que le mode édition simple
         Route::put('enseignants/{enseignant}', [EnseignantController::class, 'update'])->name('enseignants.update')->middleware(['ensure.authenticated', 'check.permission:enseignants.edit']);
         // Routes pour la modification simplifiée
         Route::get('enseignants/{enseignant}/edit-simple', [EnseignantController::class, 'editSimple'])->name('enseignants.edit-simple')->middleware('check.permission:enseignants.edit');

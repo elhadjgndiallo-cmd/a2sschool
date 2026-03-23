@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
             <i class="fas fa-arrow-left me-1"></i>
             Retour
         </a>
-        <a href="{{ route('enseignants.edit', $enseignant->id) }}" class="btn btn-outline-primary ms-2">
+        <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" class="btn btn-outline-primary ms-2">
             <i class="fas fa-edit me-1"></i>
             Modifier
         </a>

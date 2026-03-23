@@ -10,10 +10,10 @@
             Bulletins Annuels Formatés
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>
-                Retour aux Notes
-            </a>
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print me-1"></i>
+                Imprimer
+            </button>
         </div>
     </div>
 
@@ -67,10 +67,6 @@
                            data-base-url="{{ route('notes.bulletins.annuels.formates', $classe->id) }}">
                             <i class="fas fa-file-alt me-1"></i>Générer les bulletins
                         </a>
-                        <a href="{{ route('notes.bulletins.annuel.pdf', $classe->id) }}" 
-                           class="btn btn-primary btn-sm ms-1">
-                            <i class="fas fa-download me-1"></i>Télécharger PDF
-                        </a>
                     </div>
                 </div>
             </div>
@@ -106,4 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<!-- Ligne en bas des bulletins -->
+<div style="border-top: 2px solid #000; margin-top: 20px; padding-top: 10px;"></div>
 @endsection

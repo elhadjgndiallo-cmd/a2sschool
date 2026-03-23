@@ -3354,7 +3354,8 @@ class NoteController extends Controller
      */
     public function bulletinAnnuel($eleveId)
     {
-        $eleve = Eleve::with(['utilisateur', 'classe.niveau', 'notes.matiere'])->findOrFail($eleveId);
+        // Charger la classe de l'élève (le champ 'niveau' est une colonne, pas une relation)
+        $eleve = Eleve::with(['utilisateur', 'classe', 'notes.matiere'])->findOrFail($eleveId);
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
         // Partager les couleurs avec la vue
@@ -3449,7 +3450,8 @@ class NoteController extends Controller
      */
     public function bulletinAnnuelFormate($eleveId)
     {
-        $eleve = Eleve::with(['utilisateur', 'classe.niveau', 'notes.matiere'])->findOrFail($eleveId);
+        // Charger la classe simplement (le champ 'niveau' est une colonne, pas une relation)
+        $eleve = Eleve::with(['utilisateur', 'classe', 'notes.matiere'])->findOrFail($eleveId);
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
         if (!$anneeScolaireActive) {

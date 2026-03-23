@@ -10,14 +10,10 @@
             Bulletin Annuel
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="{{ route('notes.eleve', $eleve->id) }}" class="btn btn-outline-secondary me-2">
-                <i class="fas fa-arrow-left me-1"></i>
-                Retour aux Notes
-            </a>
-            <a href="{{ route('notes.bulletins.annuel.pdf', $classe->id) }}?eleve={{ $eleve->id }}" class="btn btn-primary" target="_blank">
-                <i class="fas fa-download me-1"></i>
-                Télécharger PDF
-            </a>
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print me-1"></i>
+                Imprimer
+            </button>
         </div>
     </div>
 
@@ -81,18 +77,16 @@
                                     @endforeach
                                     <td class="text-center">
                                         @php
-                                        $totalPoints = 0;
-                                        $totalCoeffs = 0;
-                                        @foreach($periodes as $p)
-                                            @php
-                                            $n = $notesParPeriode[$p]->where('matiere_id', $note->matiere_id)->first();
-                                            if($n && $n->note_finale !== null) {
-                                                $totalPoints += $n->note_finale * ($n->coefficient ?? 1);
-                                                $totalCoeffs += ($n->coefficient ?? 1);
+                                            $totalPoints = 0;
+                                            $totalCoeffs = 0;
+                                            foreach ($periodes as $p) {
+                                                $n = $notesParPeriode[$p]->where('matiere_id', $note->matiere_id)->first();
+                                                if ($n && $n->note_finale !== null) {
+                                                    $totalPoints += $n->note_finale * ($n->coefficient ?? 1);
+                                                    $totalCoeffs += ($n->coefficient ?? 1);
+                                                }
                                             }
-                                            @endphp
-                                        @endforeach
-                                        $moyenneAnnuelleMat = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
+                                            $moyenneAnnuelleMat = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
                                         @endphp
                                         {{ number_format($moyenneAnnuelleMat, 2) }}
                                     </td>
@@ -164,5 +158,9 @@
             </div>
         </div>
     </div>
+    
+    <!-- Ligne en bas du bulletin -->
+    <div style="border-top: 2px solid #000; margin-top: 20px; padding-top: 10px;"></div>
 </div>
+
 @endsection
