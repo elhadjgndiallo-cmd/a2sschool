@@ -27,13 +27,9 @@
                 <i class="fas fa-download me-1"></i>
                 Télécharger bulletin
             </a>
-            <a href="{{ route('notes.bulletin.annuel', $eleve->id) }}" class="btn btn-info me-2">
-                <i class="fas fa-file-alt me-1"></i>
-                Bulletin Annuel
-            </a>
-            <a href="{{ route('notes.bulletin.annuel.formate', $eleve->id) }}" class="btn btn-success me-2">
-                <i class="fas fa-file-alt me-1"></i>
-                Bulletin Annuel Formaté
+            <a href="{{ route('notes.bulletins.annuels.formates', $eleve->classe_id) }}?eleve={{ $eleve->id }}" class="btn btn-info me-2" target="_blank">
+                <i class="fas fa-print me-1"></i>
+                Annuel
             </a>
             <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>

@@ -3537,7 +3537,7 @@ class NoteController extends Controller
     /**
      * Afficher la liste des bulletins annuels formatés pour une classe
      */
-    public function bulletinsAnnuelsFormates($classeId)
+    public function bulletinsAnnuelsFormates(Request $request, $classeId)
     {
         $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
@@ -3559,6 +3559,12 @@ class NoteController extends Controller
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->with('utilisateur')
             ->get();
+
+        // Optionnel: afficher un seul bulletin d'élève si ?eleve={id}
+        $eleveId = $request->query('eleve');
+        if (!empty($eleveId)) {
+            $eleves = $eleves->where('id', (int) $eleveId)->values();
+        }
         
         $classe->setRelation('eleves', $eleves);
         

@@ -366,7 +366,30 @@
 @media print {
     @page {
         size: A4 portrait;
-        margin: 0.3cm;
+        margin: 0 0.3cm 0.3cm 0.3cm;
+    }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .container-fluid,
+    .container,
+    .row,
+    .col-md-12 {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* Supprimer l'espace réservé à la navbar fixe du layout */
+    .main-content,
+    .main-content.expanded {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: auto !important;
     }
     
     /* Masquer les éléments non nécessaires */
@@ -401,10 +424,15 @@
         width: 100%;
         height: 27.5cm; /* Hauteur optimisée */
         margin: 0;
-        padding: 0.3cm; /* Padding minimal */
+        padding: 0 0.3cm 0.3cm 0.3cm; /* Pas de marge/padding en haut */
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
+    }
+
+    .bulletin-page:first-of-type {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
     }
     
     .bulletin-page .card {
