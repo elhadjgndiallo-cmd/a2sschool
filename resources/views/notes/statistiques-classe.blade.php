@@ -169,7 +169,7 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('notes.eleve', $stat['eleve']->id) }}" 
+                                <a href="{{ route('notes.eleve', $stat['eleve']->id) }}?periode={{ urlencode($periode) }}" 
                                    class="btn btn-outline-info" 
                                    title="Voir le bulletin">
                                     <i class="fas fa-eye"></i>

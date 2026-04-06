@@ -4,7 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carte Scolaire - {{ $cartes_scolaire->eleve->utilisateur->nom }} {{ $cartes_scolaire->eleve->utilisateur->prenom }}</title>
+    @php
+        $cardBorder = $couleurs['document']['document_card_border'] ?? '#d4af37';
+        $cardAccent = $couleurs['document']['document_card_accent'] ?? '#1e3c72';
+        $cardTitle = $couleurs['document']['document_card_title'] ?? '#d4af37';
+        $cardBodyText = $couleurs['document']['document_card_text'] ?? '#333';
+        $cardMutedText = $couleurs['document']['document_card_muted'] ?? '#666';
+        $cardBg = $couleurs['document']['document_card_bg'] ?? '#ffffff';
+        $statusActive = $couleurs['resultat']['resultat_success_bg'] ?? '#28a745';
+        $statusDanger = $couleurs['resultat']['resultat_danger_bg'] ?? '#dc3545';
+        $statusWarning = $couleurs['resultat']['resultat_warning_bg'] ?? '#ffc107';
+        $statusSecondary = $couleurs['resultat']['resultat_secondary_bg'] ?? '#6c757d';
+    @endphp
     <style>
+        :root {
+            --card-border: {{ $cardBorder }};
+            --card-accent: {{ $cardAccent }};
+            --card-title: {{ $cardTitle }};
+            --card-text: {{ $cardBodyText }};
+            --card-muted: {{ $cardMutedText }};
+            --card-bg: {{ $cardBg }};
+            --status-active: {{ $statusActive }};
+            --status-expiree: {{ $statusDanger }};
+            --status-suspendue: {{ $statusWarning }};
+            --status-annulee: {{ $statusSecondary }};
+        }
+
         @page {
             size: A4;
             margin: 0.5cm;
@@ -20,22 +45,22 @@
         .carte-container {
             width: 86mm;
             height: 54mm;
-            border: 2px solid #d4af37;
+            border: 2px solid var(--card-border);
             margin: 0 auto;
             position: relative;
-            background: white;
+            background: var(--card-bg);
             page-break-inside: avoid;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .carte-header {
-            background: white;
-            color: black;
+            background: var(--card-bg);
+            color: var(--card-text);
             padding: 2mm;
             text-align: center;
             position: relative;
             height: 12mm;
-            border-bottom: 1px solid #d4af37;
+            border-bottom: 1px solid var(--card-border);
         }
         
         .header-content {
@@ -48,13 +73,13 @@
         .logo-left {
             width: 8mm;
             height: 8mm;
-            background: #d4af37;
+            background: var(--card-border);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 4mm;
-            color: #1e3c72;
+            color: var(--card-accent);
             font-weight: bold;
             overflow: hidden;
         }
@@ -75,39 +100,39 @@
             font-size: 2.5mm;
             font-weight: bold;
             margin: 0;
-            color: black;
+            color: var(--card-text);
         }
         
         .motto {
             font-size: 2mm;
             margin: 0;
-            color: #666;
+            color: var(--card-muted);
         }
         
         .school-name {
             font-size: 3.5mm;
             font-weight: bold;
             margin: 0;
-            color: black;
+            color: var(--card-text);
         }
         
         .card-title {
             font-size: 3mm;
             font-weight: bold;
             margin: 0;
-            color: #d4af37;
+            color: var(--card-title);
         }
         
         .logo-right {
             width: 8mm;
             height: 8mm;
-            background: #d4af37;
+            background: var(--card-border);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 3mm;
-            color: #1e3c72;
+            color: var(--card-accent);
             font-weight: bold;
             overflow: hidden;
         }
@@ -129,7 +154,7 @@
         .carte-left {
             width: 25mm;
             padding-right: 2mm;
-            border-right: 1px solid #d4af37;
+            border-right: 1px solid var(--card-border);
         }
         
         .carte-right {
@@ -141,14 +166,14 @@
         .eleve-photo {
             width: 20mm;
             height: 25mm;
-            border: 1px solid #d4af37;
+            border: 1px solid var(--card-border);
             margin: 0 auto 2mm;
             background: #f8f9fa;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 2.5mm;
-            color: #666;
+            color: var(--card-muted);
             overflow: hidden;
         }
         
@@ -161,7 +186,7 @@
         .matricule {
             font-size: 2.5mm;
             font-weight: bold;
-            color: #d4af37;
+            color: var(--card-title);
             text-align: center;
             margin-bottom: 2mm;
         }
@@ -173,7 +198,7 @@
         
         .eleve-details {
             font-size: 2mm;
-            color: #333;
+            color: var(--card-text);
         }
         
         .eleve-details div {
@@ -196,7 +221,7 @@
             right: 0;
             width: 12mm;
             height: 12mm;
-            border: 1px solid #d4af37;
+            border: 1px solid var(--card-border);
             overflow: hidden;
         }
         
@@ -211,9 +236,9 @@
             left: 2mm;
             right: 2mm;
             font-size: 1.8mm;
-            color: #666;
+            color: var(--card-muted);
             text-align: center;
-            border-top: 1px solid #d4af37;
+            border-top: 1px solid var(--card-border);
             padding-top: 1mm;
         }
         
@@ -226,10 +251,10 @@
             color: white;
         }
         
-        .status-active { background: #28a745; }
-        .status-expiree { background: #dc3545; }
-        .status-suspendue { background: #ffc107; color: #000; }
-        .status-annulee { background: #6c757d; }
+        .status-active { background: var(--status-active); }
+        .status-expiree { background: var(--status-expiree); }
+        .status-suspendue { background: var(--status-suspendue); color: #000; }
+        .status-annulee { background: var(--status-annulee); }
         
         .decorative-border {
             position: absolute;
@@ -238,7 +263,7 @@
             right: 0;
             bottom: 0;
             border: 1mm solid transparent;
-            border-image: linear-gradient(45deg, #d4af37, #1e3c72, #d4af37) 1;
+            border-image: linear-gradient(45deg, var(--card-border), var(--card-accent), var(--card-border)) 1;
             pointer-events: none;
         }
         
