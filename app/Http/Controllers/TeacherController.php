@@ -278,10 +278,14 @@ class TeacherController extends Controller
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
         
-        // Récupérer les élèves triés par prénom puis nom
-        $eleves = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
-            ->where('eleves.actif', true)
-            ->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+        // Même périmètre que l'admin : élèves de l'année scolaire active uniquement
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        $elevesQuery = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+            ->where('eleves.actif', true);
+        if ($anneeScolaireActive) {
+            $elevesQuery->where('eleves.annee_scolaire_id', $anneeScolaireActive->id);
+        }
+        $eleves = $elevesQuery->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
             ->orderBy('utilisateurs.prenom', 'asc')
             ->orderBy('utilisateurs.nom', 'asc')
             ->select('eleves.*')
@@ -351,7 +355,7 @@ class TeacherController extends Controller
         }
 
         // Validation pour éviter les doublons de notes
-        $validationDoublons = $this->validerDoublonsNotes($request->notes, $isPrimaire);
+        $validationDoublons = $this->validerDoublonsNotes($request->notes, $isPrimaire, $request->input('periode', 'trimestre1'));
         if ($validationDoublons !== true) {
             // Log de débogage
             \Log::info('Validation doublons bloquée - Teacher: ' . auth()->user()->email . ' - Erreur: ' . $validationDoublons);
@@ -472,7 +476,7 @@ class TeacherController extends Controller
      * @param bool $isPrimaire Si la classe est au niveau primaire
      * @return true|string Retourne true si valide, sinon message d'erreur
      */
-    private function validerDoublonsNotes($notes, $isPrimaire)
+    private function validerDoublonsNotes($notes, $isPrimaire, $periode = 'trimestre1')
     {
         // Vérifier chaque note individuellement sans regroupement
         foreach ($notes as $noteData) {
@@ -499,13 +503,13 @@ class TeacherController extends Controller
             // Vérifier les notes existantes dans la base de données
             $notesExistantes = \App\Models\Note::where('eleve_id', $noteData['eleve_id'])
                 ->where('matiere_id', $noteData['matiere_id'])
-                ->where('periode', $noteData['periode'] ?? 'trimestre1')
+                ->where('periode', $periode)
                 ->get();
             
             // Log de débogage
             \Log::info('Vérification doublons Teacher - Élève: ' . $noteData['eleve_id'] . 
                       ' - Matière: ' . $noteData['matiere_id'] . 
-                      ' - Période: ' . ($noteData['periode'] ?? 'trimestre1') . 
+                      ' - Période: ' . $periode . 
                       ' - Notes existantes: ' . $notesExistantes->count());
             
             // Si l'élève a déjà des notes dans cette matière pour cette période, bloquer

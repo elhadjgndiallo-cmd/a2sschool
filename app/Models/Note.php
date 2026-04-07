@@ -75,32 +75,28 @@ class Note extends Model
      */
     public function calculerNoteFinale()
     {
-        if ($this->note_composition === null) {
-            return null;
-        }
-
-        // Récupérer la classe pour déterminer le niveau
         $classe = $this->eleve->classe ?? null;
         $isPrimaire = $classe ? $classe->isPrimaire() : false;
 
-        // Pour primaire : note finale = note composition
+        // Primaire / préscolaire : uniquement la composition
         if ($isPrimaire) {
-            return $this->note_composition;
+            return $this->note_composition !== null ? round((float) $this->note_composition, 2) : null;
         }
 
-        // Pour collège/lycée : (Note Cours + (Note Composition * 2)) / 3
-        $noteCours = $this->note_cours ?? 0;
-        $noteComposition = $this->note_composition ?? 0;
-        
-        // Si une seule note est présente, utiliser celle-ci
-        if ($this->note_cours === null) {
-            $noteFinale = $noteComposition;
-        } elseif ($this->note_composition === null) {
-            $noteFinale = $noteCours;
-        } else {
-            // Appliquer la formule : (NOTE DE COURS + NOTES DE COMPO * 2) / 3
-            $noteFinale = ($noteCours + ($noteComposition * 2)) / 3;
+        // Collège / lycée : cours seul, composition seule, ou les deux
+        if ($this->note_cours === null && $this->note_composition === null) {
+            return null;
         }
+
+        if ($this->note_cours === null) {
+            return round((float) $this->note_composition, 2);
+        }
+
+        if ($this->note_composition === null) {
+            return round((float) $this->note_cours, 2);
+        }
+
+        $noteFinale = ((float) $this->note_cours + ((float) $this->note_composition * 2)) / 3;
 
         return round($noteFinale, 2);
     }
