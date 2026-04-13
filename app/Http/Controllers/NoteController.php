@@ -1372,29 +1372,9 @@ class NoteController extends Controller
                             return $eleve;
                         });
 
-                    // Calculer les moyennes trimestrielles
-                    // Convertir le nom de la période en format trimestre (trimestre1, trimestre2, trimestre3)
-                    $periodeCode = 'trimestre1'; // Par défaut
-                    
-                    // Méthode 1: Utiliser le champ ordre si disponible (plus fiable)
-                    if (isset($periode->ordre) && $periode->ordre >= 1 && $periode->ordre <= 3) {
-                        $periodeCode = 'trimestre' . $periode->ordre;
-                    } else {
-                        // Méthode 2: Extraire du nom
-                        $periodeNom = strtolower(trim($periode->nom));
-                        
-                        // Chercher le numéro du trimestre dans le nom (éviter les dates)
-                        // Pattern: "trimestre" suivi d'espace(s) et d'un chiffre, ou chiffre au début suivi de parenthèse
-                        if (preg_match('/trimestre\s+3\b/i', $periodeNom) || preg_match('/^trimestre\s*3\b/i', $periodeNom)) {
-                            $periodeCode = 'trimestre3';
-                        } elseif (preg_match('/trimestre\s+2\b/i', $periodeNom) || preg_match('/^trimestre\s*2\b/i', $periodeNom)) {
-                            $periodeCode = 'trimestre2';
-                        } elseif (preg_match('/trimestre\s+1\b/i', $periodeNom) || preg_match('/^trimestre\s*1\b/i', $periodeNom)) {
-                            $periodeCode = 'trimestre1';
-                        }
-                    }
-                    
-                    // Log pour débogage
+                    // Calculer les moyennes trimestrielles (codes trimestre1..3 comme dans la table notes)
+                    $periodeCode = $this->resolvePeriodeCodePourNotes($periode);
+
                     \Log::info('Détection période', [
                         'periode_id' => $periode->id,
                         'periode_nom' => $periode->nom,
@@ -1546,28 +1526,8 @@ class NoteController extends Controller
                 return $eleve;
             });
 
-        // Calculer les moyennes trimestrielles
-        // Convertir le nom de la période en format trimestre (trimestre1, trimestre2, trimestre3)
-        $periodeCode = 'trimestre1'; // Par défaut
-        
-        // Méthode 1: Utiliser le champ ordre si disponible (plus fiable)
-        if (isset($periode->ordre) && $periode->ordre >= 1 && $periode->ordre <= 3) {
-            $periodeCode = 'trimestre' . $periode->ordre;
-        } else {
-            // Méthode 2: Extraire du nom
-            $periodeNom = strtolower(trim($periode->nom));
-            
-            // Chercher le numéro du trimestre dans le nom (éviter les dates)
-            // Pattern: "trimestre" suivi d'espace(s) et d'un chiffre, ou chiffre au début suivi de parenthèse
-            if (preg_match('/trimestre\s+3\b/i', $periodeNom) || preg_match('/^trimestre\s*3\b/i', $periodeNom)) {
-                $periodeCode = 'trimestre3';
-            } elseif (preg_match('/trimestre\s+2\b/i', $periodeNom) || preg_match('/^trimestre\s*2\b/i', $periodeNom)) {
-                $periodeCode = 'trimestre2';
-            } elseif (preg_match('/trimestre\s+1\b/i', $periodeNom) || preg_match('/^trimestre\s*1\b/i', $periodeNom)) {
-                $periodeCode = 'trimestre1';
-            }
-        }
-        
+        $periodeCode = $this->resolvePeriodeCodePourNotes($periode);
+
         // Log pour débogage
         \Log::info('Détection période (imprimer)', [
             'periode_id' => $periode->id,
@@ -1726,8 +1686,13 @@ class NoteController extends Controller
     /**
      * Afficher les statistiques des notes par classe (version imprimable)
      */
-    public function statistiquesClasseImprimable($classeId, $periode = 'trimestre1')
+    public function statistiquesClasseImprimable(Request $request, $classeId)
     {
+        $periode = $request->query('periode', 'trimestre1');
+        if (!in_array($periode, ['trimestre1', 'trimestre2', 'trimestre3'], true)) {
+            $periode = 'trimestre1';
+        }
+
         // Récupérer l'année scolaire active
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         
@@ -3267,22 +3232,38 @@ class NoteController extends Controller
     }
 
     /**
+     * Convertit une période scolaire (table periodes_scolaires) en code utilisé dans notes.periode (trimestre1..3).
+     * Le nom est prioritaire sur le champ ordre (souvent resté à 1 par défaut en base).
+     */
+    private function resolvePeriodeCodePourNotes(\App\Models\PeriodeScolaire $periode): string
+    {
+        $nom = strtolower(trim((string) ($periode->nom ?? '')));
+
+        if (preg_match('/\b(trimestre|semestre)\s*3\b/u', $nom) || preg_match('/\b3\s*(?:er|ère|eme|ème)?\s*(trimestre|semestre)\b/u', $nom)) {
+            return 'trimestre3';
+        }
+        if (preg_match('/\b(trimestre|semestre)\s*2\b/u', $nom) || preg_match('/\b2\s*(?:er|ère|eme|ème)?\s*(trimestre|semestre)\b/u', $nom)) {
+            return 'trimestre2';
+        }
+        if (preg_match('/\b(trimestre|semestre)\s*1\b/u', $nom) || preg_match('/\b1\s*(?:er|ère|eme|ème)?\s*(trimestre|semestre)\b/u', $nom)) {
+            return 'trimestre1';
+        }
+
+        $ordre = (int) ($periode->ordre ?? 0);
+        if ($ordre >= 1 && $ordre <= 3) {
+            return 'trimestre' . $ordre;
+        }
+
+        return 'trimestre1';
+    }
+
+    /**
      * S'assurer que les périodes trimestrielles existent pour l'année scolaire
      */
     private function ensurePeriodesTrimestrielles($anneeScolaire)
     {
         if (!$anneeScolaire) {
             return collect();
-        }
-
-        // Vérifier si les périodes existent déjà
-        $periodes = \App\Models\PeriodeScolaire::whereIn('nom', ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'])
-            ->orderBy('ordre')
-            ->get();
-
-        // Si les trois trimestres existent déjà, les retourner
-        if ($periodes->count() >= 3) {
-            return $periodes;
         }
 
         // Calculer les dates basées sur l'année scolaire
@@ -3336,6 +3317,7 @@ class NoteController extends Controller
             ],
         ];
 
+        // Toujours synchroniser nom + ordre + dates (évite ordre=1 partout si les lignes existaient déjà)
         foreach ($periodesData as $periodeData) {
             \App\Models\PeriodeScolaire::updateOrCreate(
                 ['nom' => $periodeData['nom']],
@@ -3343,7 +3325,6 @@ class NoteController extends Controller
             );
         }
 
-        // Retourner toutes les périodes
         return \App\Models\PeriodeScolaire::whereIn('nom', ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'])
             ->orderBy('ordre')
             ->get();
