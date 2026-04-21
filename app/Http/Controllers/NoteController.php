@@ -590,8 +590,6 @@ class NoteController extends Controller
 
         // Calculer les moyennes par matière
         $moyennesParMatiere = [];
-        $totalPoints = 0;
-        $totalCoefficients = 0;
 
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
@@ -629,19 +627,17 @@ class NoteController extends Controller
                 'coefficient' => $coefficientMatiere,
                 'points' => $points
             ];
-
-            $totalPoints += $points;
-            $totalCoefficients += $coefficientMatiere;
         }
 
-        // Moyenne générale
-        $moyenneGenerale = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+        // Moyenne générale : même calcul que le classement / statistiques (arrondi 2 déc.)
+        $moyenneGenerale = Note::calculerMoyenneGenerale($eleveId, $periode);
 
         // Calculer l'appréciation générale
         $appreciationGenerale = $eleve->classe->getAppreciation($moyenneGenerale);
 
         // Calculer le rang dans la classe
-        $rang = $this->calculerRang($eleve->classe_id, $periode, $moyenneGenerale);
+        $anneeRang = $eleve->annee_scolaire_id ?? \App\Models\AnneeScolaire::anneeActive()?->id;
+        $rang = $this->calculerRangPourListeResultat($eleve->id, $eleve->classe_id, $periode, $anneeRang);
 
         return view('notes.eleve', compact(
             'eleve', 
@@ -678,8 +674,6 @@ class NoteController extends Controller
 
         // Calculer les moyennes par matière
         $moyennesParMatiere = [];
-        $totalPoints = 0;
-        $totalCoefficients = 0;
 
         foreach ($notes as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
@@ -708,13 +702,13 @@ class NoteController extends Controller
                 'coefficient' => $coefficientMatiere,
                 'points' => $points
             ];
-            $totalPoints += $points;
-            $totalCoefficients += $coefficientMatiere;
         }
 
-        $moyenneGenerale = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+        // Moyenne générale : identique au classement / statistiques
+        $moyenneGenerale = Note::calculerMoyenneGenerale($eleveId, $periode);
         $appreciationGenerale = $eleve->classe->getAppreciation($moyenneGenerale);
-        $rang = $this->calculerRang($eleve->classe_id, $periode, $moyenneGenerale);
+        $anneeRang = $eleve->annee_scolaire_id ?? \App\Models\AnneeScolaire::anneeActive()?->id;
+        $rang = $this->calculerRangPourListeResultat($eleve->id, $eleve->classe_id, $periode, $anneeRang);
 
         return view('notes.bulletin', compact(
             'eleve', 
@@ -727,52 +721,41 @@ class NoteController extends Controller
     }
 
     /**
-     * Calculer le rang d'un élève dans sa classe
+     * Rang dans la classe pour un trimestre donné, aligné sur la fiche statistiques / classement :
+     * même périmètre (classe + année scolaire) et même moyenne que Note::calculerMoyenneGenerale(..., $periode).
+     * En cas d'égalité de moyenne, ordre stable par id élève (comme un second critère de tri).
      */
-    private function calculerRang($classeId, $periode, $moyenneEleve)
+    private function calculerRangPourListeResultat(int $eleveId, int $classeId, string $periode, ?int $anneeScolaireId): int
     {
-        $eleves = Eleve::where('classe_id', $classeId)->get();
-        $moyennes = [];
+        $query = Eleve::where('classe_id', $classeId);
+        if ($anneeScolaireId) {
+            $query->where('annee_scolaire_id', $anneeScolaireId);
+        }
+        $eleves = $query->orderBy('id')->get();
 
-        foreach ($eleves as $eleve) {
-            $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
-            $moyennes[] = [
-                'eleve_id' => $eleve->id,
-                'moyenne' => $moyenneGenerale
+        $lignes = [];
+        foreach ($eleves as $e) {
+            $lignes[] = [
+                'id' => $e->id,
+                'moyenne' => Note::calculerMoyenneGenerale($e->id, $periode),
             ];
         }
 
-        // Trier les moyennes par ordre décroissant
-        usort($moyennes, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
+        usort($lignes, function (array $a, array $b) {
+            $cmp = $b['moyenne'] <=> $a['moyenne'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return $a['id'] <=> $b['id'];
         });
-        
-        // Calculer le rang en gérant les ex-aequo
-        $rang = 0;
-        $moyennePrecedente = null;
-        $rangPrecedent = 0;
-        
-        foreach ($moyennes as $index => $moyenneData) {
-            $moyenneActuelle = $moyenneData['moyenne'];
-            
-            // Si c'est la première itération ou une nouvelle moyenne
-            if ($moyennePrecedente === null || $moyenneActuelle < $moyennePrecedente) {
-                $rang = $index + 1;
-                $rangPrecedent = $rang;
-            } else {
-                // Même moyenne que le précédent, même rang
-                $rang = $rangPrecedent;
+
+        foreach ($lignes as $index => $ligne) {
+            if ((int) $ligne['id'] === (int) $eleveId) {
+                return $index + 1;
             }
-            
-            // Vérifier si c'est l'élève actuel
-            if ($moyenneData['moyenne'] == $moyenneEleve) {
-                return $rang;
-            }
-            
-            $moyennePrecedente = $moyenneActuelle;
         }
-        
-        return count($moyennes); // Par défaut, dernier rang
+
+        return max(1, count($lignes));
     }
 
     /**
@@ -852,8 +835,8 @@ class NoteController extends Controller
         $bulletins = [];
         foreach ($elevesActifs as $eleve) {
             $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
-            $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
-            $rang = $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id);
+            $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
+            $rang = $this->calculerRangPourListeResultat($eleve->id, $classeId, $periode, $anneeScolaireActive->id);
             
             // Générer un hash unique pour sécuriser le bulletin
             // Le hash est basé sur les données du bulletin + la clé secrète de l'application
@@ -938,8 +921,8 @@ class NoteController extends Controller
         $bulletins = [];
         foreach ($elevesActifs as $eleve) {
             $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
-            $moyenneGenerale = $this->calculerMoyenneGeneralePeriode($eleve->id, $periode);
-            $rang = $this->calculerRangEleve($eleve->id, $classeId, $anneeScolaireActive->id);
+            $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
+            $rang = $this->calculerRangPourListeResultat($eleve->id, $classeId, $periode, $anneeScolaireActive->id);
             $dataToHash = $eleve->id . '|' . $classeId . '|' . $periode . '|' . $anneeScolaireActive->id . '|' . number_format($moyenneGenerale, 2);
             $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
             $token = base64_encode(json_encode([
@@ -1193,119 +1176,13 @@ class NoteController extends Controller
     /**
      * Calculer la moyenne générale d'un élève
      */
+    /**
+     * Moyenne générale trimestrielle — délègue au modèle (référence unique : classement, bulletins, vérification QR).
+     */
     private function calculerMoyenneGeneralePeriode($eleveId, $periode)
     {
-        $notes = Note::where('eleve_id', $eleveId)
-            ->where('periode', $periode)
-            ->with('matiere')
-            ->get()
-            ->groupBy('matiere_id');
-            
-        $totalPoints = 0;
-        $totalCoefficients = 0;
-        
-        foreach ($notes as $matiereId => $notesMatiere) {
-            $matiere = $notesMatiere->first()->matiere;
-            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
-
-            $sommeNoteCoeff = 0;
-            $sommeCoeff = 0;
-            foreach ($notesMatiere as $note) {
-                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
-                if ($noteFinale === null) continue;
-                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
-                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
-                $sommeNoteCoeff += $noteFinale * $coefNote;
-                $sommeCoeff += $coefNote;
-            }
-            if ($sommeCoeff <= 0) continue;
-
-            $moyenne = $sommeNoteCoeff / $sommeCoeff;
-            $totalPoints += $moyenne * $sommeCoeff;
-            $totalCoefficients += $sommeCoeff;
-        }
-        
-        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+        return Note::calculerMoyenneGenerale($eleveId, $periode);
     }
-
-    /**
-     * Calculer les moyennes d'un élève
-     */
-    private function calculerMoyennesEleve($eleveId)
-    {
-        $notes = Note::where('eleve_id', $eleveId)
-            ->with('matiere')
-            ->get()
-            ->groupBy('matiere_id');
-            
-        $moyennes = [];
-        $totalPoints = 0;
-        $totalCoefficients = 0;
-        
-        foreach ($notes as $matiereId => $notesMatiere) {
-            $matiere = $notesMatiere->first()->matiere;
-            $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
-
-            $sommeNoteCoeff = 0;
-            $sommeCoeff = 0;
-            foreach ($notesMatiere as $note) {
-                $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
-                if ($noteFinale === null) continue;
-                $coefNote = $note->coefficient ?? $coefMatiereDefaut;
-                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
-                $sommeNoteCoeff += $noteFinale * $coefNote;
-                $sommeCoeff += $coefNote;
-            }
-            if ($sommeCoeff <= 0) continue;
-
-            $moyenne = $sommeNoteCoeff / $sommeCoeff;
-            $moyennes[$matiere->nom] = [
-                'moyenne' => round($moyenne, 2),
-                'coefficient' => $sommeCoeff
-            ];
-            $totalPoints += $moyenne * $sommeCoeff;
-            $totalCoefficients += $sommeCoeff;
-        }
-        
-        $moyennes['generale'] = $totalCoefficients > 0 ? 
-            round($totalPoints / $totalCoefficients, 2) : 0;
-            
-        return $moyennes;
-    }
-
-    /**
-     * Calculer le rang d'un élève dans sa classe
-     */
-    private function calculerRangEleve($eleveId, $classeId, $anneeScolaireId = null)
-    {
-        $query = Eleve::where('classe_id', $classeId);
-        
-        // Filtrer par année scolaire si fournie
-        if ($anneeScolaireId) {
-            $query->where('annee_scolaire_id', $anneeScolaireId);
-        }
-        
-        $eleves = $query->get();
-        $moyennes = [];
-        
-        foreach ($eleves as $eleve) {
-            $moyennesEleve = $this->calculerMoyennesEleve($eleve->id);
-            $moyennes[$eleve->id] = $moyennesEleve['generale'] ?? 0;
-        }
-        
-        arsort($moyennes);
-        $rang = 1;
-        
-        foreach ($moyennes as $id => $moyenne) {
-            if ($id == $eleveId) {
-                return $rang;
-            }
-            $rang++;
-        }
-        
-        return $rang;
-    }
-
 
 
     /**
@@ -1667,9 +1544,13 @@ class NoteController extends Controller
             ];
         }
 
-        // Trier par moyenne décroissante pour le classement
+        // Trier par moyenne décroissante (même règle que les bulletins : ex-aequo → id élève croissant)
         usort($statistiques, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
+            $cmp = $b['moyenne'] <=> $a['moyenne'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return $a['eleve']->id <=> $b['eleve']->id;
         });
 
         // Ajouter le rang
@@ -1719,9 +1600,13 @@ class NoteController extends Controller
             ];
         }
 
-        // Trier par moyenne décroissante pour le classement
+        // Trier par moyenne décroissante (même règle que les bulletins : ex-aequo → id élève croissant)
         usort($statistiques, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
+            $cmp = $b['moyenne'] <=> $a['moyenne'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return $a['eleve']->id <=> $b['eleve']->id;
         });
 
         // Ajouter le rang
