@@ -113,14 +113,33 @@
         </div>
     </div>
 
-    <!-- Toutes les entrées de l'année scolaire -->
+    <!-- Graphique d'évolution -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-arrow-up text-success me-2"></i>Toutes les Entrées ({{ $anneeScolaireActive->nom ?? 'Année scolaire active' }})
+                        <i class="fas fa-chart-line text-primary me-2"></i>Évolution Revenus vs Dépenses
                     </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="evolutionChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10 dernières entrées de l'année scolaire -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-arrow-up text-success me-2"></i>10 Dernières Entrées
+                    </h5>
+                    <a href="{{ route('comptabilite.entrees') }}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-list me-1"></i>Voir toutes les entrées
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -155,7 +174,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="3" class="text-end">Total des entrées :</th>
+                                    <th colspan="3" class="text-end">Total affiché (10 dernières) :</th>
                                     <th class="text-end">
                                         <strong>{{ number_format($toutesLesEntrees->sum('montant'), 0, ',', ' ') }} GNF</strong>
                                     </th>
@@ -169,14 +188,17 @@
         </div>
     </div>
 
-    <!-- Toutes les sorties de l'année scolaire -->
+    <!-- 10 dernières sorties de l'année scolaire -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <i class="fas fa-arrow-down text-danger me-2"></i>Toutes les Sorties ({{ $anneeScolaireActive->nom ?? 'Année scolaire active' }})
+                        <i class="fas fa-arrow-down text-danger me-2"></i>10 Dernières Sorties
                     </h5>
+                    <a href="{{ route('comptabilite.sorties') }}" class="btn btn-sm btn-outline-danger">
+                        <i class="fas fa-list me-1"></i>Voir toutes les sorties
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -211,7 +233,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="3" class="text-end">Total des sorties :</th>
+                                    <th colspan="3" class="text-end">Total affiché (10 dernières) :</th>
                                     <th class="text-end">
                                         <strong>{{ number_format($toutesLesSorties->sum('montant'), 0, ',', ' ') }} GNF</strong>
                                     </th>
@@ -263,3 +285,128 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Données pour le graphique d'évolution
+    const evolutionData = @json($evolutionData);
+    
+    const ctx = document.getElementById('evolutionChart');
+    
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: evolutionData.labels,
+                datasets: [
+                    {
+                        label: 'Revenus (GNF)',
+                        data: evolutionData.revenus,
+                        borderColor: 'rgb(40, 167, 69)',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: 'Dépenses (GNF)',
+                        data: evolutionData.depenses,
+                        borderColor: 'rgb(220, 53, 69)',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('fr-FR', {
+                                        style: 'decimal',
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0
+                                    }).format(context.parsed.y) + ' GNF';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return new Intl.NumberFormat('fr-FR', {
+                                    notation: 'compact',
+                                    compactDisplay: 'short'
+                                }).format(value) + ' GNF';
+                            },
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+@endpush

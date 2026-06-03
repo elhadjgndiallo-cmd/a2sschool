@@ -21,15 +21,16 @@ class ComptabiliteController extends Controller
      */
     public function index()
     {
-        // Récupérer l'année scolaire active pour filtrer les données
-        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
-        
-        if (!$anneeScolaireActive) {
-            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
-        }
-        
-        // Statistiques générales pour l'année active
-        $stats = $this->getComptabiliteStats($anneeScolaireActive);
+        try {
+            // Récupérer l'année scolaire active pour filtrer les données
+            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+            
+            if (!$anneeScolaireActive) {
+                return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+            }
+            
+            // Statistiques générales pour l'année active
+            $stats = $this->getComptabiliteStats($anneeScolaireActive);
         
         // Récupérer toutes les entrées manuelles de l'année scolaire active
         $entreesManuelles = Entree::with('enregistrePar')
@@ -129,8 +130,8 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Trier par date décroissante
-        $toutesLesEntrees = $toutesLesEntrees->sortByDesc('date');
+        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
+        $toutesLesEntrees = $toutesLesEntrees->sortByDesc('date')->take(10);
             
         // Récupérer toutes les dépenses de l'année scolaire active
         $depenses = Depense::with(['approuvePar', 'payePar'])
@@ -206,20 +207,89 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Trier par date décroissante
-        $toutesLesSorties = $toutesLesSorties->sortByDesc('date');
+        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
+        $toutesLesSorties = $toutesLesSorties->sortByDesc('date')->take(10);
         
-        // Calculer les totaux à partir des collections (pour correspondre exactement aux tableaux)
-        $totalRevenus = $toutesLesEntrees->sum('montant');
-        $totalSorties = $toutesLesSorties->sum('montant');
-        $beneficeTotal = $totalRevenus - $totalSorties;
+        // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
+        $totalRevenus = $stats['revenus_total'];
+        $totalSorties = $stats['depenses_total'];
+        $beneficeTotal = $stats['benefice_total'];
         
-        // Mettre à jour les stats avec les totaux calculés
-        $stats['revenus_total'] = $totalRevenus;
-        $stats['depenses_total'] = $totalSorties;
-        $stats['benefice_total'] = $beneficeTotal;
+        // Générer les données pour le graphique d'évolution (6 derniers mois)
+        $evolutionData = $this->getEvolutionData($anneeScolaireActive);
         
-        return view('comptabilite.index', compact('stats', 'toutesLesEntrees', 'toutesLesSorties', 'anneeScolaireActive', 'totalRevenus', 'totalSorties', 'beneficeTotal'));
+        return view('comptabilite.index', compact('stats', 'toutesLesEntrees', 'toutesLesSorties', 'anneeScolaireActive', 'totalRevenus', 'totalSorties', 'beneficeTotal', 'evolutionData'));
+        
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans comptabilite.index: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return redirect()->back()->with('error', 'Erreur lors du chargement de la comptabilité: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Obtenir les données d'évolution pour le graphique (6 derniers mois)
+     */
+    private function getEvolutionData($anneeScolaire)
+    {
+        $mois = [];
+        $revenus = [];
+        $depenses = [];
+        
+        // Obtenir les 6 derniers mois
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $moisDebut = $date->copy()->startOfMonth();
+            $moisFin = $date->copy()->endOfMonth();
+            
+            // Vérifier que le mois est dans l'année scolaire
+            if ($moisFin->lt($anneeScolaire->date_debut) || $moisDebut->gt($anneeScolaire->date_fin)) {
+                continue;
+            }
+            
+            // Nom du mois en français
+            $nomMois = $date->locale('fr')->isoFormat('MMM YYYY');
+            $mois[] = $nomMois;
+            
+            // Calculer les revenus du mois (entrées + paiements)
+            $revenusEntrees = Entree::whereBetween('date_entree', [
+                $moisDebut->format('Y-m-d'),
+                $moisFin->format('Y-m-d')
+            ])->sum('montant');
+            
+            $revenusPaiements = Paiement::whereBetween('date_paiement', [
+                $moisDebut->format('Y-m-d'),
+                $moisFin->format('Y-m-d')
+            ])
+            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+                $q->where('annee_scolaire_id', $anneeScolaire->id);
+            })
+            ->sum('montant_paye');
+            
+            $revenus[] = $revenusEntrees + $revenusPaiements;
+            
+            // Calculer les dépenses du mois (dépenses + salaires)
+            $depensesNormales = Depense::whereBetween('date_depense', [
+                $moisDebut->format('Y-m-d'),
+                $moisFin->format('Y-m-d')
+            ])->sum('montant');
+            
+            $salaires = SalaireEnseignant::where('statut', 'payé')
+                ->whereNotNull('date_paiement')
+                ->whereBetween('date_paiement', [
+                    $moisDebut->format('Y-m-d'),
+                    $moisFin->format('Y-m-d')
+                ])
+                ->sum('salaire_net');
+            
+            $depenses[] = $depensesNormales + $salaires;
+        }
+        
+        return [
+            'labels' => $mois,
+            'revenus' => $revenus,
+            'depenses' => $depenses
+        ];
     }
 
     /**
