@@ -839,105 +839,34 @@ class ComptabiliteController extends Controller
     {
         $moisActuel = Carbon::now();
         
-        // Exclure toutes les sources automatiques créées par les paiements (pour éviter les doublons)
-        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
-        
-        // Revenus du mois actuel (entrées manuelles) - filtrer par période de l'année scolaire
-        $revenusMois = 0;
-        if ($anneeScolaireActive) {
-            // Récupérer les références des paiements du mois pour exclure les entrées correspondantes
-            $paiementsMoisQuery = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            })
-            ->whereMonth('date_paiement', $moisActuel->month)
-            ->whereYear('date_paiement', $moisActuel->year);
-            
-            $paiementsReferencesMois = $paiementsMoisQuery->pluck('reference_paiement')->filter()->toArray();
-            
-            $revenusMois = Entree::whereMonth('date_entree', $moisActuel->month)
-                ->whereYear('date_entree', $moisActuel->year)
-                ->whereBetween('date_entree', [
-                    $anneeScolaireActive->date_debut,
-                    $anneeScolaireActive->date_fin
-                ])
-                ->whereNotIn('source', $sourcesAuto);
-            
-            // Exclure aussi les entrées avec une référence de paiement
-            if (!empty($paiementsReferencesMois)) {
-                $revenusMois->whereNotIn('reference', $paiementsReferencesMois);
-            }
-            
-            $revenusMois = $revenusMois->sum('montant');
-        }
-            
-        // Ajouter les paiements de frais de scolarité du mois pour l'année active
-        if ($anneeScolaireActive) {
-            $paiementsMois = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            })
-            ->whereMonth('date_paiement', $moisActuel->month)
-            ->whereYear('date_paiement', $moisActuel->year)
-            ->sum('montant_paye');
-            
-            $revenusMois += $paiementsMois;
-        }
-            
-        // Dépenses du mois actuel - filtrer par période de l'année scolaire
-        $depensesMois = 0;
-        if ($anneeScolaireActive) {
-            $depensesMois = Depense::whereMonth('date_depense', $moisActuel->month)
-                ->whereYear('date_depense', $moisActuel->year)
-                ->whereBetween('date_depense', [
-                    $anneeScolaireActive->date_debut,
-                    $anneeScolaireActive->date_fin
-                ])
-                ->sum('montant');
-        }
-            
-        // Revenus totaux (entrées manuelles) - filtrer par période de l'année scolaire
+        // NOUVEAU: Utiliser la même logique que getStatsEntrees pour le total
+        // pour garantir la cohérence entre le dashboard et la page entrées
         $revenusTotal = 0;
-        if ($anneeScolaireActive) {
-            // Récupérer les références des paiements pour exclure les entrées correspondantes
-            $paiementsTotalQuery = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            });
-            
-            $paiementsReferencesTotal = $paiementsTotalQuery->pluck('reference_paiement')->filter()->toArray();
-            
-            $revenusTotal = Entree::whereBetween('date_entree', [
-                $anneeScolaireActive->date_debut,
-                $anneeScolaireActive->date_fin
-            ])
-            ->whereNotIn('source', $sourcesAuto);
-            
-            // Exclure aussi les entrées avec une référence de paiement
-            if (!empty($paiementsReferencesTotal)) {
-                $revenusTotal->whereNotIn('reference', $paiementsReferencesTotal);
-            }
-            
-            $revenusTotal = $revenusTotal->sum('montant');
-        }
-        
-        // Ajouter les paiements de frais de scolarité totaux pour l'année active
-        if ($anneeScolaireActive) {
-            $paiementsTotal = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            })->sum('montant_paye');
-            
-            $revenusTotal += $paiementsTotal;
-        }
-        
-        // Dépenses totales - filtrer par période de l'année scolaire
         $depensesTotal = 0;
+        
         if ($anneeScolaireActive) {
+            // Calcul identique à getStatsEntrees
+            $request = new Request(); // Request vide pour pas de filtres
+            $statsEntrees = $this->getStatsEntrees($request, $anneeScolaireActive);
+            $revenusTotal = $statsEntrees['total_entrees'];
+            
+            // Calcul des dépenses totales
             $depensesTotal = Depense::whereBetween('date_depense', [
                 $anneeScolaireActive->date_debut,
                 $anneeScolaireActive->date_fin
             ])->sum('montant');
+            
+            // Ajouter les salaires payés
+            $salairesPayes = SalaireEnseignant::where('statut', 'payé')
+                ->whereNotNull('date_paiement')
+                ->whereBetween('date_paiement', [
+                    $anneeScolaireActive->date_debut,
+                    $anneeScolaireActive->date_fin
+                ])
+                ->sum('salaire_net');
+            
+            $depensesTotal += $salairesPayes;
         }
-        
-        // Bénéfice du mois
-        $beneficeMois = $revenusMois - $depensesMois;
         
         // Bénéfice total
         $beneficeTotal = $revenusTotal - $depensesTotal;
@@ -954,9 +883,6 @@ class ComptabiliteController extends Controller
         }
             
         return [
-            'revenus_mois' => $revenusMois,
-            'depenses_mois' => $depensesMois,
-            'benefice_mois' => $beneficeMois,
             'revenus_total' => $revenusTotal,
             'depenses_total' => $depensesTotal,
             'benefice_total' => $beneficeTotal,

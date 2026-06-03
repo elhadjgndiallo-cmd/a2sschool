@@ -174,9 +174,20 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="3" class="text-end">Total affiché (10 dernières) :</th>
+                                    <th colspan="3" class="text-end">
+                                        <small class="text-muted">Total des 10 dernières entrées affichées :</small>
+                                    </th>
                                     <th class="text-end">
                                         <strong>{{ number_format($toutesLesEntrees->sum('montant'), 0, ',', ' ') }} GNF</strong>
+                                    </th>
+                                    <th></th>
+                                </tr>
+                                <tr class="table-success">
+                                    <th colspan="3" class="text-end">
+                                        <strong>Total de TOUTES les entrées ({{ $anneeScolaireActive->nom }}) :</strong>
+                                    </th>
+                                    <th class="text-end">
+                                        <strong class="text-success fs-5">{{ number_format($totalRevenus, 0, ',', ' ') }} GNF</strong>
                                     </th>
                                     <th></th>
                                 </tr>
@@ -233,9 +244,20 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="3" class="text-end">Total affiché (10 dernières) :</th>
+                                    <th colspan="3" class="text-end">
+                                        <small class="text-muted">Total des 10 dernières sorties affichées :</small>
+                                    </th>
                                     <th class="text-end">
                                         <strong>{{ number_format($toutesLesSorties->sum('montant'), 0, ',', ' ') }} GNF</strong>
+                                    </th>
+                                    <th></th>
+                                </tr>
+                                <tr class="table-danger">
+                                    <th colspan="3" class="text-end">
+                                        <strong>Total de TOUTES les sorties ({{ $anneeScolaireActive->nom }}) :</strong>
+                                    </th>
+                                    <th class="text-end">
+                                        <strong class="text-danger fs-5">{{ number_format($totalSorties, 0, ',', ' ') }} GNF</strong>
                                     </th>
                                     <th></th>
                                 </tr>
