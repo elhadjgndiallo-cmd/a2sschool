@@ -848,7 +848,7 @@ class ComptabiliteController extends Controller
             // Calcul identique à getStatsEntrees
             $request = new Request(); // Request vide pour pas de filtres
             $statsEntrees = $this->getStatsEntrees($request, $anneeScolaireActive);
-            $revenusTotal = $statsEntrees['total_entrees'];
+            $revenusTotal = $statsEntrees['total']; // Changé de 'total_entrees' à 'total'
             
             // Calcul des dépenses totales
             $depensesTotal = Depense::whereBetween('date_depense', [
