@@ -131,22 +131,52 @@
         </div>
     </div>
 
-    <!-- Statistiques financières et académiques -->
+    <!-- Statistiques financières -->
     <div class="row mb-4 g-3">
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-4">
             <div class="card bg-success text-white h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0">
-                        <i class="fas fa-credit-card fa-2x"></i>
+                        <i class="fas fa-arrow-up fa-2x"></i>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h3 class="mb-0">{{ number_format($stats['paiements_total'], 0, ',', ' ') }} GNF</h3>
-                        <p class="mb-0">Paiements</p>
+                        <h3 class="mb-0">{{ number_format($stats['total_revenus'] ?? $stats['paiements_total'], 0, ',', ' ') }} GNF</h3>
+                        <p class="mb-0">Total Revenus</p>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="card bg-danger text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-arrow-down fa-2x"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0">{{ number_format($stats['total_sorties'] ?? 0, 0, ',', ' ') }} GNF</h3>
+                        <p class="mb-0">Total Sorties</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="card {{ ($stats['benefice_total'] ?? 0) >= 0 ? 'bg-primary' : 'bg-warning' }} text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0">{{ number_format($stats['benefice_total'] ?? 0, 0, ',', ' ') }} GNF</h3>
+                        <p class="mb-0">Bénéfice</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques académiques -->
+    <div class="row mb-4 g-3">
+        <div class="col-12 col-sm-6 col-md-4">
             <div class="card bg-danger text-white h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0">
@@ -159,11 +189,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-4">
             <div class="card bg-info text-white h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0">
-                        <i class="fas fa-chart-line fa-2x"></i>
+                        <i class="fas fa-sticky-note fa-2x"></i>
                     </div>
                     <div class="flex-grow-1 ms-3">
                         <h3 class="mb-0">{{ $stats['notes_total'] }}</h3>
@@ -172,7 +202,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-4">
             <div class="card bg-secondary text-white h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0">

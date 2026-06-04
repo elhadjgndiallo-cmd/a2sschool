@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Entree;
 use App\Models\Paiement;
 use App\Models\FraisScolarite;
+use App\Services\ComptabiliteEntreesStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -141,27 +142,10 @@ class EntreeController extends Controller
         // Ajouter les paramètres de requête à la pagination
         $paginatedEntries->appends(request()->query());
 
-        // Statistiques pour l'année sélectionnée seulement
-        // Entrées manuelles (exclure les entrées créées automatiquement par les paiements scolaires)
-        $totalEntreesManuelles = 0;
-        if ($anneeScolaire) {
-            $totalEntreesManuelles = Entree::where('source', '!=', 'Paiements scolaires')
-                ->whereBetween('date_entree', [
-                    $anneeScolaire->date_debut,
-                    $anneeScolaire->date_fin
-                ])
-                ->sum('montant');
-        }
-        
-        // Paiements de frais de scolarité de l'année sélectionnée seulement
-        $totalPaiementsFrais = Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
-            if ($anneeScolaire) {
-                $q->where('annee_scolaire_id', $anneeScolaire->id);
-            }
-        })->sum('montant_paye');
-        
-        // Total général = entrées manuelles + paiements scolaires
-        $totalGeneral = $totalEntreesManuelles + $totalPaiementsFrais;
+        $statsEntrees = app(ComptabiliteEntreesStatsService::class)->calculateStats($request, $anneeScolaire);
+        $totalEntreesManuelles = $statsEntrees['total_manuelles'];
+        $totalPaiementsFrais = $statsEntrees['total_paiements'];
+        $totalGeneral = $statsEntrees['total'];
 
         // Sources disponibles
         $sources = Entree::select('source')->distinct()->pluck('source');

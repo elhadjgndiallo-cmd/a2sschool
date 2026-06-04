@@ -14,6 +14,9 @@ use App\Models\Paiement;
 use App\Models\Absence;
 use App\Models\Note;
 use App\Models\Evenement;
+use App\Models\AnneeScolaire;
+use App\Services\ComptabiliteEntreesStatsService;
+use App\Services\ComptabiliteSortiesStatsService;
 
 class DashboardController extends Controller
 {
@@ -52,6 +55,20 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         
+        $anneeScolaireActive = AnneeScolaire::anneeActive();
+        $requestVide = new Request();
+
+        $statsRevenus = $anneeScolaireActive
+            ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+            : ['total' => 0];
+
+        $statsSorties = $anneeScolaireActive
+            ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+            : ['total' => 0];
+
+        $totalRevenus = $statsRevenus['total'];
+        $totalSorties = $statsSorties['total'];
+
         // Statistiques générales
         $stats = [
             'eleves' => Eleve::count(),
@@ -59,7 +76,10 @@ class DashboardController extends Controller
             'parents' => ParentModel::count(),
             'classes' => Classe::count(),
             'matieres' => Matiere::count(),
-            'paiements_total' => Paiement::sum('montant_paye'),
+            'paiements_total' => $totalRevenus,
+            'total_revenus' => $totalRevenus,
+            'total_sorties' => $totalSorties,
+            'benefice_total' => $totalRevenus - $totalSorties,
             'absences_total' => Absence::count(),
             'notes_total' => Note::count(),
         ];

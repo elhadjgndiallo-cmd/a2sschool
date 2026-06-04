@@ -35,7 +35,7 @@
             <div class="card bg-info text-white h-100">
                 <div class="card-body d-flex flex-column justify-content-center text-center">
                     <h2 class="card-title mb-0 font-weight-bold">{{ number_format($totalGeneral, 0, ',', ' ') }} GNF</h2>
-                    <p class="card-text">Total Entrées</p>
+                    <p class="card-text">Total Revenus</p>
                 </div>
             </div>
         </div>

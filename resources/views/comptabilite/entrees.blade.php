@@ -124,7 +124,7 @@
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
                     <h3 class="mb-0">{{ number_format($statsEntrees['total'], 0, ',', ' ') }}</h3>
-                    <small>Total (GNF)</small>
+                    <small>Total Revenus (GNF)</small>
                 </div>
             </div>
         </div>
