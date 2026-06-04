@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -48,6 +49,32 @@ class Paiement extends Model
     public function tranchePaiement()
     {
         return $this->belongsTo(TranchePaiement::class);
+    }
+
+    /**
+     * Paiements des élèves d'une année scolaire (jointure, plus efficace que whereHas).
+     */
+    public function scopeForAnneeScolaire(Builder $query, int $anneeScolaireId): Builder
+    {
+        return $query
+            ->join('frais_scolarite as fs_annee', 'paiements.frais_scolarite_id', '=', 'fs_annee.id')
+            ->join('eleves as el_annee', 'fs_annee.eleve_id', '=', 'el_annee.id')
+            ->where('el_annee.annee_scolaire_id', $anneeScolaireId)
+            ->select('paiements.*');
+    }
+
+    /**
+     * Relations minimales pour l'affichage comptabilité (entrées, journal).
+     */
+    public function scopeWithComptabiliteAffichage(Builder $query): Builder
+    {
+        return $query->with([
+            'fraisScolarite:id,eleve_id,type_frais',
+            'fraisScolarite.eleve:id,utilisateur_id,classe_id,numero_etudiant',
+            'fraisScolarite.eleve.utilisateur:id,nom,prenom',
+            'fraisScolarite.eleve.classe:id,nom',
+            'encaissePar:id,nom,prenom',
+        ]);
     }
 
     /**

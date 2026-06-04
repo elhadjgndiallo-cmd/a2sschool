@@ -35,56 +35,42 @@ class ComptabiliteController extends Controller
             $stats = $this->getComptabiliteStats($anneeScolaireActive);
         
         // Récupérer toutes les entrées manuelles de l'année scolaire active
-        $entreesManuelles = Entree::with('enregistrePar')
+        $entreesManuelles = Entree::with('enregistrePar:id,nom,prenom')
             ->whereBetween('date_entree', [
                 $anneeScolaireActive->date_debut->format('Y-m-d'),
                 $anneeScolaireActive->date_fin->format('Y-m-d')
             ])
             ->orderBy('date_entree', 'desc')
+            ->limit(30)
             ->get();
         
-        // Récupérer tous les paiements de frais de scolarité de l'année active
-        $paiementsFrais = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'fraisScolarite:id,type_frais,eleve_id', 'encaissePar'])
-            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaireActive) {
-                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
-            })
-            ->orderBy('date_paiement', 'desc')
+        $entreesStats = app(ComptabiliteEntreesStatsService::class);
+
+        // Index léger pour exclure les doublons (sans charger toutes les relations)
+        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup(
+            Paiement::forAnneeScolaire($anneeScolaireActive->id)
+                ->select([
+                    'paiements.reference_paiement',
+                    'paiements.montant_paye',
+                    'paiements.date_paiement',
+                    'paiements.encaisse_par',
+                ])
+                ->get()
+        );
+
+        // Paiements récents avec relations ciblées (dashboard : 30 derniers suffisent)
+        $paiementsFrais = $entreesStats
+            ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaireActive)
+            ->limit(30)
             ->get();
-        
-        // Exclure les entrées automatiques créées par les paiements (pour éviter les doublons)
-        $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
-        $paiementsReferences = $paiementsFrais->pluck('reference_paiement')->filter()->toArray();
-        
-        // Combiner toutes les entrées (entrées manuelles + paiements)
+
         $toutesLesEntrees = collect();
-        
-        // Ajouter les entrées manuelles (en excluant celles qui correspondent à un paiement)
+
         foreach ($entreesManuelles as $entree) {
-            // Vérifier si cette entrée correspond à un paiement (pour éviter les doublons)
-            $isPaiementEntry = false;
-            
-            // Vérifier par référence
-            if ($entree->reference && in_array($entree->reference, $paiementsReferences)) {
-                $isPaiementEntry = true;
-            }
-            
-            // Vérifier aussi par montant, date et source pour les entrées de scolarité
-            if (!$isPaiementEntry && in_array($entree->source, $sourcesAuto)) {
-                foreach ($paiementsFrais as $paiement) {
-                    if ($paiement->montant_paye == $entree->montant && 
-                        $paiement->date_paiement->format('Y-m-d') == $entree->date_entree->format('Y-m-d') &&
-                        $paiement->encaisse_par == $entree->enregistre_par) {
-                        $isPaiementEntry = true;
-                        break;
-                    }
-                }
-            }
-            
-            // Si c'est une entrée créée automatiquement par un paiement, on l'exclut
-            if ($isPaiementEntry) {
+            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
-            
+
             $toutesLesEntrees->push((object) [
                 'id' => 'entree_' . $entree->id,
                 'type' => 'entree',
@@ -93,43 +79,15 @@ class ComptabiliteController extends Controller
                 'montant' => $entree->montant,
                 'source' => $entree->source,
                 'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree
+                'data' => $entree,
             ]);
         }
-        
-        // Fonction pour convertir le type de frais en libellé de source
-        $getSourceFromTypeFrais = function($typeFrais) {
-            $sources = [
-                'inscription' => 'Inscription',
-                'reinscription' => 'Réinscription',
-                'scolarite' => 'Frais de scolarité',
-                'cantine' => 'Cantine',
-                'transport' => 'Transport',
-                'activites' => 'Activités',
-                'autre' => 'Autres frais'
-            ];
-            return $sources[$typeFrais] ?? 'Autres frais';
-        };
-        
-        // Ajouter tous les paiements
+
         foreach ($paiementsFrais as $paiement) {
-            $eleve = $paiement->fraisScolarite->eleve;
-            $eleveNom = $eleve->utilisateur->nom . ' ' . $eleve->utilisateur->prenom;
-            $matricule = $eleve->matricule ?? 'N/A';
-            $classe = $eleve->classe->nom ?? 'N/A';
-            $source = $getSourceFromTypeFrais($paiement->fraisScolarite->type_frais);
-            $description = 'Paiement de ' . number_format($paiement->montant_paye, 0, ',', ' ') . ' GNF - ' . $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
-            
-            $toutesLesEntrees->push((object) [
-                'id' => 'paiement_' . $paiement->id,
-                'type' => 'paiement',
-                'date' => $paiement->date_paiement,
-                'description' => $description,
-                'montant' => $paiement->montant_paye,
-                'source' => $source,
-                'enregistre_par' => $paiement->encaissePar,
-                'data' => $paiement
-            ]);
+            $entry = $entreesStats->mapPaiementToListEntry($paiement, new Request());
+            if ($entry) {
+                $toutesLesEntrees->push($entry);
+            }
         }
         
         // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
@@ -409,68 +367,25 @@ class ComptabiliteController extends Controller
         
         $entrees = $query->orderBy('date_entree', 'desc')->get();
 
-        // Récupérer les paiements de frais de scolarité de l'année sélectionnée
-        $paiementsFraisQuery = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'fraisScolarite:id,type_frais,eleve_id', 'encaissePar'])
-            ->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
-                $q->where('annee_scolaire_id', $anneeScolaire->id);
-            });
-        
-        // Appliquer les filtres de date aux paiements
-        if ($request->filled('date_debut')) {
-            $paiementsFraisQuery->whereDate('date_paiement', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $paiementsFraisQuery->whereDate('date_paiement', '<=', $request->date_fin);
-        }
-        
-        // Filtre par montant minimum pour les paiements
-        if ($request->filled('montant_min')) {
-            $paiementsFraisQuery->where('montant_paye', '>=', $request->montant_min);
-        }
-        
-        // Filtre par montant maximum pour les paiements
-        if ($request->filled('montant_max')) {
-            $paiementsFraisQuery->where('montant_paye', '<=', $request->montant_max);
-        }
-        
-        $paiementsFrais = $paiementsFraisQuery->orderBy('date_paiement', 'desc')->get();
+        $entreesStats = app(ComptabiliteEntreesStatsService::class);
 
-        // Créer une collection des références de paiements pour éviter les doublons
-        $paiementsReferences = $paiementsFrais->pluck('reference_paiement')->filter()->toArray();
-        
-        // Combiner les deux collections et créer une pagination unifiée
+        $paiementsFrais = $entreesStats
+            ->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)
+            ->get();
+
+        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiementsFrais);
+
         $allEntries = collect();
-        
-        // Ajouter les entrées manuelles avec un type (en excluant celles qui correspondent à un paiement)
+
         foreach ($entrees as $entree) {
-            // Vérifier si cette entrée correspond à un paiement (pour éviter les doublons)
-            // Si l'entrée a une référence qui correspond à un paiement, on l'exclut
-            $isPaiementEntry = false;
-            
-            // Vérifier par référence
-            if ($entree->reference && in_array($entree->reference, $paiementsReferences)) {
-                $isPaiementEntry = true;
-            }
-            
-            // Vérifier aussi par montant, date et source pour les entrées de scolarité
-            if (!$isPaiementEntry && in_array($entree->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'])) {
-                // Vérifier si un paiement correspond (même montant, même date)
-                foreach ($paiementsFrais as $paiement) {
-                    if ($paiement->montant_paye == $entree->montant && 
-                        $paiement->date_paiement->format('Y-m-d') == $entree->date_entree->format('Y-m-d') &&
-                        $paiement->encaisse_par == $entree->enregistre_par) {
-                        $isPaiementEntry = true;
-                        break;
-                    }
-                }
-            }
-            
-            // Si c'est une entrée créée automatiquement par un paiement, on l'exclut
-            if ($isPaiementEntry) {
+            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
-            
+
+            if ($request->filled('type_entree') && $request->type_entree === 'paiement') {
+                continue;
+            }
+
             $allEntries->push((object) [
                 'id' => 'entree_' . $entree->id,
                 'type' => 'entree',
@@ -479,75 +394,20 @@ class ComptabiliteController extends Controller
                 'montant' => $entree->montant,
                 'source' => $entree->source,
                 'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree
+                'data' => $entree,
             ]);
         }
-        
-        // Fonction pour convertir le type de frais en libellé de source
-        $getSourceFromTypeFrais = function($typeFrais) {
-            $sources = [
-                'inscription' => 'Inscription',
-                'reinscription' => 'Réinscription',
-                'scolarite' => 'Frais de scolarité',
-                'cantine' => 'Cantine',
-                'transport' => 'Transport',
-                'activites' => 'Activités',
-                'autre' => 'Autres frais'
-            ];
-            return $sources[$typeFrais] ?? 'Autres frais';
-        };
-        
-        // Ajouter tous les paiements de frais de scolarité (déjà filtrés)
+
         foreach ($paiementsFrais as $paiement) {
-            // Récupérer l'élève pour la description
-            $eleve = $paiement->fraisScolarite->eleve ?? null;
-            $eleveNom = $eleve && $eleve->utilisateur ? 
-                ($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom) : 
-                'Élève inconnu';
-            
-            // Récupérer le matricule et la classe
-            $matricule = $eleve ? ($eleve->numero_etudiant ?? 'N/A') : 'N/A';
-            $classe = $eleve && $eleve->classe ? $eleve->classe->nom : 'N/A';
-            
-            // Créer la description avec matricule et classe
-            $description = 'Paiement de ' . number_format($paiement->montant_paye, 0, ',', ' ') . ' GNF - ' . $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
-            
-            // Utiliser le type de frais comme source
-            $typeFrais = $paiement->fraisScolarite->type_frais ?? 'autre';
-            $source = $getSourceFromTypeFrais($typeFrais);
-            
-            // Appliquer le filtre de source si spécifié
-            if ($request->filled('source') && $source !== $request->source) {
-                continue; // Ignorer ce paiement s'il ne correspond pas au filtre
+            $entry = $entreesStats->mapPaiementToListEntry($paiement, $request);
+            if ($entry) {
+                $allEntries->push($entry);
             }
-            
-            // Appliquer le filtre de type d'entrée
-            if ($request->filled('type_entree') && $request->type_entree == 'manuelle') {
-                continue; // Ignorer les paiements si on veut seulement les entrées manuelles
-            }
-            
-            $allEntries->push((object) [
-                'id' => 'paiement_' . $paiement->id,
-                'type' => 'paiement',
-                'date' => $paiement->date_paiement,
-                'description' => $description,
-                'montant' => $paiement->montant_paye,
-                'source' => $source,
-                'enregistre_par' => $paiement->encaissePar,
-                'data' => $paiement
-            ]);
         }
-        
-        // Appliquer le filtre de type d'entrée pour les entrées manuelles
-        if ($request->filled('type_entree') && $request->type_entree == 'paiement') {
-            // On a déjà filtré les entrées manuelles plus haut
-        }
-        
-        // Trier par date décroissante
+
         $allEntries = $allEntries->sortByDesc('date');
-        
-        // Créer une pagination manuelle
-        $perPage = 20;
+
+        $perPage = 50;
         $currentPage = request()->get('page', 1);
         $offset = ($currentPage - 1) * $perPage;
         $items = $allEntries->slice($offset, $perPage);
@@ -1503,20 +1363,18 @@ class ComptabiliteController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $paiementsQuery = Paiement::with(['fraisScolarite.eleve.utilisateur', 'fraisScolarite.eleve.classe', 'encaissePar'])
-            ->whereBetween('date_paiement', [$debutStr, $finStr]);
+        $paiementsQuery = Paiement::withComptabiliteAffichage()
+            ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
 
         if ($anneeScolaire) {
-            $paiementsQuery->whereHas('fraisScolarite.eleve', function ($q) use ($anneeScolaire) {
-                $q->where('annee_scolaire_id', $anneeScolaire->id);
-            });
+            $paiementsQuery->forAnneeScolaire($anneeScolaire->id);
         }
 
-        $paiements = $paiementsQuery->orderBy('created_at', 'asc')->get();
-        $paiementsReferences = $paiements->pluck('reference_paiement')->filter()->toArray();
+        $paiements = $paiementsQuery->orderBy('paiements.created_at', 'asc')->get();
+        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiements);
 
         foreach ($entrees as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $paiements, $paiementsReferences)) {
+            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
 
@@ -1533,17 +1391,11 @@ class ComptabiliteController extends Controller
         }
 
         foreach ($paiements as $paiement) {
-            $eleve = $paiement->fraisScolarite->eleve ?? null;
-            $eleveNom = $eleve && $eleve->utilisateur
-                ? ($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom)
-                : 'Élève inconnu';
-            $matricule = $eleve ? ($eleve->numero_etudiant ?? 'N/A') : 'N/A';
-            $classe = $eleve && $eleve->classe ? $eleve->classe->nom : 'N/A';
             $source = $entreesStats->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
 
             $journal->push([
                 'date' => $paiement->date_paiement,
-                'libelle' => 'Paiement frais scolarité - ' . $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')',
+                'libelle' => $entreesStats->paiementJournalLibelle($paiement),
                 'entree' => (float) $paiement->montant_paye,
                 'sortie' => 0,
                 'type' => 'paiement_scolarite',

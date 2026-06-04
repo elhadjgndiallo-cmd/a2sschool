@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AnneeScolaire;
 use App\Models\Entree;
 use App\Models\Paiement;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -87,36 +88,16 @@ class ComptabiliteEntreesStatsService
 
         $entrees = $query->orderBy('date_entree', 'desc')->get();
 
-        $paiementsFraisQuery = Paiement::with('fraisScolarite:id,type_frais,eleve_id')
-            ->whereHas('fraisScolarite.eleve', function ($q) use ($anneeScolaire) {
-                if ($anneeScolaire) {
-                    $q->where('annee_scolaire_id', $anneeScolaire->id);
-                }
-            });
+        $paiementsFrais = $anneeScolaire
+            ? $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get()
+            : collect();
 
-        if ($request->filled('date_debut')) {
-            $paiementsFraisQuery->whereDate('date_paiement', '>=', $request->date_debut);
-        }
-
-        if ($request->filled('date_fin')) {
-            $paiementsFraisQuery->whereDate('date_paiement', '<=', $request->date_fin);
-        }
-
-        if ($request->filled('montant_min')) {
-            $paiementsFraisQuery->where('montant_paye', '>=', $request->montant_min);
-        }
-
-        if ($request->filled('montant_max')) {
-            $paiementsFraisQuery->where('montant_paye', '<=', $request->montant_max);
-        }
-
-        $paiementsFrais = $paiementsFraisQuery->orderBy('date_paiement', 'desc')->get();
-        $paiementsReferences = $paiementsFrais->pluck('reference_paiement')->filter()->toArray();
+        $duplicateLookup = $this->buildPaiementDuplicateLookup($paiementsFrais);
 
         $allEntries = collect();
 
         foreach ($entrees as $entree) {
-            if ($this->isPaiementDuplicateEntry($entree, $paiementsFrais, $paiementsReferences)) {
+            if ($this->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
 
@@ -146,6 +127,125 @@ class ComptabiliteEntreesStatsService
         return $allEntries;
     }
 
+    /**
+     * Requête optimisée des paiements scolaires (jointure année + eager loading ciblé).
+     */
+    public function paiementsFraisForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
+    {
+        $query = Paiement::query()
+            ->forAnneeScolaire($anneeScolaire->id)
+            ->withComptabiliteAffichage();
+
+        if ($request->filled('date_debut')) {
+            $query->whereDate('paiements.date_paiement', '>=', $request->date_debut);
+        }
+
+        if ($request->filled('date_fin')) {
+            $query->whereDate('paiements.date_paiement', '<=', $request->date_fin);
+        }
+
+        if ($request->filled('montant_min')) {
+            $query->where('paiements.montant_paye', '>=', $request->montant_min);
+        }
+
+        if ($request->filled('montant_max')) {
+            $query->where('paiements.montant_paye', '<=', $request->montant_max);
+        }
+
+        return $query->orderByDesc('paiements.date_paiement');
+    }
+
+    /**
+     * Index O(1) pour détecter les doublons entrées / paiements.
+     *
+     * @return array{references: array<string, true>, signatures: array<string, true>}
+     */
+    public function buildPaiementDuplicateLookup(Collection $paiements): array
+    {
+        $references = [];
+        $signatures = [];
+
+        foreach ($paiements as $paiement) {
+            if ($paiement->reference_paiement) {
+                $references[$paiement->reference_paiement] = true;
+            }
+
+            $signatures[$this->paiementDuplicateSignature($paiement)] = true;
+        }
+
+        return [
+            'references' => $references,
+            'signatures' => $signatures,
+        ];
+    }
+
+    public function paiementDuplicateSignature(Paiement $paiement): string
+    {
+        return (string) $paiement->montant_paye . '|'
+            . $paiement->date_paiement->format('Y-m-d') . '|'
+            . $paiement->encaisse_par;
+    }
+
+    public function entreeDuplicateSignature(Entree $entree): string
+    {
+        return (string) $entree->montant . '|'
+            . $entree->date_entree->format('Y-m-d') . '|'
+            . $entree->enregistre_par;
+    }
+
+    /**
+     * Description affichée pour une ligne de paiement dans les listes comptabilité.
+     */
+    public function paiementEleveResume(Paiement $paiement): string
+    {
+        $eleve = $paiement->fraisScolarite?->eleve;
+        $eleveNom = $eleve?->utilisateur
+            ? trim($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom)
+            : 'Élève inconnu';
+        $matricule = $eleve?->numero_etudiant ?? $eleve?->matricule ?? 'N/A';
+        $classe = $eleve?->classe?->nom ?? 'N/A';
+
+        return $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
+    }
+
+    public function paiementListDescription(Paiement $paiement): string
+    {
+        return 'Paiement de ' . number_format((float) $paiement->montant_paye, 0, ',', ' ')
+            . ' GNF - ' . $this->paiementEleveResume($paiement);
+    }
+
+    public function paiementJournalLibelle(Paiement $paiement): string
+    {
+        return 'Paiement frais scolarité - ' . $this->paiementEleveResume($paiement);
+    }
+
+    /**
+     * Convertit un paiement en entrée de liste (null si filtré par la requête).
+     */
+    public function mapPaiementToListEntry(Paiement $paiement, Request $request): ?object
+    {
+        $source = $this->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
+
+        if ($request->filled('source') && $source !== $request->source) {
+            return null;
+        }
+
+        if ($request->filled('type_entree') && $request->type_entree === 'manuelle') {
+            return null;
+        }
+
+        return (object) [
+            'id' => 'paiement_' . $paiement->id,
+            'type' => 'paiement',
+            'date' => $paiement->date_paiement,
+            'description' => $this->paiementListDescription($paiement),
+            'montant' => $paiement->montant_paye,
+            'source' => $source,
+            'enregistre_par' => $paiement->encaissePar,
+            'data' => $paiement,
+        ];
+    }
+
     public function sourceFromTypeFrais(string $typeFrais): string
     {
         $sources = [
@@ -161,9 +261,9 @@ class ComptabiliteEntreesStatsService
         return $sources[$typeFrais] ?? 'Autres frais';
     }
 
-    public function isPaiementDuplicateEntry(Entree $entree, Collection $paiementsFrais, array $paiementsReferences): bool
+    public function isPaiementDuplicateEntry(Entree $entree, array $lookup): bool
     {
-        if ($entree->reference && in_array($entree->reference, $paiementsReferences, true)) {
+        if ($entree->reference && isset($lookup['references'][$entree->reference])) {
             return true;
         }
 
@@ -171,14 +271,6 @@ class ComptabiliteEntreesStatsService
             return false;
         }
 
-        foreach ($paiementsFrais as $paiement) {
-            if ($paiement->montant_paye == $entree->montant
-                && $paiement->date_paiement->format('Y-m-d') === $entree->date_entree->format('Y-m-d')
-                && $paiement->encaisse_par == $entree->enregistre_par) {
-                return true;
-            }
-        }
-
-        return false;
+        return isset($lookup['signatures'][$this->entreeDuplicateSignature($entree)]);
     }
 }
