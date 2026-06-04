@@ -37,11 +37,13 @@
                     <form method="GET" action="{{ route('comptabilite.sorties') }}">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id">
-                                    @foreach(\App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
-                                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }}>
-                                            {{ $annee->nom }}
+                                <label for="annee_scolaire_id" class="form-label">
+                                    <i class="fas fa-calendar-alt me-1"></i>Année scolaire
+                                </label>
+                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()">
+                                    @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
+                                        <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id', $anneeScolaire->id) === (string) $annee->id ? 'selected' : '' }}>
+                                            {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
                                         </option>
                                     @endforeach
                                 </select>

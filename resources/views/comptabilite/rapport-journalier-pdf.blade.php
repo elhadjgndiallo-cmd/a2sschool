@@ -212,7 +212,7 @@
                     @if($reportType == 'mois')
                         RAPPORT MENSUEL DE COMPTABILITÉ
                     @elseif($reportType == 'annee')
-                        RAPPORT ANNUEL DE COMPTABILITÉ
+                        RAPPORT ANNÉE SCOLAIRE — COMPTABILITÉ
                     @else
                         RAPPORT JOURNALIER DE COMPTABILITÉ
                     @endif
@@ -229,7 +229,7 @@
                     @if($reportType == 'mois')
                         Période: {{ \Carbon\Carbon::parse(request('month', now()->format('Y-m')))->format('F Y') }}
                     @elseif($reportType == 'annee')
-                        Année: {{ request('year', now()->year) }}
+                        {{ $periodeLabel ?? ('Année scolaire ' . ($anneeScolaire->nom ?? '')) }}
                     @else
                         Date: {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
                     @endif
@@ -317,7 +317,7 @@
         @else
             <div style="text-align: center; padding: 20px;">
                 <h5>Aucune transaction pour cette date</h5>
-                <p>Il n'y a pas d'entrées ou de sorties enregistrées pour le {{ $dateCarbon->format('d/m/Y') }}.</p>
+                <p>Il n'y a pas d'entrées ou de sorties enregistrées pour {{ $periodeLabel ?? $dateCarbon->format('d/m/Y') }}.</p>
             </div>
         @endif
     </div>

@@ -306,7 +306,7 @@
                                 <select name="type" id="reportType" class="form-select" onchange="toggleDateInputs()">
                                     <option value="jour" {{ request('type', 'jour') == 'jour' ? 'selected' : '' }}>Journalier</option>
                                     <option value="mois" {{ request('type') == 'mois' ? 'selected' : '' }}>Mensuel</option>
-                                    <option value="annee" {{ request('type') == 'annee' ? 'selected' : '' }}>Annuel</option>
+                                    <option value="annee" {{ request('type') == 'annee' ? 'selected' : '' }}>Année scolaire</option>
                                 </select>
                             </div>
                             <div class="col-md-3" id="dateInput">
@@ -326,13 +326,13 @@
                                        max="{{ now()->format('Y-m') }}">
                             </div>
                             <div class="col-md-3" id="yearInput" style="display: none;">
-                                <label class="form-label">Année</label>
-                                <select name="year" class="form-select">
-                                    @for($year = now()->year; $year >= 2020; $year--)
-                                        <option value="{{ $year }}" {{ request('year', now()->year) == $year ? 'selected' : '' }}>
-                                            {{ $year }}
+                                <label class="form-label">Année scolaire</label>
+                                <select name="annee_scolaire_id" class="form-select">
+                                    @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
+                                        <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id', optional($anneeScolaire)->id ?? \App\Models\AnneeScolaire::anneeActive()?->id) === (string) $annee->id ? 'selected' : '' }}>
+                                            {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
                                         </option>
-                                    @endfor
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -353,9 +353,9 @@
                         <i class="fas fa-info-circle me-2"></i>Informations
                     </h6>
                     <div class="small text-muted">
-                        <p class="mb-1"><strong>Journalier:</strong> Transactions d'une journée</p>
-                        <p class="mb-1"><strong>Mensuel:</strong> Toutes les transactions du mois</p>
-                        <p class="mb-0"><strong>Annuel:</strong> Toutes les transactions de l'année</p>
+                        <p class="mb-1"><strong>Journalier:</strong> Solde = entrées − sorties du jour</p>
+                        <p class="mb-1"><strong>Mensuel:</strong> Solde = entrées − sorties du mois</p>
+                        <p class="mb-0"><strong>Année scolaire:</strong> Bénéfice global (comme le tableau de bord)</p>
                     </div>
                 </div>
             </div>
@@ -368,8 +368,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title">
-                        <i class="fas fa-info-circle me-2"></i>Résumé de la journée
+                        <i class="fas fa-info-circle me-2"></i>{{ $resumeLabel ?? 'Résumé de la période' }}
                     </h6>
+                    <p class="small text-muted mb-2">{{ $periodeLabel ?? '' }}</p>
                     <div class="row text-center">
                         <div class="col-4">
                             <div class="text-success">
@@ -386,7 +387,7 @@
                         <div class="col-4">
                             <div class="text-primary">
                                 <strong>{{ number_format($soldeFinal, 0, ',', ' ') }} GNF</strong>
-                                <br><small>Solde final</small>
+                                <br><small>{{ $soldeLabel ?? 'Solde' }}</small>
                             </div>
                         </div>
                     </div>
@@ -402,7 +403,7 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-book me-2"></i>
-                        Journal du {{ $dateCarbon->format('d/m/Y') }}
+                        Journal — {{ $periodeLabel ?? $dateCarbon->format('d/m/Y') }}
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -486,7 +487,7 @@
                         <div class="text-center py-5">
                             <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">Aucune transaction pour cette date</h5>
-                            <p class="text-muted">Il n'y a pas d'entrées ou de sorties enregistrées pour le {{ $dateCarbon->format('d/m/Y') }}.</p>
+                            <p class="text-muted">Il n'y a pas d'entrées ou de sorties enregistrées pour {{ $periodeLabel ?? $dateCarbon->format('d/m/Y') }}.</p>
                         </div>
                     @endif
                 </div>

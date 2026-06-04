@@ -161,7 +161,7 @@ class ComptabiliteEntreesStatsService
         return $sources[$typeFrais] ?? 'Autres frais';
     }
 
-    private function isPaiementDuplicateEntry(Entree $entree, Collection $paiementsFrais, array $paiementsReferences): bool
+    public function isPaiementDuplicateEntry(Entree $entree, Collection $paiementsFrais, array $paiementsReferences): bool
     {
         if ($entree->reference && in_array($entree->reference, $paiementsReferences, true)) {
             return true;
