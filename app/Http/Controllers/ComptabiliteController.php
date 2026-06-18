@@ -1406,8 +1406,8 @@ class ComptabiliteController extends Controller
         }
 
         $depenses = Depense::with(['approuvePar', 'payePar'])
+            ->where('statut', '!=', 'annule')
             ->whereBetween('date_depense', [$debutStr, $finStr])
-            ->where('type_depense', '!=', 'salaire_enseignant')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -1421,8 +1421,7 @@ class ComptabiliteController extends Controller
         foreach ($depenses as $depense) {
             $correspondSalaire = false;
             foreach ($salairesPayes as $salaire) {
-                if ($depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
-                    && abs($depense->montant - $salaire->salaire_net) < 0.01) {
+                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
                     $correspondSalaire = true;
                     break;
                 }
@@ -1464,5 +1463,14 @@ class ComptabiliteController extends Controller
         }
 
         return $journal->sortByDesc('created_at')->values();
+    }
+
+    /**
+     * Une dépense est-elle déjà représentée par un salaire enseignant payé ?
+     */
+    private function depenseCorrespondSalairePaye(Depense $depense, SalaireEnseignant $salaire): bool
+    {
+        return $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
+            && abs((float) $depense->montant - (float) $salaire->salaire_net) < 0.01;
     }
 }
