@@ -131,7 +131,8 @@ class TarifClasse extends Model
     public function creerFraisScolarite($eleveId, $anneeScolaire = null)
     {
         $anneeScolaire = $anneeScolaire ?? $this->annee_scolaire;
-        
+        $dateDebutTranches = $this->dateDebutTranchesPourAnnee($anneeScolaire);
+
         // Créer les frais de scolarité mensuels
         if ($this->frais_scolarite_mensuel > 0) {
             $fraisScolarite = FraisScolarite::create([
@@ -145,7 +146,7 @@ class TarifClasse extends Model
                 'nombre_tranches' => $this->nombre_tranches,
                 'montant_tranche' => $this->frais_scolarite_mensuel,
                 'periode_tranche' => $this->periode_tranche,
-                'date_debut_tranches' => now()->startOfMonth(),
+                'date_debut_tranches' => $dateDebutTranches,
                 'statut' => 'en_attente'
             ]);
 
@@ -168,7 +169,7 @@ class TarifClasse extends Model
                 'nombre_tranches' => $this->nombre_tranches,
                 'montant_tranche' => $this->frais_cantine_mensuel,
                 'periode_tranche' => $this->periode_tranche,
-                'date_debut_tranches' => now()->startOfMonth(),
+                'date_debut_tranches' => $dateDebutTranches,
                 'statut' => 'en_attente'
             ]);
 
@@ -190,7 +191,7 @@ class TarifClasse extends Model
                 'nombre_tranches' => $this->nombre_tranches,
                 'montant_tranche' => $this->frais_transport_mensuel,
                 'periode_tranche' => $this->periode_tranche,
-                'date_debut_tranches' => now()->startOfMonth(),
+                'date_debut_tranches' => $dateDebutTranches,
                 'statut' => 'en_attente'
             ]);
 
@@ -221,5 +222,12 @@ class TarifClasse extends Model
                 ]);
             }
         }
+    }
+
+    private function dateDebutTranchesPourAnnee(string $anneeScolaireNom): string
+    {
+        $annee = AnneeScolaire::where('nom', $anneeScolaireNom)->first();
+
+        return ($annee?->date_debut ?? now())->copy()->startOfMonth()->format('Y-m-d');
     }
 }

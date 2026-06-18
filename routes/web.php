@@ -1075,6 +1075,17 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::put('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'update'])->name('recus-rappel.update')->middleware('check.permission:paiements.edit');
         Route::delete('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'destroy'])->name('recus-rappel.destroy')->middleware('check.permission:paiements.delete');
         Route::get('/recus-rappel/{recuRappel}/pdf', [\App\Http\Controllers\RecuRappelController::class, 'pdf'])->name('recus-rappel.pdf')->middleware('check.permission:paiements.view');
+
+        // Facturation scolaire
+        Route::get('/factures', [\App\Http\Controllers\FacturationController::class, 'index'])->name('factures.index')->middleware('check.permission:paiements.view');
+        Route::get('/factures/create', [\App\Http\Controllers\FacturationController::class, 'create'])->name('factures.create')->middleware('check.permission:paiements.create');
+        Route::post('/factures', [\App\Http\Controllers\FacturationController::class, 'store'])->name('factures.store')->middleware('check.permission:paiements.create');
+        Route::get('/factures/search-eleves', [\App\Http\Controllers\FacturationController::class, 'searchEleves'])->name('factures.search-eleves')->middleware('check.permission:paiements.create');
+        Route::get('/factures/eleve/{eleve}/lignes', [\App\Http\Controllers\FacturationController::class, 'lignesEleve'])->name('factures.lignes-eleve')->middleware('check.permission:paiements.create');
+        Route::post('/factures/preview-totaux', [\App\Http\Controllers\FacturationController::class, 'previewTotaux'])->name('factures.preview-totaux')->middleware('check.permission:paiements.create');
+        Route::post('/factures/preview-repartition', [\App\Http\Controllers\FacturationController::class, 'previewRepartition'])->name('factures.preview-repartition')->middleware('check.permission:paiements.create');
+        Route::get('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'show'])->name('factures.show')->middleware('check.permission:paiements.view');
+        Route::get('/factures/{facture}/pdf', [\App\Http\Controllers\FacturationController::class, 'pdf'])->name('factures.pdf')->middleware('check.permission:paiements.view');
         
         // Routes pour la gestion des entrées
         Route::get('/entrees', [\App\Http\Controllers\EntreeController::class, 'index'])->name('entrees.index');

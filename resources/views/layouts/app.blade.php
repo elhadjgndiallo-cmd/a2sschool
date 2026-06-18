@@ -769,6 +769,7 @@
                     { href: '{{ route("comptabilite.index") }}', icon: 'fas fa-tachometer-alt', text: 'Tableau de bord' },
                     { href: '{{ route("comptabilite.entrees") }}', icon: 'fas fa-arrow-up', text: 'Entrées' },
                     { href: '{{ route("comptabilite.sorties") }}', icon: 'fas fa-arrow-down', text: 'Sorties' },
+                    { href: '{{ route("factures.index") }}', icon: 'fas fa-file-invoice', text: 'Facturation' },
                     { href: '{{ route("recus-rappel.index") }}', icon: 'fas fa-bell', text: 'Reçus de Rappel' }
                 ],
                 'rapports': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('rapports')),

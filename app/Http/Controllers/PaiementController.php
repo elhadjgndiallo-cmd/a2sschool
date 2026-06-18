@@ -8,11 +8,15 @@ use App\Models\TranchePaiement;
 use App\Models\Eleve;
 use App\Models\Entree;
 use App\Models\TarifClasse;
+use App\Services\PaiementScolariteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PaiementController extends Controller
 {
+    public function __construct(
+        private PaiementScolariteService $paiementScolariteService
+    ) {}
     /**
      * Annuler le dernier paiement d'un frais de scolarité
      */
@@ -246,7 +250,8 @@ public function store(Request $request)
      */
     public function show(FraisScolarite $frais)
     {
-        // Assurer la cohérence: répartir tout paiement non encore affecté aux tranches
+        // Supprimer les tranches créées hors période puis répartir les paiements
+        $this->nettoyerTranchesHorsPeriode($frais);
         $this->repartirPaiementsSurTranches($frais);
         
         $frais->load(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
@@ -277,37 +282,18 @@ public function store(Request $request)
 
         DB::beginTransaction();
         try {
-            // Créer le paiement
-            $paiement = Paiement::create([
-                'frais_scolarite_id' => $tranche->frais_scolarite_id,
-                'tranche_paiement_id' => $tranche->id,
-                'montant_paye' => $request->montant_paye,
-                'date_paiement' => $request->date_paiement,
-                'mode_paiement' => $request->mode_paiement,
-                'reference_paiement' => $request->reference_paiement,
-                'observations' => $request->observations,
-                'encaisse_par' => auth()->id()
-            ]);
-
-            // Mettre à jour la tranche
-            $nouveauMontantPaye = $tranche->montant_paye + $request->montant_paye;
-            $tranche->update([
-                'montant_paye' => $nouveauMontantPaye,
-                'date_paiement' => $request->date_paiement,
-                'statut' => $nouveauMontantPaye >= $tranche->montant_tranche ? 'paye' : 'en_attente'
-            ]);
-
-            // Vérifier si toutes les tranches sont payées
-            $frais = $tranche->fraisScolarite;
-            if ($frais->toutesTranchesPayees()) {
-                $frais->update(['statut' => 'paye']);
-            }
-
-            // Créer automatiquement une entrée comptable
-            $this->creerEntreeComptable($paiement, $frais);
+            $this->paiementScolariteService->enregistrerPaiementTranche(
+                $tranche,
+                (float) $request->montant_paye,
+                $request->date_paiement,
+                $request->mode_paiement,
+                $request->reference_paiement,
+                $request->observations,
+                (int) auth()->id()
+            );
 
             DB::commit();
-            return redirect()->route('paiements.show', $frais)
+            return redirect()->route('paiements.show', $tranche->fraisScolarite)
                 ->with('success', 'Paiement enregistré avec succès.');
         } catch (\Exception $e) {
             DB::rollback();
@@ -361,7 +347,7 @@ public function store(Request $request)
             }
 
             // Créer automatiquement une entrée comptable
-            $this->creerEntreeComptable($paiement, $frais);
+            $this->paiementScolariteService->creerEntreeComptable($paiement, $frais);
 
             DB::commit();
             return redirect()->route('paiements.show', $frais)
@@ -371,6 +357,52 @@ public function store(Request $request)
             return back()->withInput()
                 ->with('error', 'Erreur lors de l\'enregistrement: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Supprime les tranches au-delà de nombre_tranches (créées par erreur via facturation)
+     * et réinitialise les tranches valides pour permettre une nouvelle répartition.
+     */
+    private function nettoyerTranchesHorsPeriode(FraisScolarite $frais): void
+    {
+        if (!$frais->paiement_par_tranches || !$frais->nombre_tranches) {
+            return;
+        }
+
+        $frais->loadMissing(['tranchesPaiement', 'paiements']);
+
+        $orphelines = $frais->tranchesPaiement->filter(
+            fn ($t) => $t->numero_tranche > (int) $frais->nombre_tranches
+        );
+
+        if ($orphelines->isEmpty()) {
+            return;
+        }
+
+        DB::transaction(function () use ($frais, $orphelines) {
+            $orphelineIds = $orphelines->pluck('id');
+
+            Paiement::whereIn('tranche_paiement_id', $orphelineIds)
+                ->update(['tranche_paiement_id' => null]);
+
+            TranchePaiement::whereIn('id', $orphelineIds)->delete();
+
+            foreach ($frais->tranchesPaiement as $tranche) {
+                if ($tranche->numero_tranche > (int) $frais->nombre_tranches) {
+                    continue;
+                }
+                $tranche->update([
+                    'montant_paye' => 0,
+                    'statut' => 'en_attente',
+                    'date_paiement' => null,
+                ]);
+            }
+
+            $frais->update(['statut' => 'en_attente']);
+        });
+
+        $frais->unsetRelation('tranchesPaiement');
+        $frais->load('tranchesPaiement');
     }
 
     /**
@@ -399,7 +431,9 @@ public function store(Request $request)
             return;
         }
 
-        $tranches = $frais->tranchesPaiement->sortBy('numero_tranche');
+        $tranches = $frais->tranchesPaiement
+            ->filter(fn ($t) => $t->numero_tranche <= (int) $frais->nombre_tranches)
+            ->sortBy('numero_tranche');
         foreach ($tranches as $tranche) {
             if ($resteAAllouer <= 0) {
                 break;
@@ -622,6 +656,13 @@ public function store(Request $request)
      */
     public function genererRecuFromEntree(Entree $entree)
     {
+        if ($entree->reference) {
+            $facture = \App\Models\Facture::where('numero_facture', $entree->reference)->first();
+            if ($facture) {
+                return redirect()->route('factures.pdf', $facture);
+            }
+        }
+
         // Trouver le paiement correspondant à cette entrée
         $paiement = Paiement::where('reference_paiement', $entree->reference)
             ->where('montant_paye', $entree->montant)
@@ -686,63 +727,5 @@ public function store(Request $request)
             DB::rollback();
             return redirect()->back()->with('error', 'Erreur lors de la suppression des frais: ' . $e->getMessage());
         }
-    }
-
-
-    /**
-     * Créer automatiquement une entrée comptable pour un paiement
-     */
-    private function creerEntreeComptable(Paiement $paiement, FraisScolarite $frais)
-    {
-        $eleve = $frais->eleve;
-        $classe = $eleve->classe;
-        
-        // Déterminer le type de frais
-        $typeFrais = ucfirst($frais->type_frais);
-        if ($frais->type_frais == 'scolarite') {
-            $typeFrais = 'Scolarité';
-        } elseif ($frais->type_frais == 'inscription') {
-            $typeFrais = 'Inscription';
-        } elseif ($frais->type_frais == 'reinscription') {
-            $typeFrais = 'Réinscription';
-        }
-        
-        // Créer le libellé simplifié
-        $libelle = "{$typeFrais} - {$eleve->numero_etudiant}";
-        if ($paiement->reference_paiement) {
-            $libelle .= " - Ref: {$paiement->reference_paiement}";
-        }
-        
-        // Déterminer la source selon le type de frais
-        $source = 'Paiements scolaires'; // Par défaut
-        if ($frais->type_frais == 'scolarite') {
-            $source = 'Scolarité';
-        } elseif ($frais->type_frais == 'inscription') {
-            $source = 'Inscription';
-        } elseif ($frais->type_frais == 'reinscription') {
-            $source = 'Réinscription';
-        } elseif ($frais->type_frais == 'transport') {
-            $source = 'Transport';
-        } elseif ($frais->type_frais == 'cantine') {
-            $source = 'Cantine';
-        } elseif ($frais->type_frais == 'uniforme') {
-            $source = 'Uniforme';
-        } elseif ($frais->type_frais == 'livres') {
-            $source = 'Livres';
-        } elseif ($frais->type_frais == 'autres') {
-            $source = 'Autres frais';
-        }
-        
-        // Créer l'entrée comptable
-        Entree::create([
-            'libelle' => $libelle,
-            'description' => "Paiement de {$paiement->montant_paye} GNF pour les frais de scolarité de l'élève {$eleve->utilisateur->nom} de la classe {$classe->nom}. Référence paiement: {$paiement->reference_paiement}",
-            'montant' => $paiement->montant_paye,
-            'date_entree' => $paiement->date_paiement,
-            'source' => $source,
-            'mode_paiement' => $paiement->mode_paiement,
-            'reference' => $paiement->reference_paiement,
-            'enregistre_par' => $paiement->encaisse_par
-        ]);
     }
 }

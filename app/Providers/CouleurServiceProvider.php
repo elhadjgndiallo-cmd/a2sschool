@@ -21,13 +21,7 @@ class CouleurServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Partager les couleurs avec toutes les vues de manière plus fiable
-        View::share('couleurs', [
-            'general' => CouleurParametre::getCouleursParCategorie('general'),
-            'bulletin' => CouleurParametre::getCouleursParCategorie('bulletin'),
-            'resultat' => CouleurParametre::getCouleursParCategorie('resultat'),
-            'document' => CouleurParametre::getCouleursParCategorie('document'),
-        ]);
+        View::share('couleurs', CouleurParametre::getCouleursPourVues());
 
         // Créer des directives Blade pour faciliter l'utilisation des couleurs
         $blade = View::getEngineResolver()->resolve('blade')->getCompiler();

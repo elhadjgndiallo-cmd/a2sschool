@@ -152,6 +152,13 @@ class ComptabiliteEntreesStatsService
             $query->where('paiements.montant_paye', '<=', $request->montant_max);
         }
 
+        // Paiements rattachés à une facture : une seule entrée comptable globale
+        $query->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('facture_lignes')
+                ->whereColumn('facture_lignes.paiement_id', 'paiements.id');
+        });
+
         return $query->orderByDesc('paiements.date_paiement');
     }
 

@@ -140,6 +140,37 @@ class FraisScolarite extends Model
     }
 
     /**
+     * Date d'échéance d'une tranche selon la période configurée.
+     */
+    public function dateEcheanceTranche(int $numeroTranche): string
+    {
+        $dateDebut = $this->date_debut_tranches ?? $this->date_echeance;
+
+        return $this->calculerDateEcheance($dateDebut, $numeroTranche);
+    }
+
+    /**
+     * Numéro de tranche (1..nombre_tranches) pour un mois donné.
+     */
+    public function numeroTranchePourMois(\Carbon\Carbon $mois): int
+    {
+        $debut = \Carbon\Carbon::parse($this->date_debut_tranches ?? $this->date_echeance)->startOfMonth();
+        $mois = $mois->copy()->startOfMonth();
+
+        if ($mois->lt($debut)) {
+            throw new \InvalidArgumentException('Mois hors période de facturation.');
+        }
+
+        $numero = $debut->diffInMonths($mois) + 1;
+
+        if ($numero > (int) $this->nombre_tranches) {
+            throw new \InvalidArgumentException('Mois hors période de facturation.');
+        }
+
+        return $numero;
+    }
+
+    /**
      * Calculer la date d'échéance selon la période
      */
     private function calculerDateEcheance($dateDebut, $numeroTranche)
