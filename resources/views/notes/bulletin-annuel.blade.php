@@ -30,11 +30,14 @@
 
             <!-- Informations élève -->
             <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <strong>Nom & Prénom:</strong> {{ $eleve->utilisateur->nom }} {{ $eleve->utilisateur->prenom }}
                 </div>
-                <div class="col-md-6">
-                    <strong>Classe:</strong> {{ $classe->nom }}
+                <div class="col-md-4">
+                    <strong>Classe:</strong> <span class="badge bg-primary">{{ $classe->nom }}</span>
+                </div>
+                <div class="col-md-4">
+                    <strong>Matricule:</strong> {{ $eleve->matricule ?? $eleve->numero_etudiant ?? 'N/A' }}
                 </div>
             </div>
 

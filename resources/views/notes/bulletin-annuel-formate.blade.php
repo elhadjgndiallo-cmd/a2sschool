@@ -42,6 +42,7 @@
             <div class="row mb-2" style="margin-bottom: 8px !important;">
                 <div class="col-md-6">
                     <h5 style="font-size: 1.05rem; margin-bottom: 4px; font-weight: 800; color: #2c3e50; line-height: 1.2;"><strong>{{ $eleve->nom_complet }}</strong></h5>
+                    <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Classe:</strong> <span class="badge bg-primary" style="font-size: 0.9rem;">{{ $eleve->classe->nom }}</span></p>
                     <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Numéro:</strong> <span style="font-weight: 500;">{{ $eleve->numero_etudiant }}</span></p>
                     <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Date de naissance:</strong> <span style="font-weight: 500;">{{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span></p>
                 </div>
