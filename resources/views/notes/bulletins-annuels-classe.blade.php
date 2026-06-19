@@ -49,6 +49,20 @@
                             </div>
                             @endif
                         </div>
+                        
+                        <!-- Section avec BULLETIN DE NOTES et classe -->
+                        <div class="border-top border-white border-2 pt-2" style="border-top: 2px solid rgba(255,255,255,0.3) !important; padding-top: 6px !important; margin-top: 8px; padding-left: 0; padding-right: 0;">
+                            <div class="row align-items-center" style="margin-left: 0; margin-right: 0;">
+                                <div class="col-md-6" style="padding-left: 0; padding-right: 5px;">
+                                    <h3 class="mb-0" style="font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 1.05rem; letter-spacing: 0.5px; line-height: 1.2;">BULLETIN DE NOTES</h3>
+                                    <div style="font-size: 0.95rem; font-weight: 600; opacity: 0.95; line-height: 1.2; margin-top: 2px;">{{ $bulletin['eleve']->classe->nom }} - {{ $bulletin['eleve']->classe->niveau }}</div>
+                                </div>
+                                <div class="col-md-6 text-end" style="padding-left: 5px; padding-right: 0;">
+                                    <h4 style="font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1.2;">Année Scolaire {{ $anneeScolaireActive ? $anneeScolaireActive->nom : (date('Y') . '-' . (date('Y')+1)) }}</h4>
+                                    <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.95; line-height: 1.2;">Bulletin Annuel</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body" style="padding: 6px; background: white;">
                         <!-- Informations élève -->
