@@ -1165,7 +1165,7 @@ class EleveController extends Controller
                 ]);
 
                 // Créer automatiquement les frais d'inscription et de scolarité
-                $paiementController = new PaiementController();
+                $paiementController = app(PaiementController::class);
                 $gratuitInscription = $studentData['gratuit_inscription'] ?? false;
                 $gratuitReinscription = $studentData['gratuit_reinscription'] ?? false;
                 $paiementController->creerFraisAutomatiques($eleve, $gratuitInscription, $gratuitReinscription);
@@ -1360,7 +1360,7 @@ class EleveController extends Controller
                     }
                     
                     // Créer automatiquement les frais de réinscription
-                    $paiementController = new PaiementController();
+                    $paiementController = app(PaiementController::class);
                     $gratuitReinscription = $request->boolean('gratuit_reinscription');
                     $paiementController->creerFraisAutomatiques($nouvelEleve, false, $gratuitReinscription);
                     
@@ -1623,7 +1623,7 @@ class EleveController extends Controller
                 ]);
 
                 // Créer automatiquement les frais d'inscription et de scolarité
-                $paiementController = new PaiementController();
+                $paiementController = app(PaiementController::class);
                 $gratuitInscription = $request->boolean('gratuit_inscription');
                 $gratuitReinscription = $request->boolean('gratuit_reinscription');
                 $paiementController->creerFraisAutomatiques($eleve, $gratuitInscription, $gratuitReinscription);
