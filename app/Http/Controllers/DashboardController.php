@@ -53,77 +53,110 @@ class DashboardController extends Controller
      */
     public function adminDashboard()
     {
-        $user = Auth::user();
-        
-        $anneeScolaireActive = AnneeScolaire::anneeActive();
-        $requestVide = new Request();
+        try {
+            $user = Auth::user();
+            
+            $anneeScolaireActive = AnneeScolaire::anneeActive();
+            $requestVide = new Request();
 
-        $statsRevenus = $anneeScolaireActive
-            ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-            : ['total' => 0];
+            $statsRevenus = $anneeScolaireActive
+                ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+                : ['total' => 0];
 
-        $statsSorties = $anneeScolaireActive
-            ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-            : ['total' => 0];
+            $statsSorties = $anneeScolaireActive
+                ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+                : ['total' => 0];
 
-        $totalRevenus = $statsRevenus['total'];
-        $totalSorties = $statsSorties['total'];
+            $totalRevenus = $statsRevenus['total'] ?? 0;
+            $totalSorties = $statsSorties['total'] ?? 0;
 
-        // Statistiques générales
-        $stats = [
-            'eleves' => Eleve::count(),
-            'enseignants' => Enseignant::count(),
-            'parents' => ParentModel::count(),
-            'classes' => Classe::count(),
-            'matieres' => Matiere::count(),
-            'paiements_total' => $totalRevenus,
-            'total_revenus' => $totalRevenus,
-            'total_sorties' => $totalSorties,
-            'benefice_total' => $totalRevenus - $totalSorties,
-            'absences_total' => Absence::count(),
-            'notes_total' => Note::count(),
-        ];
-        
-        // Derniers paiements
-        $derniersPaiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-        
-        // Dernières absences
-        $dernieresAbsences = Absence::with(['eleve.utilisateur', 'matiere'])
-            ->orderBy('date_absence', 'desc')
-            ->limit(10)
-            ->get();
+            // Statistiques générales
+            $stats = [
+                'eleves' => Eleve::count(),
+                'enseignants' => Enseignant::count(),
+                'parents' => ParentModel::count(),
+                'classes' => Classe::count(),
+                'matieres' => Matiere::count(),
+                'paiements_total' => $totalRevenus,
+                'total_revenus' => $totalRevenus,
+                'total_sorties' => $totalSorties,
+                'benefice_total' => $totalRevenus - $totalSorties,
+                'absences_total' => Absence::count(),
+                'notes_total' => Note::count(),
+            ];
+            
+            // Derniers paiements
+            $derniersPaiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            // Dernières absences
+            $dernieresAbsences = Absence::with(['eleve.utilisateur', 'matiere'])
+                ->orderBy('date_absence', 'desc')
+                ->limit(10)
+                ->get();
 
-        // Dernières notes
-        $dernieresNotes = Note::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
-            ->orderBy('date_evaluation', 'desc')
-            ->limit(10)
-            ->get();
+            // Dernières notes
+            $dernieresNotes = Note::with(['eleve.utilisateur', 'matiere', 'enseignant.utilisateur'])
+                ->orderBy('date_evaluation', 'desc')
+                ->limit(10)
+                ->get();
 
-        // Statistiques par mois (pour les graphiques)
-        $paiementsParMois = Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
-            ->whereYear('created_at', now()->year)
-            ->groupBy('mois')
-            ->orderBy('mois')
-            ->get();
+            // Statistiques par mois (pour les graphiques)
+            $paiementsParMois = Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
+                ->whereYear('created_at', now()->year)
+                ->groupBy('mois')
+                ->orderBy('mois')
+                ->get();
 
-        $absencesParMois = Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
-            ->whereYear('date_absence', now()->year)
-            ->groupBy('mois')
-            ->orderBy('mois')
-            ->get();
+            $absencesParMois = Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
+                ->whereYear('date_absence', now()->year)
+                ->groupBy('mois')
+                ->orderBy('mois')
+                ->get();
 
-        return view('admin.dashboard', compact(
-            'stats', 
-            'derniersPaiements', 
-            'dernieresAbsences', 
-            'dernieresNotes',
-            'paiementsParMois',
-            'absencesParMois',
-            'user'
-        ));
+            return view('admin.dashboard', compact(
+                'stats', 
+                'derniersPaiements', 
+                'dernieresAbsences', 
+                'dernieresNotes',
+                'paiementsParMois',
+                'absencesParMois',
+                'user'
+            ));
+        } catch (\Exception $e) {
+            // Log l'erreur pour debugging
+            \Log::error('Erreur dashboard admin: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Retourner une vue d'erreur avec des stats par défaut
+            $stats = [
+                'eleves' => 0,
+                'enseignants' => 0,
+                'parents' => 0,
+                'classes' => 0,
+                'matieres' => 0,
+                'paiements_total' => 0,
+                'total_revenus' => 0,
+                'total_sorties' => 0,
+                'benefice_total' => 0,
+                'absences_total' => 0,
+                'notes_total' => 0,
+            ];
+
+            return view('admin.dashboard', [
+                'stats' => $stats,
+                'derniersPaiements' => collect(),
+                'dernieresAbsences' => collect(),
+                'dernieresNotes' => collect(),
+                'paiementsParMois' => collect(),
+                'absencesParMois' => collect(),
+                'user' => Auth::user(),
+                'error' => 'Une erreur est survenue lors du chargement du tableau de bord. Veuillez réessayer.'
+            ]);
+        }
     }
 
     /**
