@@ -17,6 +17,55 @@
         </div>
     </div>
 
+    <!-- Informations générales de l'élève -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="mb-2" style="color: #2c3e50; font-weight: 700;">
+                        <i class="fas fa-user-graduate me-2 text-primary"></i>
+                        {{ $eleve->nom_complet }}
+                    </h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2" style="font-size: 1rem;">
+                                <strong style="color: #34495e;">Classe:</strong> 
+                                <span class="badge bg-primary" style="font-size: 1rem; padding: 0.5rem 1rem;">{{ $eleve->classe->nom }}</span>
+                            </p>
+                            <p class="mb-2" style="font-size: 1rem;">
+                                <strong style="color: #34495e;">Matricule:</strong> 
+                                <span style="color: #7f8c8d;">{{ $eleve->numero_etudiant }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2" style="font-size: 1rem;">
+                                <strong style="color: #34495e;">Date de naissance:</strong> 
+                                <span style="color: #7f8c8d;">{{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
+                            </p>
+                            <p class="mb-0" style="font-size: 1rem;">
+                                <strong style="color: #34495e;">Année scolaire:</strong> 
+                                <span style="color: #7f8c8d;">{{ $anneeScolaire ?? 'Non définie' }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    @if($eleve->utilisateur->photo)
+                        <img src="{{ asset('storage/' . $eleve->utilisateur->photo) }}" 
+                             alt="Photo de {{ $eleve->nom_complet }}" 
+                             class="img-thumbnail rounded-circle" 
+                             style="width: 120px; height: 120px; object-fit: cover; border: 4px solid #3498db;">
+                    @else
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 120px; height: 120px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); border: 4px solid #2980b9;">
+                            <i class="fas fa-user-graduate fa-3x text-white"></i>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     @foreach($periodes as $periode)
     <div class="card mb-4">
         <div class="card-header py-2" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white;">
