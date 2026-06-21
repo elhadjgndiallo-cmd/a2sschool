@@ -295,14 +295,26 @@ class TeacherController extends Controller
         // Assigner les élèves triés à la classe
         $classe->setRelation('eleves', $eleves);
         
-        // Récupérer toutes les matières actives (temporaire pour résoudre le problème)
-        $matieres = \App\Models\Matiere::actif()->get();
+        // Récupérer uniquement les matières que l'enseignant enseigne dans cette classe selon l'emploi du temps
+        $matieres = \App\Models\Matiere::actif()
+            ->whereHas('emploisTemps', function($query) use ($enseignant, $classe) {
+                $query->where('enseignant_id', $enseignant->id)
+                      ->where('classe_id', $classe->id)
+                      ->where('actif', true);
+            })
+            ->get();
         
         // Debug: vérifier les matières
-        \Log::info('Matières disponibles pour enseignant ID: ' . $enseignant->id, [
+        \Log::info('Matières disponibles pour enseignant ID: ' . $enseignant->id . ' dans la classe ' . $classe->nom, [
             'matieres_count' => $matieres->count(),
             'matieres' => $matieres->pluck('nom', 'id')->toArray()
         ]);
+        
+        // Si l'enseignant n'a aucune matière assignée dans cette classe
+        if ($matieres->isEmpty()) {
+            return redirect()->route('teacher.classes')
+                ->with('error', 'Vous n\'avez aucune matière assignée dans cette classe selon votre emploi du temps.');
+        }
             
         $enseignants = collect([$enseignant]);
 
