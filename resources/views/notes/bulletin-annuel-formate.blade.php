@@ -2,14 +2,22 @@
 
 @section('title', 'Bulletin Annuel - ' . $eleve->utilisateur->nom . ' ' . $eleve->utilisateur->prenom)
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/print-bulletin.css') }}">
+@endsection
+
 @section('content')
 <div class="container-fluid">
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom no-print">
         <h1 class="h2">
             <i class="fas fa-file-alt me-2"></i>
             Bulletin Annuel
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print me-1"></i>
+                Imprimer
+            </button>
             <a href="{{ route('notes.eleve', $eleve->id) }}" class="btn btn-outline-secondary me-2">
                 <i class="fas fa-arrow-left me-1"></i>
                 Retour aux Notes
@@ -17,22 +25,63 @@
         </div>
     </div>
 
+    @php
+        $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+        $logoUrl = $schoolInfo && $schoolInfo->logo ? asset('storage/' . $schoolInfo->logo) : null;
+        $schoolName = $schoolInfo && isset($schoolInfo->nom) ? $schoolInfo->nom : 'École';
+        $schoolSlogan = $schoolInfo && isset($schoolInfo->slogan) ? $schoolInfo->slogan : '';
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        $headerBg = '#1a5490';
+        $headerText = '#ffffff';
+    @endphp
+
     @foreach($periodes as $periode)
     <div class="card mb-4">
-        <div class="card-header py-2" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white;">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h5 class="mb-0" style="font-weight: 700; font-size: 1rem;">
-                        @if($periode == 'trimestre1')
-                            Trimestre 1
-                        @elseif($periode == 'trimestre2')
-                            Trimestre 2
-                        @elseif($periode == 'trimestre3')
-                            Trimestre 3
-                        @else
-                            {{ ucfirst($periode) }}
-                        @endif
-                    </h5>
+        <div class="card-header" style="background: linear-gradient(135deg, {{ $headerBg }} 0%, {{ $headerBg }} 100%); color: {{ $headerText }}; border: none; padding: 8px 15px; position: relative;">
+            <!-- Logo aux angles -->
+            <div style="position: absolute; top: 8px; left: 15px;">
+                @if($logoUrl)
+                <img src="{{ $logoUrl }}" alt="Logo de l'école" style="max-width: 50px; max-height: 50px; object-fit: contain; background: white; padding: 4px; border-radius: 5px; display: block;">
+                @endif
+            </div>
+            <div style="position: absolute; top: 8px; right: 15px;">
+                @if($logoUrl)
+                <img src="{{ $logoUrl }}" alt="Logo de l'école" style="max-width: 50px; max-height: 50px; object-fit: contain; background: white; padding: 4px; border-radius: 5px; display: block;">
+                @endif
+            </div>
+            
+            <!-- Nom de l'école et slogan au centre -->
+            <div class="text-center" style="padding: 0 70px; margin-bottom: 6px !important; margin-top: 8px;">
+                <h4 class="mb-1" style="font-weight: 800; font-size: 1.2rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; margin-bottom: 4px !important;">
+                    {{ $schoolName }}
+                </h4>
+                @if($schoolSlogan)
+                <div style="font-size: 0.75rem; font-weight: 500; opacity: 0.95; line-height: 1.2; font-style: italic; margin-top: 2px;">
+                    {{ $schoolSlogan }}
+                </div>
+                @endif
+            </div>
+            
+            <div class="border-top border-white border-2 pt-2" style="border-top: 2px solid rgba(255,255,255,0.3) !important; padding-top: 6px !important; margin-top: 8px; padding-left: 0; padding-right: 0;">
+                <div class="row align-items-center" style="margin-left: 0; margin-right: 0;">
+                    <div class="col-md-6" style="padding-left: 0; padding-right: 5px;">
+                        <h3 class="mb-0" style="font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 1.05rem; letter-spacing: 0.5px; line-height: 1.2;">BULLETIN DE NOTES</h3>
+                        <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.95; line-height: 1.2; margin-top: 2px;">{{ $eleve->classe->nom }} - {{ $eleve->classe->niveau }}</div>
+                    </div>
+                    <div class="col-md-6 text-end" style="padding-left: 5px; padding-right: 0;">
+                        <h4 style="font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1.2;">Année Scolaire {{ $anneeScolaireActive ? $anneeScolaireActive->nom : (date('Y') . '-' . (date('Y')+1)) }}</h4>
+                        <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.95; line-height: 1.2;">
+                            @if($periode == 'trimestre1')
+                                Trimestre 1
+                            @elseif($periode == 'trimestre2')
+                                Trimestre 2
+                            @elseif($periode == 'trimestre3')
+                                Trimestre 3
+                            @else
+                                {{ ucfirst($periode) }}
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -42,6 +91,7 @@
             <div class="row mb-2" style="margin-bottom: 8px !important;">
                 <div class="col-md-6">
                     <h5 style="font-size: 1.05rem; margin-bottom: 4px; font-weight: 800; color: #2c3e50; line-height: 1.2;"><strong>{{ $eleve->nom_complet }}</strong></h5>
+                    <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Classe:</strong> <span class="badge bg-primary" style="font-size: 0.9rem;">{{ $eleve->classe->nom }}</span></p>
                     <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Numéro:</strong> <span style="font-weight: 500;">{{ $eleve->numero_etudiant }}</span></p>
                     <p class="mb-1" style="font-size: 0.9rem; margin-bottom: 3px; font-weight: 600; line-height: 1.2;"><strong>Date de naissance:</strong> <span style="font-weight: 500;">{{ $eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span></p>
                 </div>
