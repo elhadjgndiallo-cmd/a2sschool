@@ -121,9 +121,7 @@ class ComptabiliteController extends Controller
             // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
             $correspondSalaire = false;
             foreach ($salairesPayes as $salaire) {
-                if ($depense->type_depense == 'salaire_enseignant' &&
-                    $depense->montant == $salaire->salaire_net &&
-                    $depense->date_depense->format('Y-m-d') == $salaire->date_paiement->format('Y-m-d')) {
+                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
                     $correspondSalaire = true;
                     break;
                 }
@@ -512,7 +510,8 @@ class ComptabiliteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
 
-        $query = Depense::with(['approuvePar', 'payePar']);
+        $query = Depense::with(['approuvePar', 'payePar'])
+            ->where('statut', '!=', 'annule');
 
         $query->whereBetween('date_depense', [
             $anneeScolaire->date_debut->format('Y-m-d'),
@@ -574,9 +573,7 @@ class ComptabiliteController extends Controller
             // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
             $correspondSalaire = false;
             foreach ($salairesPayes as $salaire) {
-                if ($depense->type_depense === 'salaire_enseignant' && 
-                    $depense->date_depense->format('Y-m-d') == $salaire->date_paiement->format('Y-m-d') &&
-                    abs($depense->montant - $salaire->salaire_net) < 0.01) {
+                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
                     $correspondSalaire = true;
                     break;
                 }
@@ -1470,7 +1467,8 @@ class ComptabiliteController extends Controller
      */
     private function depenseCorrespondSalairePaye(Depense $depense, SalaireEnseignant $salaire): bool
     {
-        return $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
+        return $depense->type_depense === 'salaire_enseignant'
+            && $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
             && abs((float) $depense->montant - (float) $salaire->salaire_net) < 0.01;
     }
 }
