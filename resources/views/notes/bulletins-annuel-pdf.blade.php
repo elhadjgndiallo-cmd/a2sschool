@@ -99,49 +99,40 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($bulletin['notesParPeriode'] as $periode => $notes)
-                    @foreach($notes as $index => $note)
-                        @if($loop->first)
+                @php
+                    $matieresGrouped = [];
+                    foreach ($bulletin['notesParPeriode'] as $notes) {
+                        foreach ($notes as $note) {
+                            $matieresGrouped[$note->matiere_id] = $note->matiere;
+                        }
+                    }
+                    $notesFinalesParMatiere = $bulletin['notesFinalesParMatiereParPeriode'] ?? [];
+                    $moyennesAnnuellesParMatiere = $bulletin['moyennesAnnuellesParMatiere'] ?? [];
+                @endphp
+                @foreach($matieresGrouped as $matiereId => $matiere)
                         <tr>
-                            <td class="text-left">{{ $note->matiere->nom }}</td>
+                            <td class="text-left">{{ $matiere->nom }}</td>
                             @foreach($bulletin['periodes'] as $p)
                                 @php
-                                $notePeriode = $bulletin['notesParPeriode'][$p]->where('matiere_id', $note->matiere_id)->first();
+                                $noteFinalePeriode = $notesFinalesParMatiere[$matiereId][$p] ?? null;
+                                $notePeriode = isset($bulletin['notesParPeriode'][$p]) ? $bulletin['notesParPeriode'][$p]->where('matiere_id', $matiereId)->first() : null;
                                 @endphp
                                 <td>
-                                    {{ $notePeriode ? number_format($notePeriode->note_finale, 2) : '-' }}
+                                    {{ $noteFinalePeriode !== null ? number_format($noteFinalePeriode, 2) : '-' }}
                                 </td>
                                 <td>
-                                    {{ $notePeriode ? $notePeriode->coefficient : '-' }}
+                                    {{ $notePeriode ? ($notePeriode->coefficient ?? 1) : '-' }}
                                 </td>
                             @endforeach
                             <td>
-                                @php
-                                $totalPoints = 0;
-                                $totalCoeffs = 0;
-                                @endphp
-                                @foreach($bulletin['periodes'] as $p)
-                                    @php
-                                    $n = $bulletin['notesParPeriode'][$p]->where('matiere_id', $note->matiere_id)->first();
-                                    if($n && $n->note_finale !== null) {
-                                        $totalPoints += $n->note_finale * ($n->coefficient ?? 1);
-                                        $totalCoeffs += ($n->coefficient ?? 1);
-                                    }
-                                    @endphp
-                                @endforeach
-                                @php
-                                $moyenneAnnuelleMat = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
-                                @endphp
-                                {{ number_format($moyenneAnnuelleMat, 2) }}
+                                {{ number_format($moyennesAnnuellesParMatiere[$matiereId] ?? 0, 2) }}
                             </td>
                         </tr>
-                        @endif
-                    @endforeach
                 @endforeach
             </tbody>
             <tfoot>
                 <tr class="moyenne-generale">
-                    <td><strong>Moyenne Période</strong></td>
+                    <td><strong>Moyenne Générale</strong></td>
                     @foreach($bulletin['periodes'] as $periode)
                     <td colspan="2">
                         <strong>{{ number_format($bulletin['moyennesParPeriode'][$periode], 2) }}</strong>

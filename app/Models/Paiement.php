@@ -52,6 +52,18 @@ class Paiement extends Model
     }
 
     /**
+     * Paiements non rattachés à une facture (évite le double comptage en comptabilité).
+     */
+    public function scopeSansFacture(Builder $query): Builder
+    {
+        return $query->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('facture_lignes')
+                ->whereColumn('facture_lignes.paiement_id', 'paiements.id');
+        });
+    }
+
+    /**
      * Paiements des élèves d'une année scolaire (jointure, plus efficace que whereHas).
      */
     public function scopeForAnneeScolaire(Builder $query, int $anneeScolaireId): Builder

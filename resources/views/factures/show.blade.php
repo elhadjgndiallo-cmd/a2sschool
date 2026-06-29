@@ -10,13 +10,31 @@
             <p class="text-muted mb-0">{{ $facture->date_facture->format('d/m/Y') }} — {{ $facture->anneeScolaire->nom ?? '' }}</p>
         </div>
         <div class="col-md-4 text-end">
+            @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'payee')
+                <a href="{{ route('factures.edit', $facture) }}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </a>
+            @endif
             <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-success" target="_blank"><i class="fas fa-receipt me-1"></i> Reçu / PDF</a>
             <a href="{{ route('factures.index') }}" class="btn btn-secondary">Retour</a>
+            @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'payee')
+                <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
+                      onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront également retirés.')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
     <div class="row">

@@ -34,64 +34,11 @@ class ComptabiliteController extends Controller
             // Statistiques générales pour l'année active
             $stats = $this->getComptabiliteStats($anneeScolaireActive);
         
-        // Récupérer toutes les entrées manuelles de l'année scolaire active
-        $entreesManuelles = Entree::with('enregistrePar:id,nom,prenom')
-            ->whereBetween('date_entree', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
-            ->orderBy('date_entree', 'desc')
-            ->limit(30)
-            ->get();
-        
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
 
-        // Index léger pour exclure les doublons (sans charger toutes les relations)
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup(
-            Paiement::forAnneeScolaire($anneeScolaireActive->id)
-                ->select([
-                    'paiements.reference_paiement',
-                    'paiements.montant_paye',
-                    'paiements.date_paiement',
-                    'paiements.encaisse_par',
-                ])
-                ->get()
-        );
-
-        // Paiements récents avec relations ciblées (dashboard : 30 derniers suffisent)
-        $paiementsFrais = $entreesStats
-            ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaireActive)
-            ->limit(30)
-            ->get();
-
-        $toutesLesEntrees = collect();
-
-        foreach ($entreesManuelles as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
-            }
-
-            $toutesLesEntrees->push((object) [
-                'id' => 'entree_' . $entree->id,
-                'type' => 'entree',
-                'date' => $entree->date_entree,
-                'description' => $entree->description,
-                'montant' => $entree->montant,
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree,
-            ]);
-        }
-
-        foreach ($paiementsFrais as $paiement) {
-            $entry = $entreesStats->mapPaiementToListEntry($paiement, new Request());
-            if ($entry) {
-                $toutesLesEntrees->push($entry);
-            }
-        }
-        
-        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
-        $toutesLesEntrees = $toutesLesEntrees->sortByDesc('date')->take(10);
+        $toutesLesEntrees = $entreesStats
+            ->buildListEntries(new Request(), $anneeScolaireActive)
+            ->take(10);
             
         // Récupérer toutes les dépenses de l'année scolaire active
         $depenses = Depense::with(['approuvePar', 'payePar'])
@@ -319,91 +266,9 @@ class ComptabiliteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
         
-        // Récupérer les entrées manuelles
-        $query = Entree::with('enregistrePar');
-        
-        // Filtrer par période de l'année scolaire sélectionnée
-        if ($anneeScolaire) {
-            $query->whereBetween('date_entree', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d')
-            ]);
-        }
-        
-        // Filtres supplémentaires
-        if ($request->filled('date_debut')) {
-            $query->whereDate('date_entree', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $query->whereDate('date_entree', '<=', $request->date_fin);
-        }
-        
-        if ($request->filled('source')) {
-            $query->where('source', $request->source);
-        }
-        
-        // Filtre par montant minimum
-        if ($request->filled('montant_min')) {
-            $query->where('montant', '>=', $request->montant_min);
-        }
-        
-        // Filtre par montant maximum
-        if ($request->filled('montant_max')) {
-            $query->where('montant', '<=', $request->montant_max);
-        }
-        
-        // Filtre par type d'entrée
-        if ($request->filled('type_entree')) {
-            if ($request->type_entree == 'manuelle') {
-                // Ne rien faire, on garde les entrées manuelles
-            } elseif ($request->type_entree == 'paiement') {
-                // On ne récupérera que les paiements plus tard
-                $query->whereRaw('1 = 0'); // Ne récupérer aucune entrée manuelle
-            }
-        }
-        
-        $entrees = $query->orderBy('date_entree', 'desc')->get();
-
+        // Récupérer les entrées (manuelles, factures payées, paiements hors facture)
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
-
-        $paiementsFrais = $entreesStats
-            ->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)
-            ->get();
-
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiementsFrais);
-
-        $allEntries = collect();
-
-        foreach ($entrees as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
-            }
-
-            if ($request->filled('type_entree') && $request->type_entree === 'paiement') {
-                continue;
-            }
-
-            $allEntries->push((object) [
-                'id' => 'entree_' . $entree->id,
-                'type' => 'entree',
-                'date' => $entree->date_entree,
-                'description' => $entree->description,
-                'montant' => $entree->montant,
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree,
-            ]);
-        }
-
-        foreach ($paiementsFrais as $paiement) {
-            $entry = $entreesStats->mapPaiementToListEntry($paiement, $request);
-            if ($entry) {
-                $allEntries->push($entry);
-            }
-        }
-
-        $allEntries = $allEntries->sortByDesc('date');
+        $allEntries = $entreesStats->buildListEntries($request, $anneeScolaire);
 
         $perPage = 50;
         $currentPage = request()->get('page', 1);
@@ -432,7 +297,7 @@ class ComptabiliteController extends Controller
         $sources = [];
         
         // Récupérer les types de frais uniques des paiements de l'année sélectionnée
-        $typesFraisQuery = \App\Models\Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
+        $typesFraisQuery = \App\Models\Paiement::sansFacture()->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
             if ($anneeScolaire) {
                 $q->where('annee_scolaire_id', $anneeScolaire->id);
             }
@@ -481,6 +346,9 @@ class ComptabiliteController extends Controller
         
         // Combiner les sources
         $sources = array_merge($sources, $sourcesEntrees);
+        if (\App\Models\Facture::where('statut', 'payee')->where('annee_scolaire_id', $anneeScolaire->id)->exists()) {
+            $sources[] = 'Frais de scolarité';
+        }
         $sources = array_unique($sources);
         sort($sources);
         
@@ -753,7 +621,7 @@ class ComptabiliteController extends Controller
         
         // Récupérer les paiements filtrés par année scolaire ET par dates (comme dans entrees)
         // Filtrer d'abord par année scolaire (comme dans entrees)
-        $paiementsQuery = Paiement::query();
+        $paiementsQuery = Paiement::query()->sansFacture();
         
         if ($anneeScolaire) {
             $paiementsQuery->whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
@@ -815,7 +683,8 @@ class ComptabiliteController extends Controller
         
         // Ajouter les paiements par type de frais (filtrés par année scolaire et dates)
         // Filtrer d'abord par année scolaire (comme dans entrees)
-        $paiementsParTypeFraisQuery = Paiement::select('frais_scolarite.type_frais', DB::raw('SUM(paiements.montant_paye) as total'))
+        $paiementsParTypeFraisQuery = Paiement::sansFacture()
+            ->select('frais_scolarite.type_frais', DB::raw('SUM(paiements.montant_paye) as total'))
             ->join('frais_scolarite', 'paiements.frais_scolarite_id', '=', 'frais_scolarite.id')
             ->whereNotNull('frais_scolarite.type_frais');
         
@@ -945,7 +814,7 @@ class ComptabiliteController extends Controller
             
         // Paiements par mode (filtrés par année scolaire et dates)
         // Filtrer d'abord par année scolaire (comme dans entrees)
-        $paiementsParModeQuery = Paiement::query();
+        $paiementsParModeQuery = Paiement::query()->sansFacture();
         
         // Filtrer les paiements par année scolaire
         if ($anneeScolaire) {
@@ -1051,7 +920,7 @@ class ComptabiliteController extends Controller
         $sourcesAuto = ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires'];
         
         // Récupérer les références des paiements pour exclure les entrées correspondantes
-        $paiementsQuery = Paiement::where('date_paiement', '>=', Carbon::now()->subMonths(12));
+        $paiementsQuery = Paiement::sansFacture()->where('date_paiement', '>=', Carbon::now()->subMonths(12));
         $paiementsReferences = $paiementsQuery->pluck('reference_paiement')->filter()->toArray();
         
         // Entrées manuelles par mois (exclure les sources automatiques)
@@ -1074,7 +943,7 @@ class ComptabiliteController extends Controller
             ->get();
         
         // Paiements par mois
-        $paiementsParMois = Paiement::select(
+        $paiementsParMois = Paiement::sansFacture()->select(
                 DB::raw('YEAR(date_paiement) as annee'),
                 DB::raw('MONTH(date_paiement) as mois'),
                 DB::raw('SUM(montant_paye) as total')
@@ -1360,11 +1229,14 @@ class ComptabiliteController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $paiementsQuery = Paiement::withComptabiliteAffichage()
-            ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
-
         if ($anneeScolaire) {
-            $paiementsQuery->forAnneeScolaire($anneeScolaire->id);
+            $paiementsQuery = $entreesStats
+                ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaire)
+                ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
+        } else {
+            $paiementsQuery = Paiement::withComptabiliteAffichage()
+                ->sansFacture()
+                ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
         }
 
         $paiements = $paiementsQuery->orderBy('paiements.created_at', 'asc')->get();
@@ -1377,7 +1249,7 @@ class ComptabiliteController extends Controller
 
             $journal->push([
                 'date' => $entree->date_entree,
-                'libelle' => $entree->description ?? $entree->libelle,
+                'libelle' => $entree->libelle ?: $entree->description,
                 'entree' => (float) $entree->montant,
                 'sortie' => 0,
                 'type' => 'entree_manuelle',

@@ -132,17 +132,24 @@ class Note extends Model
         $notes = self::where('eleve_id', $eleveId)
             ->where('periode', $periode)
             ->with('matiere')
-            ->get()
-            ->groupBy('matiere_id');
+            ->get();
 
+        return self::calculerMoyenneGeneraleDepuisCollection($notes);
+    }
+
+    /**
+     * Moyenne générale trimestrielle à partir d'une collection de notes (groupée par matière).
+     */
+    public static function calculerMoyenneGeneraleDepuisCollection($notes): float
+    {
+        $grouped = collect($notes)->groupBy('matiere_id');
         $totalPoints = 0;
         $totalCoefficients = 0;
 
-        foreach ($notes as $matiereId => $notesMatiere) {
+        foreach ($grouped as $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere ?? null;
             $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
 
-            // Moyenne pondérée par le coefficient de chaque note
             $sommeNoteCoeff = 0;
             $sommeCoeff = 0;
 
@@ -169,6 +176,113 @@ class Note extends Model
         }
 
         return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+    }
+
+    /**
+     * Moyenne finale d'une matière pour un trimestre (agrège plusieurs lignes si besoin).
+     */
+    public static function moyenneFinaleMatierePeriode($notesCollection, int $matiereId): ?float
+    {
+        $notesMatiere = collect($notesCollection)->where('matiere_id', $matiereId);
+        if ($notesMatiere->isEmpty()) {
+            return null;
+        }
+
+        $matiere = $notesMatiere->first()->matiere ?? null;
+        $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
+
+        $sommeNoteCoeff = 0;
+        $sommeCoeff = 0;
+
+        foreach ($notesMatiere as $note) {
+            $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
+            if ($noteFinale === null) {
+                continue;
+            }
+            $coefNote = $note->coefficient ?? $coefMatiereDefaut;
+            if ($coefNote <= 0) {
+                $coefNote = $coefMatiereDefaut;
+            }
+            $sommeNoteCoeff += $noteFinale * $coefNote;
+            $sommeCoeff += $coefNote;
+        }
+
+        return $sommeCoeff > 0 ? round($sommeNoteCoeff / $sommeCoeff, 2) : null;
+    }
+
+    /**
+     * Moyenne annuelle d'une matière : moyenne arithmétique des notes finales par trimestre.
+     */
+    public static function calculerMoyenneAnnuelleMatiere(array $notesFinalesParTrimestre): float
+    {
+        $notesValides = array_values(array_filter($notesFinalesParTrimestre, fn ($n) => $n !== null));
+
+        if (empty($notesValides)) {
+            return 0;
+        }
+
+        return round(array_sum($notesValides) / count($notesValides), 2);
+    }
+
+    /**
+     * Moyenne générale annuelle : moyenne simple des moyennes trimestrielles.
+     */
+    public static function calculerMoyenneGeneraleAnnuelle(array $moyennesParTrimestre): float
+    {
+        $moyennesValides = array_values(array_filter($moyennesParTrimestre, fn ($m) => $m !== null));
+
+        if (empty($moyennesValides)) {
+            return 0;
+        }
+
+        return round(array_sum($moyennesValides) / count($moyennesValides), 2);
+    }
+
+    /**
+     * Notes finales agrégées par matière et par trimestre.
+     */
+    public static function construireNotesFinalesParMatiereParPeriode(array $notesParPeriode, array $periodes): array
+    {
+        $matiereIds = [];
+        foreach ($periodes as $periode) {
+            if (!isset($notesParPeriode[$periode])) {
+                continue;
+            }
+            foreach ($notesParPeriode[$periode] as $note) {
+                $matiereIds[$note->matiere_id] = true;
+            }
+        }
+
+        $result = [];
+        foreach (array_keys($matiereIds) as $matiereId) {
+            $result[$matiereId] = [];
+            foreach ($periodes as $periode) {
+                if (!isset($notesParPeriode[$periode])) {
+                    continue;
+                }
+                $moyenne = self::moyenneFinaleMatierePeriode($notesParPeriode[$periode], $matiereId);
+                if ($moyenne !== null) {
+                    $result[$matiereId][$periode] = $moyenne;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Moyennes annuelles par matière à partir des notes par période.
+     */
+    public static function construireMoyennesAnnuellesParMatiere(array $notesParPeriode, array $periodes): array
+    {
+        $notesFinales = self::construireNotesFinalesParMatiereParPeriode($notesParPeriode, $periodes);
+        $result = [];
+
+        foreach ($notesFinales as $matiereId => $notesParTrimestre) {
+            $result[$matiereId] = self::calculerMoyenneAnnuelleMatiere(array_values($notesParTrimestre));
+        }
+
+        return $result;
     }
 
     /**

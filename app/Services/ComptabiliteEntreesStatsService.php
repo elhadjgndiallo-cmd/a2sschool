@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AnneeScolaire;
 use App\Models\Entree;
+use App\Models\Facture;
 use App\Models\Paiement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class ComptabiliteEntreesStatsService
         $total = (float) $merged->sum('montant');
         $nombre = $merged->count();
         $manuelles = $merged->where('type', 'entree');
-        $paiements = $merged->where('type', 'paiement');
+        $paiements = $merged->whereIn('type', ['paiement', 'facture']);
 
         return [
             'total' => $total,
@@ -49,18 +50,16 @@ class ComptabiliteEntreesStatsService
     }
 
     /**
-     * Collection unifiée (même logique que les listes comptabilite/entrees et entrees).
+     * Liste unifiée pour comptabilite/entrees, dashboard et statistiques.
      */
-    public function buildMergedEntries(Request $request, ?AnneeScolaire $anneeScolaire = null): Collection
+    public function buildListEntries(Request $request, AnneeScolaire $anneeScolaire): Collection
     {
-        $query = Entree::query();
+        $query = Entree::with('enregistrePar');
 
-        if ($anneeScolaire) {
-            $query->whereBetween('date_entree', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ]);
-        }
+        $query->whereBetween('date_entree', [
+            $anneeScolaire->date_debut->format('Y-m-d'),
+            $anneeScolaire->date_fin->format('Y-m-d'),
+        ]);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_entree', '>=', $request->date_debut);
@@ -86,45 +85,67 @@ class ComptabiliteEntreesStatsService
             $query->whereRaw('1 = 0');
         }
 
-        $entrees = $query->orderBy('date_entree', 'desc')->get();
+        $entrees = $query->orderByDesc('date_entree')->get();
+        $factures = $this->facturesForComptabiliteQuery($request, $anneeScolaire)->get();
+        $numerosFactures = $factures->pluck('numero_facture')->flip()->all();
 
-        $paiementsFrais = $anneeScolaire
-            ? $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get()
-            : collect();
-
+        $paiementsFrais = $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get();
         $duplicateLookup = $this->buildPaiementDuplicateLookup($paiementsFrais);
 
         $allEntries = collect();
 
         foreach ($entrees as $entree) {
+            if ($entree->reference && isset($numerosFactures[$entree->reference])) {
+                continue;
+            }
+
             if ($this->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
 
-            $allEntries->push((object) [
-                'type' => 'entree',
-                'montant' => (float) $entree->montant,
-                'source' => $entree->source,
-            ]);
-        }
+            if ($request->filled('type_entree') && $request->type_entree === 'paiement') {
+                continue;
+            }
 
-        if ($anneeScolaire && (!$request->filled('type_entree') || $request->type_entree !== 'manuelle')) {
-            foreach ($paiementsFrais as $paiement) {
-                $source = $this->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
-
-                if ($request->filled('source') && $source !== $request->source) {
-                    continue;
-                }
-
-                $allEntries->push((object) [
-                    'type' => 'paiement',
-                    'montant' => (float) $paiement->montant_paye,
-                    'source' => $source,
-                ]);
+            $mapped = $this->mapEntreeToListEntry($entree, $request);
+            if ($mapped) {
+                $allEntries->push($mapped);
             }
         }
 
-        return $allEntries;
+        if (!$request->filled('type_entree') || $request->type_entree !== 'manuelle') {
+            foreach ($factures as $facture) {
+                $entry = $this->mapFactureToListEntry($facture, $request);
+                if ($entry) {
+                    $allEntries->push($entry);
+                }
+            }
+
+            foreach ($paiementsFrais as $paiement) {
+                $entry = $this->mapPaiementToListEntry($paiement, $request);
+                if ($entry) {
+                    $allEntries->push($entry);
+                }
+            }
+        }
+
+        return $allEntries->sortByDesc('date')->values();
+    }
+
+    /**
+     * Collection unifiée (même logique que les listes comptabilite/entrees et entrees).
+     */
+    public function buildMergedEntries(Request $request, ?AnneeScolaire $anneeScolaire = null): Collection
+    {
+        if (!$anneeScolaire) {
+            return collect();
+        }
+
+        return $this->buildListEntries($request, $anneeScolaire)->map(fn ($entry) => (object) [
+            'type' => $entry->type,
+            'montant' => (float) $entry->montant,
+            'source' => $entry->source,
+        ]);
     }
 
     /**
@@ -133,6 +154,7 @@ class ComptabiliteEntreesStatsService
     public function paiementsFraisForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
         $query = Paiement::query()
+            ->sansFacture()
             ->forAnneeScolaire($anneeScolaire->id)
             ->withComptabiliteAffichage();
 
@@ -152,14 +174,102 @@ class ComptabiliteEntreesStatsService
             $query->where('paiements.montant_paye', '<=', $request->montant_max);
         }
 
-        // Paiements rattachés à une facture : une seule entrée comptable globale
-        $query->whereNotExists(function ($sub) {
-            $sub->selectRaw('1')
-                ->from('facture_lignes')
-                ->whereColumn('facture_lignes.paiement_id', 'paiements.id');
-        });
-
         return $query->orderByDesc('paiements.date_paiement');
+    }
+
+    /**
+     * Factures payées (une entrée comptable par numéro de facture).
+     */
+    public function facturesForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
+    {
+        $query = Facture::query()
+            ->where('statut', 'payee')
+            ->where('annee_scolaire_id', $anneeScolaire->id)
+            ->with([
+                'eleve.utilisateur:id,nom,prenom',
+                'eleve.classe:id,nom',
+                'eleve:id,utilisateur_id,classe_id,numero_etudiant',
+                'generePar:id,nom,prenom',
+                'lignes:id,facture_id,libelle',
+            ]);
+
+        if ($request->filled('date_debut')) {
+            $query->whereDate('date_facture', '>=', $request->date_debut);
+        }
+
+        if ($request->filled('date_fin')) {
+            $query->whereDate('date_facture', '<=', $request->date_fin);
+        }
+
+        if ($request->filled('montant_min')) {
+            $query->where('total', '>=', $request->montant_min);
+        }
+
+        if ($request->filled('montant_max')) {
+            $query->where('total', '<=', $request->montant_max);
+        }
+
+        return $query->orderByDesc('date_facture');
+    }
+
+    public function factureEleveResume(Facture $facture): string
+    {
+        $eleve = $facture->eleve;
+        $eleveNom = $eleve?->utilisateur
+            ? trim($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom)
+            : 'Élève inconnu';
+        $matricule = $eleve?->numero_etudiant ?? 'N/A';
+        $classe = $eleve?->classe?->nom ?? 'N/A';
+
+        return $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
+    }
+
+    public function mapEntreeToListEntry(Entree $entree, Request $request): ?object
+    {
+        if ($request->filled('source') && $entree->source !== $request->source) {
+            return null;
+        }
+
+        return (object) [
+            'id' => 'entree_' . $entree->id,
+            'type' => 'entree',
+            'date' => $entree->date_entree,
+            'description' => $entree->description ?: $entree->libelle,
+            'detail' => $entree->libelle && $entree->description ? $entree->libelle : null,
+            'montant' => (float) $entree->montant,
+            'source' => $entree->source,
+            'enregistre_par' => $entree->enregistrePar,
+            'data' => $entree,
+        ];
+    }
+
+    public function mapFactureToListEntry(Facture $facture, Request $request): ?object
+    {
+        if ($request->filled('type_entree') && $request->type_entree === 'manuelle') {
+            return null;
+        }
+
+        $source = 'Frais de scolarité';
+        if ($request->filled('source') && $request->source !== $source) {
+            return null;
+        }
+
+        $libellesMois = $facture->lignes->pluck('libelle')->implode(', ');
+
+        return (object) [
+            'id' => 'facture_' . $facture->id,
+            'type' => 'facture',
+            'date' => $facture->date_facture,
+            'description' => 'Paiement frais scolarité - ' . $this->factureEleveResume($facture),
+            'detail' => 'Facture ' . $facture->numero_facture . ' — '
+                . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
+                . ($libellesMois ? ' — ' . $libellesMois : ''),
+            'montant' => (float) $facture->total,
+            'source' => $source,
+            'enregistre_par' => $facture->generePar,
+            'data' => $facture,
+            'reference' => $facture->numero_facture,
+        ];
     }
 
     /**
@@ -270,6 +380,10 @@ class ComptabiliteEntreesStatsService
 
     public function isPaiementDuplicateEntry(Entree $entree, array $lookup): bool
     {
+        if ($entree->reference && Facture::where('numero_facture', $entree->reference)->exists()) {
+            return false;
+        }
+
         if ($entree->reference && isset($lookup['references'][$entree->reference])) {
             return true;
         }

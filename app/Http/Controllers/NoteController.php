@@ -3216,6 +3216,52 @@ class NoteController extends Controller
     }
     
     /**
+     * Préparer les données communes d'un bulletin annuel pour un élève.
+     */
+    private function preparerDonneesBulletinAnnuel(Eleve $eleve, array $periodes): array
+    {
+        $notesParPeriode = [];
+        $moyennesParPeriode = [];
+
+        foreach ($periodes as $periode) {
+            $notes = $eleve->notes()
+                ->where('periode', $periode)
+                ->with('matiere')
+                ->get();
+
+            $notesParPeriode[$periode] = $notes;
+            $moyennesParPeriode[$periode] = Note::calculerMoyenneGenerale($eleve->id, $periode);
+        }
+
+        return [
+            'notesParPeriode' => $notesParPeriode,
+            'moyennesParPeriode' => $moyennesParPeriode,
+            'moyenneAnnuelle' => Note::calculerMoyenneGeneraleAnnuelle($moyennesParPeriode),
+            'moyennesAnnuellesParMatiere' => Note::construireMoyennesAnnuellesParMatiere($notesParPeriode, $periodes),
+            'notesFinalesParMatiereParPeriode' => Note::construireNotesFinalesParMatiereParPeriode($notesParPeriode, $periodes),
+        ];
+    }
+
+    /**
+     * Générer le token de vérification pour un bulletin annuel.
+     */
+    private function genererTokenVerificationAnnuel(Eleve $eleve, int $classeId, int $anneeScolaireId, float $moyenneAnnuelle): array
+    {
+        $dataToHash = $eleve->id . '|' . $classeId . '|annuel|' . $anneeScolaireId . '|' . number_format($moyenneAnnuelle, 2);
+        $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
+        $token = base64_encode(json_encode([
+            'e' => $eleve->id,
+            'c' => $classeId,
+            'p' => 'annuel',
+            'a' => $anneeScolaireId,
+            'h' => $verificationHash,
+        ]));
+        $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+
+        return compact('token', 'verificationUrl');
+    }
+
+    /**
      * Afficher le bulletin annuel d'un élève
      */
     public function bulletinAnnuel($eleveId)
@@ -3238,64 +3284,19 @@ class NoteController extends Controller
         
         $classe = $eleve->classe;
         $isPrimaire = $classe->isPrimaire();
-        
-        // Définir les périodes selon le niveau
         $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
-        
-        // Récupérer les notes pour chaque période
-        $notesParPeriode = [];
-        $moyennesParPeriode = [];
-        $totalCoefficientsParPeriode = [];
-        
-        foreach ($periodes as $periode) {
-            $notes = $eleve->notes()
-                ->where('periode', $periode)
-                ->with('matiere')
-                ->get();
-                
-            $notesParPeriode[$periode] = $notes;
-            
-            // Calculer la moyenne générale pour la période
-            $totalPoints = 0;
-            $totalCoefficients = 0;
-            
-            foreach ($notes as $note) {
-                if ($note->note_finale !== null) {
-                    $coefficient = $note->coefficient ?? 1;
-                    $totalPoints += $note->note_finale * $coefficient;
-                    $totalCoefficients += $coefficient;
-                }
-            }
-            
-            $moyennesParPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-            $totalCoefficientsParPeriode[$periode] = $totalCoefficients;
-        }
-        
-        // Calculer la moyenne annuelle
-        $totalPointsAnnuel = 0;
-        $totalCoefficientsAnnuel = 0;
-        
-        foreach ($periodes as $periode) {
-            $totalPointsAnnuel += $moyennesParPeriode[$periode] * $totalCoefficientsParPeriode[$periode];
-            $totalCoefficientsAnnuel += $totalCoefficientsParPeriode[$periode];
-        }
-        
-        $moyenneAnnuelle = $totalCoefficientsAnnuel > 0 ? $totalPointsAnnuel / $totalCoefficientsAnnuel : 0;
-        
-        // Calculer le rang annuel
-        $rangAnnuel = $this->calculerRangAnnuel($classe->id, $anneeScolaireActive->id, $moyenneAnnuelle, $isPrimaire);
-        
-        // Générer le token de vérification
-        $dataToHash = $eleve->id . '|' . $classe->id . '|annuel|' . $anneeScolaireActive->id . '|' . number_format($moyenneAnnuelle, 2);
-        $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
-        $token = base64_encode(json_encode([
-            'e' => $eleve->id,
-            'c' => $classe->id,
-            'p' => 'annuel',
-            'a' => $anneeScolaireActive->id,
-            'h' => $verificationHash
-        ]));
-        $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+
+        $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+        $notesParPeriode = $donneesAnnuelles['notesParPeriode'];
+        $moyennesParPeriode = $donneesAnnuelles['moyennesParPeriode'];
+        $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'];
+        $moyennesAnnuellesParMatiere = $donneesAnnuelles['moyennesAnnuellesParMatiere'];
+        $notesFinalesParMatiereParPeriode = $donneesAnnuelles['notesFinalesParMatiereParPeriode'];
+
+        $rangAnnuel = $this->calculerRangAnnuel($eleve->id, $classe->id, $anneeScolaireActive->id);
+        $verification = $this->genererTokenVerificationAnnuel($eleve, $classe->id, $anneeScolaireActive->id, $moyenneAnnuelle);
+        $token = $verification['token'];
+        $verificationUrl = $verification['verificationUrl'];
         
         return view('notes.bulletin-annuel', compact(
             'eleve', 
@@ -3304,7 +3305,9 @@ class NoteController extends Controller
             'periodes', 
             'notesParPeriode', 
             'moyennesParPeriode', 
-            'moyenneAnnuelle', 
+            'moyenneAnnuelle',
+            'moyennesAnnuellesParMatiere',
+            'notesFinalesParMatiereParPeriode',
             'rangAnnuel', 
             'verificationUrl', 
             'token'
@@ -3326,64 +3329,17 @@ class NoteController extends Controller
         
         $classe = $eleve->classe;
         $isPrimaire = $classe->isPrimaire();
-        
-        // Définir les périodes selon le niveau
         $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
-        
-        // Récupérer les notes pour chaque période
-        $notesParPeriode = [];
-        $moyennesParPeriode = [];
-        $totalCoefficientsParPeriode = [];
-        
-        foreach ($periodes as $periode) {
-            $notes = $eleve->notes()
-                ->where('periode', $periode)
-                ->with('matiere')
-                ->get();
-                
-            $notesParPeriode[$periode] = $notes;
-            
-            // Calculer la moyenne générale pour la période
-            $totalPoints = 0;
-            $totalCoefficients = 0;
-            
-            foreach ($notes as $note) {
-                if ($note->note_finale !== null) {
-                    $coefficient = $note->coefficient ?? 1;
-                    $totalPoints += $note->note_finale * $coefficient;
-                    $totalCoefficients += $coefficient;
-                }
-            }
-            
-            $moyennesParPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-            $totalCoefficientsParPeriode[$periode] = $totalCoefficients;
-        }
-        
-        // Calculer la moyenne annuelle
-        $totalPointsAnnuel = 0;
-        $totalCoefficientsAnnuel = 0;
-        
-        foreach ($periodes as $periode) {
-            $totalPointsAnnuel += $moyennesParPeriode[$periode] * $totalCoefficientsParPeriode[$periode];
-            $totalCoefficientsAnnuel += $totalCoefficientsParPeriode[$periode];
-        }
-        
-        $moyenneAnnuelle = $totalCoefficientsAnnuel > 0 ? $totalPointsAnnuel / $totalCoefficientsAnnuel : 0;
-        
-        // Calculer le rang annuel
-        $rangAnnuel = $this->calculerRangAnnuel($classe->id, $anneeScolaireActive->id, $moyenneAnnuelle, $isPrimaire);
-        
-        // Générer le token de vérification
-        $dataToHash = $eleve->id . '|' . $classe->id . '|annuel|' . $anneeScolaireActive->id . '|' . number_format($moyenneAnnuelle, 2);
-        $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
-        $token = base64_encode(json_encode([
-            'e' => $eleve->id,
-            'c' => $classe->id,
-            'p' => 'annuel',
-            'a' => $anneeScolaireActive->id,
-            'h' => $verificationHash
-        ]));
-        $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+
+        $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+        $notesParPeriode = $donneesAnnuelles['notesParPeriode'];
+        $moyennesParPeriode = $donneesAnnuelles['moyennesParPeriode'];
+        $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'];
+
+        $rangAnnuel = $this->calculerRangAnnuel($eleve->id, $classe->id, $anneeScolaireActive->id);
+        $verification = $this->genererTokenVerificationAnnuel($eleve, $classe->id, $anneeScolaireActive->id, $moyenneAnnuelle);
+        $token = $verification['token'];
+        $verificationUrl = $verification['verificationUrl'];
         
         return view('notes.bulletin-annuel-formate', compact(
             'eleve', 
@@ -3433,6 +3389,9 @@ class NoteController extends Controller
         }
         
         $classe->setRelation('eleves', $eleves);
+        $effectifClasse = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->count();
         
         // Préparer les bulletins pour chaque élève
         $bulletins = [];
@@ -3455,62 +3414,30 @@ class NoteController extends Controller
                 continue;
             }
             
-            $notesParPeriode = [];
-            $moyennesParPeriode = [];
-            $totalCoefficientsParPeriode = [];
-            
-            foreach ($periodesDisponibles as $periode) {
-                $notes = $eleve->notes()
-                    ->where('periode', $periode)
-                    ->with('matiere')
-                    ->get();
-                    
-                $notesParPeriode[$periode] = $notes;
-                
-                // Calculer la moyenne générale pour la période
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-                
-                foreach ($notes as $note) {
-                    if ($note->note_finale !== null) {
-                        $coefficient = $note->coefficient ?? 1;
-                        $totalPoints += $note->note_finale * $coefficient;
-                        $totalCoefficients += $coefficient;
-                    }
-                }
-                
-                $moyennesParPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-                $totalCoefficientsParPeriode[$periode] = $totalCoefficients;
-            }
-            
-            // Calculer la moyenne annuelle comme la moyenne des moyennes trimestrielles
-            $moyenneAnnuelle = 0;
-            if (!empty($moyennesParPeriode)) {
-                $sommeMoyennes = array_sum($moyennesParPeriode);
-                $nombrePeriodes = count($moyennesParPeriode);
-                $moyenneAnnuelle = $sommeMoyennes / $nombrePeriodes;
-            }
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodesDisponibles);
+            $notesParPeriode = $donneesAnnuelles['notesParPeriode'];
+            $moyennesParPeriode = $donneesAnnuelles['moyennesParPeriode'];
+            $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'];
+            $moyennesAnnuellesParMatiere = $donneesAnnuelles['moyennesAnnuellesParMatiere'];
+            $notesFinalesParMatiereParPeriode = $donneesAnnuelles['notesFinalesParMatiereParPeriode'];
             
             // Calculer le rang annuel
-            $rangAnnuel = $this->calculerRangAnnuel($classe->id, $anneeScolaireActive->id, $moyenneAnnuelle, $isPrimaire);
+            $rangAnnuel = $this->calculerRangAnnuel($eleve->id, $classe->id, $anneeScolaireActive->id);
             
-            // Calculer les rangs par période
+            // Calculer les rangs par période (alignés sur le bulletin trimestriel)
             $rangsParPeriode = [];
             foreach ($periodesDisponibles as $periode) {
-                $rangsParPeriode[$periode] = $this->calculerRangPeriode($classe->id, $anneeScolaireActive->id, $moyennesParPeriode[$periode], $isPrimaire, $periode);
+                $rangsParPeriode[$periode] = $this->calculerRangPourListeResultat(
+                    $eleve->id,
+                    $classe->id,
+                    $periode,
+                    $anneeScolaireActive->id
+                );
             }
             
-            // Générer le token de vérification
-            $dataToHash = $eleve->id . '|' . $classe->id . '|annuel|' . $anneeScolaireActive->id . '|' . number_format($moyenneAnnuelle, 2);
-            $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
-            $token = base64_encode(json_encode([
-                'e' => $eleve->id,
-                'c' => $classe->id,
-                'p' => 'annuel',
-                'a' => $anneeScolaireActive->id,
-                'h' => $verificationHash
-            ]));
-            $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+            $verification = $this->genererTokenVerificationAnnuel($eleve, $classe->id, $anneeScolaireActive->id, $moyenneAnnuelle);
+            $token = $verification['token'];
+            $verificationUrl = $verification['verificationUrl'];
             
             $bulletins[] = [
                 'eleve' => $eleve,
@@ -3518,6 +3445,8 @@ class NoteController extends Controller
                 'notesParPeriode' => $notesParPeriode,
                 'moyennesParPeriode' => $moyennesParPeriode,
                 'moyenneAnnuelle' => $moyenneAnnuelle,
+                'moyennesAnnuellesParMatiere' => $moyennesAnnuellesParMatiere,
+                'notesFinalesParMatiereParPeriode' => $notesFinalesParMatiereParPeriode,
                 'rang' => $rangAnnuel,
                 'rangsParPeriode' => $rangsParPeriode,
                 'token' => $token,
@@ -3530,135 +3459,55 @@ class NoteController extends Controller
             return $a['rang'] - $b['rang'];
         });
         
-        return view('notes.bulletins-annuels-classe', compact('classe', 'bulletins', 'anneeScolaireActive'));
+        return view('notes.bulletins-annuels-classe', compact('classe', 'bulletins', 'anneeScolaireActive', 'effectifClasse'));
     }
     
     /**
-     * Calculer le rang annuel d'un élève
+     * Calculer le rang annuel d'un élève (même logique de tri que les rangs trimestriels).
      */
-    private function calculerRangAnnuel($classeId, $anneeScolaireId, $moyenneEleve, $isPrimaire)
+    private function calculerRangAnnuel(int $eleveId, int $classeId, ?int $anneeScolaireId): int
     {
-        $eleves = Eleve::where('classe_id', $classeId)
-            ->where('annee_scolaire_id', $anneeScolaireId)
-            ->get();
-            
-        $moyennesAnnuelles = [];
-        
+        $query = Eleve::where('classe_id', $classeId);
+        if ($anneeScolaireId) {
+            $query->where('annee_scolaire_id', $anneeScolaireId);
+        }
+        $eleves = $query->orderBy('id')->get();
+
+        $lignes = [];
         foreach ($eleves as $eleve) {
-            // Déterminer les périodes disponibles pour cet élève
             $periodesDisponibles = [];
-            $periodesPossibles = ['trimestre1', 'trimestre2', 'trimestre3'];
-            
-            foreach ($periodesPossibles as $periode) {
-                $notesCount = $eleve->notes()->where('periode', $periode)->count();
-                if ($notesCount > 0) {
+            foreach (['trimestre1', 'trimestre2', 'trimestre3'] as $periode) {
+                if ($eleve->notes()->where('periode', $periode)->exists()) {
                     $periodesDisponibles[] = $periode;
                 }
             }
-            
-            // Si aucune période disponible, passer à l'élève suivant
-            if (empty($periodesDisponibles)) {
-                continue;
-            }
-            
-            // Calculer la moyenne pour chaque période disponible
+
             $moyennesPeriode = [];
             foreach ($periodesDisponibles as $periode) {
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-                
-                $notes = $eleve->notes()->where('periode', $periode)->get();
-                
-                foreach ($notes as $note) {
-                    if ($note->note_finale !== null) {
-                        $coefficient = $note->coefficient ?? 1;
-                        $totalPoints += $note->note_finale * $coefficient;
-                        $totalCoefficients += $coefficient;
-                    }
-                }
-                
-                $moyennesPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+                $moyennesPeriode[$periode] = Note::calculerMoyenneGenerale($eleve->id, $periode);
             }
-            
-            // Calculer la moyenne annuelle comme la moyenne des moyennes trimestrielles
-            $moyenneAnnuelle = 0;
-            if (!empty($moyennesPeriode)) {
-                $sommeMoyennes = array_sum($moyennesPeriode);
-                $nombrePeriodes = count($moyennesPeriode);
-                $moyenneAnnuelle = $sommeMoyennes / $nombrePeriodes;
-            }
-            $moyennesAnnuelles[] = [
-                'eleve_id' => $eleve->id,
-                'moyenne' => $moyenneAnnuelle
+
+            $lignes[] = [
+                'id' => $eleve->id,
+                'moyenne' => empty($moyennesPeriode) ? 0 : Note::calculerMoyenneGeneraleAnnuelle($moyennesPeriode),
             ];
         }
-        
-        // Trier les moyennes par ordre décroissant
-        usort($moyennesAnnuelles, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
+
+        usort($lignes, function (array $a, array $b) {
+            $cmp = $b['moyenne'] <=> $a['moyenne'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return $a['id'] <=> $b['id'];
         });
-        
-        // Trouver le rang de l'élève actuel
-        $rang = 1;
-        foreach ($moyennesAnnuelles as $index => $moyenneData) {
-            if ($moyenneData['moyenne'] == $moyenneEleve) {
-                $rang = $index + 1;
-                break;
+
+        foreach ($lignes as $index => $ligne) {
+            if ((int) $ligne['id'] === $eleveId) {
+                return $index + 1;
             }
         }
-        
-        return $rang;
-    }
-    
-    /**
-     * Calculer le rang d'un élève pour une période donnée
-     */
-    private function calculerRangPeriode($classeId, $anneeScolaireId, $moyenneEleve, $isPrimaire, $periode)
-    {
-        $eleves = Eleve::where('classe_id', $classeId)
-            ->where('annee_scolaire_id', $anneeScolaireId)
-            ->get();
-        
-        $moyennesPeriode = [];
-        
-        foreach ($eleves as $eleve) {
-            $notes = $eleve->notes()
-                ->where('periode', $periode)
-                ->get();
-                
-            $totalPoints = 0;
-            $totalCoefficients = 0;
-            
-            foreach ($notes as $note) {
-                if ($note->note_finale !== null) {
-                    $coefficient = $note->coefficient ?? 1;
-                    $totalPoints += $note->note_finale * $coefficient;
-                    $totalCoefficients += $coefficient;
-                }
-            }
-            
-            $moyenne = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-            $moyennesPeriode[] = [
-                'eleve_id' => $eleve->id,
-                'moyenne' => $moyenne
-            ];
-        }
-        
-        // Trier les moyennes par ordre décroissant
-        usort($moyennesPeriode, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
-        });
-        
-        // Trouver le rang de l'élève actuel
-        $rang = 1;
-        foreach ($moyennesPeriode as $index => $moyenneData) {
-            if ($moyenneData['moyenne'] == $moyenneEleve) {
-                $rang = $index + 1;
-                break;
-            }
-        }
-        
-        return $rang;
+
+        return max(1, count($lignes));
     }
     
     /**
@@ -3687,49 +3536,16 @@ class NoteController extends Controller
         foreach ($elevesActifs as $eleve) {
             $isPrimaire = $classe->isPrimaire();
             $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
-            
-            // Calculer les données annuelles
-            $notesParPeriode = [];
-            $moyennesParPeriode = [];
-            $totalCoefficientsAnnuel = 0;
-            $totalPointsAnnuel = 0;
-            
-            foreach ($periodes as $periode) {
-                $notes = $eleve->notes()->where('periode', $periode)->get();
-                $notesParPeriode[$periode] = $notes;
-                
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-                
-                foreach ($notes as $note) {
-                    if ($note->note_finale !== null) {
-                        $coefficient = $note->coefficient ?? 1;
-                        $totalPoints += $note->note_finale * $coefficient;
-                        $totalCoefficients += $coefficient;
-                    }
-                }
-                
-                $moyenne = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-                $moyennesParPeriode[$periode] = $moyenne;
-                
-                $totalPointsAnnuel += $moyenne * $totalCoefficients;
-                $totalCoefficientsAnnuel += $totalCoefficients;
-            }
-            
-            $moyenneAnnuelle = $totalCoefficientsAnnuel > 0 ? $totalPointsAnnuel / $totalCoefficientsAnnuel : 0;
-            $rangAnnuel = $this->calculerRangAnnuel($classe->id, $anneeScolaireActive->id, $moyenneAnnuelle, $isPrimaire);
-            
-            // Générer le token de vérification
-            $dataToHash = $eleve->id . '|' . $classe->id . '|annuel|' . $anneeScolaireActive->id . '|' . number_format($moyenneAnnuelle, 2);
-            $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
-            $token = base64_encode(json_encode([
-                'e' => $eleve->id,
-                'c' => $classe->id,
-                'p' => 'annuel',
-                'a' => $anneeScolaireActive->id,
-                'h' => $verificationHash
-            ]));
-            $verificationUrl = url('/notes/bulletin/verifier/' . $token);
+
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+            $notesParPeriode = $donneesAnnuelles['notesParPeriode'];
+            $moyennesParPeriode = $donneesAnnuelles['moyennesParPeriode'];
+            $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'];
+            $moyennesAnnuellesParMatiere = $donneesAnnuelles['moyennesAnnuellesParMatiere'];
+            $notesFinalesParMatiereParPeriode = $donneesAnnuelles['notesFinalesParMatiereParPeriode'];
+
+            $rangAnnuel = $this->calculerRangAnnuel($eleve->id, $classe->id, $anneeScolaireActive->id);
+            $verification = $this->genererTokenVerificationAnnuel($eleve, $classe->id, $anneeScolaireActive->id, $moyenneAnnuelle);
             
             $bulletins[] = [
                 'eleve' => $eleve,
@@ -3739,9 +3555,11 @@ class NoteController extends Controller
                 'notesParPeriode' => $notesParPeriode,
                 'moyennesParPeriode' => $moyennesParPeriode,
                 'moyenneAnnuelle' => $moyenneAnnuelle,
+                'moyennesAnnuellesParMatiere' => $moyennesAnnuellesParMatiere,
+                'notesFinalesParMatiereParPeriode' => $notesFinalesParMatiereParPeriode,
                 'rangAnnuel' => $rangAnnuel,
-                'verificationUrl' => $verificationUrl,
-                'token' => $token
+                'verificationUrl' => $verification['verificationUrl'],
+                'token' => $verification['token']
             ];
         }
         

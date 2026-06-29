@@ -178,10 +178,14 @@
                                             </td>
                                             <td>
                                                 <strong>{{ $entry->description }}</strong>
-                                                <br><small class="text-muted">{{ $entry->source }}</small>
+                                                @if(!empty($entry->detail))
+                                                    <br><small class="text-muted">{{ $entry->detail }}</small>
+                                                @else
+                                                    <br><small class="text-muted">{{ $entry->source }}</small>
+                                                @endif
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ $entry->type == 'entree' ? 'info' : 'primary' }}">
+                                                <span class="badge bg-{{ $entry->type == 'entree' ? 'info' : ($entry->type == 'facture' ? 'success' : 'primary') }}">
                                                     {{ $entry->source }}
                                                 </span>
                                             </td>
@@ -232,6 +236,10 @@
                                                         </a>
                                                         <a href="{{ route('paiements.recu', $entry->data->fraisScolarite) }}" class="btn btn-outline-success" title="Reçu">
                                                             <i class="fas fa-receipt"></i>
+                                                        </a>
+                                                    @elseif($entry->type == 'facture')
+                                                        <a href="{{ route('factures.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir la facture">
+                                                            <i class="fas fa-eye"></i>
                                                         </a>
                                                     @else
                                                         <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir">

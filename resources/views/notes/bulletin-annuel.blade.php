@@ -62,45 +62,38 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($notesParPeriode as $periode => $notes)
-                            @foreach($notes as $index => $note)
-                                @if($loop->first)
+                        @php
+                            $matieresGrouped = [];
+                            foreach ($notesParPeriode as $notes) {
+                                foreach ($notes as $note) {
+                                    $matieresGrouped[$note->matiere_id] = $note->matiere;
+                                }
+                            }
+                        @endphp
+                        @foreach($matieresGrouped as $matiereId => $matiere)
                                 <tr>
-                                    <td><strong>{{ $note->matiere->nom }}</strong></td>
+                                    <td><strong>{{ $matiere->nom }}</strong></td>
                                     @foreach($periodes as $p)
                                         @php
-                                        $notePeriode = $notesParPeriode[$p]->where('matiere_id', $note->matiere_id)->first();
+                                        $noteFinalePeriode = $notesFinalesParMatiereParPeriode[$matiereId][$p] ?? null;
+                                        $notePeriode = isset($notesParPeriode[$p]) ? $notesParPeriode[$p]->where('matiere_id', $matiereId)->first() : null;
                                         @endphp
                                         <td class="text-center">
-                                            {{ $notePeriode ? number_format($notePeriode->note_finale, 2) : '-' }}
+                                            {{ $noteFinalePeriode !== null ? number_format($noteFinalePeriode, 2) : '-' }}
                                         </td>
                                         <td class="text-center">
-                                            {{ $notePeriode ? $notePeriode->coefficient : '-' }}
+                                            {{ $notePeriode ? ($notePeriode->coefficient ?? 1) : '-' }}
                                         </td>
                                     @endforeach
                                     <td class="text-center">
-                                        @php
-                                            $totalPoints = 0;
-                                            $totalCoeffs = 0;
-                                            foreach ($periodes as $p) {
-                                                $n = $notesParPeriode[$p]->where('matiere_id', $note->matiere_id)->first();
-                                                if ($n && $n->note_finale !== null) {
-                                                    $totalPoints += $n->note_finale * ($n->coefficient ?? 1);
-                                                    $totalCoeffs += ($n->coefficient ?? 1);
-                                                }
-                                            }
-                                            $moyenneAnnuelleMat = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
-                                        @endphp
-                                        {{ number_format($moyenneAnnuelleMat, 2) }}
+                                        {{ number_format($moyennesAnnuellesParMatiere[$matiereId] ?? 0, 2) }}
                                     </td>
                                 </tr>
-                                @endif
-                            @endforeach
                         @endforeach
                     </tbody>
                     <tfoot class="table-light">
                         <tr>
-                            <td><strong>Moyenne Période</strong></td>
+                            <td><strong>Moyenne Générale</strong></td>
                             @foreach($periodes as $periode)
                             <td colspan="2" class="text-center">
                                 <strong>{{ number_format($moyennesParPeriode[$periode], 2) }}</strong>
