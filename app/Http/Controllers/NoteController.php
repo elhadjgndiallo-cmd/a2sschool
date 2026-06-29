@@ -812,31 +812,32 @@ class NoteController extends Controller
         $periode = $request->input('periode', 'trimestre1');
         $eleveId = $request->input('eleve'); // Récupérer l'ID de l'élève si spécifié
         
-        // Filtrer les élèves par année scolaire active
-        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        }, 'eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
-            $q->where('periode', $periode)->with('matiere');
-        }])->findOrFail($classeId);
-        
-        // Filtrer les élèves pour ne garder que ceux de l'année scolaire active
-        $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
-            return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
-        });
+        $classe = Classe::findOrFail($classeId);
+
+        $elevesClasse = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->orderBy('id')
+            ->get();
+
+        $elevesActifs = $elevesClasse;
         
         // Si un élève spécifique est demandé, filtrer pour ne garder que cet élève
         if ($eleveId) {
             $elevesActifs = $elevesActifs->filter(function($eleve) use ($eleveId) {
                 return $eleve->id == $eleveId;
-            });
+            })->values();
         }
+
+        $classe->setRelation('eleves', $elevesActifs);
+        $cache = $this->preparerCacheBulletinsTrimestrielsClasse($elevesClasse, $periode);
         
         // Logique de génération des bulletins
         $bulletins = [];
         foreach ($elevesActifs as $eleve) {
-            $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
-            $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
-            $rang = $this->calculerRangPourListeResultat($eleve->id, $classeId, $periode, $anneeScolaireActive->id);
+            $notesDetaillees = $cache['notesDetailleesParEleve'][$eleve->id] ?? [];
+            $moyenneGenerale = $cache['moyennesParEleve'][$eleve->id] ?? 0;
+            $rang = $cache['rangs'][$eleve->id] ?? 1;
             
             // Générer un hash unique pour sécuriser le bulletin
             // Le hash est basé sur les données du bulletin + la clé secrète de l'application
@@ -901,28 +902,30 @@ class NoteController extends Controller
         $periode = $request->input('periode', 'trimestre1');
         $eleveId = $request->input('eleve'); // Récupérer l'ID de l'élève si spécifié
         
-        $classe = Classe::with(['eleves' => function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        }, 'eleves.utilisateur', 'eleves.notes' => function($q) use ($periode) {
-            $q->where('periode', $periode)->with('matiere');
-        }])->findOrFail($classeId);
-        
-        $elevesActifs = $classe->eleves->filter(function($eleve) use ($anneeScolaireActive) {
-            return $eleve->annee_scolaire_id == $anneeScolaireActive->id;
-        });
+        $classe = Classe::findOrFail($classeId);
+
+        $elevesClasse = Eleve::where('classe_id', $classeId)
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->orderBy('id')
+            ->get();
+
+        $elevesActifs = $elevesClasse;
         
         // Si un élève spécifique est demandé, filtrer pour ne garder que cet élève
         if ($eleveId) {
             $elevesActifs = $elevesActifs->filter(function($eleve) use ($eleveId) {
                 return $eleve->id == $eleveId;
-            });
+            })->values();
         }
+
+        $cache = $this->preparerCacheBulletinsTrimestrielsClasse($elevesClasse, $periode);
         
         $bulletins = [];
         foreach ($elevesActifs as $eleve) {
-            $notesDetaillees = $this->getNotesDetailleesElevePeriode($eleve->id, $periode);
-            $moyenneGenerale = Note::calculerMoyenneGenerale($eleve->id, $periode);
-            $rang = $this->calculerRangPourListeResultat($eleve->id, $classeId, $periode, $anneeScolaireActive->id);
+            $notesDetaillees = $cache['notesDetailleesParEleve'][$eleve->id] ?? [];
+            $moyenneGenerale = $cache['moyennesParEleve'][$eleve->id] ?? 0;
+            $rang = $cache['rangs'][$eleve->id] ?? 1;
             $dataToHash = $eleve->id . '|' . $classeId . '|' . $periode . '|' . $anneeScolaireActive->id . '|' . number_format($moyenneGenerale, 2);
             $verificationHash = hash_hmac('sha256', $dataToHash, config('app.key'));
             $token = base64_encode(json_encode([
@@ -1118,16 +1121,22 @@ class NoteController extends Controller
         $notes = Note::where('eleve_id', $eleveId)
             ->where('periode', $periode)
             ->with('matiere')
-            ->get()
-            ->groupBy('matiere_id');
-            
+            ->get();
+
+        return $this->construireNotesDetailleesDepuisCollection($notes);
+    }
+
+    /**
+     * Construire le détail des notes par matière à partir d'une collection (sans requête SQL).
+     */
+    private function construireNotesDetailleesDepuisCollection($notes): array
+    {
         $notesParMatiere = [];
-        
-        foreach ($notes as $matiereId => $notesMatiere) {
+
+        foreach (collect($notes)->groupBy('matiere_id') as $matiereId => $notesMatiere) {
             $matiere = $notesMatiere->first()->matiere;
             $coefMatiereDefaut = $matiere ? ($matiere->coefficient ?? 1) : 1;
 
-            // Moyenne pondérée par le coefficient de chaque note
             $sommeNoteCoeff = 0;
             $sommeCoeff = 0;
             $sommeNoteCours = 0;
@@ -1137,9 +1146,13 @@ class NoteController extends Controller
 
             foreach ($notesMatiere as $note) {
                 $noteFinale = $note->note_finale ?? $note->calculerNoteFinale();
-                if ($noteFinale === null) continue;
+                if ($noteFinale === null) {
+                    continue;
+                }
                 $coefNote = $note->coefficient ?? $coefMatiereDefaut;
-                if ($coefNote <= 0) $coefNote = $coefMatiereDefaut;
+                if ($coefNote <= 0) {
+                    $coefNote = $coefMatiereDefaut;
+                }
                 $sommeNoteCoeff += $noteFinale * $coefNote;
                 $sommeCoeff += $coefNote;
                 if ($note->note_cours !== null) {
@@ -1155,7 +1168,9 @@ class NoteController extends Controller
             $moyenneNoteCours = $nombreNotesCours > 0 ? $sommeNoteCours / $nombreNotesCours : 0;
             $moyenneNoteComposition = $nombreNotesComposition > 0 ? $sommeNoteComposition / $nombreNotesComposition : 0;
 
-            if ($sommeCoeff <= 0) continue;
+            if ($sommeCoeff <= 0) {
+                continue;
+            }
 
             $noteFinaleMatiere = $sommeNoteCoeff / $sommeCoeff;
             $points = $noteFinaleMatiere * $sommeCoeff;
@@ -1166,11 +1181,60 @@ class NoteController extends Controller
                 'note_cours' => round($moyenneNoteCours, 2),
                 'note_composition' => round($moyenneNoteComposition, 2),
                 'note_finale' => round($noteFinaleMatiere, 2),
-                'points' => round($points, 2)
+                'points' => round($points, 2),
             ];
         }
-        
+
         return $notesParMatiere;
+    }
+
+    /**
+     * Pré-calculer notes, moyennes et rangs trimestriels pour toute une classe (évite N+1).
+     */
+    private function preparerCacheBulletinsTrimestrielsClasse($eleves, string $periode): array
+    {
+        $eleveIds = $eleves->pluck('id')->all();
+        $notesParEleve = [];
+        $moyennesParEleve = [];
+        $notesDetailleesParEleve = [];
+
+        foreach ($eleveIds as $eleveId) {
+            $notesParEleve[$eleveId] = collect();
+        }
+
+        if (!empty($eleveIds)) {
+            $allNotes = Note::whereIn('eleve_id', $eleveIds)
+                ->where('periode', $periode)
+                ->with('matiere')
+                ->get();
+
+            foreach ($allNotes as $note) {
+                $notesParEleve[$note->eleve_id]->push($note);
+            }
+        }
+
+        foreach ($eleves as $eleve) {
+            $notes = $notesParEleve[$eleve->id];
+            $moyennesParEleve[$eleve->id] = $notes->isEmpty()
+                ? 0
+                : Note::calculerMoyenneGeneraleDepuisCollection($notes);
+            $notesDetailleesParEleve[$eleve->id] = $this->construireNotesDetailleesDepuisCollection($notes);
+        }
+
+        $lignes = [];
+        foreach ($eleves as $eleve) {
+            $lignes[] = [
+                'id' => $eleve->id,
+                'moyenne' => $moyennesParEleve[$eleve->id] ?? 0,
+            ];
+        }
+
+        return [
+            'notesParEleve' => $notesParEleve,
+            'moyennesParEleve' => $moyennesParEleve,
+            'notesDetailleesParEleve' => $notesDetailleesParEleve,
+            'rangs' => $this->assignerRangsClasse($lignes),
+        ];
     }
 
     /**
