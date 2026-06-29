@@ -39,81 +39,11 @@ class ComptabiliteController extends Controller
         $toutesLesEntrees = $entreesStats
             ->buildListEntries(new Request(), $anneeScolaireActive)
             ->take(10);
-            
-        // Récupérer toutes les dépenses de l'année scolaire active
-        $depenses = Depense::with(['approuvePar', 'payePar'])
-            ->whereBetween('date_depense', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
-            ->orderBy('date_depense', 'desc')
-            ->get();
-        
-        // Récupérer tous les salaires enseignants payés de l'année active
-        $salairesPayes = SalaireEnseignant::where('statut', 'payé')
-            ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
-            ->with(['enseignant.utilisateur', 'payePar'])
-            ->orderBy('date_paiement', 'desc')
-            ->get();
-        
-        // Combiner toutes les sorties (dépenses + salaires enseignants)
-        $toutesLesSorties = collect();
-        
-        // Ajouter les dépenses
-        foreach ($depenses as $depense) {
-            // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
-            
-            // Si c'est une dépense qui correspond à un salaire, on l'exclut
-            if ($correspondSalaire) {
-                continue;
-            }
-            
-            $toutesLesSorties->push((object) [
-                'id' => 'depense_' . $depense->id,
-                'type' => 'depense',
-                'date' => $depense->date_depense,
-                'description' => $depense->libelle,
-                'montant' => $depense->montant,
-                'type_depense' => $depense->type_depense,
-                'enregistre_par' => $depense->approuvePar,
-                'data' => $depense
-            ]);
-        }
-        
-        // Ajouter tous les salaires enseignants
-        foreach ($salairesPayes as $salaire) {
-            $enseignantNom = $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom;
-            
-            // Vérifier que les dates ne sont pas null avant de les formater
-            $dateDebut = $salaire->date_debut ? $salaire->date_debut->format('d/m/Y') : 'N/A';
-            $dateFin = $salaire->date_fin ? $salaire->date_fin->format('d/m/Y') : 'N/A';
-            $description = 'Salaire ' . $enseignantNom . ' - ' . $dateDebut . ' - ' . $dateFin;
-            
-            $toutesLesSorties->push((object) [
-                'id' => 'salaire_' . $salaire->id,
-                'type' => 'salaire',
-                'date' => $salaire->date_paiement,
-                'description' => $description,
-                'montant' => $salaire->salaire_net,
-                'type_depense' => 'salaire_enseignant',
-                'enregistre_par' => $salaire->payePar,
-                'data' => $salaire
-            ]);
-        }
-        
-        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
-        $toutesLesSorties = $toutesLesSorties->sortByDesc('date')->take(10);
+
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+        $toutesLesSorties = $sortiesStats
+            ->buildListEntries(new Request(), $anneeScolaireActive)
+            ->take(10);
         
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
         $totalRevenus = $stats['revenus_total'];
@@ -164,22 +94,15 @@ class ComptabiliteController extends Controller
                 $anneeScolaire
             );
             $revenus[] = $statsMois['total'];
-            
-            // Calculer les dépenses du mois (dépenses + salaires)
-            $depensesNormales = Depense::whereBetween('date_depense', [
-                $moisDebut->format('Y-m-d'),
-                $moisFin->format('Y-m-d')
-            ])->sum('montant');
-            
-            $salaires = SalaireEnseignant::where('statut', 'payé')
-                ->whereNotNull('date_paiement')
-                ->whereBetween('date_paiement', [
-                    $moisDebut->format('Y-m-d'),
-                    $moisFin->format('Y-m-d')
-                ])
-                ->sum('salaire_net');
-            
-            $depenses[] = $depensesNormales + $salaires;
+
+            $statsSortiesMois = app(ComptabiliteSortiesStatsService::class)->calculateStats(
+                new Request([
+                    'date_debut' => $moisDebut->format('Y-m-d'),
+                    'date_fin' => $moisFin->format('Y-m-d'),
+                ]),
+                $anneeScolaire
+            );
+            $depenses[] = $statsSortiesMois['total'];
         }
         
         return [
@@ -378,129 +301,9 @@ class ComptabiliteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
 
-        $query = Depense::with(['approuvePar', 'payePar'])
-            ->where('statut', '!=', 'annule');
+        $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
+        $allSorties = $sortiesStatsService->buildListEntries($request, $anneeScolaire);
 
-        $query->whereBetween('date_depense', [
-            $anneeScolaire->date_debut->format('Y-m-d'),
-            $anneeScolaire->date_fin->format('Y-m-d'),
-        ]);
-        
-        // Filtres supplémentaires
-        if ($request->filled('date_debut')) {
-            $query->whereDate('date_depense', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $query->whereDate('date_depense', '<=', $request->date_fin);
-        }
-        
-        if ($request->filled('type_depense')) {
-            $query->where('type_depense', $request->type_depense);
-        }
-        
-        // Exclure les dépenses salaire en doublon (représentées par la table salaires)
-        if (!$request->filled('type_depense') || $request->type_depense !== 'salaire_enseignant') {
-            $query->where('type_depense', '!=', 'salaire_enseignant');
-        }
-
-        $depenses = $query->orderBy('date_depense', 'desc')->get();
-
-        $salairesQuery = SalaireEnseignant::where('statut', 'payé')
-            ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ]);
-        
-        // Appliquer les filtres de date supplémentaires (comme pour les dépenses)
-        if ($request->filled('date_debut')) {
-            $salairesQuery->whereDate('date_paiement', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $salairesQuery->whereDate('date_paiement', '<=', $request->date_fin);
-        }
-        
-        // Filtrer par type si spécifié
-        if ($request->filled('type_depense') && $request->type_depense !== 'salaire_enseignant') {
-            // Si le filtre n'est pas pour salaire_enseignant, ne pas inclure les salaires
-            $salairesPayes = collect();
-        } else {
-            // Trier par date de paiement décroissante (plus récentes en premier)
-            $salairesPayes = $salairesQuery->with(['enseignant.utilisateur', 'payePar'])
-                ->orderBy('date_paiement', 'desc')
-                ->get();
-        }
-        
-        // Combiner les deux collections et créer une pagination unifiée
-        $allSorties = collect();
-        
-        // Ajouter les dépenses avec un type (en excluant celles qui correspondent à un salaire)
-        foreach ($depenses as $depense) {
-            // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
-            
-            // Si c'est une dépense de salaire déjà représentée par un salaire payé, on la saute pour éviter les doublons
-            if ($correspondSalaire) {
-                continue;
-            }
-            
-            $allSorties->push((object) [
-                'id' => 'depense_' . $depense->id,
-                'type' => 'depense',
-                'date' => $depense->date_depense,
-                'libelle' => $depense->libelle,
-                'montant' => $depense->montant,
-                'type_depense' => $depense->type_depense,
-                'description' => $depense->description,
-                'approuve_par' => $depense->approuvePar,
-                'paye_par' => $depense->payePar,
-                'data' => $depense
-            ]);
-        }
-        
-        // Ajouter TOUS les salaires d'enseignants payés (déjà filtrés par date dans la requête)
-        foreach ($salairesPayes as $salaire) {
-            $enseignantNom = $salaire->enseignant && $salaire->enseignant->utilisateur ? 
-                ($salaire->enseignant->utilisateur->prenom . ' ' . $salaire->enseignant->utilisateur->nom) : 
-                'Enseignant inconnu';
-            
-            $allSorties->push((object) [
-                'id' => 'salaire_' . $salaire->id,
-                'type' => 'salaire',
-                'date' => $salaire->date_paiement,
-                'libelle' => 'Salaire - ' . $enseignantNom . ' (' . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - ' . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A') . ')',
-                'montant' => $salaire->salaire_net ?? 0,
-                'type_depense' => 'salaire_enseignant',
-                'description' => 'Paiement de salaire pour la période ' . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - ' . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A'),
-                'approuve_par' => $salaire->validePar ?? null,
-                'paye_par' => $salaire->payePar ?? null,
-                'data' => $salaire
-            ]);
-        }
-        
-        // Trier par date de sortie décroissante (plus récentes en haut)
-        // date_depense pour les dépenses, date_paiement pour les salaires
-        $allSorties = $allSorties->sortByDesc(function($item) {
-            // S'assurer que la date est bien un objet Carbon pour le tri
-            if ($item->date instanceof \Carbon\Carbon) {
-                return $item->date->timestamp;
-            }
-            // Si c'est une chaîne, la convertir en timestamp
-            if (is_string($item->date)) {
-                return strtotime($item->date);
-            }
-            // Si null, retourner 0 pour mettre en fin
-            return 0;
-        })->values();
-        
         // Créer une pagination manuelle (comme dans entrees)
         $perPage = 20;
         $currentPage = request()->get('page', 1);
@@ -524,11 +327,10 @@ class ComptabiliteController extends Controller
         
         $statsSorties = $this->getStatsSorties($request, $anneeScolaire);
 
+        $periodeSorties = $sortiesStatsService->effectiveSchoolYearDateRange($anneeScolaire);
+
         $typesDepenseQuery = Depense::query()
-            ->whereBetween('date_depense', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ])
+            ->whereBetween('date_depense', [$periodeSorties['debut'], $periodeSorties['fin']])
             ->where('type_depense', '!=', 'salaire_enseignant');
 
         $typesDepense = $typesDepenseQuery->select('type_depense')
@@ -539,10 +341,7 @@ class ComptabiliteController extends Controller
 
         $salairesDansAnnee = SalaireEnseignant::where('statut', 'payé')
             ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ])
+            ->whereBetween('date_paiement', [$periodeSorties['debut'], $periodeSorties['fin']])
             ->exists();
 
         if ($salairesDansAnnee && !in_array('salaire_enseignant', $typesDepense, true)) {
@@ -1287,10 +1086,12 @@ class ComptabiliteController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+
         foreach ($depenses as $depense) {
             $correspondSalaire = false;
             foreach ($salairesPayes as $salaire) {
-                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
+                if ($sortiesStats->depenseCorrespondSalairePaye($depense, $salaire)) {
                     $correspondSalaire = true;
                     break;
                 }
@@ -1332,15 +1133,5 @@ class ComptabiliteController extends Controller
         }
 
         return $journal->sortByDesc('created_at')->values();
-    }
-
-    /**
-     * Une dépense est-elle déjà représentée par un salaire enseignant payé ?
-     */
-    private function depenseCorrespondSalairePaye(Depense $depense, SalaireEnseignant $salaire): bool
-    {
-        return $depense->type_depense === 'salaire_enseignant'
-            && $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
-            && abs((float) $depense->montant - (float) $salaire->salaire_net) < 0.01;
     }
 }
