@@ -83,6 +83,48 @@ class ComptabiliteEntreesStatsService
     }
 
     /**
+     * Somme des totaux mensuels découpés sur l'année scolaire (vérification vs rapport annuel).
+     */
+    public function totauxMoisAnneeScolaire(AnneeScolaire $anneeScolaire): array
+    {
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+        $anneeDebut = Carbon::parse($anneeScolaire->date_debut)->startOfDay();
+        $anneeFin = Carbon::parse($anneeScolaire->date_fin)->endOfDay();
+
+        $totalEntrees = 0.0;
+        $totalSorties = 0.0;
+
+        $current = $anneeDebut->copy()->startOfMonth();
+        $lastMonth = $anneeFin->copy()->startOfMonth();
+
+        while ($current->lte($lastMonth)) {
+            $monthDebut = $current->copy()->startOfMonth()->startOfDay();
+            $monthFin = $current->copy()->endOfMonth()->endOfDay();
+
+            $effectiveDebut = $monthDebut->greaterThan($anneeDebut) ? $monthDebut : $anneeDebut->copy();
+            $effectiveFin = $monthFin->lessThan($anneeFin) ? $monthFin : $anneeFin->copy();
+
+            if ($effectiveDebut->lte($effectiveFin)) {
+                $request = new Request([
+                    'date_debut' => $effectiveDebut->format('Y-m-d'),
+                    'date_fin' => $effectiveFin->format('Y-m-d'),
+                ]);
+
+                $totalEntrees += (float) $this->buildListEntries($request, $anneeScolaire)->sum('montant');
+                $totalSorties += (float) $sortiesStats->buildListEntries($request, $anneeScolaire)->sum('montant');
+            }
+
+            $current->addMonth();
+        }
+
+        return [
+            'total_entrees' => $totalEntrees,
+            'total_sorties' => $totalSorties,
+            'benefice' => $totalEntrees - $totalSorties,
+        ];
+    }
+
+    /**
      * Requête pour les totaux annuels : période officielle complète de l'année scolaire.
      */
     public function requestAnneeScolaireComplete(AnneeScolaire $anneeScolaire): Request

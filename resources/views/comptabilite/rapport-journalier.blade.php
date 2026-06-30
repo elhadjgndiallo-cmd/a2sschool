@@ -301,7 +301,7 @@
                     </h6>
                     <form method="GET" action="{{ route('comptabilite.rapport-journalier') }}" id="filterForm">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Type de rapport</label>
                                 <select name="type" id="reportType" class="form-select" onchange="toggleDateInputs()">
                                     <option value="jour" {{ request('type', 'jour') == 'jour' ? 'selected' : '' }}>Journalier</option>
@@ -309,7 +309,7 @@
                                     <option value="annee" {{ request('type') == 'annee' ? 'selected' : '' }}>Année scolaire</option>
                                 </select>
                             </div>
-                            <div class="col-md-3" id="dateInput">
+                            <div class="col-md-2" id="dateInput">
                                 <label class="form-label">Date</label>
                                 <input type="date" 
                                        name="date" 
@@ -317,7 +317,7 @@
                                        class="form-control"
                                        max="{{ now()->format('Y-m-d') }}">
                             </div>
-                            <div class="col-md-3" id="monthInput" style="display: none;">
+                            <div class="col-md-2" id="monthInput" style="display: none;">
                                 <label class="form-label">Mois</label>
                                 <input type="month" 
                                        name="month" 
@@ -325,7 +325,7 @@
                                        class="form-control"
                                        max="{{ now()->format('Y-m') }}">
                             </div>
-                            <div class="col-md-3" id="yearInput" style="display: none;">
+                            <div class="col-md-3" id="anneeScolaireInput">
                                 <label class="form-label">Année scolaire</label>
                                 <select name="annee_scolaire_id" class="form-select">
                                     @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
@@ -335,7 +335,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">&nbsp;</label>
                                 <button type="submit" class="btn btn-primary w-100">
                                     <i class="fas fa-search me-1"></i>Générer
@@ -353,8 +353,8 @@
                         <i class="fas fa-info-circle me-2"></i>Informations
                     </h6>
                     <div class="small text-muted">
-                        <p class="mb-1"><strong>Journalier:</strong> Solde = entrées − sorties du jour</p>
-                        <p class="mb-1"><strong>Mensuel:</strong> Solde = entrées − sorties du mois</p>
+                        <p class="mb-1"><strong>Journalier:</strong> Solde = entrées − sorties du jour (dans l'année scolaire)</p>
+                        <p class="mb-1"><strong>Mensuel:</strong> Solde = entrées − sorties du mois, limité aux dates de l'année scolaire</p>
                         <p class="mb-1"><strong>Année scolaire:</strong> Période complète du {{ optional($anneeScolaire)->date_debut?->format('d/m/Y') ?? '…' }} au {{ optional($anneeScolaire)->date_fin?->format('d/m/Y') ?? '…' }}</p>
                         <p class="mb-0"><strong>Dates :</strong> entrées et sorties selon la date saisie dans le formulaire (pas la date d'enregistrement système).</p>
                     </div>
@@ -829,23 +829,16 @@ function toggleDateInputs() {
     const reportType = document.getElementById('reportType').value;
     const dateInput = document.getElementById('dateInput');
     const monthInput = document.getElementById('monthInput');
-    const yearInput = document.getElementById('yearInput');
     
-    // Masquer tous les inputs
     dateInput.style.display = 'none';
     monthInput.style.display = 'none';
-    yearInput.style.display = 'none';
     
-    // Afficher le bon input selon le type
     switch(reportType) {
         case 'jour':
             dateInput.style.display = 'block';
             break;
         case 'mois':
             monthInput.style.display = 'block';
-            break;
-        case 'annee':
-            yearInput.style.display = 'block';
             break;
     }
 }

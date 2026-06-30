@@ -888,34 +888,27 @@ class ComptabiliteController extends Controller
         $type = $request->get('type', 'jour');
         $date = $request->get('date', Carbon::now()->format('Y-m-d'));
         $month = $request->get('month', Carbon::now()->format('Y-m'));
-        $anneeScolaire = null;
         $periodeLabel = '';
         $resumeLabel = '';
         $soldeLabel = 'Solde';
+
+        $anneeScolaire = $this->resolveAnneeScolaireForRapport($request);
+        if (!$anneeScolaire) {
+            return redirect()->back()->with('error', 'Aucune année scolaire trouvée.');
+        }
 
         switch ($type) {
             case 'mois':
                 $dateDebut = Carbon::parse($month . '-01')->startOfDay();
                 $dateFin = $dateDebut->copy()->endOfMonth()->endOfDay();
                 $dateCarbon = $dateDebut;
-                $periodeLabel = 'Mois de ' . $dateDebut->locale('fr')->isoFormat('MMMM YYYY');
+                $periodeLabel = 'Mois de ' . $dateDebut->locale('fr')->isoFormat('MMMM YYYY')
+                    . ' — année scolaire ' . $anneeScolaire->nom;
                 $resumeLabel = 'Résumé du mois';
                 $soldeLabel = 'Solde mensuel';
                 break;
 
             case 'annee':
-                $anneeScolaireId = $request->filled('annee_scolaire_id')
-                    ? $request->annee_scolaire_id
-                    : (\App\Models\AnneeScolaire::anneeActive()?->id);
-
-                $anneeScolaire = $anneeScolaireId
-                    ? \App\Models\AnneeScolaire::find($anneeScolaireId)
-                    : \App\Models\AnneeScolaire::anneeActive();
-
-                if (!$anneeScolaire) {
-                    return redirect()->back()->with('error', 'Aucune année scolaire trouvée.');
-                }
-
                 $dateDebut = Carbon::parse($anneeScolaire->date_debut)->startOfDay();
                 $dateFin = Carbon::parse($anneeScolaire->date_fin)->endOfDay();
                 $dateCarbon = $dateDebut;
@@ -929,17 +922,19 @@ class ComptabiliteController extends Controller
                 $dateDebut = Carbon::parse($date)->startOfDay();
                 $dateFin = $dateDebut->copy()->endOfDay();
                 $dateCarbon = $dateDebut;
-                $periodeLabel = 'Journée du ' . $dateDebut->format('d/m/Y');
+                $periodeLabel = 'Journée du ' . $dateDebut->format('d/m/Y')
+                    . ' — année scolaire ' . $anneeScolaire->nom;
                 $resumeLabel = 'Résumé de la journée';
                 $soldeLabel = 'Solde journalier';
                 break;
         }
 
-        if ($type === 'annee' && $anneeScolaire) {
-            $journal = $this->buildJournalAnneeScolaire($anneeScolaire);
-        } else {
-            $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
-        }
+        $journal = $this->buildJournalPeriode(
+            $dateDebut,
+            $dateFin,
+            $anneeScolaire,
+            $type === 'annee'
+        );
 
         // Solde de la période uniquement (pas de cumul historique)
         $soldeInitial = 0;
@@ -1007,15 +1002,48 @@ class ComptabiliteController extends Controller
         return view('comptabilite.rapport-journalier', $viewData);
     }
 
-    /**
-     * Journal complet d'une année scolaire (entrées + sorties, dates officielles).
-     */
-    private function buildJournalAnneeScolaire(\App\Models\AnneeScolaire $anneeScolaire)
+    private function resolveAnneeScolaireForRapport(Request $request): ?\App\Models\AnneeScolaire
     {
-        $entreesStats = app(ComptabiliteEntreesStatsService::class);
-        $reportRequest = $entreesStats->requestAnneeScolaireComplete($anneeScolaire);
+        $anneeScolaireId = $request->filled('annee_scolaire_id')
+            ? $request->annee_scolaire_id
+            : (\App\Models\AnneeScolaire::anneeActive()?->id);
 
+        return $anneeScolaireId
+            ? \App\Models\AnneeScolaire::find($anneeScolaireId)
+            : \App\Models\AnneeScolaire::anneeActive();
+    }
+
+    /**
+     * Journal unifié pour jour, mois ou année scolaire (intersection avec l'année scolaire).
+     */
+    private function buildJournalPeriode(
+        Carbon $dateDebut,
+        Carbon $dateFin,
+        \App\Models\AnneeScolaire $anneeScolaire,
+        bool $anneeComplete = false
+    ) {
+        $anneeDebut = Carbon::parse($anneeScolaire->date_debut)->startOfDay();
+        $anneeFin = Carbon::parse($anneeScolaire->date_fin)->endOfDay();
+
+        $effectiveDebut = $dateDebut->greaterThan($anneeDebut) ? $dateDebut->copy() : $anneeDebut->copy();
+        $effectiveFin = $dateFin->lessThan($anneeFin) ? $dateFin->copy() : $anneeFin->copy();
+
+        if ($effectiveDebut->gt($effectiveFin)) {
+            return collect();
+        }
+
+        $entreesStats = app(ComptabiliteEntreesStatsService::class);
         $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+
+        if ($anneeComplete) {
+            $reportRequest = $entreesStats->requestAnneeScolaireComplete($anneeScolaire);
+        } else {
+            $reportRequest = new Request([
+                'date_debut' => $effectiveDebut->format('Y-m-d'),
+                'date_fin' => $effectiveFin->format('Y-m-d'),
+            ]);
+        }
+
         $journal = collect();
 
         foreach ($entreesStats->buildListEntries($reportRequest, $anneeScolaire) as $entry) {
@@ -1046,128 +1074,6 @@ class ComptabiliteController extends Controller
                 'source' => $entry->type_depense ?? 'depense',
                 'enregistre_par' => $entry->enregistre_par,
                 'created_at' => $entry->data->created_at ?? $entry->date,
-            ]);
-        }
-
-        return $this->sortJournalChronologique($journal);
-    }
-
-    /**
-     * Construire le journal des transactions pour une période donnée.
-     */
-    private function buildJournalRapport(Carbon $dateDebut, Carbon $dateFin, ?\App\Models\AnneeScolaire $anneeScolaire = null)
-    {
-        $journal = collect();
-        $debutStr = $dateDebut->format('Y-m-d');
-        $finStr = $dateFin->format('Y-m-d');
-        $entreesStats = app(ComptabiliteEntreesStatsService::class);
-
-        $entrees = Entree::with('enregistrePar')
-            ->whereBetween('date_entree', [$debutStr, $finStr])
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        if ($anneeScolaire) {
-            $paiementsQuery = $entreesStats
-                ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaire)
-                ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
-        } else {
-            $paiementsQuery = Paiement::withComptabiliteAffichage()
-                ->sansFacture()
-                ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
-        }
-
-        $paiements = $paiementsQuery->orderBy('paiements.created_at', 'asc')->get();
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiements);
-
-        foreach ($entrees as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
-            }
-
-            $journal->push([
-                'date' => $entree->date_entree,
-                'libelle' => $entree->libelle ?: $entree->description,
-                'entree' => (float) $entree->montant,
-                'sortie' => 0,
-                'type' => 'entree_manuelle',
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'created_at' => $entree->created_at,
-            ]);
-        }
-
-        foreach ($paiements as $paiement) {
-            $source = $entreesStats->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
-
-            $journal->push([
-                'date' => $paiement->date_paiement,
-                'libelle' => $entreesStats->paiementJournalLibelle($paiement),
-                'entree' => (float) $paiement->montant_paye,
-                'sortie' => 0,
-                'type' => 'paiement_scolarite',
-                'source' => $source,
-                'enregistre_par' => $paiement->encaissePar,
-                'created_at' => $paiement->created_at,
-            ]);
-        }
-
-        $depenses = Depense::with(['approuvePar', 'payePar'])
-            ->where('statut', '!=', 'annule')
-            ->whereBetween('date_depense', [$debutStr, $finStr])
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        $salairesPayes = SalaireEnseignant::where('statut', 'payé')
-            ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [$debutStr, $finStr])
-            ->with(['enseignant.utilisateur', 'payePar'])
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
-
-        foreach ($depenses as $depense) {
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($sortiesStats->depenseCorrespondSalairePaye($depense, $salaire)) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
-
-            if ($correspondSalaire) {
-                continue;
-            }
-
-            $journal->push([
-                'date' => $depense->date_depense,
-                'libelle' => $depense->libelle,
-                'entree' => 0,
-                'sortie' => (float) $depense->montant,
-                'type' => 'depense',
-                'source' => $depense->type_depense,
-                'enregistre_par' => $depense->approuvePar ?? $depense->payePar,
-                'created_at' => $depense->created_at,
-            ]);
-        }
-
-        foreach ($salairesPayes as $salaire) {
-            $enseignantNom = $salaire->enseignant && $salaire->enseignant->utilisateur
-                ? ($salaire->enseignant->utilisateur->prenom . ' ' . $salaire->enseignant->utilisateur->nom)
-                : 'Enseignant inconnu';
-
-            $journal->push([
-                'date' => $salaire->date_paiement,
-                'libelle' => 'Salaire - ' . $enseignantNom . ' ('
-                    . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - '
-                    . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A') . ')',
-                'entree' => 0,
-                'sortie' => (float) ($salaire->salaire_net ?? 0),
-                'type' => 'salaire_enseignant',
-                'source' => 'Salaire enseignant',
-                'enregistre_par' => $salaire->payePar,
-                'created_at' => $salaire->created_at,
             ]);
         }
 
