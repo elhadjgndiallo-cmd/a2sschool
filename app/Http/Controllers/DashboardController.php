@@ -60,15 +60,11 @@ class DashboardController extends Controller
             $requestVide = new Request();
 
             $statsRevenus = $anneeScolaireActive
-                ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-                : ['total' => 0];
+                ? app(ComptabiliteEntreesStatsService::class)->totauxAnneeScolaireOfficielle($anneeScolaireActive)
+                : ['total_entrees' => 0, 'total_sorties' => 0, 'benefice' => 0];
 
-            $statsSorties = $anneeScolaireActive
-                ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-                : ['total' => 0];
-
-            $totalRevenus = $statsRevenus['total'] ?? 0;
-            $totalSorties = $statsSorties['total'] ?? 0;
+            $totalRevenus = $statsRevenus['total_entrees'] ?? 0;
+            $totalSorties = $statsRevenus['total_sorties'] ?? 0;
 
             // Statistiques générales
             $stats = [

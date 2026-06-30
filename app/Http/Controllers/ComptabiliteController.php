@@ -376,13 +376,10 @@ class ComptabiliteController extends Controller
         $depensesTotal = 0;
         
         if ($anneeScolaireActive) {
-            // Calcul identique à getStatsEntrees
-            $request = new Request(); // Request vide pour pas de filtres
-            $statsEntrees = $this->getStatsEntrees($request, $anneeScolaireActive);
-            $revenusTotal = $statsEntrees['total']; // Changé de 'total_entrees' à 'total'
-            
-            $depensesTotal = app(ComptabiliteSortiesStatsService::class)
-                ->calculateStats($request, $anneeScolaireActive)['total'];
+            $totaux = app(ComptabiliteEntreesStatsService::class)
+                ->totauxAnneeScolaireOfficielle($anneeScolaireActive);
+            $revenusTotal = $totaux['total_entrees'];
+            $depensesTotal = $totaux['total_sorties'];
         }
         
         // Bénéfice total
@@ -955,24 +952,9 @@ class ComptabiliteController extends Controller
             return $transaction;
         });
 
-        if ($type === 'annee' && $anneeScolaire) {
-            $reportRequest = new Request([
-                'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
-                'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
-                'annee_scolaire_complete' => true,
-            ]);
-            $statsRevenus = app(ComptabiliteEntreesStatsService::class)
-                ->calculateStats($reportRequest, $anneeScolaire);
-            $statsSorties = app(ComptabiliteSortiesStatsService::class)
-                ->calculateStats($reportRequest, $anneeScolaire);
-            $totalEntrees = $statsRevenus['total'];
-            $totalSorties = $statsSorties['total'];
-            $soldeFinal = $totalEntrees - $totalSorties;
-        } else {
-            $totalEntrees = (float) $journal->sum('entree');
-            $totalSorties = (float) $journal->sum('sortie');
-            $soldeFinal = $totalEntrees - $totalSorties;
-        }
+        $totalEntrees = (float) $journal->sum('entree');
+        $totalSorties = (float) $journal->sum('sortie');
+        $soldeFinal = $totalEntrees - $totalSorties;
 
         $anneesScolaires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
         $format = $request->get('format', 'html');
@@ -1030,13 +1012,9 @@ class ComptabiliteController extends Controller
      */
     private function buildJournalAnneeScolaire(\App\Models\AnneeScolaire $anneeScolaire)
     {
-        $reportRequest = new Request([
-            'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
-            'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
-            'annee_scolaire_complete' => true,
-        ]);
-
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
+        $reportRequest = $entreesStats->requestAnneeScolaireComplete($anneeScolaire);
+
         $sortiesStats = app(ComptabiliteSortiesStatsService::class);
         $journal = collect();
 

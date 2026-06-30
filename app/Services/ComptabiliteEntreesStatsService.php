@@ -6,6 +6,7 @@ use App\Models\AnneeScolaire;
 use App\Models\Entree;
 use App\Models\Facture;
 use App\Models\Paiement;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -31,7 +32,21 @@ class ComptabiliteEntreesStatsService
     public function calculateStats(?Request $request = null, ?AnneeScolaire $anneeScolaire = null): array
     {
         $request = $request ?? new Request();
-        $merged = $this->buildMergedEntries($request, $anneeScolaire);
+
+        if (!$anneeScolaire) {
+            return [
+                'total' => 0,
+                'nombre' => 0,
+                'moyenne' => 0,
+                'total_manuelles' => 0,
+                'total_paiements' => 0,
+                'nombre_manuelles' => 0,
+                'nombre_paiements' => 0,
+            ];
+        }
+
+        $statsRequest = $this->requestForYearTotals($request, $anneeScolaire);
+        $merged = $this->buildMergedEntries($statsRequest, $anneeScolaire);
 
         $total = (float) $merged->sum('montant');
         $nombre = $merged->count();
@@ -50,16 +65,44 @@ class ComptabiliteEntreesStatsService
     }
 
     /**
+     * Totaux officiels année scolaire (même source que le rapport annuel).
+     */
+    public function totauxAnneeScolaireOfficielle(AnneeScolaire $anneeScolaire): array
+    {
+        $request = $this->requestAnneeScolaireComplete($anneeScolaire);
+        $totalEntrees = (float) $this->buildListEntries($request, $anneeScolaire)->sum('montant');
+        $totalSorties = (float) app(ComptabiliteSortiesStatsService::class)
+            ->buildListEntries($request, $anneeScolaire)
+            ->sum('montant');
+
+        return [
+            'total_entrees' => $totalEntrees,
+            'total_sorties' => $totalSorties,
+            'benefice' => $totalEntrees - $totalSorties,
+        ];
+    }
+
+    /**
+     * Requête pour les totaux annuels : période officielle complète de l'année scolaire.
+     */
+    public function requestAnneeScolaireComplete(AnneeScolaire $anneeScolaire): Request
+    {
+        return new Request([
+            'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+            'annee_scolaire_complete' => true,
+        ]);
+    }
+
+    /**
      * Liste unifiée pour comptabilite/entrees, dashboard et statistiques.
      */
     public function buildListEntries(Request $request, AnneeScolaire $anneeScolaire): Collection
     {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
         $query = Entree::with('enregistrePar');
 
-        $query->whereBetween('date_entree', [
-            $anneeScolaire->date_debut->format('Y-m-d'),
-            $anneeScolaire->date_fin->format('Y-m-d'),
-        ]);
+        $query->whereBetween('date_entree', [$periode['debut'], $periode['fin']]);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_entree', '>=', $request->date_debut);
@@ -165,10 +208,13 @@ class ComptabiliteEntreesStatsService
      */
     public function paiementsFraisForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
         $query = Paiement::query()
             ->sansFacture()
             ->forAnneeScolaire($anneeScolaire->id)
-            ->withComptabiliteAffichage();
+            ->withComptabiliteAffichage()
+            ->whereBetween('paiements.date_paiement', [$periode['debut'], $periode['fin']]);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('paiements.date_paiement', '>=', $request->date_debut);
@@ -194,9 +240,12 @@ class ComptabiliteEntreesStatsService
      */
     public function facturesForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
         $query = Facture::query()
             ->where('statut', 'payee')
             ->where('annee_scolaire_id', $anneeScolaire->id)
+            ->whereBetween('date_facture', [$periode['debut'], $periode['fin']])
             ->with([
                 'eleve.utilisateur:id,nom,prenom',
                 'eleve.classe:id,nom',
@@ -405,5 +454,55 @@ class ComptabiliteEntreesStatsService
         }
 
         return isset($lookup['signatures'][$this->entreeDuplicateSignature($entree)]);
+    }
+
+    /**
+     * Totaux : année scolaire officielle complète sauf si l'utilisateur filtre par dates.
+     */
+    private function requestForYearTotals(Request $request, AnneeScolaire $anneeScolaire): Request
+    {
+        if ($request->filled('date_debut') || $request->filled('date_fin')) {
+            return $request;
+        }
+
+        $filters = array_filter($request->only([
+            'source',
+            'type_entree',
+            'montant_min',
+            'montant_max',
+        ]), fn ($value) => $value !== null && $value !== '');
+
+        return new Request(array_merge(
+            $this->requestAnneeScolaireComplete($anneeScolaire)->all(),
+            $filters
+        ));
+    }
+
+    /**
+     * Plage de dates pour les listes (extension à aujourd'hui si année active terminée).
+     */
+    private function resolveDateRange(AnneeScolaire $anneeScolaire, Request $request): array
+    {
+        if ($request->boolean('annee_scolaire_complete')) {
+            return [
+                'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+                'fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+            ];
+        }
+
+        $dateFin = $anneeScolaire->date_fin->copy()->startOfDay();
+        $today = Carbon::today();
+
+        if ($anneeScolaire->active && $dateFin->lt($today)) {
+            return [
+                'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+                'fin' => $today->format('Y-m-d'),
+            ];
+        }
+
+        return [
+            'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+        ];
     }
 }
