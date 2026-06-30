@@ -38,11 +38,13 @@ class ComptabiliteController extends Controller
 
         $toutesLesEntrees = $entreesStats
             ->buildListEntries(new Request(), $anneeScolaireActive)
+            ->sortByDesc(fn ($entry) => $entry->date instanceof \Carbon\Carbon ? $entry->date->timestamp : strtotime((string) $entry->date))
             ->take(10);
 
         $sortiesStats = app(ComptabiliteSortiesStatsService::class);
         $toutesLesSorties = $sortiesStats
             ->buildListEntries(new Request(), $anneeScolaireActive)
+            ->sortByDesc(fn ($entry) => $entry->date instanceof \Carbon\Carbon ? $entry->date->timestamp : strtotime((string) $entry->date))
             ->take(10);
         
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
@@ -920,7 +922,8 @@ class ComptabiliteController extends Controller
                 $dateDebut = Carbon::parse($anneeScolaire->date_debut)->startOfDay();
                 $dateFin = Carbon::parse($anneeScolaire->date_fin)->endOfDay();
                 $dateCarbon = $dateDebut;
-                $periodeLabel = 'Année scolaire ' . $anneeScolaire->nom;
+                $periodeLabel = 'Année scolaire ' . $anneeScolaire->nom
+                    . ' (' . $dateDebut->format('d/m/Y') . ' - ' . $dateFin->format('d/m/Y') . ')';
                 $resumeLabel = 'Résumé de l\'année scolaire';
                 $soldeLabel = 'Bénéfice (année scolaire)';
                 break;
@@ -935,7 +938,11 @@ class ComptabiliteController extends Controller
                 break;
         }
 
-        $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
+        if ($type === 'annee' && $anneeScolaire) {
+            $journal = $this->buildJournalAnneeScolaire($anneeScolaire);
+        } else {
+            $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
+        }
 
         // Solde de la période uniquement (pas de cumul historique)
         $soldeInitial = 0;
@@ -949,10 +956,15 @@ class ComptabiliteController extends Controller
         });
 
         if ($type === 'annee' && $anneeScolaire) {
+            $reportRequest = new Request([
+                'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+                'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+                'annee_scolaire_complete' => true,
+            ]);
             $statsRevenus = app(ComptabiliteEntreesStatsService::class)
-                ->calculateStats(new Request(), $anneeScolaire);
+                ->calculateStats($reportRequest, $anneeScolaire);
             $statsSorties = app(ComptabiliteSortiesStatsService::class)
-                ->calculateStats(new Request(), $anneeScolaire);
+                ->calculateStats($reportRequest, $anneeScolaire);
             $totalEntrees = $statsRevenus['total'];
             $totalSorties = $statsSorties['total'];
             $soldeFinal = $totalEntrees - $totalSorties;
@@ -1011,6 +1023,55 @@ class ComptabiliteController extends Controller
         }
 
         return view('comptabilite.rapport-journalier', $viewData);
+    }
+
+    /**
+     * Journal complet d'une année scolaire (entrées + sorties, dates officielles).
+     */
+    private function buildJournalAnneeScolaire(\App\Models\AnneeScolaire $anneeScolaire)
+    {
+        $reportRequest = new Request([
+            'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+            'annee_scolaire_complete' => true,
+        ]);
+
+        $entreesStats = app(ComptabiliteEntreesStatsService::class);
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+        $journal = collect();
+
+        foreach ($entreesStats->buildListEntries($reportRequest, $anneeScolaire) as $entry) {
+            $libelle = $entry->description;
+            if (!empty($entry->detail)) {
+                $libelle .= ' — ' . $entry->detail;
+            }
+
+            $journal->push([
+                'date' => $entry->date,
+                'libelle' => $libelle,
+                'entree' => (float) $entry->montant,
+                'sortie' => 0,
+                'type' => $entry->type,
+                'source' => $entry->source,
+                'enregistre_par' => $entry->enregistre_par,
+                'created_at' => $entry->data->created_at ?? $entry->date,
+            ]);
+        }
+
+        foreach ($sortiesStats->buildListEntries($reportRequest, $anneeScolaire) as $entry) {
+            $journal->push([
+                'date' => $entry->date,
+                'libelle' => $entry->libelle ?? $entry->description,
+                'entree' => 0,
+                'sortie' => (float) $entry->montant,
+                'type' => $entry->type,
+                'source' => $entry->type_depense ?? 'depense',
+                'enregistre_par' => $entry->enregistre_par,
+                'created_at' => $entry->data->created_at ?? $entry->date,
+            ]);
+        }
+
+        return $this->sortJournalChronologique($journal);
     }
 
     /**
@@ -1132,6 +1193,23 @@ class ComptabiliteController extends Controller
             ]);
         }
 
-        return $journal->sortByDesc('created_at')->values();
+        return $this->sortJournalChronologique($journal);
+    }
+
+    /**
+     * Tri chronologique du journal : plus ancien → plus récent.
+     */
+    private function sortJournalChronologique($journal)
+    {
+        return $journal->sortBy(function ($transaction) {
+            $dateTs = $transaction['date'] instanceof Carbon
+                ? $transaction['date']->timestamp
+                : strtotime((string) $transaction['date']);
+            $createdTs = $transaction['created_at'] instanceof Carbon
+                ? $transaction['created_at']->timestamp
+                : strtotime((string) $transaction['created_at']);
+
+            return sprintf('%010d_%010d', $dateTs, $createdTs);
+        })->values();
     }
 }

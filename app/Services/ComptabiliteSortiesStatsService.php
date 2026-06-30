@@ -48,13 +48,22 @@ class ComptabiliteSortiesStatsService
 
     /**
      * Plage de dates effective pour filtrer les sorties d'une année scolaire.
-     * Pour l'année active, la fin est étendue à aujourd'hui si date_fin est dépassée.
+     * Pour l'année active, la fin est étendue à aujourd'hui si date_fin est dépassée
+     * (sauf si annee_scolaire_complete=true dans la requête).
      */
-    public function effectiveSchoolYearDateRange(AnneeScolaire $anneeScolaire): array
+    public function effectiveSchoolYearDateRange(AnneeScolaire $anneeScolaire, ?Request $request = null): array
+    {
+        return $this->resolveDateRange($anneeScolaire, $request ?? new Request());
+    }
+
+    /**
+     * Plage stricte : date_debut → date_fin officielles de l'année scolaire.
+     */
+    public function strictSchoolYearDateRange(AnneeScolaire $anneeScolaire): array
     {
         return [
             'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
-            'fin' => $this->resolvePeriodeFin($anneeScolaire),
+            'fin' => $anneeScolaire->date_fin->format('Y-m-d'),
         ];
     }
 
@@ -80,7 +89,7 @@ class ComptabiliteSortiesStatsService
             $allSorties->push($this->mapSalaireToListEntry($salaire));
         }
 
-        return $this->sortByDateDesc($allSorties);
+        return $this->sortByDateAsc($allSorties);
     }
 
     /**
@@ -113,7 +122,7 @@ class ComptabiliteSortiesStatsService
 
     private function fetchDepenses(Request $request, AnneeScolaire $anneeScolaire): Collection
     {
-        $periode = $this->effectiveSchoolYearDateRange($anneeScolaire);
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
 
         $query = Depense::with(['approuvePar', 'payePar'])
             ->where('statut', '!=', 'annule')
@@ -144,7 +153,7 @@ class ComptabiliteSortiesStatsService
             return collect();
         }
 
-        $periode = $this->effectiveSchoolYearDateRange($anneeScolaire);
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
 
         $query = SalaireEnseignant::where('statut', 'payé')
             ->whereNotNull('date_paiement')
@@ -204,20 +213,20 @@ class ComptabiliteSortiesStatsService
         ];
     }
 
-    private function sortByDateDesc(Collection $entries): Collection
+    private function sortByDateAsc(Collection $entries): Collection
     {
         return $entries->sort(function ($a, $b) {
             $tsA = $this->entryDateTimestamp($a);
             $tsB = $this->entryDateTimestamp($b);
 
             if ($tsA !== $tsB) {
-                return $tsB <=> $tsA;
+                return $tsA <=> $tsB;
             }
 
             $createdA = isset($a->data->created_at) ? $a->data->created_at->timestamp : 0;
             $createdB = isset($b->data->created_at) ? $b->data->created_at->timestamp : 0;
 
-            return $createdB <=> $createdA;
+            return $createdA <=> $createdB;
         })->values();
     }
 
@@ -232,6 +241,18 @@ class ComptabiliteSortiesStatsService
         }
 
         return 0;
+    }
+
+    private function resolveDateRange(AnneeScolaire $anneeScolaire, Request $request): array
+    {
+        if ($request->boolean('annee_scolaire_complete')) {
+            return $this->strictSchoolYearDateRange($anneeScolaire);
+        }
+
+        return [
+            'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'fin' => $this->resolvePeriodeFin($anneeScolaire),
+        ];
     }
 
     private function resolvePeriodeFin(AnneeScolaire $anneeScolaire): string

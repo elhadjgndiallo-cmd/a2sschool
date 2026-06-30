@@ -355,7 +355,7 @@
                     <div class="small text-muted">
                         <p class="mb-1"><strong>Journalier:</strong> Solde = entrées − sorties du jour</p>
                         <p class="mb-1"><strong>Mensuel:</strong> Solde = entrées − sorties du mois</p>
-                        <p class="mb-1"><strong>Année scolaire:</strong> Bénéfice global (comme le tableau de bord)</p>
+                        <p class="mb-1"><strong>Année scolaire:</strong> Période complète du {{ optional($anneeScolaire)->date_debut?->format('d/m/Y') ?? '…' }} au {{ optional($anneeScolaire)->date_fin?->format('d/m/Y') ?? '…' }}</p>
                         <p class="mb-0"><strong>Dates :</strong> entrées et sorties selon la date saisie dans le formulaire (pas la date d'enregistrement système).</p>
                     </div>
                 </div>

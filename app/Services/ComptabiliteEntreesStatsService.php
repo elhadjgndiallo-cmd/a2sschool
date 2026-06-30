@@ -129,7 +129,19 @@ class ComptabiliteEntreesStatsService
             }
         }
 
-        return $allEntries->sortByDesc('date')->values();
+        return $allEntries->sort(function ($a, $b) {
+            $tsA = $a->date instanceof \Carbon\Carbon ? $a->date->timestamp : strtotime((string) $a->date);
+            $tsB = $b->date instanceof \Carbon\Carbon ? $b->date->timestamp : strtotime((string) $b->date);
+
+            if ($tsA !== $tsB) {
+                return $tsA <=> $tsB;
+            }
+
+            $createdA = isset($a->data->created_at) ? $a->data->created_at->timestamp : 0;
+            $createdB = isset($b->data->created_at) ? $b->data->created_at->timestamp : 0;
+
+            return $createdA <=> $createdB;
+        })->values();
     }
 
     /**
