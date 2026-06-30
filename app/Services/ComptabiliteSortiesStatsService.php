@@ -140,10 +140,6 @@ class ComptabiliteSortiesStatsService
             $query->where('type_depense', $request->type_depense);
         }
 
-        if (!$request->filled('type_depense') || $request->type_depense !== 'salaire_enseignant') {
-            $query->where('type_depense', '!=', 'salaire_enseignant');
-        }
-
         return $query->orderBy('date_depense', 'desc')->get();
     }
 
@@ -211,6 +207,23 @@ class ComptabiliteSortiesStatsService
             'enregistre_par' => $salaire->payePar,
             'data' => $salaire,
         ];
+    }
+
+    public function sortByDateDesc(Collection $entries): Collection
+    {
+        return $entries->sort(function ($a, $b) {
+            $tsA = $this->entryDateTimestamp($a);
+            $tsB = $this->entryDateTimestamp($b);
+
+            if ($tsA !== $tsB) {
+                return $tsB <=> $tsA;
+            }
+
+            $createdA = isset($a->data->created_at) ? $a->data->created_at->timestamp : 0;
+            $createdB = isset($b->data->created_at) ? $b->data->created_at->timestamp : 0;
+
+            return $createdB <=> $createdA;
+        })->values();
     }
 
     private function sortByDateAsc(Collection $entries): Collection

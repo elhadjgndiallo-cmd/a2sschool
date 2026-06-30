@@ -304,7 +304,9 @@ class ComptabiliteController extends Controller
         }
 
         $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
-        $allSorties = $sortiesStatsService->buildListEntries($request, $anneeScolaire);
+        $allSorties = $sortiesStatsService->sortByDateDesc(
+            $sortiesStatsService->buildListEntries($request, $anneeScolaire)
+        );
 
         // Créer une pagination manuelle (comme dans entrees)
         $perPage = 20;

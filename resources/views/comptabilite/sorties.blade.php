@@ -86,27 +86,35 @@
 
     <!-- Statistiques -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body text-center">
                     <h3 class="mb-0">{{ number_format($statsSorties['total'], 0, ',', ' ') }}</h3>
-                    <small>Total (GNF)</small>
+                    <small>Total sorties (GNF)</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ number_format($statsSorties['total_depenses'], 0, ',', ' ') }}</h3>
+                    <small>Dépenses (GNF)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ number_format($statsSorties['total_salaires'], 0, ',', ' ') }}</h3>
+                    <small>Salaires enseignants (GNF)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body text-center">
                     <h3 class="mb-0">{{ $statsSorties['nombre'] }}</h3>
-                    <small>Nombre de dépenses</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ number_format($statsSorties['moyenne'], 0, ',', ' ') }}</h3>
-                    <small>Moyenne (GNF)</small>
+                    <small>Nombre de sorties</small>
                 </div>
             </div>
         </div>
