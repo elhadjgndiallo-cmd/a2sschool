@@ -240,29 +240,29 @@ class EleveController extends Controller
             'prenom' => 'required|string|max:255',
             'email' => 'nullable|email|max:191',
             'telephone' => 'nullable|string|max:20',
-            'adresse' => 'required|string',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string|max:255',
+            'adresse' => 'nullable|string',
+            'date_naissance' => 'nullable|date',
+            'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'required|in:M,F',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048|dimensions:min_width=100,min_height=100,max_width=2000,max_height=2000',
             'classe_id' => 'required|exists:classes,id',
             'numero_etudiant' => 'required|string|max:50|unique:eleves,numero_etudiant',
             
-            // Parent obligatoire - soit existant soit nouveau
-            'parent_type' => 'required|in:existing,new',
+            // Parent OPTIONNEL - soit existant soit nouveau
+            'parent_type' => 'nullable|in:existing,new',
             'parent_id' => 'required_if:parent_type,existing|nullable|exists:parents,id',
             
             // Données parent si nouveau
-            'parent_nom' => 'required_if:parent_type,new|string|max:255',
-            'parent_prenom' => 'required_if:parent_type,new|string|max:255',
+            'parent_nom' => 'required_if:parent_type,new|nullable|string|max:255',
+            'parent_prenom' => 'required_if:parent_type,new|nullable|string|max:255',
             'parent_email' => 'nullable|email|max:191',
-            'parent_telephone' => 'required_if:parent_type,new|string|max:20|unique:utilisateurs,telephone',
+            'parent_telephone' => 'required_if:parent_type,new|nullable|string|max:20|unique:utilisateurs,telephone',
             'parent_whatsapp' => 'nullable|string|max:20',
             'parent_adresse' => 'nullable|string',
-            'parent_sexe' => 'required_if:parent_type,new|in:M,F',
+            'parent_sexe' => 'required_if:parent_type,new|nullable|in:M,F',
             
-            // Relation parent-élève
-            'lien_parente' => 'required|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
+            // Relation parent-élève (OPTIONNEL)
+            'lien_parente' => 'nullable|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
             'autre_lien_parente' => 'required_if:lien_parente,autre|nullable|string|max:255',
             'responsable_legal' => 'nullable|boolean',
             'contact_urgence' => 'nullable|boolean',
@@ -520,8 +520,8 @@ class EleveController extends Controller
             'email' => 'nullable|email|max:191|unique:utilisateurs,email,' . $eleve->utilisateur_id,
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string|max:255',
+            'date_naissance' => 'nullable|date',
+            'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'required|in:M,F',
             'situation_matrimoniale' => 'nullable|in:celibataire,marie,divorce,veuf',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -992,9 +992,9 @@ class EleveController extends Controller
             'prenom' => 'required|string|max:255',
             'nom' => 'required|string|max:255',
             'sexe' => 'required|in:M,F',
-            'date_naissance' => 'required|date|before:today',
-            'lieu_naissance' => 'required|string|max:255',
-            'adresse' => 'required|string',
+            'date_naissance' => 'nullable|date|before:today',
+            'lieu_naissance' => 'nullable|string|max:255',
+            'adresse' => 'nullable|string',
             'telephone' => 'nullable|string|max:20',
             'situation_matrimoniale' => 'nullable|in:celibataire,marie,divorce,veuf',
         ]);
@@ -1015,8 +1015,8 @@ class EleveController extends Controller
     private function handleStep3(Request $request, array $studentData)
     {
         $rules = [
-            'parent_type' => 'required|in:existing,new',
-            'lien_parente' => 'required|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
+            'parent_type' => 'nullable|in:existing,new',
+            'lien_parente' => 'nullable|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
             'responsable_legal' => 'boolean',
             'contact_urgence' => 'boolean',
             'autorise_sortie' => 'boolean',
@@ -1024,7 +1024,7 @@ class EleveController extends Controller
 
         if ($request->input('parent_type') === 'existing') {
             $rules['parent_id'] = 'required|exists:parents,id';
-        } else {
+        } elseif ($request->input('parent_type') === 'new') {
             $rules['parent_prenom'] = 'required|string|max:255';
             $rules['parent_nom'] = 'required|string|max:255';
             $rules['parent_telephone'] = 'required|string|max:20|unique:utilisateurs,telephone';
@@ -1249,7 +1249,7 @@ class EleveController extends Controller
     /**
      * Afficher la page de réinscription
      */
-    public function showReinscription()
+    public function showReinscription(Request $request)
     {
         // Récupérer l'année scolaire active
         $anneeScolaireActive = AnneeScolaire::where('active', true)->first();
@@ -1259,11 +1259,17 @@ class EleveController extends Controller
             ->orderBy('date_debut', 'desc')
             ->get();
         
-        // Récupérer les élèves des années passées (non inscrits cette année)
-        $elevesPassees = $this->getElevesDesAnneesPassees($anneeScolaireActive);
-        
-        // Récupérer les classes actives pour la réinscription
+        // Récupérer toutes les classes pour le filtre
         $classes = Classe::actif()->get();
+        
+        // Nombre d'éléments par page (par défaut 20)
+        $perPage = $request->get('per_page', 20);
+        $perPage = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
+        
+        // Récupérer les élèves des années passées avec pagination directe
+        $elevesPassees = $this->getElevesDesAnneesPasseesQuery($anneeScolaireActive, $request)
+            ->paginate($perPage)
+            ->appends($request->query());
         
         return view('eleves.reinscription', compact(
             'elevesPassees', 
@@ -1311,21 +1317,12 @@ class EleveController extends Controller
                         continue;
                     }
                     
-                    // Vérifier si le matricule existe déjà dans l'année active
-                    $matriculeExiste = Eleve::where('numero_etudiant', $ancienEleve->numero_etudiant)
-                        ->where('annee_scolaire_id', $anneeScolaireActive->id)
-                        ->exists();
-                    
-                    if ($matriculeExiste) {
-                        $erreurs[] = "Le matricule {$ancienEleve->numero_etudiant} est déjà utilisé par un autre élève cette année.";
-                        continue;
-                    }
-                    
                     // Déterminer la nouvelle classe
                     $nouvelleClasseId = $request->nouvelle_classe ?: $ancienEleve->classe_id;
                     
-                    // Générer un nouveau matricule pour éviter les conflits
-                    $nouveauMatricule = $this->generateNewMatricule();
+                    // GARDER le matricule de l'élève - La contrainte unique permet maintenant
+                    // le même matricule dans différentes années scolaires
+                    $matriculeEleve = $ancienEleve->numero_etudiant;
                     
                     // Déterminer si l'élève doit être exempté des frais
                     $exempteFrais = $request->boolean('exempte_frais') ? true : $ancienEleve->exempte_frais;
@@ -1334,7 +1331,7 @@ class EleveController extends Controller
                     $nouvelEleve = Eleve::create([
                         'utilisateur_id' => $ancienEleve->utilisateur_id,
                         'classe_id' => $nouvelleClasseId,
-                        'numero_etudiant' => $nouveauMatricule, // Nouveau matricule pour éviter les conflits
+                        'numero_etudiant' => $matriculeEleve, // GARDER l'ancien matricule
                         'date_inscription' => now(),
                         'type_inscription' => 'reinscription',
                         'ecole_origine' => null,
@@ -1384,7 +1381,7 @@ class EleveController extends Controller
     /**
      * Récupérer les élèves des années passées non inscrits cette année
      */
-    private function getElevesDesAnneesPassees($anneeScolaireActive)
+    private function getElevesDesAnneesPassees($anneeScolaireActive, $request = null)
     {
         if (!$anneeScolaireActive) {
             return collect();
@@ -1395,27 +1392,122 @@ class EleveController extends Controller
             ->pluck('utilisateur_id')
             ->toArray();
         
-        // Récupérer SEULEMENT les élèves des années passées qui ne sont pas inscrits cette année
-        // Exclure les élèves sans année scolaire (ils ne sont pas des anciens élèves)
-        return Eleve::with([
+        // Construire la requête de base
+        $query = Eleve::with([
                 'utilisateur', 
                 'classe', 
                 'anneeScolaire',
-                'parents' => function($query) {
-                    $query->with('utilisateur');
+                'parents' => function($q) {
+                    $q->with('utilisateur');
                 }
             ])
             ->where('annee_scolaire_id', '!=', $anneeScolaireActive->id)
-            ->whereNotNull('annee_scolaire_id') // Seulement les élèves avec une année scolaire assignée
-            ->whereNotIn('utilisateur_id', $utilisateursInscritsThisYear)
-            ->orderBy('updated_at', 'desc')
+            ->whereNotNull('annee_scolaire_id')
+            ->whereNotIn('utilisateur_id', $utilisateursInscritsThisYear);
+        
+        // Appliquer les filtres si fournis
+        if ($request) {
+            // Filtre par nom/prénom
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('utilisateur', function($q) use ($search) {
+                    $q->where('nom', 'LIKE', "%{$search}%")
+                      ->orWhere('prenom', 'LIKE', "%{$search}%");
+                });
+            }
+            
+            // Filtre par matricule
+            if ($request->filled('matricule')) {
+                $query->where('numero_etudiant', 'LIKE', "%{$request->matricule}%");
+            }
+            
+            // Filtre par classe
+            if ($request->filled('classe_id')) {
+                $query->where('classe_id', $request->classe_id);
+            }
+            
+            // Filtre par année scolaire
+            if ($request->filled('annee_scolaire_id')) {
+                $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+            }
+        }
+        
+        // Récupérer et grouper par utilisateur (prendre la plus récente)
+        return $query->orderBy('updated_at', 'desc')
             ->get()
             ->groupBy('utilisateur_id')
             ->map(function($eleves) {
-                // Prendre l'inscription la plus récente pour chaque utilisateur
                 return $eleves->sortByDesc('updated_at')->first();
             })
             ->values();
+    }
+    
+    /**
+     * Récupérer la requête des élèves des années passées (pour pagination)
+     */
+    private function getElevesDesAnneesPasseesQuery($anneeScolaireActive, $request = null)
+    {
+        if (!$anneeScolaireActive) {
+            return Eleve::whereRaw('1 = 0'); // Requête vide
+        }
+        
+        // Récupérer tous les utilisateurs d'élèves inscrits cette année
+        $utilisateursInscritsThisYear = Eleve::where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->pluck('utilisateur_id')
+            ->toArray();
+        
+        // Sous-requête pour obtenir l'ID de l'inscription la plus récente pour chaque utilisateur
+        $subQuery = Eleve::selectRaw('MAX(eleves.id) as max_id')
+            ->where('annee_scolaire_id', '!=', $anneeScolaireActive->id)
+            ->whereNotNull('annee_scolaire_id')
+            ->whereNotIn('utilisateur_id', $utilisateursInscritsThisYear)
+            ->groupBy('utilisateur_id');
+        
+        // Construire la requête principale
+        $query = Eleve::with([
+                'utilisateur', 
+                'classe', 
+                'anneeScolaire',
+                'parents' => function($q) {
+                    $q->with('utilisateur');
+                }
+            ])
+            ->whereIn('eleves.id', $subQuery);
+        
+        // Appliquer les filtres si fournis
+        if ($request) {
+            // Filtre par nom/prénom
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('utilisateur', function($q) use ($search) {
+                    $q->where('nom', 'LIKE', "%{$search}%")
+                      ->orWhere('prenom', 'LIKE', "%{$search}%");
+                });
+            }
+            
+            // Filtre par matricule
+            if ($request->filled('matricule')) {
+                $query->where('eleves.numero_etudiant', 'LIKE', "%{$request->matricule}%");
+            }
+            
+            // Filtre par classe
+            if ($request->filled('classe_id')) {
+                $query->where('eleves.classe_id', $request->classe_id);
+            }
+            
+            // Filtre par année scolaire
+            if ($request->filled('annee_scolaire_id')) {
+                $query->where('eleves.annee_scolaire_id', $request->annee_scolaire_id);
+            }
+        }
+        
+        // Tri par défaut par nom de l'utilisateur
+        $query->join('utilisateurs', 'eleves.utilisateur_id', '=', 'utilisateurs.id')
+              ->orderBy('utilisateurs.prenom', 'asc')
+              ->orderBy('utilisateurs.nom', 'asc')
+              ->select('eleves.*');
+        
+        return $query;
     }
     
     /**
@@ -1487,9 +1579,9 @@ class EleveController extends Controller
             'prenom' => 'required|string|max:255',
             'nom' => 'required|string|max:255',
             'sexe' => 'required|in:M,F',
-            'date_naissance' => 'required|date|before:today',
-            'lieu_naissance' => 'required|string|max:255',
-            'adresse' => 'required|string',
+            'date_naissance' => 'nullable|date|before:today',
+            'lieu_naissance' => 'nullable|string|max:255',
+            'adresse' => 'nullable|string',
             'telephone' => 'nullable|string|max:20',
             'situation_matrimoniale' => 'nullable|in:celibataire,marie,divorce,veuf',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -1506,9 +1598,9 @@ class EleveController extends Controller
             'gratuit_inscription' => 'boolean',
             'gratuit_reinscription' => 'boolean',
             
-            // Données parent
-            'parent_type' => 'required|in:existing,new',
-            'lien_parente' => 'required|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
+            // Données parent (OPTIONNEL)
+            'parent_type' => 'nullable|in:existing,new',
+            'lien_parente' => 'nullable|in:pere,mere,tuteur,tutrice,grand_pere,grand_mere,oncle,tante,autre',
             'responsable_legal' => 'boolean',
             'contact_urgence' => 'boolean',
             'autorise_sortie' => 'boolean',
@@ -1517,7 +1609,7 @@ class EleveController extends Controller
         if ($request->input('parent_type') === 'existing') {
             $rules['parent_id'] = 'required|exists:parents,id';
             // Pour un parent existant, les autres champs parent ne sont pas requis
-        } else {
+        } elseif ($request->input('parent_type') === 'new') {
             $rules['parent_prenom'] = 'required|string|max:255';
             $rules['parent_nom'] = 'required|string|max:255';
             $rules['parent_telephone'] = 'required|string|max:20|unique:utilisateurs,telephone';
@@ -1587,40 +1679,44 @@ class EleveController extends Controller
                     'actif' => true,
                 ]);
 
-                // Gérer le parent
+                // Gérer le parent (OPTIONNEL)
                 $parentId = null;
-                if ($request->input('parent_type') === 'existing') {
-                    $parentId = $request->parent_id;
-                } else {
-                    // Créer un nouveau parent
-                    $parentUtilisateur = Utilisateur::create([
-                        'nom' => $request->parent_nom,
-                        'prenom' => $request->parent_prenom,
-                        'email' => $request->parent_email ?: $this->generateParentEmail($request->parent_prenom, $request->parent_nom),
-                        'password' => Hash::make('parent123'),
-                        'telephone' => $request->parent_telephone,
-                        'adresse' => $request->parent_adresse ?: $request->adresse,
-                        'role' => 'parent',
-                        'actif' => true,
-                    ]);
+                if ($request->filled('parent_type')) {
+                    if ($request->input('parent_type') === 'existing') {
+                        $parentId = $request->parent_id;
+                    } elseif ($request->input('parent_type') === 'new') {
+                        // Créer un nouveau parent
+                        $parentUtilisateur = Utilisateur::create([
+                            'nom' => $request->parent_nom,
+                            'prenom' => $request->parent_prenom,
+                            'email' => $request->parent_email ?: $this->generateParentEmail($request->parent_prenom, $request->parent_nom),
+                            'password' => Hash::make('parent123'),
+                            'telephone' => $request->parent_telephone,
+                            'adresse' => $request->parent_adresse ?: $request->adresse,
+                            'role' => 'parent',
+                            'actif' => true,
+                        ]);
 
-                    $parent = ParentModel::create([
-                        'utilisateur_id' => $parentUtilisateur->id,
-                    ]);
+                        $parent = ParentModel::create([
+                            'utilisateur_id' => $parentUtilisateur->id,
+                        ]);
 
-                    $parentId = $parent->id;
+                        $parentId = $parent->id;
+                    }
+
+                    // Associer le parent à l'élève seulement si parent fourni
+                    if ($parentId) {
+                        $eleve->parents()->attach($parentId, [
+                            'lien_parente' => $request->lien_parente ?? 'tuteur',
+                            'autre_lien_parente' => $request->autre_lien_parente ?? null,
+                            'responsable_legal' => $request->responsable_legal ?? false,
+                            'contact_urgence' => $request->contact_urgence ?? false,
+                            'autorise_sortie' => $request->autorise_sortie ?? false,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
-
-                // Associer le parent à l'élève
-                $eleve->parents()->attach($parentId, [
-                    'lien_parente' => $request->lien_parente,
-                    'autre_lien_parente' => $request->autre_lien_parente ?? null,
-                    'responsable_legal' => $request->responsable_legal ?? false,
-                    'contact_urgence' => $request->contact_urgence ?? false,
-                    'autorise_sortie' => $request->autorise_sortie ?? false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
 
                 // Créer automatiquement les frais d'inscription et de scolarité
                 $paiementController = app(PaiementController::class);

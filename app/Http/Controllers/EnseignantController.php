@@ -43,9 +43,18 @@ class EnseignantController extends Controller
         \DB::flushQueryLog();
         \Cache::flush();
         
-        $enseignants = Enseignant::with('utilisateur')
-            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
-            ->orderBy('utilisateurs.prenom', 'asc')
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        $query = Enseignant::with('utilisateur')
+            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id');
+        
+        // Filtrer uniquement les enseignants de l'année scolaire active
+        if ($anneeScolaireActive) {
+            $query->where('enseignants.annee_scolaire_id', $anneeScolaireActive->id);
+        }
+        
+        $enseignants = $query->orderBy('utilisateurs.prenom', 'asc')
             ->orderBy('utilisateurs.nom', 'asc')
             ->select('enseignants.*')
             ->distinct()
@@ -700,6 +709,154 @@ class EnseignantController extends Controller
         // complète que la méthode update(), ce qui garantit que toutes les
         // informations visibles dans le formulaire simple sont bien enregistrées.
         return $this->update($request, $enseignant);
+    }
+
+    /**
+     * Afficher la page de réinscription des enseignants
+     */
+    public function showReinscription(Request $request)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('enseignants.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        
+        if (!$anneeScolaireActive) {
+            return redirect()->route('enseignants.index')
+                ->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer toutes les années scolaires sauf l'active pour le filtre
+        $anneesPassees = \App\Models\AnneeScolaire::where('active', false)
+            ->orderBy('date_debut', 'desc')
+            ->get();
+
+        // Récupérer les enseignants des années passées
+        $query = Enseignant::with(['utilisateur'])
+            ->where('annee_scolaire_id', '!=', $anneeScolaireActive->id)
+            ->whereNotNull('annee_scolaire_id')
+            ->whereNotIn('utilisateur_id', function($q) use ($anneeScolaireActive) {
+                $q->select('utilisateur_id')
+                  ->from('enseignants')
+                  ->where('annee_scolaire_id', $anneeScolaireActive->id);
+            });
+
+        // Appliquer les filtres
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('utilisateur', function($q) use ($search) {
+                $q->where('nom', 'LIKE', "%{$search}%")
+                  ->orWhere('prenom', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('numero_employe')) {
+            $query->where('numero_employe', 'LIKE', "%{$request->numero_employe}%");
+        }
+
+        if ($request->filled('annee_scolaire_id')) {
+            $query->where('annee_scolaire_id', $request->annee_scolaire_id);
+        }
+
+        // Nombre d'éléments par page
+        $perPage = $request->get('per_page', 20);
+        $perPage = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
+
+        // Pagination
+        $enseignantsPassees = $query->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
+            ->orderBy('utilisateurs.nom', 'asc')
+            ->select('enseignants.*')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('enseignants.reinscription', compact(
+            'enseignantsPassees',
+            'anneesPassees',
+            'anneeScolaireActive'
+        ));
+    }
+
+    /**
+     * Traiter la réinscription des enseignants sélectionnés
+     */
+    public function processReinscription(Request $request)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('enseignants.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        $request->validate([
+            'enseignants_ids' => 'required|array|min:1',
+            'enseignants_ids.*' => 'exists:enseignants,id',
+        ]);
+
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $enseignantsReinscris = 0;
+        $erreurs = [];
+
+        DB::transaction(function() use ($request, $anneeScolaireActive, &$enseignantsReinscris, &$erreurs) {
+            foreach ($request->enseignants_ids as $enseignantId) {
+                try {
+                    $ancienEnseignant = Enseignant::with(['utilisateur', 'matieres'])
+                        ->findOrFail($enseignantId);
+
+                    // Vérifier si l'enseignant n'est pas déjà inscrit cette année
+                    $dejaInscrit = Enseignant::where('utilisateur_id', $ancienEnseignant->utilisateur_id)
+                        ->where('annee_scolaire_id', $anneeScolaireActive->id)
+                        ->exists();
+
+                    if ($dejaInscrit) {
+                        $erreurs[] = "L'enseignant {$ancienEnseignant->utilisateur->nom} {$ancienEnseignant->utilisateur->prenom} est déjà inscrit cette année.";
+                        continue;
+                    }
+
+                    // GARDER le numero_employe - La contrainte unique permet maintenant
+                    // le même numero_employe dans différentes années scolaires
+                    $numeroEmploye = $ancienEnseignant->numero_employe;
+
+                    // Créer la nouvelle inscription
+                    $nouvelEnseignant = Enseignant::create([
+                        'utilisateur_id' => $ancienEnseignant->utilisateur_id,
+                        'numero_employe' => $numeroEmploye,
+                        'date_embauche' => $ancienEnseignant->date_embauche,
+                        'specialite' => $ancienEnseignant->specialite,
+                        'statut' => $ancienEnseignant->statut,
+                        'salaire' => $ancienEnseignant->salaire,
+                        'qualifications' => $ancienEnseignant->qualifications,
+                        'annee_scolaire_id' => $anneeScolaireActive->id,
+                        'actif' => true,
+                    ]);
+
+                    // Copier les matières
+                    if ($ancienEnseignant->matieres->count() > 0) {
+                        $nouvelEnseignant->matieres()->attach($ancienEnseignant->matieres->pluck('id'));
+                    }
+
+                    $enseignantsReinscris++;
+
+                } catch (\Exception $e) {
+                    $erreurs[] = "Erreur lors de la réinscription de l'enseignant ID {$enseignantId}: " . $e->getMessage();
+                }
+            }
+        });
+
+        $message = "{$enseignantsReinscris} enseignant(s) réinscrit(s) avec succès.";
+        if (!empty($erreurs)) {
+            $message .= " Erreurs: " . implode(', ', $erreurs);
+        }
+
+        return redirect()->route('enseignants.reinscription')
+            ->with($enseignantsReinscris > 0 ? 'success' : 'error', $message);
     }
 }
 

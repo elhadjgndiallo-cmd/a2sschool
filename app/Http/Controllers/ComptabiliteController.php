@@ -15,9 +15,15 @@ use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ComptabiliteEntreesStatsService;
 use App\Services\ComptabiliteSortiesStatsService;
+use Illuminate\Support\Facades\Cache;
 
 class ComptabiliteController extends Controller
 {
+    /**
+     * Durée du cache pour le dashboard comptabilité (3 minutes)
+     */
+    const CACHE_DURATION = 180;
+    
     /**
      * Afficher le tableau de bord de la comptabilité
      */
@@ -31,38 +37,33 @@ class ComptabiliteController extends Controller
                 return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
             }
             
-            // Statistiques générales pour l'année active
-            $stats = $this->getComptabiliteStats($anneeScolaireActive);
+            // Statistiques générales pour l'année active (avec cache)
+            $stats = Cache::remember(
+                'comptabilite_stats_' . $anneeScolaireActive->id, 
+                self::CACHE_DURATION, 
+                fn() => $this->getComptabiliteStats($anneeScolaireActive)
+            );
         
-        // Récupérer toutes les entrées manuelles de l'année scolaire active
+        // Récupérer toutes les entrées manuelles de l'année scolaire active (LIMITÉ à 15)
         $entreesManuelles = Entree::with('enregistrePar:id,nom,prenom')
             ->whereBetween('date_entree', [
                 $anneeScolaireActive->date_debut->format('Y-m-d'),
                 $anneeScolaireActive->date_fin->format('Y-m-d')
             ])
             ->orderBy('date_entree', 'desc')
-            ->limit(30)
+            ->limit(15) // Réduit de 30 à 15
             ->get();
         
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
 
-        // Index léger pour exclure les doublons (sans charger toutes les relations)
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup(
-            Paiement::forAnneeScolaire($anneeScolaireActive->id)
-                ->select([
-                    'paiements.reference_paiement',
-                    'paiements.montant_paye',
-                    'paiements.date_paiement',
-                    'paiements.encaisse_par',
-                ])
-                ->get()
-        );
-
-        // Paiements récents avec relations ciblées (dashboard : 30 derniers suffisent)
+        // Paiements récents avec relations ciblées (LIMITÉ à 15)
         $paiementsFrais = $entreesStats
             ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaireActive)
-            ->limit(30)
+            ->limit(15) // Réduit de 30 à 15
             ->get();
+
+        // Index léger pour exclure les doublons
+        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiementsFrais);
 
         $toutesLesEntrees = collect();
 
@@ -93,47 +94,48 @@ class ComptabiliteController extends Controller
         // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
         $toutesLesEntrees = $toutesLesEntrees->sortByDesc('date')->take(10);
             
-        // Récupérer toutes les dépenses de l'année scolaire active
-        $depenses = Depense::with(['approuvePar', 'payePar'])
+        // OPTIMISATION: Récupérer DIRECTEMENT les 10 dernières dépenses (au lieu de toutes)
+        $depensesRecentes = Depense::select([
+                'id', 'libelle', 'montant', 'date_depense', 'type_depense', 
+                'approuve_par', 'paye_par', 'description'
+            ])
+            ->with([
+                'approuvePar:id,nom,prenom', 
+                'payePar:id,nom,prenom'
+            ])
             ->whereBetween('date_depense', [
                 $anneeScolaireActive->date_debut->format('Y-m-d'),
                 $anneeScolaireActive->date_fin->format('Y-m-d')
             ])
             ->orderBy('date_depense', 'desc')
+            ->limit(10) // Directement limité à 10
             ->get();
         
-        // Récupérer tous les salaires enseignants payés de l'année active
-        $salairesPayes = SalaireEnseignant::where('statut', 'payé')
+        // OPTIMISATION: Récupérer DIRECTEMENT les 10 derniers salaires (au lieu de tous)
+        $salairesRecents = SalaireEnseignant::select([
+                'id', 'enseignant_id', 'salaire_net', 'date_paiement', 
+                'periode_debut', 'periode_fin', 'paye_par'
+            ])
+            ->where('statut', 'payé')
             ->whereNotNull('date_paiement')
             ->whereBetween('date_paiement', [
                 $anneeScolaireActive->date_debut->format('Y-m-d'),
                 $anneeScolaireActive->date_fin->format('Y-m-d')
             ])
-            ->with(['enseignant.utilisateur', 'payePar'])
+            ->with([
+                'enseignant:id,utilisateur_id',
+                'enseignant.utilisateur:id,nom,prenom',
+                'payePar:id,nom,prenom'
+            ])
             ->orderBy('date_paiement', 'desc')
+            ->limit(10) // Directement limité à 10
             ->get();
         
-        // Combiner toutes les sorties (dépenses + salaires enseignants)
+        // Combiner les sorties (dépenses + salaires) et prendre les 10 plus récentes
         $toutesLesSorties = collect();
         
-        // Ajouter les dépenses
-        foreach ($depenses as $depense) {
-            // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($depense->type_depense == 'salaire_enseignant' &&
-                    $depense->montant == $salaire->salaire_net &&
-                    $depense->date_depense->format('Y-m-d') == $salaire->date_paiement->format('Y-m-d')) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
-            
-            // Si c'est une dépense qui correspond à un salaire, on l'exclut
-            if ($correspondSalaire) {
-                continue;
-            }
-            
+        // Ajouter les dépenses récentes
+        foreach ($depensesRecentes as $depense) {
             $toutesLesSorties->push((object) [
                 'id' => 'depense_' . $depense->id,
                 'type' => 'depense',
@@ -146,13 +148,14 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Ajouter tous les salaires enseignants
-        foreach ($salairesPayes as $salaire) {
-            $enseignantNom = $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom;
+        // Ajouter les salaires récents
+        foreach ($salairesRecents as $salaire) {
+            $enseignantNom = optional($salaire->enseignant)->utilisateur 
+                ? ($salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom)
+                : 'Enseignant';
             
-            // Vérifier que les dates ne sont pas null avant de les formater
-            $dateDebut = $salaire->date_debut ? $salaire->date_debut->format('d/m/Y') : 'N/A';
-            $dateFin = $salaire->date_fin ? $salaire->date_fin->format('d/m/Y') : 'N/A';
+            $dateDebut = $salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A';
+            $dateFin = $salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A';
             $description = 'Salaire ' . $enseignantNom . ' - ' . $dateDebut . ' - ' . $dateFin;
             
             $toutesLesSorties->push((object) [
@@ -167,7 +170,7 @@ class ComptabiliteController extends Controller
             ]);
         }
         
-        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
+        // Trier par date décroissante et limiter aux 10 dernières
         $toutesLesSorties = $toutesLesSorties->sortByDesc('date')->take(10);
         
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
@@ -189,59 +192,68 @@ class ComptabiliteController extends Controller
     
     /**
      * Obtenir les données d'évolution pour le graphique (6 derniers mois)
+     * OPTIMISÉ avec cache
      */
     private function getEvolutionData($anneeScolaire)
     {
-        $mois = [];
-        $revenus = [];
-        $depenses = [];
-        
-        // Obtenir les 6 derniers mois
-        for ($i = 5; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $moisDebut = $date->copy()->startOfMonth();
-            $moisFin = $date->copy()->endOfMonth();
-            
-            // Vérifier que le mois est dans l'année scolaire
-            if ($moisFin->lt($anneeScolaire->date_debut) || $moisDebut->gt($anneeScolaire->date_fin)) {
-                continue;
+        // Cache pour 10 minutes
+        return Cache::remember(
+            'comptabilite_evolution_' . $anneeScolaire->id, 
+            600, 
+            function() use ($anneeScolaire) {
+                $mois = [];
+                $revenus = [];
+                $depenses = [];
+                
+                // Obtenir les 6 derniers mois
+                for ($i = 5; $i >= 0; $i--) {
+                    $date = Carbon::now()->subMonths($i);
+                    $moisDebut = $date->copy()->startOfMonth();
+                    $moisFin = $date->copy()->endOfMonth();
+                    
+                    // Vérifier que le mois est dans l'année scolaire
+                    if ($moisFin->lt($anneeScolaire->date_debut) || $moisDebut->gt($anneeScolaire->date_fin)) {
+                        continue;
+                    }
+                    
+                    // Nom du mois en français
+                    $nomMois = $date->locale('fr')->isoFormat('MMM YYYY');
+                    $mois[] = $nomMois;
+                    
+                    // OPTIMISÉ: Requêtes directes au lieu du service lourd
+                    $statsMois = app(ComptabiliteEntreesStatsService::class)->calculateStats(
+                        new Request([
+                            'date_debut' => $moisDebut->format('Y-m-d'),
+                            'date_fin' => $moisFin->format('Y-m-d'),
+                        ]),
+                        $anneeScolaire
+                    );
+                    $revenus[] = $statsMois['total'];
+                    
+                    // OPTIMISÉ: Requête unique pour dépenses + salaires
+                    $depensesNormales = Depense::whereBetween('date_depense', [
+                        $moisDebut->format('Y-m-d'),
+                        $moisFin->format('Y-m-d')
+                    ])->sum('montant');
+                    
+                    $salaires = SalaireEnseignant::where('statut', 'payé')
+                        ->whereNotNull('date_paiement')
+                        ->whereBetween('date_paiement', [
+                            $moisDebut->format('Y-m-d'),
+                            $moisFin->format('Y-m-d')
+                        ])
+                        ->sum('salaire_net');
+                    
+                    $depenses[] = $depensesNormales + $salaires;
+                }
+                
+                return [
+                    'labels' => $mois,
+                    'revenus' => $revenus,
+                    'depenses' => $depenses
+                ];
             }
-            
-            // Nom du mois en français
-            $nomMois = $date->locale('fr')->isoFormat('MMM YYYY');
-            $mois[] = $nomMois;
-            
-            $statsMois = app(ComptabiliteEntreesStatsService::class)->calculateStats(
-                new Request([
-                    'date_debut' => $moisDebut->format('Y-m-d'),
-                    'date_fin' => $moisFin->format('Y-m-d'),
-                ]),
-                $anneeScolaire
-            );
-            $revenus[] = $statsMois['total'];
-            
-            // Calculer les dépenses du mois (dépenses + salaires)
-            $depensesNormales = Depense::whereBetween('date_depense', [
-                $moisDebut->format('Y-m-d'),
-                $moisFin->format('Y-m-d')
-            ])->sum('montant');
-            
-            $salaires = SalaireEnseignant::where('statut', 'payé')
-                ->whereNotNull('date_paiement')
-                ->whereBetween('date_paiement', [
-                    $moisDebut->format('Y-m-d'),
-                    $moisFin->format('Y-m-d')
-                ])
-                ->sum('salaire_net');
-            
-            $depenses[] = $depensesNormales + $salaires;
-        }
-        
-        return [
-            'labels' => $mois,
-            'revenus' => $revenus,
-            'depenses' => $depenses
-        ];
+        );
     }
 
     /**
@@ -1221,6 +1233,10 @@ class ComptabiliteController extends Controller
      */
     public function rapportJournalier(Request $request)
     {
+        // Augmenter le timeout pour les rapports volumineux (surtout annuels)
+        set_time_limit(600); // 10 minutes
+        ini_set('memory_limit', '1024M'); // 1GB pour les gros rapports
+        
         $type = $request->get('type', 'jour');
         $date = $request->get('date', Carbon::now()->format('Y-m-d'));
         $month = $request->get('month', Carbon::now()->format('Y-m'));
@@ -1270,7 +1286,14 @@ class ComptabiliteController extends Controller
                 break;
         }
 
-        $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
+        // Pour le rapport annuel, utiliser un résumé mensuel au lieu de toutes les transactions
+        if ($type === 'annee' && $anneeScolaire) {
+            $journal = $this->buildJournalMensuelResume($dateDebut, $dateFin, $anneeScolaire);
+            $isResumeMensuel = true;
+        } else {
+            $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
+            $isResumeMensuel = false;
+        }
 
         // Solde de la période uniquement (pas de cumul historique)
         $soldeInitial = 0;
@@ -1315,37 +1338,116 @@ class ComptabiliteController extends Controller
             'anneeScolaire',
             'anneesScolaires',
             'dateDebut',
-            'dateFin'
+            'dateFin',
+            'isResumeMensuel'
         );
 
         if ($format === 'pdf') {
-            $fileName = 'rapport-journalier';
-            if ($type === 'jour') {
-                $fileName .= '-' . $dateCarbon->format('Y-m-d');
-            } elseif ($type === 'mois') {
-                $fileName .= '-' . $dateCarbon->format('Y-m');
-            } else {
-                $fileName .= '-' . ($anneeScolaire->nom ?? 'annee');
+            try {
+                $fileName = 'rapport-journalier';
+                if ($type === 'jour') {
+                    $fileName .= '-' . $dateCarbon->format('Y-m-d');
+                } elseif ($type === 'mois') {
+                    $fileName .= '-' . $dateCarbon->format('Y-m');
+                } else {
+                    $fileName .= '-' . ($anneeScolaire->nom ?? 'annee');
+                }
+                $fileName .= '.pdf';
+
+                // Ajouter le type de rapport aux données
+                $viewData['reportType'] = $type;
+
+                $pdf = Pdf::loadView('comptabilite.rapport-journalier-pdf', $viewData);
+                $pdf->setPaper('A4', 'portrait');
+                $pdf->setOption('enable-local-file-access', true);
+                $pdf->setOption('isHtml5ParserEnabled', true);
+                $pdf->setOption('isRemoteEnabled', false);
+                $pdf->setOption('defaultFont', 'DejaVu Sans');
+                $pdf->setOption('fontHeightRatio', 1.1);
+                $pdf->setOption('dpi', 96);
+
+                return $pdf->download($fileName);
+            } catch (\Exception $e) {
+                \Log::error('Erreur génération PDF rapport comptabilité: ' . $e->getMessage());
+                \Log::error($e->getTraceAsString());
+                return redirect()->back()->with('error', 'Erreur lors de la génération du PDF: ' . $e->getMessage());
             }
-            $fileName .= '.pdf';
-
-            $pdf = Pdf::loadView('comptabilite.rapport-journalier-pdf', $viewData);
-            $pdf->setPaper('A4', 'portrait');
-            $pdf->setOption('enable-local-file-access', true);
-            $pdf->setOption('isHtml5ParserEnabled', true);
-            $pdf->setOption('isRemoteEnabled', true);
-            $pdf->setOption('defaultFont', 'Arial');
-            $pdf->setOption('fontHeightRatio', 1.1);
-
-            $fontsPath = storage_path('fonts');
-            if (!is_dir($fontsPath)) {
-                mkdir($fontsPath, 0755, true);
-            }
-
-            return $pdf->download($fileName);
         }
 
         return view('comptabilite.rapport-journalier', $viewData);
+    }
+
+    /**
+     * Construire un journal résumé mensuel pour les rapports annuels
+     * (au lieu de charger toutes les transactions)
+     */
+    private function buildJournalMensuelResume(Carbon $dateDebut, Carbon $dateFin, \App\Models\AnneeScolaire $anneeScolaire)
+    {
+        $journal = collect();
+        $debutStr = $dateDebut->format('Y-m-d');
+        $finStr = $dateFin->format('Y-m-d');
+        
+        // Parcourir chaque mois de l'année scolaire
+        $moisCourant = $dateDebut->copy()->startOfMonth();
+        $finAnnee = $dateFin->copy()->endOfMonth();
+        
+        while ($moisCourant->lte($finAnnee)) {
+            $moisDebut = $moisCourant->copy()->startOfMonth();
+            $moisFin = $moisCourant->copy()->endOfMonth();
+            
+            // Limiter à la période de l'année scolaire
+            if ($moisDebut->lt($dateDebut)) {
+                $moisDebut = $dateDebut->copy();
+            }
+            if ($moisFin->gt($dateFin)) {
+                $moisFin = $dateFin->copy();
+            }
+            
+            $debutMoisStr = $moisDebut->format('Y-m-d');
+            $finMoisStr = $moisFin->format('Y-m-d');
+            
+            // OPTIMISATION: Calculer les totaux directement avec SUM
+            $entreesStats = app(ComptabiliteEntreesStatsService::class);
+            
+            // Total entrées (paiements + entrées manuelles)
+            $statsMois = $entreesStats->calculateStats(
+                new Request([
+                    'date_debut' => $debutMoisStr,
+                    'date_fin' => $finMoisStr,
+                ]),
+                $anneeScolaire
+            );
+            $totalEntreesMois = $statsMois['total'];
+            
+            // Total sorties (dépenses + salaires)
+            $totalDepensesMois = Depense::where('statut', '!=', 'annule')
+                ->whereBetween('date_depense', [$debutMoisStr, $finMoisStr])
+                ->sum('montant');
+            
+            $totalSalairesMois = SalaireEnseignant::where('statut', 'payé')
+                ->whereNotNull('date_paiement')
+                ->whereBetween('date_paiement', [$debutMoisStr, $finMoisStr])
+                ->sum('salaire_net');
+            
+            $totalSortiesMois = $totalDepensesMois + $totalSalairesMois;
+            
+            // Ajouter le résumé mensuel au journal
+            $journal->push([
+                'date' => $moisDebut,
+                'libelle' => 'Résumé du mois de ' . $moisDebut->locale('fr')->isoFormat('MMMM YYYY'),
+                'entree' => (float) $totalEntreesMois,
+                'sortie' => (float) $totalSortiesMois,
+                'type' => 'resume_mensuel',
+                'source' => 'Résumé mensuel',
+                'enregistre_par' => null,
+                'created_at' => $moisDebut,
+            ]);
+            
+            // Passer au mois suivant
+            $moisCourant->addMonth();
+        }
+        
+        return $journal->sortBy('date')->values();
     }
 
     /**

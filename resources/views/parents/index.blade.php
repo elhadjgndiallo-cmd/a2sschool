@@ -73,6 +73,14 @@
             <i class="fas fa-users me-2"></i>
             Liste des Parents
         </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            @if(auth()->user()->hasPermission('eleves.create'))
+            <a href="{{ route('parents.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Nouveau Parent
+            </a>
+            @endif
+        </div>
     </div>
 
     @if(session('success'))

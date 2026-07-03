@@ -17,9 +17,14 @@ use App\Models\Evenement;
 use App\Models\AnneeScolaire;
 use App\Services\ComptabiliteEntreesStatsService;
 use App\Services\ComptabiliteSortiesStatsService;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    /**
+     * Durée du cache pour le dashboard (5 minutes)
+     */
+    const CACHE_DURATION = 300;
     /**
      * Afficher la page d'accueil selon le rôle de l'utilisateur
      */
@@ -56,36 +61,38 @@ class DashboardController extends Controller
         try {
             $user = Auth::user();
             
-            $anneeScolaireActive = AnneeScolaire::anneeActive();
-            $requestVide = new Request();
+            // Mettre en cache les statistiques pour 5 minutes
+            $stats = Cache::remember('admin_dashboard_stats', self::CACHE_DURATION, function () {
+                $anneeScolaireActive = AnneeScolaire::anneeActive();
+                $requestVide = new Request();
 
-            $statsRevenus = $anneeScolaireActive
-                ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-                : ['total' => 0];
+                $statsRevenus = $anneeScolaireActive
+                    ? app(ComptabiliteEntreesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+                    : ['total' => 0];
 
-            $statsSorties = $anneeScolaireActive
-                ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
-                : ['total' => 0];
+                $statsSorties = $anneeScolaireActive
+                    ? app(ComptabiliteSortiesStatsService::class)->calculateStats($requestVide, $anneeScolaireActive)
+                    : ['total' => 0];
 
-            $totalRevenus = $statsRevenus['total'] ?? 0;
-            $totalSorties = $statsSorties['total'] ?? 0;
+                $totalRevenus = $statsRevenus['total'] ?? 0;
+                $totalSorties = $statsSorties['total'] ?? 0;
 
-            // Statistiques générales
-            $stats = [
-                'eleves' => Eleve::count(),
-                'enseignants' => Enseignant::count(),
-                'parents' => ParentModel::count(),
-                'classes' => Classe::count(),
-                'matieres' => Matiere::count(),
-                'paiements_total' => $totalRevenus,
-                'total_revenus' => $totalRevenus,
-                'total_sorties' => $totalSorties,
-                'benefice_total' => $totalRevenus - $totalSorties,
-                'absences_total' => Absence::count(),
-                'notes_total' => Note::count(),
-            ];
+                return [
+                    'eleves' => Eleve::count(),
+                    'enseignants' => Enseignant::count(),
+                    'parents' => ParentModel::count(),
+                    'classes' => Classe::count(),
+                    'matieres' => Matiere::count(),
+                    'paiements_total' => $totalRevenus,
+                    'total_revenus' => $totalRevenus,
+                    'total_sorties' => $totalSorties,
+                    'benefice_total' => $totalRevenus - $totalSorties,
+                    'absences_total' => Absence::count(),
+                    'notes_total' => Note::count(),
+                ];
+            });
             
-            // Derniers paiements
+            // Derniers paiements (pas de cache pour les données récentes)
             $derniersPaiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
@@ -103,18 +110,22 @@ class DashboardController extends Controller
                 ->limit(10)
                 ->get();
 
-            // Statistiques par mois (pour les graphiques)
-            $paiementsParMois = Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
-                ->whereYear('created_at', now()->year)
-                ->groupBy('mois')
-                ->orderBy('mois')
-                ->get();
+            // Statistiques par mois (pour les graphiques) - cache de 1 heure
+            $paiementsParMois = Cache::remember('paiements_par_mois', 3600, function () {
+                return Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
+                    ->whereYear('created_at', now()->year)
+                    ->groupBy('mois')
+                    ->orderBy('mois')
+                    ->get();
+            });
 
-            $absencesParMois = Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
-                ->whereYear('date_absence', now()->year)
-                ->groupBy('mois')
-                ->orderBy('mois')
-                ->get();
+            $absencesParMois = Cache::remember('absences_par_mois', 3600, function () {
+                return Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
+                    ->whereYear('date_absence', now()->year)
+                    ->groupBy('mois')
+                    ->orderBy('mois')
+                    ->get();
+            });
 
             return view('admin.dashboard', compact(
                 'stats', 

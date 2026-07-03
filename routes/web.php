@@ -381,6 +381,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('enseignants/{enseignant}/permanent', [EnseignantController::class, 'deletePermanently'])->name('enseignants.delete-permanent')->middleware('check.permission:enseignants.delete');
         Route::post('/enseignants/{enseignant}/reset-password', [EnseignantController::class, 'resetPassword'])->name('enseignants.reset-password')->middleware('check.permission:enseignants.edit');
         Route::post('/enseignants/{enseignant}/reactivate', [EnseignantController::class, 'reactivate'])->name('enseignants.reactivate')->middleware('check.permission:enseignants.edit');
+        
+        // Routes pour la réinscription des enseignants
+        Route::get('/enseignants-reinscription', [EnseignantController::class, 'showReinscription'])->name('enseignants.reinscription')->middleware('check.permission:enseignants.create');
+        Route::post('/enseignants-reinscription', [EnseignantController::class, 'processReinscription'])->name('enseignants.reinscription.process')->middleware('check.permission:enseignants.create');
     });
     
 // Routes de test supprimées
@@ -919,6 +923,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         
         // Routes pour la gestion des parents
         Route::get('/parents', [\App\Http\Controllers\ParentController::class, 'index'])->name('parents.index')->middleware('check.permission:eleves.view');
+        Route::get('/parents/create', [\App\Http\Controllers\ParentController::class, 'create'])->name('parents.create')->middleware('check.permission:eleves.create');
+        Route::post('/parents', [\App\Http\Controllers\ParentController::class, 'store'])->name('parents.store')->middleware('check.permission:eleves.create');
         Route::get('/parents/{id}', [\App\Http\Controllers\ParentController::class, 'show'])->name('parents.show')->middleware('check.permission:eleves.view');
         Route::get('/parents/{id}/edit', [\App\Http\Controllers\ParentController::class, 'edit'])->name('parents.edit')->middleware('check.permission:eleves.edit');
         Route::put('/parents/{id}', [\App\Http\Controllers\ParentController::class, 'update'])->name('parents.update')->middleware('check.permission:eleves.edit');

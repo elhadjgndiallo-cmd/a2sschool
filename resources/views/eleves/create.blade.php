@@ -144,7 +144,7 @@
                                                 <label for="date_naissance" class="form-label">Date de naissance</label>
                                                 <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" 
                                                        id="date_naissance" name="date_naissance" 
-                                                       value="{{ old('date_naissance') }}" required>
+                                                       value="{{ old('date_naissance') }}">
                                                 @error('date_naissance')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -156,7 +156,7 @@
                                             <label for="lieu_naissance" class="form-label">Lieu de naissance</label>
                                             <input type="text" class="form-control @error('lieu_naissance') is-invalid @enderror" 
                                                    id="lieu_naissance" name="lieu_naissance" 
-                                                   value="{{ old('lieu_naissance') }}" required>
+                                                   value="{{ old('lieu_naissance') }}">
                                             @error('lieu_naissance')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
@@ -166,7 +166,7 @@
                                         <div class="mb-3">
                                             <label for="adresse" class="form-label">Adresse actuel</label>
                                             <textarea class="form-control @error('adresse') is-invalid @enderror" 
-                                                      id="adresse" name="adresse" rows="2" required>{{ old('adresse') }}</textarea>
+                                                      id="adresse" name="adresse" rows="2">{{ old('adresse') }}</textarea>
                                             @error('adresse')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
@@ -389,6 +389,13 @@
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="parent_type" id="no_parent" 
+                                                   value="" {{ old('parent_type') == '' || old('parent_type') === null ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="no_parent">
+                                                Aucun parent/tuteur
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
                                             <input class="form-check-input" type="radio" name="parent_type" id="existing_parent" 
                                                    value="existing" {{ old('parent_type') == 'existing' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="existing_parent">
@@ -397,7 +404,7 @@
                                         </div>
                                         <div class="form-check form-check-inline">
                                             <input class="form-check-input" type="radio" name="parent_type" id="new_parent" 
-                                                   value="new" {{ old('parent_type', 'new') == 'new' ? 'checked' : '' }}>
+                                                   value="new" {{ old('parent_type') == 'new' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="new_parent">
                                                 Nouveau parent
                                             </label>
@@ -439,7 +446,7 @@
                                             <label for="parent_telephone" class="form-label">Téléphone *</label>
                                             <input type="tel" class="form-control @error('parent_telephone') is-invalid @enderror" 
                                                    id="parent_telephone" name="parent_telephone" 
-                                                   value="{{ old('parent_telephone') }}" required>
+                                                   value="{{ old('parent_telephone') }}">
                                             <div id="phone-validation-feedback" class="invalid-feedback d-none"></div>
                                             @error('parent_telephone')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -467,43 +474,6 @@
                                         <textarea class="form-control @error('parent_adresse') is-invalid @enderror" 
                                                   id="parent_adresse" name="parent_adresse" rows="2">{{ old('parent_adresse') }}</textarea>
                                         @error('parent_adresse')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                {{-- Lien de parenté (toujours visible) --}}
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label for="lien_parente" class="form-label">
-                                            <i class="fas fa-heart me-1"></i>Lien de Parenté *
-                                        </label>
-                                        <select class="form-select @error('lien_parente') is-invalid @enderror" id="lien_parente" name="lien_parente" required>
-                                            <option value="">Sélectionner le lien</option>
-                                            <option value="pere" {{ old('lien_parente') == 'pere' ? 'selected' : '' }}>Père</option>
-                                            <option value="mere" {{ old('lien_parente') == 'mere' ? 'selected' : '' }}>Mère</option>
-                                            <option value="tuteur" {{ old('lien_parente') == 'tuteur' ? 'selected' : '' }}>Tuteur</option>
-                                            <option value="tutrice" {{ old('lien_parente') == 'tutrice' ? 'selected' : '' }}>Tutrice</option>
-                                            <option value="grand_pere" {{ old('lien_parente') == 'grand_pere' ? 'selected' : '' }}>Grand-père</option>
-                                            <option value="grand_mere" {{ old('lien_parente') == 'grand_mere' ? 'selected' : '' }}>Grand-mère</option>
-                                            <option value="oncle" {{ old('lien_parente') == 'oncle' ? 'selected' : '' }}>Oncle</option>
-                                            <option value="tante" {{ old('lien_parente') == 'tante' ? 'selected' : '' }}>Tante</option>
-                                            <option value="autre" {{ old('lien_parente') == 'autre' ? 'selected' : '' }}>Autre</option>
-                                        </select>
-                                        @error('lien_parente')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div class="col-md-6" id="autre-lien-section" style="display: none;">
-                                        <label for="autre_lien_parente" class="form-label">
-                                            <i class="fas fa-edit me-1"></i>Préciser le Lien
-                                        </label>
-                                        <input type="text" class="form-control @error('autre_lien_parente') is-invalid @enderror" 
-                                               id="autre_lien_parente" name="autre_lien_parente" 
-                                               value="{{ old('autre_lien_parente') }}"
-                                               placeholder="Préciser le lien de parenté">
-                                        @error('autre_lien_parente')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
@@ -731,13 +701,37 @@ function generateMatricule() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    const noParentRadio = document.getElementById('no_parent');
     const existingParentRadio = document.getElementById('existing_parent');
     const newParentRadio = document.getElementById('new_parent');
     const existingParentSection = document.getElementById('existing-parent-section');
     const newParentSection = document.getElementById('new-parent-section');
 
     function toggleParentSections() {
-        if (existingParentRadio.checked) {
+        if (noParentRadio.checked) {
+            // Aucun parent sélectionné
+            existingParentSection.classList.add('d-none');
+            newParentSection.classList.add('d-none');
+            
+            // Retirer tous les required des champs parent
+            newParentSection.querySelectorAll('input[required], select[required]').forEach(input => {
+                input.removeAttribute('required');
+            });
+            existingParentSection.querySelectorAll('input[required], select[required]').forEach(input => {
+                input.removeAttribute('required');
+            });
+            
+            // Vider tous les champs parent
+            document.getElementById('parent_prenom').value = '';
+            document.getElementById('parent_nom').value = '';
+            document.getElementById('parent_telephone').value = '';
+            document.getElementById('parent_email').value = '';
+            document.getElementById('parent_adresse').value = '';
+            document.getElementById('parent_id').value = '';
+            
+            clearPhoneValidation();
+            
+        } else if (existingParentRadio.checked) {
             existingParentSection.classList.remove('d-none');
             newParentSection.classList.add('d-none');
             
@@ -758,13 +752,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Rendre le parent_id requis
             document.getElementById('parent_id').setAttribute('required', 'required');
-        } else {
+        } else if (newParentRadio.checked) {
             existingParentSection.classList.add('d-none');
             newParentSection.classList.remove('d-none');
             
             // Rendre les champs nouveau parent requis
             document.getElementById('parent_prenom').setAttribute('required', 'required');
             document.getElementById('parent_nom').setAttribute('required', 'required');
+            document.getElementById('parent_telephone').setAttribute('required', 'required');
             
             // Vider la sélection du parent existant
             document.getElementById('parent_id').value = '';
@@ -772,25 +767,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    noParentRadio.addEventListener('change', toggleParentSections);
     existingParentRadio.addEventListener('change', toggleParentSections);
     newParentRadio.addEventListener('change', toggleParentSections);
-
-    // Gestion du lien de parenté "autre"
-    const lienParenteSelect = document.getElementById('lien_parente');
-    const autreLienSection = document.getElementById('autre-lien-section');
-
-    function toggleAutreLien() {
-        if (lienParenteSelect.value === 'autre') {
-            autreLienSection.style.display = 'block';
-            document.getElementById('autre_lien_parente').setAttribute('required', 'required');
-        } else {
-            autreLienSection.style.display = 'none';
-            document.getElementById('autre_lien_parente').removeAttribute('required');
-            document.getElementById('autre_lien_parente').value = '';
-        }
-    }
-
-    lienParenteSelect.addEventListener('change', toggleAutreLien);
+    
+    // Initialiser l'état au chargement
+    toggleParentSections();
 
     // Validation du téléphone en temps réel
     const phoneInput = document.getElementById('parent_telephone');

@@ -104,12 +104,19 @@ use Illuminate\Support\Facades\Storage;
         <i class="fas fa-chalkboard-teacher me-2"></i>
         Gestion des Enseignants
     </h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
         <a href="{{ route('enseignants.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>
             <span class="d-none d-sm-inline">Ajouter Enseignant</span>
             <span class="d-sm-none">Ajouter</span>
         </a>
+        @if(auth()->user()->hasPermission('enseignants.create'))
+        <a href="{{ route('enseignants.reinscription') }}" class="btn btn-success">
+            <i class="fas fa-user-check me-1"></i>
+            <span class="d-none d-sm-inline">Réinscription</span>
+            <span class="d-sm-none">Réinscrire</span>
+        </a>
+        @endif
     </div>
 </div>
 

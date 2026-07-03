@@ -64,6 +64,89 @@ use Illuminate\Support\Facades\Storage;
 </div>
 @else
 
+<!-- Filtres de recherche -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-filter me-2"></i>Filtrer les élèves
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ route('eleves.reinscription') }}" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">
+                        <i class="fas fa-search me-1"></i>Nom / Prénom
+                    </label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request('search') }}" placeholder="Rechercher un élève...">
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="matricule" class="form-label">
+                        <i class="fas fa-id-card me-1"></i>Matricule
+                    </label>
+                    <input type="text" class="form-control" id="matricule" name="matricule" 
+                           value="{{ request('matricule') }}" placeholder="Numéro matricule...">
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="filter_classe" class="form-label">
+                        <i class="fas fa-chalkboard me-1"></i>Ancienne classe
+                    </label>
+                    <select class="form-select" id="filter_classe" name="classe_id">
+                        <option value="">Toutes les classes</option>
+                        @foreach($classes as $classe)
+                        <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                            {{ $classe->nom }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="filter_annee" class="form-label">
+                        <i class="fas fa-calendar me-1"></i>Année scolaire
+                    </label>
+                    <select class="form-select" id="filter_annee" name="annee_scolaire_id">
+                        <option value="">Toutes les années</option>
+                        @foreach($anneesPassees as $annee)
+                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
+                            {{ $annee->nom }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="per_page" class="form-label">
+                        <i class="fas fa-list me-1"></i>Par page
+                    </label>
+                    <select class="form-select" id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit();">
+                        <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20 par page</option>
+                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 par page</option>
+                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 par page</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>Rechercher
+                    </button>
+                    <a href="{{ route('eleves.reinscription') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Réinitialiser
+                    </a>
+                    @if(request()->anyFilled(['search', 'matricule', 'classe_id', 'annee_scolaire_id']))
+                    <span class="badge bg-info ms-2">Filtres actifs</span>
+                    @endif
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <form method="POST" action="{{ route('eleves.reinscription.process') }}" id="reinscriptionForm">
     @csrf
     
@@ -147,7 +230,12 @@ use Illuminate\Support\Facades\Storage;
             <h5 class="mb-0">
                 <i class="fas fa-users me-2"></i>
                 Élèves des années passées 
-                <span class="badge bg-primary">{{ $elevesPassees->count() }}</span>
+                <span class="badge bg-primary">{{ $elevesPassees->total() }}</span>
+                @if($elevesPassees->total() > 0)
+                <small class="text-muted ms-2">
+                    (Page {{ $elevesPassees->currentPage() }} sur {{ $elevesPassees->lastPage() }})
+                </small>
+                @endif
             </h5>
         </div>
         <div class="card-body">
@@ -254,6 +342,20 @@ use Illuminate\Support\Facades\Storage;
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            @if($elevesPassees->hasPages())
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    <small class="text-muted">
+                        Affichage de {{ $elevesPassees->firstItem() ?? 0 }} à {{ $elevesPassees->lastItem() ?? 0 }} sur {{ $elevesPassees->total() }} élève{{ $elevesPassees->total() > 1 ? 's' : '' }}
+                    </small>
+                </div>
+                <div>
+                    {{ $elevesPassees->appends(request()->query())->links('vendor.pagination.custom') }}
+                </div>
+            </div>
+            @endif
             
             <!-- Bouton de réinscription -->
             <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">

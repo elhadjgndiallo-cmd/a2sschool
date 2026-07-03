@@ -241,79 +241,133 @@
     <!-- Journal des transactions -->
     <div class="report-content">
         @if($journal->count() > 0)
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th style="width: 15%">Date</th>
-                        <th style="width: 40%">Libellé</th>
-                        <th style="width: 15%" class="text-end">Entrée</th>
-                        <th style="width: 15%" class="text-end">Sortie</th>
-                        <th style="width: 15%" class="text-end">Solde</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($journal as $transaction)
-                    <tr>
-                        <td>
-                            <small>
-                                {{ \Carbon\Carbon::parse($transaction['date'])->format('d/m/Y') }}
-                                <br>
-                                {{ \Carbon\Carbon::parse($transaction['created_at'])->format('H:i') }}
-                            </small>
-                        </td>
-                        <td>
-                            <div>
+            @if(isset($isResumeMensuel) && $isResumeMensuel)
+                {{-- RÉSUMÉ MENSUEL pour rapport annuel --}}
+                <h4 style="margin: 10px 0 5px 0; font-size: 14px;">Résumé Mensuel de l'Année Scolaire</h4>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%">Mois</th>
+                            <th style="width: 25%" class="text-end">Revenus</th>
+                            <th style="width: 25%" class="text-end">Dépenses</th>
+                            <th style="width: 20%" class="text-end">Solde</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($journal as $transaction)
+                        <tr>
+                            <td>
                                 <strong>{{ $transaction['libelle'] }}</strong>
-                                <br>
-                                <small>
-                                    {{ $transaction['source'] }}
-                                    @if($transaction['enregistre_par'])
-                                        - Enregistré par {{ $transaction['enregistre_par']->prenom }} {{ $transaction['enregistre_par']->nom }}
-                                    @endif
-                                </small>
-                            </div>
-                        </td>
-                        <td class="text-end">
-                            @if($transaction['entree'] > 0)
-                                <span class="fw-bold">
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-bold" style="color: #28a745;">
                                     +{{ number_format($transaction['entree'], 0, ',', ' ') }} GNF
                                 </span>
-                            @else
-                                <span>-</span>
-                            @endif
-                        </td>
-                        <td class="text-end">
-                            @if($transaction['sortie'] > 0)
-                                <span class="fw-bold">
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-bold" style="color: #dc3545;">
                                     -{{ number_format($transaction['sortie'], 0, ',', ' ') }} GNF
                                 </span>
-                            @else
-                                <span>-</span>
-                            @endif
-                        </td>
-                        <td class="text-end">
-                            <span class="fw-bold">
-                                {{ number_format($transaction['solde'], 0, ',', ' ') }} GNF
-                            </span>
-                        </td>
-                    </tr>
-                    @endforeach
-                    
-                    <!-- Totaux -->
-                    <tr style="background-color: #333; color: white;">
-                        <td colspan="2" class="fw-bold" style="color: white;">TOTAUX</td>
-                        <td class="text-end fw-bold" style="color: white;">
-                            {{ number_format($totalEntrees, 0, ',', ' ') }} GNF
-                        </td>
-                        <td class="text-end fw-bold" style="color: white;">
-                            {{ number_format($totalSorties, 0, ',', ' ') }} GNF
-                        </td>
-                        <td class="text-end fw-bold" style="color: white;">
-                            {{ number_format($soldeFinal, 0, ',', ' ') }} GNF
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-bold">
+                                    {{ number_format($transaction['solde'], 0, ',', ' ') }} GNF
+                                </span>
+                            </td>
+                        </tr>
+                        @endforeach
+                        
+                        <!-- Totaux -->
+                        <tr style="background-color: #333; color: white;">
+                            <td class="fw-bold" style="color: white;">TOTAUX ANNÉE</td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($totalEntrees, 0, ',', ' ') }} GNF
+                            </td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($totalSorties, 0, ',', ' ') }} GNF
+                            </td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($soldeFinal, 0, ',', ' ') }} GNF
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            @else
+                {{-- JOURNAL DÉTAILLÉ pour rapports jour/mois --}}
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%">Date</th>
+                            <th style="width: 40%">Libellé</th>
+                            <th style="width: 15%" class="text-end">Entrée</th>
+                            <th style="width: 15%" class="text-end">Sortie</th>
+                            <th style="width: 15%" class="text-end">Solde</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($journal as $transaction)
+                        <tr>
+                            <td>
+                                <small>
+                                    {{ \Carbon\Carbon::parse($transaction['date'])->format('d/m/Y') }}
+                                    <br>
+                                    {{ \Carbon\Carbon::parse($transaction['created_at'])->format('H:i') }}
+                                </small>
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>{{ $transaction['libelle'] }}</strong>
+                                    <br>
+                                    <small>
+                                        {{ $transaction['source'] }}
+                                        @if($transaction['enregistre_par'])
+                                            - Enregistré par {{ $transaction['enregistre_par']->prenom }} {{ $transaction['enregistre_par']->nom }}
+                                        @endif
+                                    </small>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                @if($transaction['entree'] > 0)
+                                    <span class="fw-bold">
+                                        +{{ number_format($transaction['entree'], 0, ',', ' ') }} GNF
+                                    </span>
+                                @else
+                                    <span>-</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if($transaction['sortie'] > 0)
+                                    <span class="fw-bold">
+                                        -{{ number_format($transaction['sortie'], 0, ',', ' ') }} GNF
+                                    </span>
+                                @else
+                                    <span>-</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-bold">
+                                    {{ number_format($transaction['solde'], 0, ',', ' ') }} GNF
+                                </span>
+                            </td>
+                        </tr>
+                        @endforeach
+                        
+                        <!-- Totaux -->
+                        <tr style="background-color: #333; color: white;">
+                            <td colspan="2" class="fw-bold" style="color: white;">TOTAUX</td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($totalEntrees, 0, ',', ' ') }} GNF
+                            </td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($totalSorties, 0, ',', ' ') }} GNF
+                            </td>
+                            <td class="text-end fw-bold" style="color: white;">
+                                {{ number_format($soldeFinal, 0, ',', ' ') }} GNF
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            @endif
         @else
             <div style="text-align: center; padding: 20px;">
                 <h5>Aucune transaction pour cette date</h5>
