@@ -7,6 +7,9 @@
     <div class="row mb-3">
         <div class="col-md-8">
             <h2><i class="fas fa-file-invoice me-2"></i>Facturation scolaire</h2>
+            @if($anneeScolaire ?? null)
+                <p class="text-muted mb-0">Année scolaire : <strong>{{ $anneeScolaire->nom }}</strong></p>
+            @endif
         </div>
         <div class="col-md-4 text-end">
             @if(auth()->user()->hasPermission('paiements.create'))
@@ -17,9 +20,25 @@
         </div>
     </div>
 
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
     <div class="card mb-3">
         <div class="card-body">
             <form method="GET" class="row g-2">
+                <div class="col-md-2">
+                    <select name="annee_scolaire_id" class="form-select" onchange="this.form.submit()">
+                        @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderByDesc('date_debut')->get() as $annee)
+                            <option value="{{ $annee->id }}" {{ request('annee_scolaire_id', $anneeScolaire->id ?? null) == $annee->id ? 'selected' : '' }}>
+                                {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-3">
                     <input type="text" name="search" class="form-control" placeholder="N° facture, élève..." value="{{ request('search') }}">
                 </div>
@@ -76,8 +95,21 @@
                                     </span>
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('factures.show', $facture) }}" class="btn btn-sm btn-outline-primary" title="Voir"><i class="fas fa-eye"></i></a>
-                                    <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-sm btn-outline-success" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ route('factures.show', $facture) }}" class="btn btn-outline-primary" title="Voir"><i class="fas fa-eye"></i></a>
+                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'payee')
+                                            <a href="{{ route('factures.edit', $facture) }}" class="btn btn-outline-warning" title="Modifier"><i class="fas fa-edit"></i></a>
+                                        @endif
+                                        <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-outline-success" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a>
+                                        @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'payee')
+                                            <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
+                                                  onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront retirés.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-outline-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

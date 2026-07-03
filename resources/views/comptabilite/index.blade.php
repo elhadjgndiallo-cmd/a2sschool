@@ -227,7 +227,7 @@
                                 @forelse($toutesLesSorties as $sortie)
                                     <tr>
                                         <td>{{ $sortie->date->format('d/m/Y') }}</td>
-                                        <td>{{ $sortie->description }}</td>
+                                        <td>{{ $sortie->libelle ?? $sortie->description }}</td>
                                         <td>
                                             <span class="badge bg-danger">{{ ucfirst(str_replace('_', ' ', $sortie->type_depense)) }}</span>
                                         </td>

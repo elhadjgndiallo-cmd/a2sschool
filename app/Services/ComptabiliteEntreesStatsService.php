@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\AnneeScolaire;
 use App\Models\Entree;
+use App\Models\Facture;
 use App\Models\Paiement;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,12 +32,26 @@ class ComptabiliteEntreesStatsService
     public function calculateStats(?Request $request = null, ?AnneeScolaire $anneeScolaire = null): array
     {
         $request = $request ?? new Request();
-        $merged = $this->buildMergedEntries($request, $anneeScolaire);
+
+        if (!$anneeScolaire) {
+            return [
+                'total' => 0,
+                'nombre' => 0,
+                'moyenne' => 0,
+                'total_manuelles' => 0,
+                'total_paiements' => 0,
+                'nombre_manuelles' => 0,
+                'nombre_paiements' => 0,
+            ];
+        }
+
+        $statsRequest = $this->requestForYearTotals($request, $anneeScolaire);
+        $merged = $this->buildMergedEntries($statsRequest, $anneeScolaire);
 
         $total = (float) $merged->sum('montant');
         $nombre = $merged->count();
         $manuelles = $merged->where('type', 'entree');
-        $paiements = $merged->where('type', 'paiement');
+        $paiements = $merged->whereIn('type', ['paiement', 'facture']);
 
         return [
             'total' => $total,
@@ -49,18 +65,86 @@ class ComptabiliteEntreesStatsService
     }
 
     /**
-     * Collection unifiée (même logique que les listes comptabilite/entrees et entrees).
+     * Totaux officiels année scolaire (même source que le rapport annuel).
      */
-    public function buildMergedEntries(Request $request, ?AnneeScolaire $anneeScolaire = null): Collection
+    public function totauxAnneeScolaireOfficielle(AnneeScolaire $anneeScolaire): array
     {
-        $query = Entree::query();
+        $request = $this->requestAnneeScolaireComplete($anneeScolaire);
+        $totalEntrees = (float) $this->buildListEntries($request, $anneeScolaire)->sum('montant');
+        $totalSorties = (float) app(ComptabiliteSortiesStatsService::class)
+            ->buildListEntries($request, $anneeScolaire)
+            ->sum('montant');
 
-        if ($anneeScolaire) {
-            $query->whereBetween('date_entree', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ]);
+        return [
+            'total_entrees' => $totalEntrees,
+            'total_sorties' => $totalSorties,
+            'benefice' => $totalEntrees - $totalSorties,
+        ];
+    }
+
+    /**
+     * Somme des totaux mensuels découpés sur l'année scolaire (vérification vs rapport annuel).
+     */
+    public function totauxMoisAnneeScolaire(AnneeScolaire $anneeScolaire): array
+    {
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+        $anneeDebut = Carbon::parse($anneeScolaire->date_debut)->startOfDay();
+        $anneeFin = Carbon::parse($anneeScolaire->date_fin)->endOfDay();
+
+        $totalEntrees = 0.0;
+        $totalSorties = 0.0;
+
+        $current = $anneeDebut->copy()->startOfMonth();
+        $lastMonth = $anneeFin->copy()->startOfMonth();
+
+        while ($current->lte($lastMonth)) {
+            $monthDebut = $current->copy()->startOfMonth()->startOfDay();
+            $monthFin = $current->copy()->endOfMonth()->endOfDay();
+
+            $effectiveDebut = $monthDebut->greaterThan($anneeDebut) ? $monthDebut : $anneeDebut->copy();
+            $effectiveFin = $monthFin->lessThan($anneeFin) ? $monthFin : $anneeFin->copy();
+
+            if ($effectiveDebut->lte($effectiveFin)) {
+                $request = new Request([
+                    'date_debut' => $effectiveDebut->format('Y-m-d'),
+                    'date_fin' => $effectiveFin->format('Y-m-d'),
+                ]);
+
+                $totalEntrees += (float) $this->buildListEntries($request, $anneeScolaire)->sum('montant');
+                $totalSorties += (float) $sortiesStats->buildListEntries($request, $anneeScolaire)->sum('montant');
+            }
+
+            $current->addMonth();
         }
+
+        return [
+            'total_entrees' => $totalEntrees,
+            'total_sorties' => $totalSorties,
+            'benefice' => $totalEntrees - $totalSorties,
+        ];
+    }
+
+    /**
+     * Requête pour les totaux annuels : période officielle complète de l'année scolaire.
+     */
+    public function requestAnneeScolaireComplete(AnneeScolaire $anneeScolaire): Request
+    {
+        return new Request([
+            'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+            'annee_scolaire_complete' => true,
+        ]);
+    }
+
+    /**
+     * Liste unifiée pour comptabilite/entrees, dashboard et statistiques.
+     */
+    public function buildListEntries(Request $request, AnneeScolaire $anneeScolaire): Collection
+    {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+        $query = Entree::with('enregistrePar');
+
+        $query->whereBetween('date_entree', [$periode['debut'], $periode['fin']]);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_entree', '>=', $request->date_debut);
@@ -86,45 +170,79 @@ class ComptabiliteEntreesStatsService
             $query->whereRaw('1 = 0');
         }
 
-        $entrees = $query->orderBy('date_entree', 'desc')->get();
+        $entrees = $query->orderByDesc('date_entree')->get();
+        $factures = $this->facturesForComptabiliteQuery($request, $anneeScolaire)->get();
+        $numerosFactures = $factures->pluck('numero_facture')->flip()->all();
 
-        $paiementsFrais = $anneeScolaire
-            ? $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get()
-            : collect();
-
+        $paiementsFrais = $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get();
         $duplicateLookup = $this->buildPaiementDuplicateLookup($paiementsFrais);
 
         $allEntries = collect();
 
         foreach ($entrees as $entree) {
+            if ($entree->reference && isset($numerosFactures[$entree->reference])) {
+                continue;
+            }
+
             if ($this->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
                 continue;
             }
 
-            $allEntries->push((object) [
-                'type' => 'entree',
-                'montant' => (float) $entree->montant,
-                'source' => $entree->source,
-            ]);
-        }
+            if ($request->filled('type_entree') && $request->type_entree === 'paiement') {
+                continue;
+            }
 
-        if ($anneeScolaire && (!$request->filled('type_entree') || $request->type_entree !== 'manuelle')) {
-            foreach ($paiementsFrais as $paiement) {
-                $source = $this->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
-
-                if ($request->filled('source') && $source !== $request->source) {
-                    continue;
-                }
-
-                $allEntries->push((object) [
-                    'type' => 'paiement',
-                    'montant' => (float) $paiement->montant_paye,
-                    'source' => $source,
-                ]);
+            $mapped = $this->mapEntreeToListEntry($entree, $request);
+            if ($mapped) {
+                $allEntries->push($mapped);
             }
         }
 
-        return $allEntries;
+        if (!$request->filled('type_entree') || $request->type_entree !== 'manuelle') {
+            foreach ($factures as $facture) {
+                $entry = $this->mapFactureToListEntry($facture, $request);
+                if ($entry) {
+                    $allEntries->push($entry);
+                }
+            }
+
+            foreach ($paiementsFrais as $paiement) {
+                $entry = $this->mapPaiementToListEntry($paiement, $request);
+                if ($entry) {
+                    $allEntries->push($entry);
+                }
+            }
+        }
+
+        return $allEntries->sort(function ($a, $b) {
+            $tsA = $a->date instanceof \Carbon\Carbon ? $a->date->timestamp : strtotime((string) $a->date);
+            $tsB = $b->date instanceof \Carbon\Carbon ? $b->date->timestamp : strtotime((string) $b->date);
+
+            if ($tsA !== $tsB) {
+                return $tsA <=> $tsB;
+            }
+
+            $createdA = isset($a->data->created_at) ? $a->data->created_at->timestamp : 0;
+            $createdB = isset($b->data->created_at) ? $b->data->created_at->timestamp : 0;
+
+            return $createdA <=> $createdB;
+        })->values();
+    }
+
+    /**
+     * Collection unifiée (même logique que les listes comptabilite/entrees et entrees).
+     */
+    public function buildMergedEntries(Request $request, ?AnneeScolaire $anneeScolaire = null): Collection
+    {
+        if (!$anneeScolaire) {
+            return collect();
+        }
+
+        return $this->buildListEntries($request, $anneeScolaire)->map(fn ($entry) => (object) [
+            'type' => $entry->type,
+            'montant' => (float) $entry->montant,
+            'source' => $entry->source,
+        ]);
     }
 
     /**
@@ -132,9 +250,13 @@ class ComptabiliteEntreesStatsService
      */
     public function paiementsFraisForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
         $query = Paiement::query()
+            ->sansFacture()
             ->forAnneeScolaire($anneeScolaire->id)
-            ->withComptabiliteAffichage();
+            ->withComptabiliteAffichage()
+            ->whereBetween('paiements.date_paiement', [$periode['debut'], $periode['fin']]);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('paiements.date_paiement', '>=', $request->date_debut);
@@ -152,14 +274,105 @@ class ComptabiliteEntreesStatsService
             $query->where('paiements.montant_paye', '<=', $request->montant_max);
         }
 
-        // Paiements rattachés à une facture : une seule entrée comptable globale
-        $query->whereNotExists(function ($sub) {
-            $sub->selectRaw('1')
-                ->from('facture_lignes')
-                ->whereColumn('facture_lignes.paiement_id', 'paiements.id');
-        });
-
         return $query->orderByDesc('paiements.date_paiement');
+    }
+
+    /**
+     * Factures payées (une entrée comptable par numéro de facture).
+     */
+    public function facturesForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
+    {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
+        $query = Facture::query()
+            ->where('statut', 'payee')
+            ->where('annee_scolaire_id', $anneeScolaire->id)
+            ->whereBetween('date_facture', [$periode['debut'], $periode['fin']])
+            ->with([
+                'eleve.utilisateur:id,nom,prenom',
+                'eleve.classe:id,nom',
+                'eleve:id,utilisateur_id,classe_id,numero_etudiant',
+                'generePar:id,nom,prenom',
+                'lignes:id,facture_id,libelle',
+            ]);
+
+        if ($request->filled('date_debut')) {
+            $query->whereDate('date_facture', '>=', $request->date_debut);
+        }
+
+        if ($request->filled('date_fin')) {
+            $query->whereDate('date_facture', '<=', $request->date_fin);
+        }
+
+        if ($request->filled('montant_min')) {
+            $query->where('total', '>=', $request->montant_min);
+        }
+
+        if ($request->filled('montant_max')) {
+            $query->where('total', '<=', $request->montant_max);
+        }
+
+        return $query->orderByDesc('date_facture');
+    }
+
+    public function factureEleveResume(Facture $facture): string
+    {
+        $eleve = $facture->eleve;
+        $eleveNom = $eleve?->utilisateur
+            ? trim($eleve->utilisateur->prenom . ' ' . $eleve->utilisateur->nom)
+            : 'Élève inconnu';
+        $matricule = $eleve?->numero_etudiant ?? 'N/A';
+        $classe = $eleve?->classe?->nom ?? 'N/A';
+
+        return $eleveNom . ' (Mat: ' . $matricule . ', Classe: ' . $classe . ')';
+    }
+
+    public function mapEntreeToListEntry(Entree $entree, Request $request): ?object
+    {
+        if ($request->filled('source') && $entree->source !== $request->source) {
+            return null;
+        }
+
+        return (object) [
+            'id' => 'entree_' . $entree->id,
+            'type' => 'entree',
+            'date' => $entree->date_entree,
+            'description' => $entree->description ?: $entree->libelle,
+            'detail' => $entree->libelle && $entree->description ? $entree->libelle : null,
+            'montant' => (float) $entree->montant,
+            'source' => $entree->source,
+            'enregistre_par' => $entree->enregistrePar,
+            'data' => $entree,
+        ];
+    }
+
+    public function mapFactureToListEntry(Facture $facture, Request $request): ?object
+    {
+        if ($request->filled('type_entree') && $request->type_entree === 'manuelle') {
+            return null;
+        }
+
+        $source = 'Frais de scolarité';
+        if ($request->filled('source') && $request->source !== $source) {
+            return null;
+        }
+
+        $libellesMois = $facture->lignes->pluck('libelle')->implode(', ');
+
+        return (object) [
+            'id' => 'facture_' . $facture->id,
+            'type' => 'facture',
+            'date' => $facture->date_facture,
+            'description' => 'Paiement frais scolarité - ' . $this->factureEleveResume($facture),
+            'detail' => 'Facture ' . $facture->numero_facture . ' — '
+                . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
+                . ($libellesMois ? ' — ' . $libellesMois : ''),
+            'montant' => (float) $facture->total,
+            'source' => $source,
+            'enregistre_par' => $facture->generePar,
+            'data' => $facture,
+            'reference' => $facture->numero_facture,
+        ];
     }
 
     /**
@@ -270,6 +483,10 @@ class ComptabiliteEntreesStatsService
 
     public function isPaiementDuplicateEntry(Entree $entree, array $lookup): bool
     {
+        if ($entree->reference && Facture::where('numero_facture', $entree->reference)->exists()) {
+            return false;
+        }
+
         if ($entree->reference && isset($lookup['references'][$entree->reference])) {
             return true;
         }
@@ -279,5 +496,55 @@ class ComptabiliteEntreesStatsService
         }
 
         return isset($lookup['signatures'][$this->entreeDuplicateSignature($entree)]);
+    }
+
+    /**
+     * Totaux : année scolaire officielle complète sauf si l'utilisateur filtre par dates.
+     */
+    private function requestForYearTotals(Request $request, AnneeScolaire $anneeScolaire): Request
+    {
+        if ($request->filled('date_debut') || $request->filled('date_fin')) {
+            return $request;
+        }
+
+        $filters = array_filter($request->only([
+            'source',
+            'type_entree',
+            'montant_min',
+            'montant_max',
+        ]), fn ($value) => $value !== null && $value !== '');
+
+        return new Request(array_merge(
+            $this->requestAnneeScolaireComplete($anneeScolaire)->all(),
+            $filters
+        ));
+    }
+
+    /**
+     * Plage de dates pour les listes (extension à aujourd'hui si année active terminée).
+     */
+    private function resolveDateRange(AnneeScolaire $anneeScolaire, Request $request): array
+    {
+        if ($request->boolean('annee_scolaire_complete')) {
+            return [
+                'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+                'fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+            ];
+        }
+
+        $dateFin = $anneeScolaire->date_fin->copy()->startOfDay();
+        $today = Carbon::today();
+
+        if ($anneeScolaire->active && $dateFin->lt($today)) {
+            return [
+                'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+                'fin' => $today->format('Y-m-d'),
+            ];
+        }
+
+        return [
+            'debut' => $anneeScolaire->date_debut->format('Y-m-d'),
+            'fin' => $anneeScolaire->date_fin->format('Y-m-d'),
+        ];
     }
 }

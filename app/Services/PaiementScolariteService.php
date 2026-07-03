@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Entree;
 use App\Models\Facture;
+use App\Models\FactureLigne;
 use App\Models\FraisScolarite;
 use App\Models\Paiement;
 use App\Models\TranchePaiement;
@@ -74,20 +75,98 @@ class PaiementScolariteService
      */
     public function creerEntreeComptableFacture(Facture $facture): Entree
     {
-        $facture->load(['eleve.utilisateur', 'eleve.classe', 'lignes']);
+        return $this->mettreAJourEntreeComptableFacture($facture);
+    }
 
+    public function mettreAJourEntreeComptableFacture(Facture $facture): Entree
+    {
+        $facture->load(['eleve.utilisateur', 'eleve.classe', 'lignes', 'generePar']);
+        $payload = $this->donneesEntreeComptableFacture($facture);
+
+        $entree = Entree::where('reference', $facture->numero_facture)->first();
+
+        if ($entree) {
+            $entree->update($payload);
+
+            return $entree->fresh();
+        }
+
+        return Entree::create($payload);
+    }
+
+    public function supprimerEntreeComptableFacture(Facture $facture): void
+    {
+        Entree::where('reference', $facture->numero_facture)->delete();
+    }
+
+    /**
+     * Annule le paiement d'une ligne de facture et recrédite la tranche.
+     */
+    public function annulerPaiementFactureLigne(FactureLigne $ligne): void
+    {
+        $ligne->loadMissing(['paiement', 'tranchePaiement', 'fraisScolarite']);
+
+        $paiement = $ligne->paiement;
+        if (!$paiement) {
+            return;
+        }
+
+        $tranche = $ligne->tranchePaiement ?? $paiement->tranchePaiement;
+        if ($tranche) {
+            $creditTranche = round((float) $ligne->montant_brut, 2);
+            $nouveauMontantPaye = max(0, round((float) $tranche->montant_paye - $creditTranche, 2));
+
+            $tranche->update([
+                'montant_paye' => $nouveauMontantPaye,
+                'statut' => $nouveauMontantPaye + 0.00001 >= (float) $tranche->montant_tranche ? 'paye' : 'en_attente',
+                'date_paiement' => $nouveauMontantPaye > 0 ? $tranche->date_paiement : null,
+            ]);
+        }
+
+        if ($ligne->fraisScolarite) {
+            $this->recalculerStatutFrais($ligne->fraisScolarite);
+        }
+
+        $paiement->delete();
+    }
+
+    public function recalculerStatutFrais(FraisScolarite $frais): void
+    {
+        $frais->refresh();
+
+        if ($frais->toutesTranchesPayees()) {
+            $frais->update(['statut' => 'paye']);
+
+            return;
+        }
+
+        if ($frais->date_echeance && $frais->date_echeance < now()) {
+            $frais->update(['statut' => 'en_retard']);
+
+            return;
+        }
+
+        $frais->update(['statut' => 'en_attente']);
+    }
+
+    private function donneesEntreeComptableFacture(Facture $facture): array
+    {
         $eleve = $facture->eleve;
         $classe = $eleve->classe;
         $libellesMois = $facture->lignes->pluck('libelle')->implode(', ');
 
+        $eleveNom = trim(($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? ''));
+        $matricule = $eleve->numero_etudiant ?? 'N/A';
         $nomClasse = $classe->nom ?? 'N/A';
-        $libelle = "Facture {$facture->numero_facture} - {$eleve->numero_etudiant}";
-        $description = "Encaissement facture {$facture->numero_facture} de "
-            . number_format((float) $facture->total, 0, ',', ' ') . " GNF pour "
-            . "{$eleve->utilisateur->nom} ({$nomClasse})"
-            . ($libellesMois ? " — {$libellesMois}" : '');
 
-        return Entree::create([
+        $description = 'Paiement frais scolarité - ' . $eleveNom
+            . ' (Mat: ' . $matricule . ', Classe: ' . $nomClasse . ')';
+
+        $libelle = 'Facture ' . $facture->numero_facture . ' — '
+            . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
+            . ($libellesMois ? ' — ' . $libellesMois : '');
+
+        return [
             'libelle' => $libelle,
             'description' => $description,
             'montant' => $facture->total,
@@ -96,7 +175,7 @@ class PaiementScolariteService
             'mode_paiement' => $facture->mode_paiement,
             'reference' => $facture->numero_facture,
             'enregistre_par' => $facture->genere_par,
-        ]);
+        ];
     }
 
     public function creerEntreeComptable(Paiement $paiement, FraisScolarite $frais): Entree

@@ -71,43 +71,13 @@
                                     $isPrimaire = $classe->isPrimaire();
                                     $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
                                     
-                                    $notesParPeriode = [];
                                     $moyennesParPeriode = [];
-                                    $totalCoefficientsParPeriode = [];
                                     
                                     foreach ($periodes as $periode) {
-                                        $notes = $eleve->notes()
-                                            ->where('periode', $periode)
-                                            ->with('matiere')
-                                            ->get();
-                                            
-                                        $notesParPeriode[$periode] = $notes;
-                                        
-                                        $totalPoints = 0;
-                                        $totalCoefficients = 0;
-                                        
-                                        foreach ($notes as $note) {
-                                            if ($note->note_finale !== null) {
-                                                $coefficient = $note->coefficient ?? 1;
-                                                $totalPoints += $note->note_finale * $coefficient;
-                                                $totalCoefficients += $coefficient;
-                                            }
-                                        }
-                                        
-                                        $moyennesParPeriode[$periode] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-                                        $totalCoefficientsParPeriode[$periode] = $totalCoefficients;
+                                        $moyennesParPeriode[$periode] = \App\Models\Note::calculerMoyenneGenerale($eleve->id, $periode);
                                     }
                                     
-                                    // Calculer la moyenne annuelle
-                                    $totalPointsAnnuel = 0;
-                                    $totalCoefficientsAnnuel = 0;
-                                    
-                                    foreach ($periodes as $periode) {
-                                        $totalPointsAnnuel += $moyennesParPeriode[$periode] * $totalCoefficientsParPeriode[$periode];
-                                        $totalCoefficientsAnnuel += $totalCoefficientsParPeriode[$periode];
-                                    }
-                                    
-                                    $moyenneAnnuelle = $totalCoefficientsAnnuel > 0 ? $totalPointsAnnuel / $totalCoefficientsAnnuel : 0;
+                                    $moyenneAnnuelle = \App\Models\Note::calculerMoyenneGeneraleAnnuelle($moyennesParPeriode);
                                     
                                     // Appréciation
                                     $appreciation = '';

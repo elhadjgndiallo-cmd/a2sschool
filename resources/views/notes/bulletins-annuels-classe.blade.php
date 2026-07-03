@@ -75,7 +75,7 @@
                             <div class="col-md-6 text-end">
                                 <div style="display: flex; align-items: center; justify-content: flex-end;">
                                     <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 8px 12px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;">
-                                        <h5 class="mb-0" style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.2;">Rang Annuel: {{ $bulletin['rang'] }}/{{ count($bulletins) }}</h5>
+                                        <h5 class="mb-0" style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); line-height: 1.2;">Rang Annuel: {{ $bulletin['rang'] }}/{{ $effectifClasse }}</h5>
                                         <p class="mb-0" style="font-size: 1.1rem; font-weight: 600; line-height: 1.2;">Moyenne: <strong>{{ number_format($bulletin['moyenneAnnuelle'], 2) }}/{{ $bulletin['eleve']->classe->note_max }}</strong></p>
                                     </div>
                                 </div>
@@ -109,22 +109,19 @@
                                 </thead>
                                 <tbody>
                                     @php 
-                                    $totalPointsAnnuel = 0; 
-                                    $totalCoeffAnnuel = 0;
                                     $matieresGrouped = [];
+                                    $notesFinalesParMatiere = $bulletin['notesFinalesParMatiereParPeriode'] ?? [];
+                                    $moyennesAnnuellesParMatiere = $bulletin['moyennesAnnuellesParMatiere'] ?? [];
                                     
-                                    // Grouper les notes par matière
                                     foreach($bulletin['notesParPeriode'] as $periode => $notes) {
                                         foreach($notes as $note) {
                                             $matiereId = $note->matiere->id;
                                             if(!isset($matieresGrouped[$matiereId])) {
                                                 $matieresGrouped[$matiereId] = [
                                                     'matiere' => $note->matiere,
-                                                    'coefficient' => $note->coefficient ?? 1,
-                                                    'notes' => []
+                                                    'coefficient' => $note->coefficient ?? ($note->matiere->coefficient ?? 1),
                                                 ];
                                             }
-                                            $matieresGrouped[$matiereId]['notes'][$periode] = $note;
                                         }
                                     }
                                     @endphp
@@ -133,22 +130,13 @@
                                         @php 
                                         $matiere = $matiereData['matiere'];
                                         $coefficient = $matiereData['coefficient'];
+                                        $notesMatiere = $notesFinalesParMatiere[$matiereId] ?? [];
                                         
-                                        $noteT1 = $matiereData['notes']['trimestre1'] ?? null;
-                                        $noteT2 = $matiereData['notes']['trimestre2'] ?? null;
-                                        $noteT3 = $matiereData['notes']['trimestre3'] ?? null;
+                                        $noteT1Finale = $notesMatiere['trimestre1'] ?? null;
+                                        $noteT2Finale = $notesMatiere['trimestre2'] ?? null;
+                                        $noteT3Finale = $notesMatiere['trimestre3'] ?? null;
                                         
-                                        $noteT1Finale = $noteT1 ? $noteT1->note_finale : null;
-                                        $noteT2Finale = $noteT2 ? $noteT2->note_finale : null;
-                                        $noteT3Finale = $noteT3 ? $noteT3->note_finale : null;
-                                        
-                                        // Calculer la moyenne annuelle par matière
-                                        $notesValides = array_filter([$noteT1Finale, $noteT2Finale, $noteT3Finale]);
-                                        $moyenneMatiere = count($notesValides) > 0 ? array_sum($notesValides) / count($notesValides) : 0;
-                                        
-                                        $pointsAnnuels = $moyenneMatiere * $coefficient;
-                                        $totalPointsAnnuel += $pointsAnnuels;
-                                        $totalCoeffAnnuel += $coefficient;
+                                        $moyenneMatiere = $moyennesAnnuellesParMatiere[$matiereId] ?? 0;
                                         
                                         // Déterminer la mention
                                         $noteMax = $bulletin['eleve']->classe->note_max;
@@ -208,27 +196,73 @@
                                     @endforeach
                                 </tbody>
                                 <tfoot style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid #2c3e50;">
+                                    @php
+                                        $moyennesParPeriode = $bulletin['moyennesParPeriode'] ?? [];
+                                        $periodesBulletin = $bulletin['periodes'] ?? [];
+                                        $noteMax = $bulletin['eleve']->classe->note_max;
+                                    @endphp
                                     <tr>
-                                        <td colspan="2" style="font-weight: 700; text-align: right; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50; width: {{ $nombreTrimestres == 3 ? '34%' : '34%' }};">TOTAL ANNUEL</td>
+                                        <td colspan="2" style="font-weight: 700; text-align: right; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50;">MOYENNE GÉNÉRALE</td>
                                         @if($isPrimaire)
-                                            <td colspan="4" style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #6c757d; width: 48%;">-</td>
-                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50; width: 18%;">{{ $totalCoeffAnnuel }}</td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                @if(in_array('trimestre1', $periodesBulletin))
+                                                    <span class="badge bg-primary" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                        {{ number_format($moyennesParPeriode['trimestre1'] ?? 0, 2) }}/{{ $noteMax }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                @if(in_array('trimestre2', $periodesBulletin))
+                                                    <span class="badge bg-primary" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                        {{ number_format($moyennesParPeriode['trimestre2'] ?? 0, 2) }}/{{ $noteMax }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                @if(in_array('trimestre3', $periodesBulletin))
+                                                    <span class="badge bg-primary" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                        {{ number_format($moyennesParPeriode['trimestre3'] ?? 0, 2) }}/{{ $noteMax }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                <span class="badge bg-success" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                    {{ number_format($bulletin['moyenneAnnuelle'], 2) }}/{{ $noteMax }}
+                                                </span>
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #6c757d;">-</td>
                                         @else
-                                            <td colspan="3" style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #6c757d; width: 48%;">-</td>
-                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50; width: 18%;">{{ $totalCoeffAnnuel }}</td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                @if(in_array('trimestre1', $periodesBulletin))
+                                                    <span class="badge bg-primary" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                        {{ number_format($moyennesParPeriode['trimestre1'] ?? 0, 2) }}/{{ $noteMax }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                @if(in_array('trimestre2', $periodesBulletin))
+                                                    <span class="badge bg-primary" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                        {{ number_format($moyennesParPeriode['trimestre2'] ?? 0, 2) }}/{{ $noteMax }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td style="font-weight: 700; text-align: center; padding: 6px 4px; font-size: 0.85rem;">
+                                                <span class="badge bg-success" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
+                                                    {{ number_format($bulletin['moyenneAnnuelle'], 2) }}/{{ $noteMax }}
+                                                </span>
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 4px; font-size: 0.85rem; color: #6c757d;">-</td>
                                         @endif
-                                    </tr>
-                                    <tr>
-                                        @if($isPrimaire)
-                                            <td colspan="6" style="font-weight: 700; text-align: right; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50; width: 82%;">MOYENNE ANNUELLE</td>
-                                        @else
-                                            <td colspan="5" style="font-weight: 700; text-align: right; padding: 6px 4px; font-size: 0.85rem; color: #2c3e50; width: 82%;">MOYENNE ANNUELLE</td>
-                                        @endif
-                                        <td style="font-weight: 700; text-align: center; padding: 6px 4px; width: 18%;">
-                                            <span class="badge bg-success" style="font-size: 0.7rem; padding: 3px 6px; font-weight: 700;">
-                                                {{ number_format($bulletin['moyenneAnnuelle'], 2) }}/{{ $bulletin['eleve']->classe->note_max }}
-                                            </span>
-                                        </td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -260,16 +294,16 @@
                                     <tr>
                                         @if($isPrimaire)
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #007bff; background: #f8f9fa;">
-                                                {{ $bulletin['rangsParPeriode']['trimestre1'] ?? '-' }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rangsParPeriode']['trimestre1'] ?? '-' }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #007bff; background: #f8f9fa;">
-                                                {{ $bulletin['rangsParPeriode']['trimestre2'] ?? '-' }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rangsParPeriode']['trimestre2'] ?? '-' }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #007bff; background: #f8f9fa;">
-                                                {{ $bulletin['rangsParPeriode']['trimestre3'] ?? '-' }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rangsParPeriode']['trimestre3'] ?? '-' }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #28a745; background: #f8f9fa;">
-                                                {{ $bulletin['rang'] }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rang'] }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #6c757d; background: #f8f9fa;">
                                                 @php
@@ -295,13 +329,13 @@
                                             </td>
                                         @else
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #007bff; background: #f8f9fa;">
-                                                {{ $bulletin['rangsParPeriode']['trimestre1'] ?? '-' }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rangsParPeriode']['trimestre1'] ?? '-' }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #007bff; background: #f8f9fa;">
-                                                {{ $bulletin['rangsParPeriode']['trimestre2'] ?? '-' }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rangsParPeriode']['trimestre2'] ?? '-' }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #28a745; background: #f8f9fa;">
-                                                {{ $bulletin['rang'] }}/{{ count($bulletins) }}
+                                                {{ $bulletin['rang'] }}/{{ $effectifClasse }}
                                             </td>
                                             <td style="text-align: center; border: 1px solid #dee2e6; padding: 6px 4px; font-size: 1rem; font-weight: 700; color: #6c757d; background: #f8f9fa;">
                                                 @php
