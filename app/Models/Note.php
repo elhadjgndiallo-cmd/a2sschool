@@ -225,6 +225,47 @@ class Note extends Model
     }
 
     /**
+     * Calculer la moyenne annuelle d'un élève pour une matière spécifique
+     * (moyenne des 3 trimestres)
+     */
+    public static function calculerMoyenneAnnuelleEleveMatiere(int $eleveId, int $matiereId): ?float
+    {
+        $moyennes = [];
+        
+        // Calculer la moyenne pour chaque trimestre
+        for ($trimestre = 1; $trimestre <= 3; $trimestre++) {
+            $notes = self::where('eleve_id', $eleveId)
+                ->where('matiere_id', $matiereId)
+                ->where('periode', 'trimestre_' . $trimestre)
+                ->get();
+            
+            if ($notes->count() > 0) {
+                $sommeNoteCoeff = 0;
+                $sommeCoeff = 0;
+                
+                foreach ($notes as $note) {
+                    if ($note->note_finale !== null) {
+                        $coefficient = $note->matiere->coefficient ?? 1;
+                        $sommeNoteCoeff += $note->note_finale * $coefficient;
+                        $sommeCoeff += $coefficient;
+                    }
+                }
+                
+                if ($sommeCoeff > 0) {
+                    $moyennes[] = round($sommeNoteCoeff / $sommeCoeff, 2);
+                }
+            }
+        }
+        
+        // Calculer la moyenne annuelle (moyenne des moyennes trimestrielles)
+        if (count($moyennes) > 0) {
+            return round(array_sum($moyennes) / count($moyennes), 2);
+        }
+        
+        return null;
+    }
+
+    /**
      * Moyenne générale annuelle : moyenne simple des moyennes trimestrielles.
      */
     public static function calculerMoyenneGeneraleAnnuelle(array $moyennesParTrimestre): float
@@ -236,6 +277,38 @@ class Note extends Model
         }
 
         return round(array_sum($moyennesValides) / count($moyennesValides), 2);
+    }
+
+    /**
+     * Calculer la moyenne générale d'un élève pour un trimestre
+     */
+    public static function calculerMoyenneGeneraleEleve(int $eleveId, int $trimestre): ?float
+    {
+        return self::calculerMoyenneGenerale($eleveId, 'trimestre_' . $trimestre);
+    }
+
+    /**
+     * Calculer la moyenne annuelle globale d'un élève
+     * (moyenne des moyennes générales des 3 trimestres)
+     */
+    public static function calculerMoyenneAnnuelle(int $eleveId): ?float
+    {
+        $moyennes = [];
+        
+        // Calculer la moyenne générale pour chaque trimestre
+        for ($trimestre = 1; $trimestre <= 3; $trimestre++) {
+            $moyenne = self::calculerMoyenneGenerale($eleveId, 'trimestre_' . $trimestre);
+            if ($moyenne !== null) {
+                $moyennes[] = $moyenne;
+            }
+        }
+        
+        // Calculer la moyenne annuelle (moyenne des moyennes trimestrielles)
+        if (count($moyennes) > 0) {
+            return round(array_sum($moyennes) / count($moyennes), 2);
+        }
+        
+        return null;
     }
 
     /**

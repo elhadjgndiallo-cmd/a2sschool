@@ -281,6 +281,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/mensuel/resultats/{classe}/imprimer', [NoteController::class, 'mensuelResultatsImprimer'])->name('notes.mensuel.resultats.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/resultats/{classe}/detail-notes/imprimer', [NoteController::class, 'mensuelDetailNotesImprimer'])->name('notes.mensuel.detail-notes.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/eleve/{eleve}/details', [NoteController::class, 'mensuelEleveDetails'])->name('notes.mensuel.eleve.details')->middleware('check.permission:notes.view');
+
+        // Routes pour les résultats annuels
+        Route::get('/notes/annuel', [NoteController::class, 'annuelIndex'])->name('notes.annuel.index')->middleware('check.permission:notes.view');
+        Route::get('/notes/annuel/resultats/{classe}', [NoteController::class, 'annuelResultats'])->name('notes.annuel.resultats')->middleware('check.permission:notes.view');
+        Route::get('/notes/annuel/resultats/{classe}/detail-notes/imprimer', [NoteController::class, 'annuelDetailNotesImprimer'])->name('notes.annuel.detail-notes.imprimer')->middleware('check.permission:notes.view');
     });
     
     // Routes pour la gestion des absences (Admin, Enseignants et Personnel Admin)

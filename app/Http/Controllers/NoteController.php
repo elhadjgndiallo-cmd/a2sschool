@@ -3741,4 +3741,219 @@ class NoteController extends Controller
         
         return $pdf->download($filename);
     }
+
+    /**
+     * Afficher la page d'accueil des résultats annuels
+     */
+    public function annuelIndex()
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les classes pour l'année scolaire active
+        $user = auth()->user();
+        
+        if ($user->isTeacher()) {
+            // Pour les enseignants, uniquement les classes qu'ils enseignent
+            $enseignant = $user->enseignant;
+            $classes = Classe::whereHas('emploisTemps', function($query) use ($enseignant) {
+                $query->where('enseignant_id', $enseignant->id);
+            })
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->orderBy('nom')
+            ->get();
+        } else {
+            // Pour les admins, toutes les classes ayant des élèves de l'année active
+            $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->orderBy('nom')
+            ->get();
+        }
+
+        return view('notes.annuel.index', compact('classes', 'anneeScolaireActive'));
+    }
+
+    /**
+     * Afficher les résultats annuels d'une classe
+     */
+    public function annuelResultats(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+
+        // Calculer les résultats annuels pour chaque élève
+        $resultats = [];
+        foreach ($eleves as $eleve) {
+            // Calculer les moyennes des trimestres
+            $moyenneT1 = Note::calculerMoyenneGeneraleEleve($eleve->id, 1);
+            $moyenneT2 = Note::calculerMoyenneGeneraleEleve($eleve->id, 2);
+            $moyenneT3 = Note::calculerMoyenneGeneraleEleve($eleve->id, 3);
+            
+            // Calculer la moyenne annuelle
+            $moyenneAnnuelle = Note::calculerMoyenneAnnuelle($eleve->id);
+
+            $resultats[] = [
+                'eleve' => $eleve,
+                'matricule' => $eleve->matricule,
+                'moyenneT1' => $moyenneT1,
+                'moyenneT2' => $moyenneT2,
+                'moyenneT3' => $moyenneT3,
+                'moyenneAnnuelle' => $moyenneAnnuelle
+            ];
+        }
+
+        // Calculer le rang pour chaque trimestre
+        // Rang Trimestre 1
+        $resultatsT1 = collect($resultats)->filter(fn($r) => $r['moyenneT1'] !== null)->sortByDesc('moyenneT1')->values();
+        $rang = 1;
+        foreach ($resultatsT1 as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangT1'] = $rang++;
+            }
+        }
+
+        // Rang Trimestre 2
+        $resultatsT2 = collect($resultats)->filter(fn($r) => $r['moyenneT2'] !== null)->sortByDesc('moyenneT2')->values();
+        $rang = 1;
+        foreach ($resultatsT2 as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangT2'] = $rang++;
+            }
+        }
+
+        // Rang Annuel (basé sur la moyenne annuelle)
+        $resultatsAnnuels = collect($resultats)->filter(fn($r) => $r['moyenneAnnuelle'] !== null)->sortByDesc('moyenneAnnuelle')->values();
+        $rang = 1;
+        foreach ($resultatsAnnuels as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangAnnuel'] = $rang++;
+            }
+        }
+
+        // Trier par rang annuel
+        usort($resultats, function($a, $b) {
+            $rangA = $a['rangAnnuel'] ?? 999;
+            $rangB = $b['rangAnnuel'] ?? 999;
+            return $rangA <=> $rangB;
+        });
+
+        return view('notes.annuel.resultats', compact('classe', 'resultats', 'anneeScolaireActive'));
+    }
+
+    /**
+     * Imprimer le détail des notes annuelles d'une classe
+     */
+    public function annuelDetailNotesImprimer(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les élèves de la classe
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->orderBy('matricule')
+            ->get();
+
+        // Récupérer toutes les matières enseignées dans la classe
+        $matieres = $classe->emploisTemps()
+            ->with('matiere')
+            ->get()
+            ->pluck('matiere')
+            ->unique('id')
+            ->sortBy('nom');
+
+        // Préparer les données pour chaque élève
+        $detailNotes = [];
+        foreach ($eleves as $eleve) {
+            $notesParMatiere = [];
+            
+            foreach ($matieres as $matiere) {
+                // Calculer la moyenne annuelle de l'élève pour cette matière
+                $moyenneAnnuelle = Note::calculerMoyenneAnnuelleEleveMatiere($eleve->id, $matiere->id);
+                
+                $notesParMatiere[] = [
+                    'matiere' => $matiere->nom,
+                    'coefficient' => $matiere->coefficient ?? 1,
+                    'moyenne_annuelle' => $moyenneAnnuelle
+                ];
+            }
+
+            $detailNotes[] = [
+                'eleve' => $eleve,
+                'matricule' => $eleve->matricule,
+                'notes' => $notesParMatiere
+            ];
+        }
+
+        return view('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive'));
+    }
 }
