@@ -140,7 +140,7 @@ class Note extends Model
     /**
      * Moyenne générale trimestrielle à partir d'une collection de notes (groupée par matière).
      */
-    public static function calculerMoyenneGeneraleDepuisCollection($notes): float
+    public static function calculerMoyenneGeneraleDepuisCollection($notes): ?float
     {
         $grouped = collect($notes)->groupBy('matiere_id');
         $totalPoints = 0;
@@ -175,7 +175,7 @@ class Note extends Model
             $totalCoefficients += $sommeCoeff;
         }
 
-        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : 0;
+        return $totalCoefficients > 0 ? round($totalPoints / $totalCoefficients, 2) : null;
     }
 
     /**

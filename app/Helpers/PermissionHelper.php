@@ -89,6 +89,7 @@ class PermissionHelper
             ['href' => $getRoute('notes.bulletins'), 'icon' => 'fas fa-chart-line', 'text' => 'Bulletins', 'permission' => 'notes.view'],
             ['href' => $getRoute('notes.statistiques'), 'icon' => 'fas fa-chart-bar', 'text' => 'Statistiques', 'permission' => 'notes.view'],
             ['href' => $getRoute('notes.mensuel.index'), 'icon' => 'fas fa-calendar-alt', 'text' => 'Mensuel', 'permission' => 'notes.view'],
+            ['href' => $getRoute('notes.annuel.index'), 'icon' => 'fas fa-trophy', 'text' => 'Annuel', 'permission' => 'notes.view'],
             ['href' => $getRoute('notes.fiche.selection'), 'icon' => 'fas fa-file-alt', 'text' => 'Fiche Note', 'permission' => 'notes.view'],
             ['href' => $getRoute('notes.parametres'), 'icon' => 'fas fa-cog', 'text' => 'Paramètres', 'permission' => 'notes.edit']
         ],

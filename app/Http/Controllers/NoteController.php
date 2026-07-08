@@ -3821,20 +3821,22 @@ class NoteController extends Controller
             ->with('utilisateur')
             ->get();
 
-        // Calculer les résultats annuels pour chaque élève
+        // Calculer les résultats annuels pour chaque élève (UTILISER LES MÊMES DONNÉES QUE LE BULLETIN)
         $resultats = [];
+        $periodes = ['trimestre1', 'trimestre2', 'trimestre3'];
+        
         foreach ($eleves as $eleve) {
-            // Calculer les moyennes des trimestres
-            $moyenneT1 = Note::calculerMoyenneGeneraleEleve($eleve->id, 1);
-            $moyenneT2 = Note::calculerMoyenneGeneraleEleve($eleve->id, 2);
-            $moyenneT3 = Note::calculerMoyenneGeneraleEleve($eleve->id, 3);
+            // Utiliser la MÊME méthode que le bulletin annuel pour garantir l'identité des données
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
             
-            // Calculer la moyenne annuelle
-            $moyenneAnnuelle = Note::calculerMoyenneAnnuelle($eleve->id);
+            $moyenneT1 = $donneesAnnuelles['moyennesParPeriode']['trimestre1'] ?? null;
+            $moyenneT2 = $donneesAnnuelles['moyennesParPeriode']['trimestre2'] ?? null;
+            $moyenneT3 = $donneesAnnuelles['moyennesParPeriode']['trimestre3'] ?? null;
+            $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'] ?? null;
 
             $resultats[] = [
                 'eleve' => $eleve,
-                'matricule' => $eleve->matricule,
+                'matricule' => $eleve->numero_etudiant,
                 'moyenneT1' => $moyenneT1,
                 'moyenneT2' => $moyenneT2,
                 'moyenneT3' => $moyenneT3,
@@ -3920,7 +3922,7 @@ class NoteController extends Controller
         $eleves = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->with('utilisateur')
-            ->orderBy('matricule')
+            ->orderBy('numero_etudiant')
             ->get();
 
         // Récupérer toutes les matières enseignées dans la classe
@@ -3931,25 +3933,48 @@ class NoteController extends Controller
             ->unique('id')
             ->sortBy('nom');
 
-        // Préparer les données pour chaque élève
+        // Préparer les données pour chaque élève (UTILISER LES MÊMES DONNÉES QUE LE BULLETIN)
         $detailNotes = [];
+        $periodes = ['trimestre1', 'trimestre2', 'trimestre3'];
+        
         foreach ($eleves as $eleve) {
-            $notesParMatiere = [];
+            // Utiliser la MÊME méthode que le bulletin annuel pour garantir l'identité des données
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
             
+            $moyennesAnnuellesParMatiere = $donneesAnnuelles['moyennesAnnuellesParMatiere'];
+            $notesFinalesParMatiereParPeriode = $donneesAnnuelles['notesFinalesParMatiereParPeriode'];
+            
+            $notesParMatiere = [];
             foreach ($matieres as $matiere) {
-                // Calculer la moyenne annuelle de l'élève pour cette matière
-                $moyenneAnnuelle = Note::calculerMoyenneAnnuelleEleveMatiere($eleve->id, $matiere->id);
+                $moyenneAnnuelle = $moyennesAnnuellesParMatiere[$matiere->id] ?? null;
+                
+                // Récupérer le coefficient depuis les notes (comme dans le bulletin)
+                $coefficient = null;
+                foreach ($periodes as $periode) {
+                    if (isset($donneesAnnuelles['notesParPeriode'][$periode])) {
+                        $notePeriode = $donneesAnnuelles['notesParPeriode'][$periode]->where('matiere_id', $matiere->id)->first();
+                        if ($notePeriode && $notePeriode->coefficient) {
+                            $coefficient = $notePeriode->coefficient;
+                            break;
+                        }
+                    }
+                }
+                
+                // Si pas de coefficient trouvé dans les notes, utiliser celui de la matière
+                if (!$coefficient) {
+                    $coefficient = $matiere->coefficient ?? 1;
+                }
                 
                 $notesParMatiere[] = [
                     'matiere' => $matiere->nom,
-                    'coefficient' => $matiere->coefficient ?? 1,
+                    'coefficient' => $coefficient,
                     'moyenne_annuelle' => $moyenneAnnuelle
                 ];
             }
 
             $detailNotes[] = [
                 'eleve' => $eleve,
-                'matricule' => $eleve->matricule,
+                'matricule' => $eleve->numero_etudiant,
                 'notes' => $notesParMatiere
             ];
         }
