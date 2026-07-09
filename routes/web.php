@@ -285,7 +285,9 @@ Route::middleware('auth')->group(function () {
         // Routes pour les résultats annuels
         Route::get('/notes/annuel', [NoteController::class, 'annuelIndex'])->name('notes.annuel.index')->middleware('check.permission:notes.view');
         Route::get('/notes/annuel/resultats/{classe}', [NoteController::class, 'annuelResultats'])->name('notes.annuel.resultats')->middleware('check.permission:notes.view');
+        Route::get('/notes/annuel/resultats/{classe}/pdf', [NoteController::class, 'annuelResultatsPdf'])->name('notes.annuel.resultats.pdf')->middleware('check.permission:notes.view');
         Route::get('/notes/annuel/resultats/{classe}/detail-notes/imprimer', [NoteController::class, 'annuelDetailNotesImprimer'])->name('notes.annuel.detail-notes.imprimer')->middleware('check.permission:notes.view');
+        Route::get('/notes/annuel/resultats/{classe}/detail-notes/pdf', [NoteController::class, 'annuelDetailNotesPdf'])->name('notes.annuel.detail-notes.pdf')->middleware('check.permission:notes.view');
     });
     
     // Routes pour la gestion des absences (Admin, Enseignants et Personnel Admin)

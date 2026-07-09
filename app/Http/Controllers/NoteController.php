@@ -3821,9 +3821,12 @@ class NoteController extends Controller
             ->with('utilisateur')
             ->get();
 
+        // Déterminer les périodes selon le niveau de la classe
+        $isPrimaire = $classe->isPrimaire();
+        $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
+        
         // Calculer les résultats annuels pour chaque élève (UTILISER LES MÊMES DONNÉES QUE LE BULLETIN)
         $resultats = [];
-        $periodes = ['trimestre1', 'trimestre2', 'trimestre3'];
         
         foreach ($eleves as $eleve) {
             // Utiliser la MÊME méthode que le bulletin annuel pour garantir l'identité des données
@@ -3831,7 +3834,7 @@ class NoteController extends Controller
             
             $moyenneT1 = $donneesAnnuelles['moyennesParPeriode']['trimestre1'] ?? null;
             $moyenneT2 = $donneesAnnuelles['moyennesParPeriode']['trimestre2'] ?? null;
-            $moyenneT3 = $donneesAnnuelles['moyennesParPeriode']['trimestre3'] ?? null;
+            $moyenneT3 = $isPrimaire ? ($donneesAnnuelles['moyennesParPeriode']['trimestre3'] ?? null) : null;
             $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'] ?? null;
 
             $resultats[] = [
@@ -3867,6 +3870,19 @@ class NoteController extends Controller
             }
         }
 
+        // Rang Trimestre 3 (seulement pour primaire)
+        if ($isPrimaire) {
+            $resultatsT3 = collect($resultats)->filter(fn($r) => $r['moyenneT3'] !== null)->sortByDesc('moyenneT3')->values();
+            $rang = 1;
+            foreach ($resultatsT3 as $key => $result) {
+                $eleveId = $result['eleve']->id;
+                $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+                if ($index !== false) {
+                    $resultats[$index]['rangT3'] = $rang++;
+                }
+            }
+        }
+
         // Rang Annuel (basé sur la moyenne annuelle)
         $resultatsAnnuels = collect($resultats)->filter(fn($r) => $r['moyenneAnnuelle'] !== null)->sortByDesc('moyenneAnnuelle')->values();
         $rang = 1;
@@ -3885,7 +3901,7 @@ class NoteController extends Controller
             return $rangA <=> $rangB;
         });
 
-        return view('notes.annuel.resultats', compact('classe', 'resultats', 'anneeScolaireActive'));
+        return view('notes.annuel.resultats', compact('classe', 'resultats', 'anneeScolaireActive', 'isPrimaire'));
     }
 
     /**
@@ -3980,5 +3996,228 @@ class NoteController extends Controller
         }
 
         return view('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive'));
+    }
+
+    /**
+     * Télécharger PDF des résultats annuels d'une classe
+     */
+    public function annuelResultatsPdf(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+
+        // Déterminer les périodes selon le niveau de la classe
+        $isPrimaire = $classe->isPrimaire();
+        $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
+
+        // Calculer les résultats (même code que annuelResultats)
+        $resultats = [];
+        
+        foreach ($eleves as $eleve) {
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+            
+            $moyenneT1 = $donneesAnnuelles['moyennesParPeriode']['trimestre1'] ?? null;
+            $moyenneT2 = $donneesAnnuelles['moyennesParPeriode']['trimestre2'] ?? null;
+            $moyenneT3 = $isPrimaire ? ($donneesAnnuelles['moyennesParPeriode']['trimestre3'] ?? null) : null;
+            $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'] ?? null;
+
+            $resultats[] = [
+                'eleve' => $eleve,
+                'matricule' => $eleve->numero_etudiant,
+                'moyenneT1' => $moyenneT1,
+                'moyenneT2' => $moyenneT2,
+                'moyenneT3' => $moyenneT3,
+                'moyenneAnnuelle' => $moyenneAnnuelle
+            ];
+        }
+
+        // Calculer les rangs (même code que annuelResultats)
+        $resultatsT1 = collect($resultats)->filter(fn($r) => $r['moyenneT1'] !== null)->sortByDesc('moyenneT1')->values();
+        $rang = 1;
+        foreach ($resultatsT1 as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangT1'] = $rang++;
+            }
+        }
+
+        $resultatsT2 = collect($resultats)->filter(fn($r) => $r['moyenneT2'] !== null)->sortByDesc('moyenneT2')->values();
+        $rang = 1;
+        foreach ($resultatsT2 as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangT2'] = $rang++;
+            }
+        }
+
+        // Rang Trimestre 3 (seulement pour primaire)
+        if ($isPrimaire) {
+            $resultatsT3 = collect($resultats)->filter(fn($r) => $r['moyenneT3'] !== null)->sortByDesc('moyenneT3')->values();
+            $rang = 1;
+            foreach ($resultatsT3 as $key => $result) {
+                $eleveId = $result['eleve']->id;
+                $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+                if ($index !== false) {
+                    $resultats[$index]['rangT3'] = $rang++;
+                }
+            }
+        }
+
+        $resultatsAnnuels = collect($resultats)->filter(fn($r) => $r['moyenneAnnuelle'] !== null)->sortByDesc('moyenneAnnuelle')->values();
+        $rang = 1;
+        foreach ($resultatsAnnuels as $key => $result) {
+            $eleveId = $result['eleve']->id;
+            $index = collect($resultats)->search(fn($r) => $r['eleve']->id === $eleveId);
+            if ($index !== false) {
+                $resultats[$index]['rangAnnuel'] = $rang++;
+            }
+        }
+
+        usort($resultats, function($a, $b) {
+            $rangA = $a['rangAnnuel'] ?? 999;
+            $rangB = $b['rangAnnuel'] ?? 999;
+            return $rangA <=> $rangB;
+        });
+        
+        // Générer le PDF avec la vue dédiée au PDF
+        $pdf = \PDF::loadView('notes.annuel.resultats-pdf', compact('classe', 'resultats', 'anneeScolaireActive', 'isPrimaire'));
+        
+        $pdf->setPaper('A4', 'landscape');
+        
+        // Nettoyer le nom de la classe pour le nom de fichier (enlever les caractères interdits)
+        $nomClasseClean = str_replace(['/', '\\', ' '], '_', $classe->nom);
+        $filename = 'resultats_annuels_' . $nomClasseClean . '_' . date('Y-m-d') . '.pdf';
+        
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Télécharger PDF du détail des notes annuelles
+     */
+    public function annuelDetailNotesPdf(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les élèves de la classe
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->orderBy('numero_etudiant')
+            ->get();
+
+        // Récupérer toutes les matières enseignées dans la classe
+        $matieres = $classe->emploisTemps()
+            ->with('matiere')
+            ->get()
+            ->pluck('matiere')
+            ->unique('id')
+            ->sortBy('nom');
+
+        // Préparer les données (même code que annuelDetailNotesImprimer)
+        $detailNotes = [];
+        $periodes = ['trimestre1', 'trimestre2', 'trimestre3'];
+        
+        foreach ($eleves as $eleve) {
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+            
+            $moyennesAnnuellesParMatiere = $donneesAnnuelles['moyennesAnnuellesParMatiere'];
+            $notesFinalesParMatiereParPeriode = $donneesAnnuelles['notesFinalesParMatiereParPeriode'];
+            
+            $notesParMatiere = [];
+            foreach ($matieres as $matiere) {
+                $moyenneAnnuelle = $moyennesAnnuellesParMatiere[$matiere->id] ?? null;
+                
+                $coefficient = null;
+                foreach ($periodes as $periode) {
+                    if (isset($donneesAnnuelles['notesParPeriode'][$periode])) {
+                        $notePeriode = $donneesAnnuelles['notesParPeriode'][$periode]->where('matiere_id', $matiere->id)->first();
+                        if ($notePeriode && $notePeriode->coefficient) {
+                            $coefficient = $notePeriode->coefficient;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!$coefficient) {
+                    $coefficient = $matiere->coefficient ?? 1;
+                }
+                
+                $notesParMatiere[] = [
+                    'matiere' => $matiere->nom,
+                    'coefficient' => $coefficient,
+                    'moyenne_annuelle' => $moyenneAnnuelle
+                ];
+            }
+
+            $detailNotes[] = [
+                'eleve' => $eleve,
+                'matricule' => $eleve->numero_etudiant,
+                'notes' => $notesParMatiere
+            ];
+        }
+        
+        // Générer le PDF avec la même vue (optimisée pour impression/PDF)
+        $pdf = \PDF::loadView('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive'));
+        
+        $pdf->setPaper('A4', 'landscape');
+        
+        // Nettoyer le nom de la classe pour le nom de fichier (enlever les caractères interdits)
+        $nomClasseClean = str_replace(['/', '\\', ' '], '_', $classe->nom);
+        $filename = 'detail_notes_annuelles_' . $nomClasseClean . '_' . date('Y-m-d') . '.pdf';
+        
+        return $pdf->download($filename);
     }
 }

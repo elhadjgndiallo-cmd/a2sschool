@@ -10,6 +10,11 @@
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
+            <a href="{{ route('notes.annuel.resultats.pdf', $classe->id) }}" 
+               class="btn btn-sm btn-primary" target="_blank">
+                <i class="fas fa-file-pdf me-1"></i>
+                Télécharger PDF Résultats
+            </a>
             <a href="{{ route('notes.annuel.detail-notes.imprimer', $classe->id) }}" 
                class="btn btn-sm btn-success" target="_blank">
                 <i class="fas fa-print me-1"></i>
@@ -74,15 +79,19 @@
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 10%">Matricule</th>
-                                <th style="width: 20%">Nom</th>
-                                <th style="width: 20%">Prénom</th>
-                                <th style="width: 12%" class="text-center">Moyenne T1</th>
-                                <th style="width: 10%" class="text-center">Rang T1</th>
-                                <th style="width: 12%" class="text-center">Moyenne T2</th>
-                                <th style="width: 10%" class="text-center">Rang T2</th>
-                                <th style="width: 12%" class="text-center">Moyenne Annuelle</th>
-                                <th style="width: 10%" class="text-center">Rang Annuel</th>
+                                <th style="width: 8%">Matricule</th>
+                                <th style="width: 12%">Nom</th>
+                                <th style="width: 12%">Prénom</th>
+                                <th style="width: 10%" class="text-center">Moyenne T1</th>
+                                <th style="width: 8%" class="text-center">Rang T1</th>
+                                <th style="width: 10%" class="text-center">Moyenne T2</th>
+                                <th style="width: 8%" class="text-center">Rang T2</th>
+                                @if($isPrimaire)
+                                <th style="width: 10%" class="text-center">Moyenne T3</th>
+                                <th style="width: 8%" class="text-center">Rang T3</th>
+                                @endif
+                                <th style="width: 10%" class="text-center">Moyenne Annuelle</th>
+                                <th style="width: 8%" class="text-center">Rang Annuel</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -119,6 +128,22 @@
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
+                                @if($isPrimaire)
+                                <td class="text-center">
+                                    @if($resultat['moyenneT3'] !== null)
+                                        <span class="badge bg-secondary">{{ number_format($resultat['moyenneT3'], 2) }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @if(isset($resultat['rangT3']))
+                                        <strong>{{ $resultat['rangT3'] }}</strong>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                @endif
                                 <td class="text-center">
                                     @if($resultat['moyenneAnnuelle'] !== null)
                                         <span class="badge bg-primary fs-6">{{ number_format($resultat['moyenneAnnuelle'], 2) }}</span>

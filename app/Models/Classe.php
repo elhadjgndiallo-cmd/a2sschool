@@ -69,19 +69,51 @@ class Classe extends Model
 
     /**
      * Déterminer si la classe est primaire ou préscolaire
+     * Primaire : CI, CP, CE1, CE2, CM1, CM2, 6ème (3 trimestres)
+     * Secondaire : 7ème à Terminale (2 trimestres)
      */
     public function isPrimaire()
     {
+        $nomClasse = strtolower($this->nom);
         $niveauLower = strtolower($this->niveau);
+        
+        // Vérifier par le nom de la classe
+        $classesPrimaires = ['ci', 'cp', 'ce1', 'ce2', 'cm1', 'cm2', '6eme', '6ème', 'sixieme', 'sixième'];
+        
+        foreach ($classesPrimaires as $classe) {
+            if (stripos($nomClasse, $classe) !== false) {
+                return true;
+            }
+        }
+        
+        // Vérifier par le niveau
         return in_array($niveauLower, ['primaire', 'préscolaire', 'prescolaire']);
     }
 
     /**
      * Déterminer si la classe est secondaire
+     * Secondaire : 7ème, 8ème, 9ème, 3ème, 2nde, 1ère, Terminale (2 trimestres)
      */
     public function isSecondaire()
     {
-        return in_array(strtolower($this->niveau), ['lycée', 'college', 'secondaire']);
+        $nomClasse = strtolower($this->nom);
+        
+        // Classes secondaires
+        $classesSecondaires = ['7eme', '7ème', 'septieme', 'septième', 
+                               '5eme', '5ème', 'cinquieme', 'cinquième',
+                               '4eme', '4ème', 'quatrieme', 'quatrième',
+                               '3eme', '3ème', 'troisieme', 'troisième',
+                               '2nde', 'seconde', 
+                               '1ere', '1ère', 'premiere', 'première',
+                               'terminale', 'tle'];
+        
+        foreach ($classesSecondaires as $classe) {
+            if (stripos($nomClasse, $classe) !== false) {
+                return true;
+            }
+        }
+        
+        return in_array(strtolower($this->niveau), ['lycée', 'lycee', 'college', 'collège', 'secondaire']);
     }
 
     /**
