@@ -3995,7 +3995,7 @@ class NoteController extends Controller
             ];
         }
 
-        return view('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive'));
+        return view('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive', 'matieres'));
     }
 
     /**
@@ -4210,7 +4210,7 @@ class NoteController extends Controller
         }
         
         // Générer le PDF avec la même vue (optimisée pour impression/PDF)
-        $pdf = \PDF::loadView('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive'));
+        $pdf = \PDF::loadView('notes.annuel.detail-notes-imprimer', compact('classe', 'detailNotes', 'anneeScolaireActive', 'matieres'));
         
         $pdf->setPaper('A4', 'landscape');
         

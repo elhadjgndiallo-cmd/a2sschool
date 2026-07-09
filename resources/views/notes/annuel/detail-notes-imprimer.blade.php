@@ -96,7 +96,9 @@
         table thead th {
             font-weight: bold;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
+            vertical-align: middle;
+            padding: 4px 2px;
         }
 
         table tbody tr:nth-child(even) {
@@ -207,68 +209,40 @@
         </div>
     </div>
 
-    <!-- Tableau des notes -->
-    @if(count($detailNotes) > 0)
+    <!-- Tableau des notes (Format horizontal : 1 élève = 1 ligne) -->
+    @if(count($detailNotes) > 0 && count($matieres) > 0)
     <table>
         <thead>
             <tr>
-                <th style="width: 8%">Matricule</th>
-                <th style="width: 15%">Nom</th>
-                <th style="width: 15%">Prénom</th>
-                <th style="width: 25%">Matière</th>
-                <th style="width: 10%" class="text-center">Coefficient</th>
-                <th style="width: 12%" class="text-center">Note Annuelle</th>
-                <th style="width: 15%" class="text-center">Appréciation</th>
+                <th style="width: 60px;">Matricule</th>
+                <th style="width: 100px;">Nom</th>
+                <th style="width: 100px;">Prénom</th>
+                @foreach($matieres as $matiere)
+                <th style="text-align: center; font-size: 8px; padding: 4px 2px; max-width: 60px; word-wrap: break-word; white-space: normal;">
+                    {{ $matiere->nom }}
+                </th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
             @foreach($detailNotes as $detail)
-                @php
-                    $nbMatieres = count($detail['notes']);
-                @endphp
-                @foreach($detail['notes'] as $index => $note)
-                <tr>
-                    @if($index == 0)
-                    <td rowspan="{{ $nbMatieres }}" style="vertical-align: middle; font-weight: bold;">
-                        {{ $detail['matricule'] }}
-                    </td>
-                    <td rowspan="{{ $nbMatieres }}" style="vertical-align: middle; font-weight: bold;">
-                        {{ $detail['eleve']->utilisateur->nom }}
-                    </td>
-                    <td rowspan="{{ $nbMatieres }}" style="vertical-align: middle; font-weight: bold;">
-                        {{ $detail['eleve']->utilisateur->prenom }}
-                    </td>
-                    @endif
-                    <td>{{ $note['matiere'] }}</td>
-                    <td class="text-center">{{ $note['coefficient'] }}</td>
-                    <td class="text-center">
-                        @if($note['moyenne_annuelle'] !== null)
-                            <strong>{{ number_format($note['moyenne_annuelle'], 2) }}/20</strong>
+            <tr>
+                <td style="font-weight: bold; text-align: center; font-size: 9px;">{{ $detail['matricule'] }}</td>
+                <td style="font-weight: bold; font-size: 9px;">{{ $detail['eleve']->utilisateur->nom }}</td>
+                <td style="font-weight: bold; font-size: 9px;">{{ $detail['eleve']->utilisateur->prenom }}</td>
+                @foreach($matieres as $matiere)
+                    @php
+                        $noteMatiere = collect($detail['notes'])->firstWhere('matiere', $matiere->nom);
+                    @endphp
+                    <td style="text-align: center; font-size: 9px;">
+                        @if($noteMatiere && $noteMatiere['moyenne_annuelle'] !== null)
+                            {{ number_format($noteMatiere['moyenne_annuelle'], 2) }}
                         @else
-                            <span style="color: #999;">-</span>
+                            -
                         @endif
                     </td>
-                    <td class="text-center">
-                        @if($note['moyenne_annuelle'] !== null)
-                            @if($note['moyenne_annuelle'] >= 16)
-                                <span class="badge badge-success">Excellent</span>
-                            @elseif($note['moyenne_annuelle'] >= 14)
-                                <span class="badge badge-success">Très bien</span>
-                            @elseif($note['moyenne_annuelle'] >= 12)
-                                <span class="badge badge-secondary">Bien</span>
-                            @elseif($note['moyenne_annuelle'] >= 10)
-                                <span class="badge badge-secondary">Assez bien</span>
-                            @elseif($note['moyenne_annuelle'] >= 8)
-                                <span class="badge badge-warning">Passable</span>
-                            @else
-                                <span class="badge badge-danger">Insuffisant</span>
-                            @endif
-                        @else
-                            <span style="color: #999;">-</span>
-                        @endif
-                    </td>
-                </tr>
                 @endforeach
+            </tr>
             @endforeach
         </tbody>
     </table>
