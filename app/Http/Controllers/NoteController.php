@@ -4220,4 +4220,77 @@ class NoteController extends Controller
         
         return $pdf->download($filename);
     }
+
+    /**
+     * Générer les satisfécits pour les 5 premiers élèves de la classe
+     */
+    public function annuelSatisfecit(Request $request, Classe $classe)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        // Vérifier l'accès à la classe pour les enseignants
+        $user = auth()->user();
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            $hasAccess = $classe->emploisTemps()
+                ->where('enseignant_id', $enseignant->id)
+                ->exists();
+                
+            if (!$hasAccess) {
+                return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
+            }
+        }
+
+        // Récupérer l'année scolaire active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        // Récupérer les élèves de la classe pour l'année scolaire active
+        $eleves = $classe->eleves()
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with('utilisateur')
+            ->get();
+
+        // Déterminer les périodes selon le niveau de la classe
+        $isPrimaire = $classe->isPrimaire();
+        $periodes = $isPrimaire ? ['trimestre1', 'trimestre2', 'trimestre3'] : ['trimestre1', 'trimestre2'];
+
+        // Calculer les résultats annuels pour chaque élève
+        $resultats = [];
+        
+        foreach ($eleves as $eleve) {
+            $donneesAnnuelles = $this->preparerDonneesBulletinAnnuel($eleve, $periodes);
+            $moyenneAnnuelle = $donneesAnnuelles['moyenneAnnuelle'] ?? null;
+
+            if ($moyenneAnnuelle !== null) {
+                $resultats[] = [
+                    'eleve' => $eleve,
+                    'moyenneAnnuelle' => $moyenneAnnuelle
+                ];
+            }
+        }
+
+        // Trier par moyenne décroissante et prendre les 5 premiers
+        usort($resultats, function($a, $b) {
+            return $b['moyenneAnnuelle'] <=> $a['moyenneAnnuelle'];
+        });
+
+        $top5 = array_slice($resultats, 0, 5);
+
+        // Ajouter le rang pour chaque élève
+        foreach ($top5 as $index => &$resultat) {
+            $resultat['rang'] = $index + 1;
+        }
+
+        // Récupérer les informations de l'établissement
+        $etablissement = \App\Models\Etablissement::first();
+
+        return view('notes.annuel.satisfecit', compact('classe', 'top5', 'anneeScolaireActive', 'etablissement'));
+    }
 }

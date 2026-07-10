@@ -20,6 +20,11 @@
                 <i class="fas fa-print me-1"></i>
                 Imprimer Détail Notes
             </a>
+            <a href="{{ route('notes.annuel.satisfecit', $classe->id) }}" 
+               class="btn btn-sm btn-warning" target="_blank">
+                <i class="fas fa-award me-1"></i>
+                Satisfécits (Top 5)
+            </a>
         </div>
         <a href="{{ route('notes.annuel.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i>
