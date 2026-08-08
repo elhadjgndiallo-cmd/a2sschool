@@ -316,6 +316,21 @@
             @endif
         </div>
     </div>
+
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                @if(auth()->user()->hasPermission('eleves.edit'))
+                    <a href="{{ route('parents.edit', $parent->id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i> Modifier
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 

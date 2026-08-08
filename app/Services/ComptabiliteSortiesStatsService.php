@@ -236,6 +236,10 @@ class ComptabiliteSortiesStatsService
             return false;
         }
 
+        if (Depense::hasBonSalaireLinkColumn() && $depense->bon_salaire_enseignant_id) {
+            return false;
+        }
+
         if (Depense::hasSalaireEnseignantLinkColumn() && $depense->salaire_enseignant_id) {
             return true;
         }

@@ -60,7 +60,13 @@
     <div class="card-body">
         <form method="GET" action="{{ route('notes.mensuel.classe', $classe->id) }}">
             <div class="row">
+                @if(isset($anneeScolaireActive))
                 <div class="col-md-4">
+                    <label class="form-label">Année scolaire</label>
+                    <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
+                </div>
+                @endif
+                <div class="col-md-3">
                     <label for="mois" class="form-label">Mois</label>
                     <select name="mois" id="mois" class="form-select">
                         @foreach($moisListe as $num => $nom)
@@ -70,17 +76,17 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="annee" class="form-label">Année</label>
                     <select name="annee" id="annee" class="form-select">
-                        @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
-                        <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
-                            {{ $i }}
+                        @foreach(($anneesDisponibles ?? [date('Y')]) as $anneeOption)
+                        <option value="{{ $anneeOption }}" {{ $annee == $anneeOption ? 'selected' : '' }}>
+                            {{ $anneeOption }}
                         </option>
-                        @endfor
+                        @endforeach
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-search me-1"></i>
                         Filtrer

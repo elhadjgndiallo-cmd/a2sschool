@@ -107,12 +107,11 @@ use Illuminate\Support\Facades\Storage;
                                         <th>Date d'émission</th>
                                         <th>Date d'expiration</th>
                                         <th>Statut</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($cartes as $carte)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('cartes-personnel-administration.show', $carte) }}" role="button" tabindex="0">
                                             <td>
                                                 <strong>{{ $carte->numero_carte }}</strong>
                                             </td>
@@ -154,37 +153,6 @@ use Illuminate\Support\Facades\Storage;
                                                     };
                                                 @endphp
                                                 <span class="badge {{ $badgeClass }}">{{ $carte->statut_libelle }}</span>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('cartes-personnel-administration.show', $carte) }}" 
-                                                       class="btn btn-sm btn-outline-primary" title="Voir">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('cartes-personnel-administration.edit', $carte) }}" 
-                                                       class="btn btn-sm btn-outline-warning" title="Modifier">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="{{ route('cartes-personnel-administration.imprimer', $carte) }}" 
-                                                       class="btn btn-sm btn-outline-success" title="Imprimer" target="_blank">
-                                                        <i class="fas fa-print"></i>
-                                                    </a>
-                                                    @if($carte->statut === 'active')
-                                                        <a href="{{ route('cartes-personnel-administration.renouveler', $carte) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="Renouveler">
-                                                            <i class="fas fa-sync"></i>
-                                                        </a>
-                                                    @endif
-                                                    <form action="{{ route('cartes-personnel-administration.destroy', $carte) }}" 
-                                                          method="POST" class="d-inline" 
-                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach

@@ -48,6 +48,21 @@ class AnneeScolaireController extends Controller
     }
 
     /**
+     * Afficher le détail d'une année scolaire.
+     */
+    public function show(AnneeScolaire $anneesScolaire)
+    {
+        $stats = [
+            'eleves' => \App\Models\Eleve::where('annee_scolaire_id', $anneesScolaire->id)->count(),
+            'eleves_actifs' => \App\Models\Eleve::where('annee_scolaire_id', $anneesScolaire->id)->where('actif', true)->count(),
+            'enseignants' => \App\Models\Enseignant::where('annee_scolaire_id', $anneesScolaire->id)->count(),
+            'factures' => \App\Models\Facture::where('annee_scolaire_id', $anneesScolaire->id)->count(),
+        ];
+
+        return view('annees-scolaires.show', compact('anneesScolaire', 'stats'));
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(AnneeScolaire $anneesScolaire)

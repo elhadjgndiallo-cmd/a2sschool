@@ -11,10 +11,6 @@
             Détails Tests Mensuels - {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }}
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="{{ route('notes.mensuel.eleve.create', $eleve->id) }}" class="btn btn-success me-2">
-                <i class="fas fa-plus me-1"></i>
-                Ajouter une note
-            </a>
             <a href="{{ route('notes.mensuel.resultats', $eleve->classe_id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>
                 Retour
@@ -67,7 +63,13 @@
         <div class="card-body">
             <form method="GET" action="{{ route('notes.mensuel.eleve.details', $eleve->id) }}">
                 <div class="row">
+                    @if(isset($anneeScolaireActive))
                     <div class="col-md-4">
+                        <label class="form-label">Année scolaire</label>
+                        <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
+                    </div>
+                    @endif
+                    <div class="col-md-3">
                         <label for="mois" class="form-label">Mois</label>
                         <select name="mois" id="mois" class="form-select">
                             @foreach($moisListe as $num => $nom)
@@ -77,17 +79,17 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="annee" class="form-label">Année</label>
                         <select name="annee" id="annee" class="form-select">
-                            @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
-                            <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
-                                {{ $i }}
+                            @foreach(($anneesDisponibles ?? [date('Y')]) as $anneeOption)
+                            <option value="{{ $anneeOption }}" {{ $annee == $anneeOption ? 'selected' : '' }}>
+                                {{ $anneeOption }}
                             </option>
-                            @endfor
+                            @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
+                    <div class="col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-search me-1"></i>
                             Filtrer
@@ -117,7 +119,6 @@
                             <th scope="col" class="text-center">Note</th>
                             <th scope="col" class="text-center">Coefficient</th>
                             <th scope="col">Enseignant</th>
-                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -131,15 +132,6 @@
                             </td>
                             <td class="text-center">{{ $test->coefficient }}</td>
                             <td>{{ $test->enseignant->utilisateur->prenom }} {{ $test->enseignant->utilisateur->nom }}</td>
-                            <td class="text-center">
-                                @if(auth()->user()->hasPermission('notes.edit'))
-                                <a href="{{ route('notes.mensuel.modifier', $eleve->classe_id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-                                   class="btn btn-sm btn-outline-warning" 
-                                   title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                @endif
-                            </td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -166,6 +158,24 @@
                     Ajouter une note
                 </a>
             </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('notes.mensuel.eleve.create', $eleve->id) }}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Ajouter une note
+            </a>
+            @if(auth()->user()->hasPermission('notes.edit'))
+            <a href="{{ route('notes.mensuel.modifier', $eleve->classe_id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier les notes
+            </a>
             @endif
         </div>
     </div>

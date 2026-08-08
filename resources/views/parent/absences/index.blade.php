@@ -130,12 +130,11 @@
                                         <th>Matière</th>
                                         <th>Statut</th>
                                         <th>Motif</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($absences as $absence)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('parent.absences.show', $absence->eleve) }}" role="button" tabindex="0">
                                             <td>{{ $absence->date_absence->format('d/m/Y') }}</td>
                                             <td>
                                                 <strong>{{ $absence->eleve->utilisateur->nom }} {{ $absence->eleve->utilisateur->prenom }}</strong>
@@ -163,19 +162,6 @@
                                                     <small>{{ Str::limit($absence->motif_absence, 50) }}</small>
                                                 @else
                                                     <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('parent.absences.show', $absence->eleve) }}" class="btn btn-sm btn-outline-primary" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($absence->statut == 'non_justifiee' || $absence->statut == 'en_attente')
-                                                    <button type="button" class="btn btn-sm btn-outline-success" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#justifierModal{{ $absence->id }}" 
-                                                            title="Justifier">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
                                                 @endif
                                             </td>
                                         </tr>
@@ -221,7 +207,7 @@
                                         @endif
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted py-4">
+                                            <td colspan="5" class="text-center text-muted py-4">
                                                 <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
                                                 <br>
                                                 Aucune absence trouvée

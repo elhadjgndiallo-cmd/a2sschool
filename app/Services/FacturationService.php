@@ -124,21 +124,24 @@ class FacturationService
                 );
 
                 if ($tranche) {
+                    $tranche = $this->reconcilierTrancheSiSoldée($tranche);
                     $montantTranche = (float) $tranche->montant_tranche;
-                    $reste = round($montantTranche - (float) $tranche->montant_paye, 2);
+                    $reste = $this->resteEffectifTranche($tranche);
 
-                    if ($tranche->statut === 'paye' || $reste <= 0) {
+                    if ($tranche->statut === 'paye' || $reste <= 0.01) {
                         continue;
                     }
 
-                    $libelle = $this->libelleLigne($type, $mois);
+                    $moisRef = Carbon::parse($tranche->date_echeance)->startOfMonth();
+                    $libelle = $this->libelleLigne($type, $moisRef);
 
                     $lignes->push($this->formatLigne([
                         'id' => 'tranche:' . $tranche->id,
                         'source' => 'tranche',
                         'type_frais' => $type,
-                        'mois' => $mois->format('Y-m-d'),
+                        'mois' => $moisRef->format('Y-m-d'),
                         'libelle' => $libelle,
+                        'libelle_mois' => self::formatLibelleMois($moisRef),
                         'montant' => $reste,
                         'montant_du_mois' => round($montantTranche, 2),
                         'partiel' => $reste + 0.00001 < $montantTranche,
@@ -152,6 +155,7 @@ class FacturationService
                         'type_frais' => $type,
                         'mois' => $mois->format('Y-m-d'),
                         'libelle' => $this->libelleLigne($type, $mois),
+                        'libelle_mois' => self::formatLibelleMois($mois),
                         'montant' => round($montantMensuel, 2),
                         'montant_du_mois' => round($montantMensuel, 2),
                         'partiel' => false,
@@ -298,7 +302,7 @@ class FacturationService
             $ratio = $du > 0.00001 ? ($paye / $du) : 1;
             $remisePayee = round($remiseLigne * $ratio, 2);
             $resteLigne = round($du - $paye, 2);
-            $partiel = $paye + 0.00001 < $brutMois;
+            $partiel = $paye + 0.00001 < $du || $paye + $remisePayee + 0.00001 < $brutMois;
             $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
 
             $lignesPayees[] = array_merge($ligne, [
@@ -761,6 +765,21 @@ class FacturationService
         });
     }
 
+    /**
+     * Annule une facture : retire paiements, tranches et entrée comptable, conserve la facture en historique.
+     */
+    public function annulerFacture(Facture $facture): void
+    {
+        if ($facture->statut === 'annulee') {
+            throw new \RuntimeException('Cette facture est déjà annulée.');
+        }
+
+        DB::transaction(function () use ($facture) {
+            $this->annulerEffetsFacture($facture);
+            $facture->update(['statut' => 'annulee']);
+        });
+    }
+
     private function annulerEffetsFacture(Facture $facture): void
     {
         $facture->load(['lignes.paiement', 'lignes.tranchePaiement', 'lignes.fraisScolarite']);
@@ -957,9 +976,14 @@ class FacturationService
             $tranche = $this->resoudreTranche($eleve, $anneeScolaire, $tarif, $ligneCalculee);
             $tranche->refresh();
 
-            $resteTranche = round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2);
+            $resteTranche = $this->resteEffectifTranche($tranche);
             $montantAPayer = $montantAPayerLigne;
             $remiseLigne = round((float) ($ligneCalculee['remise_ligne'] ?? 0), 2);
+            if ($remiseLigne <= 0) {
+                $brutLigne = round((float) ($ligneCalculee['montant_brut'] ?? 0), 2);
+                $netLigne = round((float) ($ligneCalculee['montant_net'] ?? 0), 2);
+                $remiseLigne = max(0, round($brutLigne - $netLigne, 2));
+            }
             $creditTranche = round($montantAPayer + $remiseLigne, 2);
             $brutMois = round((float) (
                 $ligneCalculee['montant_brut']
@@ -997,12 +1021,14 @@ class FacturationService
                 'mois' => $ligneCalculee['mois'],
                 'libelle' => $ligneCalculee['libelle'],
                 'montant_brut' => $brutMois,
-                'montant_remise' => 0,
+                'montant_remise' => $remiseLigne,
                 'montant_net' => $montantAPayer,
                 'tranche_paiement_id' => $tranche->id,
                 'frais_scolarite_id' => $tranche->frais_scolarite_id,
                 'paiement_id' => $paiement->id,
             ]);
+
+            $this->reconcilierTrancheSiSoldée($tranche->fresh());
         }
     }
 
@@ -1635,5 +1661,212 @@ class FacturationService
         }
 
         return ((float) $totaux['reste_a_payer']) > 0.01 ? 'en_cours' : 'payee';
+    }
+
+    /**
+     * Mois facturables de l'année scolaire (octobre → juin) pour les filtres UI.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    public function getMoisFacturationOptions(AnneeScolaire $anneeScolaire): array
+    {
+        return $this->moisAnneeScolaireFacturation($anneeScolaire)
+            ->map(fn (Carbon $mois) => [
+                'value' => $mois->format('Y-m'),
+                'label' => $this->libelleMoisCourt($mois),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Élèves ayant au moins un mois impayé parmi la sélection.
+     *
+     * @param  array<string>  $moisYm  Format Y-m (ex. 2025-10)
+     */
+    public function rechercherElevesImpayes(
+        AnneeScolaire $anneeScolaire,
+        array $moisYm,
+        ?int $classeId = null,
+        string $typeFrais = 'scolarite'
+    ): Collection {
+        if ($moisYm === []) {
+            return collect();
+        }
+
+        $moisSet = collect($moisYm)
+            ->map(fn (string $m) => Carbon::parse($m . '-01')->format('Y-m'))
+            ->unique()
+            ->values()
+            ->all();
+
+        $query = Eleve::with(['utilisateur', 'classe'])
+            ->where('annee_scolaire_id', $anneeScolaire->id)
+            ->where('actif', true)
+            ->where('exempte_frais', false);
+
+        if ($classeId) {
+            $query->where('classe_id', $classeId);
+        }
+
+        $resultats = collect();
+
+        foreach ($query->get() as $eleve) {
+            $lignes = collect($this->getLignesDisponibles($eleve, $anneeScolaire))
+                ->where('type_frais', $typeFrais)
+                ->filter(function (array $ligne) use ($moisSet) {
+                    return in_array(Carbon::parse($ligne['mois'])->format('Y-m'), $moisSet, true);
+                });
+
+            if ($lignes->isEmpty()) {
+                continue;
+            }
+
+            $moisImpayes = $lignes->map(function (array $ligne) {
+                $mois = Carbon::parse($ligne['mois']);
+
+                return [
+                    'mois' => $mois->format('Y-m'),
+                    'libelle_mois' => $ligne['libelle_mois'] ?? self::formatLibelleMois($mois),
+                    'libelle' => $ligne['libelle'],
+                    'montant' => (float) $ligne['montant'],
+                    'partiel' => (bool) ($ligne['partiel'] ?? false),
+                ];
+            })->sortBy('mois')->values();
+
+            $resultats->push([
+                'eleve' => $eleve,
+                'classe' => $eleve->classe,
+                'mois_impayes' => $moisImpayes,
+                'nombre_mois' => $moisImpayes->count(),
+                'total_du' => round($moisImpayes->sum('montant'), 2),
+            ]);
+        }
+
+        return $resultats->sortBy(function (array $item) {
+            $u = $item['eleve']->utilisateur;
+
+            return mb_strtolower(trim(($u->nom ?? '') . ' ' . ($u->prenom ?? '')));
+        })->values();
+    }
+
+    public static function formatLibelleMois(Carbon $mois): string
+    {
+        $nomsMois = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
+        ];
+
+        return ($nomsMois[(int) $mois->format('n')] ?? $mois->format('m')) . ' ' . $mois->format('Y');
+    }
+
+    private function libelleMoisCourt(Carbon $mois): string
+    {
+        return self::formatLibelleMois($mois);
+    }
+
+    /**
+     * Réconcilie toutes les tranches d'un frais (remises facture incluses).
+     */
+    public function reconcilierTranchesFrais(FraisScolarite $frais): void
+    {
+        $frais->loadMissing('tranchesPaiement');
+
+        foreach ($frais->tranchesPaiement as $tranche) {
+            $this->reconcilierTrancheSiSoldée($tranche);
+        }
+    }
+
+    /**
+     * Reste dû sur une tranche en tenant compte des remises déjà accordées sur factures payées.
+     */
+    public function resteEffectifTranche(TranchePaiement $tranche): float
+    {
+        $montantTranche = (float) $tranche->montant_tranche;
+        $montantPaye = (float) $tranche->montant_paye;
+
+        $remiseFacture = (float) FactureLigne::query()
+            ->where('tranche_paiement_id', $tranche->id)
+            ->whereHas('facture', fn ($q) => $q->where('statut', 'payee'))
+            ->get(['montant_brut', 'montant_net', 'montant_remise', 'facture_id'])
+            ->sum(fn (FactureLigne $ligne) => max(
+                0,
+                round((float) $ligne->montant_brut - (float) $ligne->montant_net, 2)
+            ) + max(0, (float) $ligne->montant_remise));
+
+        $remiseFacture += $this->remiseGlobaleFactureSurTranche($tranche);
+
+        return max(0, round($montantTranche - $montantPaye - $remiseFacture, 2));
+    }
+
+    /**
+     * Remise globale de facture non ventilée sur les lignes (anciennes factures ou paiement partiel FIFO).
+     */
+    private function remiseGlobaleFactureSurTranche(TranchePaiement $tranche): float
+    {
+        $lignes = FactureLigne::query()
+            ->where('tranche_paiement_id', $tranche->id)
+            ->whereHas('facture', fn ($q) => $q->where('statut', 'payee')->where('montant_remise', '>', 0))
+            ->with('facture.lignes')
+            ->get();
+
+        $total = 0.0;
+
+        foreach ($lignes->groupBy('facture_id') as $groupe) {
+            $facture = $groupe->first()->facture;
+            if (!$facture) {
+                continue;
+            }
+
+            $alloueeSurFacture = $facture->lignes->sum(
+                fn (FactureLigne $l) => max(0, round((float) $l->montant_brut - (float) $l->montant_net, 2))
+                    + max(0, (float) $l->montant_remise)
+            );
+            $disponible = max(0, round((float) $facture->montant_remise - $alloueeSurFacture, 2));
+
+            if ($disponible <= 0) {
+                continue;
+            }
+
+            $ligneTranche = $groupe->first();
+            $brutMois = (float) $tranche->montant_tranche;
+            $netVerse = (float) $ligneTranche->montant_net;
+
+            if ($netVerse + 0.01 >= $brutMois) {
+                continue;
+            }
+
+            $manque = round($brutMois - (float) $tranche->montant_paye, 2);
+            if ($manque <= 0) {
+                continue;
+            }
+
+            $total += min($disponible, $manque);
+        }
+
+        return round($total, 2);
+    }
+
+    /**
+     * Corrige les tranches soldées via facture (remise incluse) mais encore marquées partielles.
+     */
+    public function reconcilierTrancheSiSoldée(TranchePaiement $tranche): TranchePaiement
+    {
+        if ($tranche->statut === 'paye') {
+            return $tranche;
+        }
+
+        $reste = $this->resteEffectifTranche($tranche);
+        if ($reste > 0.01) {
+            return $tranche;
+        }
+
+        $tranche->update([
+            'statut' => 'paye',
+            'montant_paye' => $tranche->montant_tranche,
+        ]);
+
+        return $tranche->fresh();
     }
 }

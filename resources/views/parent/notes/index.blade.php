@@ -147,12 +147,11 @@
                                         <th>Note Comp.</th>
                                         <th>Note Finale</th>
                                         <th>Enseignant</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($notes as $note)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('parent.notes.show', $note->eleve) }}" role="button" tabindex="0">
                                             <td>{{ $note->date_evaluation->format('d/m/Y') }}</td>
                                             <td>
                                                 <strong>{{ $note->eleve->utilisateur->nom }} {{ $note->eleve->utilisateur->prenom }}</strong>
@@ -199,15 +198,10 @@
                                                 </span>
                                             </td>
                                             <td>{{ $note->enseignant->utilisateur->nom ?? 'N/A' }}</td>
-                                            <td>
-                                                <a href="{{ route('parent.notes.show', $note->eleve) }}" class="btn btn-sm btn-outline-primary" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">
+                                            <td colspan="{{ ($notes->isNotEmpty() && !$notes->first()->eleve->classe->isPrimaire()) ? 8 : 7 }}" class="text-center text-muted py-4">
                                                 <i class="fas fa-chart-line fa-2x mb-2"></i>
                                                 <br>
                                                 Aucune note trouvée

@@ -75,12 +75,11 @@
                                     <th>Date Rappel</th>
                                     <th>Date Échéance</th>
                                     <th>Statut</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($recusRappel as $recu)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('recus-rappel.show', $recu) }}" role="button" tabindex="0">
                                         <td>
                                             <span class="badge bg-info">{{ $recu->numero_recu_rappel }}</span>
                                         </td>
@@ -121,30 +120,10 @@
                                                     @break
                                             @endswitch
                                         </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('recus-rappel.show', $recu) }}" class="btn btn-sm btn-outline-info" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('recus-rappel.pdf', $recu) }}" class="btn btn-sm btn-outline-success" title="Imprimer">
-                                                    <i class="fas fa-print"></i>
-                                                </a>
-                                                <a href="{{ route('recus-rappel.edit', $recu) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form action="{{ route('recus-rappel.destroy', $recu) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce reçu de rappel ?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="text-center text-muted">
+                                        <td colspan="10" class="text-center text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2"></i>
                                             <br>
                                             Aucun reçu de rappel trouvé

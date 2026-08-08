@@ -9,23 +9,6 @@
         Résultats Annuels - {{ $classe->nom }}
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <a href="{{ route('notes.annuel.resultats.pdf', $classe->id) }}" 
-               class="btn btn-sm btn-primary" target="_blank">
-                <i class="fas fa-file-pdf me-1"></i>
-                Télécharger PDF Résultats
-            </a>
-            <a href="{{ route('notes.annuel.detail-notes.imprimer', $classe->id) }}" 
-               class="btn btn-sm btn-success" target="_blank">
-                <i class="fas fa-print me-1"></i>
-                Imprimer Détail Notes
-            </a>
-            <a href="{{ route('notes.annuel.satisfecit', $classe->id) }}" 
-               class="btn btn-sm btn-warning" target="_blank">
-                <i class="fas fa-award me-1"></i>
-                Satisfécits (Top 5)
-            </a>
-        </div>
         <a href="{{ route('notes.annuel.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i>
             Retour
@@ -101,7 +84,7 @@
                         </thead>
                         <tbody>
                             @foreach($resultats as $resultat)
-                            <tr>
+                            <tr class="table-row-clickable" data-href="{{ route('notes.bulletin.annuel.formate', $resultat['eleve']->id) }}" role="button" tabindex="0">
                                 <td>{{ $resultat['matricule'] }}</td>
                                 <td>{{ $resultat['eleve']->utilisateur->nom }}</td>
                                 <td>{{ $resultat['eleve']->utilisateur->prenom }}</td>
@@ -230,5 +213,24 @@
     </div>
 </div>
 @endif
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('notes.annuel.resultats.pdf', $classe->id) }}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-file-pdf me-1"></i> Télécharger PDF résultats
+            </a>
+            <a href="{{ route('notes.annuel.detail-notes.imprimer', $classe->id) }}" class="btn btn-success" target="_blank">
+                <i class="fas fa-print me-1"></i> Imprimer le détail des notes
+            </a>
+            <a href="{{ route('notes.annuel.satisfecit', $classe->id) }}" class="btn btn-warning" target="_blank">
+                <i class="fas fa-award me-1"></i> Satisfécits (Top 5)
+            </a>
+        </div>
+    </div>
+</div>
 
 @endsection

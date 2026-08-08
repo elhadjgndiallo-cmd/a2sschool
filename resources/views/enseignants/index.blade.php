@@ -73,10 +73,6 @@ use Illuminate\Support\Facades\Storage;
             display: none;
         }
         
-        .table th:nth-child(8),
-        .table td:nth-child(8) {
-            display: none;
-        }
     }
     
     @media (max-width: 576px) {
@@ -144,12 +140,11 @@ use Illuminate\Support\Facades\Storage;
                         <th>Spécialité</th>
                         <th>Statut</th>
                         <th>Date Embauche</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($enseignants as $enseignant)
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('enseignants.show', $enseignant) }}" role="button" tabindex="0">
                         <td>{{ $loop->iteration }}</td>
                         <td>
                             <div class="avatar-sm">
@@ -173,7 +168,7 @@ use Illuminate\Support\Facades\Storage;
                         <td>{{ $enseignant->utilisateur->email }}</td>
                         <td>
                             @if($enseignant->utilisateur->telephone)
-                                <a href="tel:{{ $enseignant->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                <a href="tel:{{ $enseignant->utilisateur->telephone }}" class="phone-link text-decoration-none" onclick="event.stopPropagation()">
                                     <i class="fas fa-phone me-1"></i>
                                     <span class="phone-number">{{ $enseignant->utilisateur->telephone }}</span>
                                 </a>
@@ -190,64 +185,10 @@ use Illuminate\Support\Facades\Storage;
                             <small class="badge bg-info">{{ ucfirst($enseignant->statut) }}</small>
                         </td>
                         <td>{{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}</td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('enseignants.show', $enseignant->id) }}" 
-                                   class="btn btn-outline-info" title="Voir détails"
-                                   onclick="return testButton('enseignant', {{ $enseignant->id }})">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" 
-                                   class="btn btn-outline-warning" title="Modifier"
-                                   onclick="return testSimpleEditButton('enseignant', {{ $enseignant->id }})">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <button type="button" 
-                                        class="btn btn-outline-secondary" 
-                                        onclick="resetPassword({{ $enseignant->id }})"
-                                        title="Réinitialiser mot de passe">
-                                    <i class="fas fa-key"></i>
-                                </button>
-                                @if($enseignant->actif)
-                                    <form method="POST" action="{{ route('enseignants.destroy', $enseignant) }}" class="d-inline" 
-                                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action rendra l\'enseignant inactif et il ne pourra plus accéder à son compte.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="btn btn-outline-danger" 
-                                                title="Désactiver">
-                                            <i class="fas fa-pause"></i>
-                                        </button>
-                                    </form>
-                                @else
-                                    <form action="{{ route('enseignants.reactivate', $enseignant->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" 
-                                                class="btn btn-outline-success" 
-                                                title="Réactiver"
-                                                onclick="return confirm('Êtes-vous sûr de vouloir réactiver cet enseignant ?')">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </form>
-                                @endif
-                                
-                                <!-- Bouton de suppression définitive -->
-                                <form method="POST" action="{{ route('enseignants.delete-permanent', $enseignant) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'enseignant et son compte utilisateur\n- Tous ses salaires\n- Toutes ses cartes\n- Sa photo de profil\n- Toutes les relations avec les classes\n\nCette action est irréversible !')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                            class="btn btn-outline-danger" 
-                                            title="Supprimer définitivement">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted">
+                        <td colspan="8" class="text-center text-muted">
                             <i class="fas fa-info-circle fa-2x mb-3"></i>
                             <p>Aucun enseignant trouvé.</p>
                         </td>

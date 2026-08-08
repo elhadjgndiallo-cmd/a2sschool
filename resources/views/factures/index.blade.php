@@ -115,6 +115,13 @@
                                             <a href="{{ route('factures.edit', $facture) }}" class="btn btn-outline-warning" title="Modifier"><i class="fas fa-edit"></i></a>
                                         @endif
                                         <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-outline-success" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a>
+                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->peutEtreAnnulee())
+                                            <form method="POST" action="{{ route('factures.annuler', $facture) }}" class="d-inline"
+                                                  onsubmit="return confirm('Annuler cette facture ? Les paiements et l\'entrée comptable seront retirés.')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-outline-danger" title="Annuler la facture"><i class="fas fa-ban"></i></button>
+                                            </form>
+                                        @endif
                                         @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
                                             <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
                                                   onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront retirés.')">

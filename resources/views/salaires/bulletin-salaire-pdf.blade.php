@@ -521,6 +521,16 @@
                     <td class="amount">-</td>
                     <td class="amount" style="color: #dc3545;">{{ number_format($salaire->deduction_autres, 0, ',', ' ') }}</td>
                 </tr>
+
+                @if((float) $salaire->deduction_avances > 0)
+                <tr>
+                    <td><strong>Avances sur salaire (bons)</strong></td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td class="amount">-</td>
+                    <td class="amount" style="color: #dc3545;">{{ number_format($salaire->deduction_avances, 0, ',', ' ') }}</td>
+                </tr>
+                @endif
                 
                 <!-- Totaux -->
                 <tr class="total-row">
@@ -532,7 +542,7 @@
                 <tr class="total-row">
                     <td colspan="3"><strong>TOTAL RETENUES</strong></td>
                     <td class="amount">-</td>
-                    <td class="amount" style="color: #dc3545;"><strong>{{ number_format($salaire->deduction_absences + $salaire->deduction_autres, 0, ',', ' ') }}</strong></td>
+                    <td class="amount" style="color: #dc3545;"><strong>{{ number_format($salaire->deduction_absences + $salaire->deduction_autres + (float) $salaire->deduction_avances, 0, ',', ' ') }}</strong></td>
                 </tr>
                 
                 <tr class="final-total">
@@ -576,9 +586,15 @@
                 <span>Autres:</span>
                 <span>{{ number_format($salaire->deduction_autres, 0, ',', ' ') }} GNF</span>
             </div>
+            @if((float) $salaire->deduction_avances > 0)
+            <div class="calculation-item">
+                <span>Avances (bons):</span>
+                <span>{{ number_format($salaire->deduction_avances, 0, ',', ' ') }} GNF</span>
+            </div>
+            @endif
             <div class="calculation-item">
                 <span><strong>Total retenues:</strong></span>
-                <span><strong>{{ number_format($salaire->deduction_absences + $salaire->deduction_autres, 0, ',', ' ') }} GNF</strong></span>
+                <span><strong>{{ number_format($salaire->deduction_absences + $salaire->deduction_autres + (float) $salaire->deduction_avances, 0, ',', ' ') }} GNF</strong></span>
             </div>
         </div>
         

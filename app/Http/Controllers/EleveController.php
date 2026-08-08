@@ -416,7 +416,8 @@ class EleveController extends Controller
             'notes.matiere', 
             'absences',
             'fraisScolarite.paiements',
-            'fraisScolarite.tranchesPaiement'
+            'fraisScolarite.tranchesPaiement',
+            'cartesScolaires',
         ])->findOrFail($id);
         
         return view('eleves.show', compact('eleve'));

@@ -90,12 +90,11 @@
                                                         <th>Montant Payé</th>
                                                         <th>Montant Restant</th>
                                                         <th>Statut</th>
-                                                        <th>Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @foreach($fraisEnfant as $frais)
-                                                        <tr>
+                                                        <tr class="table-row-clickable" data-href="{{ route('parent.paiements.show', $frais) }}" role="button" tabindex="0">
                                                             <td>
                                                                 <strong>{{ $frais->libelle }}</strong>
                                                                 <br>
@@ -128,12 +127,6 @@
                                                                     @default
                                                                         <span class="badge badge-secondary">{{ $frais->statut }}</span>
                                                                 @endswitch
-                                                            </td>
-                                                            <td>
-                                                                <a href="{{ route('parent.paiements.show', $frais) }}" 
-                                                                   class="btn btn-sm btn-info" title="Voir détails">
-                                                                    <i class="fas fa-eye"></i>
-                                                                </a>
                                                             </td>
                                                         </tr>
                                                     @endforeach

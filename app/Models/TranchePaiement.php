@@ -54,6 +54,16 @@ class TranchePaiement extends Model
     }
 
     /**
+     * Libellé du mois (ex. « Octobre 2026 »), aligné sur la facturation.
+     */
+    public function getLibelleMoisAttribute(): string
+    {
+        return \App\Services\FacturationService::formatLibelleMois(
+            \Carbon\Carbon::parse($this->date_echeance)
+        );
+    }
+
+    /**
      * Scope pour les tranches en attente
      */
     public function scopeEnAttente($query)

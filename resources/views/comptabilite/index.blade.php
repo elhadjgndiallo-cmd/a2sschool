@@ -296,6 +296,11 @@
                             </a>
                         </div>
                         <div class="col-md-3 mb-3">
+                            <a href="{{ route('comptabilite.impayes-mensuels') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-user-times me-2"></i>Impayés mensuels
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
                             <a href="{{ route('paiements.index') }}" class="btn btn-primary w-100">
                                 <i class="fas fa-credit-card me-2"></i>Gérer Paiements
                             </a>

@@ -13,9 +13,6 @@
             <p class="text-muted">{{ $tarif->classe->nom }} - {{ $tarif->annee_scolaire }}</p>
         </div>
         <div>
-            <a href="{{ route('tarifs.edit', $tarif) }}" class="btn btn-warning">
-                <i class="fas fa-edit me-2"></i>Modifier
-            </a>
             <a href="{{ route('tarifs.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Retour
             </a>
@@ -284,6 +281,27 @@
                     @endif
                     @endif
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('tarifs.edit', $tarif) }}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </a>
+                <form action="{{ route('tarifs.destroy', $tarif) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce tarif ?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>

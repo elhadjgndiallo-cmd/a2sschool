@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\RecuRappel;
 use App\Models\FraisScolarite;
 use App\Models\Eleve;
+use App\Models\AnneeScolaire;
+use App\Services\FacturationService;
+use App\Helpers\SchoolHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -233,6 +236,90 @@ class RecuRappelController extends Controller
     }
 
     /**
+     * Créer un reçu de rappel depuis la liste des impayés mensuels.
+     */
+    public function creerDepuisImpayes(Request $request, FacturationService $facturationService)
+    {
+        if (!auth()->user()->hasPermission('paiements.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à créer des reçus de rappel.');
+        }
+
+        $request->validate([
+            'eleve_id' => 'required|exists:eleves,id',
+            'type_frais' => 'required|in:scolarite,cantine,transport',
+            'mois' => 'required|array|min:1',
+            'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
+        ]);
+
+        $anneeScolaire = AnneeScolaire::anneeActive();
+        if (!$anneeScolaire) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active.');
+        }
+
+        $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($request->eleve_id);
+        $moisSelectionnes = array_values($request->input('mois', []));
+        $typeFrais = $request->type_frais;
+
+        $ligneEleve = $facturationService->rechercherElevesImpayes(
+            $anneeScolaire,
+            $moisSelectionnes,
+            $eleve->classe_id,
+            $typeFrais
+        )->first(fn (array $ligne) => (int) $ligne['eleve']->id === (int) $eleve->id);
+
+        if (!$ligneEleve) {
+            return redirect()->back()->with('error', 'Aucun impayé trouvé pour cet élève sur les mois sélectionnés.');
+        }
+
+        $frais = FraisScolarite::where('eleve_id', $eleve->id)
+            ->where('type_frais', $typeFrais)
+            ->where('statut', '!=', 'annule')
+            ->first();
+
+        if (!$frais) {
+            return redirect()->back()->with('error', 'Frais introuvables pour cet élève.');
+        }
+
+        $moisLabels = collect($ligneEleve['mois_impayes'])
+            ->pluck('libelle_mois')
+            ->implode(', ');
+
+        $typesFrais = [
+            'scolarite' => 'Scolarité',
+            'cantine' => 'Cantine',
+            'transport' => 'Transport',
+        ];
+
+        $montantDu = round((float) $ligneEleve['total_du'], 2);
+
+        try {
+            DB::beginTransaction();
+
+            $recuRappel = RecuRappel::create([
+                'eleve_id' => $eleve->id,
+                'frais_scolarite_id' => $frais->id,
+                'montant_total_du' => $montantDu,
+                'montant_paye' => 0,
+                'montant_restant' => $montantDu,
+                'montant_a_payer' => $montantDu,
+                'date_rappel' => now()->toDateString(),
+                'date_echeance' => now()->addDays(15)->toDateString(),
+                'observations' => 'Rappel de paiement — ' . ($typesFrais[$typeFrais] ?? $typeFrais)
+                    . ' | Mois impayés : ' . $moisLabels,
+                'genere_par' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('recus-rappel.pdf', $recuRappel);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()->with('error', 'Erreur lors de la création du reçu : ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Générer le PDF du reçu de rappel
      */
     public function pdf(RecuRappel $recuRappel)
@@ -244,16 +331,8 @@ class RecuRappelController extends Controller
 
         $recuRappel->load(['eleve.utilisateur', 'eleve.classe', 'fraisScolarite', 'generePar']);
 
-            // Récupérer les informations de l'établissement
-            $etablissement = \App\Models\Etablissement::principal();
-            $schoolInfo = [
-                'school_name' => $etablissement ? $etablissement->nom : 'École A2S',
-                'school_address' => $etablissement ? $etablissement->adresse : 'Adresse de l\'école',
-                'school_phone' => $etablissement ? $etablissement->telephone : 'Téléphone de l\'école',
-                'school_email' => $etablissement ? $etablissement->email : 'email@ecole.com'
-            ];
+        $schoolInfo = SchoolHelper::getDocumentInfo();
 
-        // Générer le contenu HTML du reçu
         $html = view('recus-rappel.pdf', compact('recuRappel', 'schoolInfo'))->render();
         
         // Créer une réponse avec le contenu HTML

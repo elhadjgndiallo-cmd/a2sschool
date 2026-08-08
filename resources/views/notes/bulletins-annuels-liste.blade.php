@@ -58,7 +58,6 @@
                                     <th width="15%">Moyenne Annuelle</th>
                                     <th width="10%">Rang Annuel</th>
                                     <th width="15%">Appréciation</th>
-                                    <th width="15%" class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -101,7 +100,7 @@
                                     // Rang simplifié
                                     $rang = $index + 1;
                                     @endphp
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('notes.bulletin.annuel.formate', $eleve->id) }}" role="button" tabindex="0">
                                         <td class="fw-bold">{{ $index + 1 }}</td>
                                         <td>
                                             <div class="d-flex align-items-center">
@@ -128,19 +127,6 @@
                                         </td>
                                         <td class="text-center">
                                             <span class="badge bg-{{ $appreciationColor }}">{{ $appreciation }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <a href="{{ route('notes.bulletin.annuel.formate', $eleve->id) }}" 
-                                               class="btn btn-success btn-sm me-1" 
-                                               title="Voir Bulletin Annuel Formaté">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('notes.bulletin.annuel.formate', $eleve->id) }}" 
-                                               class="btn btn-primary btn-sm" 
-                                               title="Télécharger Bulletin Annuel Formaté"
-                                               target="_blank">
-                                                <i class="fas fa-download"></i>
-                                            </a>
                                         </td>
                                     </tr>
                                 @endforeach

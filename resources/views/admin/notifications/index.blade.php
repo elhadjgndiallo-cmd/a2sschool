@@ -103,12 +103,11 @@
                                     <th>Priorité</th>
                                     <th>Statut</th>
                                     <th>Date</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($messages as $message)
-                                    <tr class="{{ !$message->lue && $message->destinataire_id == auth()->id() ? 'table-warning' : '' }}">
+                                    <tr class="table-row-clickable {{ !$message->lue && $message->destinataire_id == auth()->id() ? 'table-warning' : '' }}" data-href="{{ route('admin.notifications.show', $message) }}" role="button" tabindex="0">
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <i class="fas fa-user-circle fa-2x text-primary me-2"></i>
@@ -144,23 +143,6 @@
                                             <small class="text-muted">
                                                 {{ $message->created_at->format('d/m/Y H:i') }}
                                             </small>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('admin.notifications.show', $message) }}" 
-                                                   class="btn btn-outline-primary" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <form action="{{ route('admin.notifications.destroy', $message) }}" 
-                                                      method="POST" class="d-inline"
-                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

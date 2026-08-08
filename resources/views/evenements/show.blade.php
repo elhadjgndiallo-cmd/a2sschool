@@ -17,12 +17,6 @@
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour à la liste
                         </a>
-                        @if(auth()->user()->hasPermission('evenements.edit') && (auth()->user()->hasPermission('evenements.manage_all') || $evenement->createur_id === Auth::id()))
-                            <a href="{{ route('evenements.edit', $evenement->id) }}" class="btn btn-warning">
-                                <i class="fas fa-edit mr-1"></i>
-                                Modifier
-                            </a>
-                        @endif
                     </div>
                 </div>
 
@@ -148,35 +142,27 @@
                     </div>
                     
                     @if(auth()->user()->hasPermission('evenements.edit') && (auth()->user()->hasPermission('evenements.manage_all') || $evenement->createur_id === Auth::id()))
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card border-warning">
-                                    <div class="card-header bg-warning text-dark">
-                                        <h6 class="card-title mb-0">
-                                            <i class="fas fa-exclamation-triangle mr-1"></i>
-                                            Actions
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="btn-group" role="group">
-                                            @if(auth()->user()->hasPermission('evenements.edit'))
-                                                <a href="{{ route('evenements.edit', $evenement->id) }}" class="btn btn-warning">
-                                                    <i class="fas fa-edit mr-1"></i>
-                                                    Modifier
-                                                </a>
-                                            @endif
-                                            @if(auth()->user()->hasPermission('evenements.delete'))
-                                                <form action="{{ route('evenements.destroy', $evenement->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">
-                                                        <i class="fas fa-trash mr-1"></i>
-                                                        Supprimer
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </div>
+                        <div class="card mb-4 no-print">
+                            <div class="card-header bg-dark text-white">
+                                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2">
+                                    @if(auth()->user()->hasPermission('evenements.edit'))
+                                        <a href="{{ route('evenements.edit', $evenement->id) }}" class="btn btn-warning">
+                                            <i class="fas fa-edit me-1"></i> Modifier
+                                        </a>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('evenements.delete'))
+                                        <form action="{{ route('evenements.destroy', $evenement->id) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                <i class="fas fa-trash me-1"></i> Supprimer
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </div>

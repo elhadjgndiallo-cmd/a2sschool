@@ -23,6 +23,7 @@ class SalaireEnseignant extends Model
         'prime_heures_supplementaires',
         'deduction_absences',
         'deduction_autres',
+        'deduction_avances',
         'salaire_brut',
         'salaire_net',
         'statut',
@@ -46,6 +47,7 @@ class SalaireEnseignant extends Model
         'prime_heures_supplementaires' => 'decimal:2',
         'deduction_absences' => 'decimal:2',
         'deduction_autres' => 'decimal:2',
+        'deduction_avances' => 'decimal:2',
         'salaire_brut' => 'decimal:2',
         'salaire_net' => 'decimal:2',
         'date_calcul' => 'date',
@@ -85,6 +87,11 @@ class SalaireEnseignant extends Model
         return $this->belongsTo(Utilisateur::class, 'paye_par');
     }
 
+    public function bonsAvance()
+    {
+        return $this->hasMany(BonSalaireEnseignant::class, 'salaire_enseignant_id');
+    }
+
     /**
      * Calculer le salaire brut
      */
@@ -104,8 +111,88 @@ class SalaireEnseignant extends Model
      */
     public function calculerSalaireNet()
     {
-        $this->salaire_net = $this->salaire_brut - $this->deduction_absences - $this->deduction_autres;
+        $this->salaire_net = max(0, round(
+            (float) $this->salaire_brut
+            - (float) $this->deduction_absences
+            - (float) $this->deduction_autres
+            - (float) ($this->deduction_avances ?? 0),
+            2
+        ));
+
         return $this->salaire_net;
+    }
+
+    public function libererAvancesLiees(): void
+    {
+        BonSalaireEnseignant::where('salaire_enseignant_id', $this->id)
+            ->where('statut', 'deduit')
+            ->update([
+                'statut' => 'actif',
+                'salaire_enseignant_id' => null,
+                'deduit_le' => null,
+            ]);
+    }
+
+    public function appliquerAvances(): void
+    {
+        $this->libererAvancesLiees();
+
+        $enseignant = $this->enseignant ?? Enseignant::find($this->enseignant_id);
+        if (!$enseignant) {
+            $this->deduction_avances = 0;
+            return;
+        }
+
+        $anneeId = $enseignant->annee_scolaire_id;
+
+        $query = BonSalaireEnseignant::actifs()
+            ->pourEnseignant($this->enseignant_id)
+            ->orderBy('date_bon')
+            ->orderBy('id');
+
+        if ($anneeId) {
+            $query->where(function ($q) use ($anneeId) {
+                $q->where('annee_scolaire_id', $anneeId)->orWhereNull('annee_scolaire_id');
+            });
+        }
+
+        $avances = $query->get();
+        if ($avances->isEmpty()) {
+            $this->deduction_avances = 0;
+            return;
+        }
+
+        $plafond = max(0, round(
+            (float) $this->salaire_brut
+            - (float) $this->deduction_absences
+            - (float) $this->deduction_autres,
+            2
+        ));
+
+        $totalAvances = 0;
+
+        foreach ($avances as $avance) {
+            if ($totalAvances >= $plafond) {
+                break;
+            }
+
+            $reste = round($plafond - $totalAvances, 2);
+            $montantDeduit = round(min((float) $avance->montant, $reste), 2);
+
+            if ($montantDeduit <= 0) {
+                continue;
+            }
+
+            $totalAvances = round($totalAvances + $montantDeduit, 2);
+
+            BonSalaireEnseignant::where('id', $avance->id)->update([
+                'statut' => 'deduit',
+                'salaire_enseignant_id' => $this->id,
+                'deduit_le' => now()->toDateString(),
+            ]);
+        }
+
+        $this->deduction_avances = $totalAvances;
     }
 
     /**
@@ -114,6 +201,7 @@ class SalaireEnseignant extends Model
     public function calculerSalaires()
     {
         $this->calculerSalaireBrut();
+        $this->appliquerAvances();
         $this->calculerSalaireNet();
         $this->statut = 'calculé';
         $this->date_calcul = now()->toDateString();

@@ -116,12 +116,17 @@
                                         <th class="text-end" style="width: 150px;">Montant</th>
                                         <th>Mode de Paiement</th>
                                         <th>Enregistré par</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($paginatedEntries as $entry)
-                                        <tr>
+                                        @php
+                                            $entryHref = match(true) {
+                                                $entry->type == 'paiement' => route('paiements.show', $entry->data->fraisScolarite),
+                                                default => route('entrees.show', $entry->data),
+                                            };
+                                        @endphp
+                                        <tr class="table-row-clickable" data-href="{{ $entryHref }}" role="button" tabindex="0">
                                             <td>{{ $entry->date->format('d/m/Y') }}</td>
                                             <td>{{ $entry->description }}</td>
                                             <td>
@@ -132,41 +137,6 @@
                                                 <span class="badge bg-secondary">{{ $entry->type == 'entree' ? ucfirst($entry->data->mode_paiement) : 'Automatique' }}</span>
                                             </td>
                                             <td>{{ $entry->enregistre_par->nom ?? 'N/A' }}</td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    @if($entry->type == 'entree' && !in_array($entry->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']))
-                                                        <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-sm btn-info">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        <a href="{{ route('entrees.edit', $entry->data) }}" class="btn btn-sm btn-warning">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <form action="{{ route('entrees.destroy', $entry->data) }}" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    @elseif($entry->type == 'paiement')
-                                                        <a href="{{ route('paiements.show', $entry->data->fraisScolarite) }}" class="btn btn-sm btn-info">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        <a href="{{ route('paiements.recu', $entry->data->fraisScolarite) }}" class="btn btn-sm btn-success">
-                                                            <i class="fas fa-receipt"></i>
-                                                        </a>
-                                                    @else
-                                                        <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-sm btn-info">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        @if(in_array($entry->source, ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']))
-                                                            <a href="{{ route('entrees.recu', $entry->data) }}" class="btn btn-sm btn-success">
-                                                                <i class="fas fa-receipt"></i>
-                                                            </a>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

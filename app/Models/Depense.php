@@ -28,6 +28,7 @@ class Depense extends Model
         'observations',
         'annee_scolaire_id',
         'salaire_enseignant_id',
+        'bon_salaire_enseignant_id',
     ];
 
     protected $casts = [
@@ -63,6 +64,22 @@ class Depense extends Model
         return $this->belongsTo(SalaireEnseignant::class, 'salaire_enseignant_id');
     }
 
+    public function bonSalaireEnseignant()
+    {
+        return $this->belongsTo(BonSalaireEnseignant::class, 'bon_salaire_enseignant_id');
+    }
+
+    public static function hasBonSalaireLinkColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('depenses', 'bon_salaire_enseignant_id');
+        }
+
+        return $hasColumn;
+    }
+
     public static function hasSalaireEnseignantLinkColumn(): bool
     {
         static $hasColumn = null;
@@ -79,14 +96,24 @@ class Depense extends Model
      */
     public function scopeExcluantSalairesModule($query)
     {
-        if (static::hasSalaireEnseignantLinkColumn()) {
-            return $query->where(function ($q) {
-                $q->where('type_depense', '!=', 'salaire_enseignant')
-                    ->orWhereNull('salaire_enseignant_id');
-            });
+        $hasSalaireLink = static::hasSalaireEnseignantLinkColumn();
+        $hasBonLink = static::hasBonSalaireLinkColumn();
+
+        if (!$hasSalaireLink && !$hasBonLink) {
+            return $query->where('type_depense', '!=', 'salaire_enseignant');
         }
 
-        return $query->where('type_depense', '!=', 'salaire_enseignant');
+        return $query->where(function ($q) use ($hasSalaireLink, $hasBonLink) {
+            $q->where('type_depense', '!=', 'salaire_enseignant');
+
+            if ($hasSalaireLink) {
+                $q->orWhereNull('salaire_enseignant_id');
+            }
+
+            if ($hasBonLink) {
+                $q->orWhereNotNull('bon_salaire_enseignant_id');
+            }
+        });
     }
 
     /**

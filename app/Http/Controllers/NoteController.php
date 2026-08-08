@@ -1280,6 +1280,56 @@ class NoteController extends Controller
         return Note::calculerMoyenneGenerale($eleveId, $periode);
     }
 
+    private function getMoisListe(): array
+    {
+        return [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
+        ];
+    }
+
+    /**
+     * Résout mois/année des tests mensuels en s'alignant sur l'année scolaire active.
+     */
+    private function resolvePeriodeMensuelle(Request $request): array
+    {
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        $moisListe = $this->getMoisListe();
+
+        $defaultMois = (int) now()->format('n');
+        $defaultAnnee = (int) now()->format('Y');
+
+        if ($anneeScolaireActive) {
+            $debut = $anneeScolaireActive->date_debut->copy()->startOfDay();
+            $fin = $anneeScolaireActive->date_fin->copy()->endOfDay();
+            $reference = now()->between($debut, $fin) ? now() : $debut;
+            $defaultMois = (int) $reference->format('n');
+            $defaultAnnee = (int) $reference->format('Y');
+        }
+
+        $mois = (int) $request->get('mois', $defaultMois);
+        $annee = (int) $request->get('annee', $defaultAnnee);
+
+        if ($anneeScolaireActive) {
+            $anneesDisponibles = range(
+                (int) $anneeScolaireActive->date_debut->format('Y'),
+                (int) $anneeScolaireActive->date_fin->format('Y')
+            );
+            if (!in_array($annee, $anneesDisponibles, true)) {
+                $annee = $defaultAnnee;
+            }
+        } else {
+            $anneesDisponibles = range((int) date('Y') - 2, (int) date('Y') + 2);
+        }
+
+        if ($mois < 1 || $mois > 12) {
+            $mois = $defaultMois;
+        }
+
+        return compact('mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive');
+    }
+
 
     /**
      * Afficher les statistiques des notes par classe
@@ -2081,8 +2131,7 @@ class NoteController extends Controller
             }
         }
 
-        $mois = $request->get('mois', date('n'));
-        $annee = $request->get('annee', date('Y'));
+        extract($this->resolvePeriodeMensuelle($request));
 
         // Vider le cache pour s'assurer que les données sont à jour
         \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
@@ -2096,7 +2145,10 @@ class NoteController extends Controller
             ->get();
 
         // Récupérer les élèves de la classe pour l'année scolaire active
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
         $eleves = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->where('actif', true)
@@ -2110,14 +2162,7 @@ class NoteController extends Controller
         // Récupérer les matières de la classe
         $matieres = $classe->matieres()->get();
 
-        // Créer un tableau des mois
-        $moisListe = [
-            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
-        ];
-
-        return view('notes.mensuel.classe', compact('classe', 'tests', 'eleves', 'matieres', 'mois', 'annee', 'moisListe'));
+        return view('notes.mensuel.classe', compact('classe', 'tests', 'eleves', 'matieres', 'mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive'));
     }
 
     /**
@@ -2441,10 +2486,13 @@ class NoteController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
 
-        $mois = $request->get('mois', date('n'));
-        $annee = $request->get('annee', date('Y'));
+        extract($this->resolvePeriodeMensuelle($request));
 
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($eleveId);
+
+        if ($anneeScolaireActive && (int) $eleve->annee_scolaire_id !== (int) $anneeScolaireActive->id) {
+            return redirect()->back()->with('error', 'Cet élève n\'appartient pas à l\'année scolaire active.');
+        }
         
         // Vérifier l'accès à l'élève pour les enseignants
         $user = auth()->user();
@@ -2468,14 +2516,9 @@ class NoteController extends Controller
         // Calculer la moyenne
         $moyenne = TestMensuel::calculerMoyenneMensuelle($eleveId, $mois, $annee) ?? 0.00;
 
-        // Créer un tableau des mois
-        $moisListe = [
-            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
-        ];
-
-        return view('notes.mensuel.eleve-details', compact('eleve', 'tests', 'moyenne', 'mois', 'annee', 'moisListe'));
+        return view('notes.mensuel.eleve-details', compact(
+            'eleve', 'tests', 'moyenne', 'mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive'
+        ));
     }
 
     /**
@@ -2501,8 +2544,11 @@ class NoteController extends Controller
             }
         }
 
-        $mois = $request->get('mois', date('n'));
-        $annee = $request->get('annee', date('Y'));
+        extract($this->resolvePeriodeMensuelle($request));
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
 
         // Vider le cache pour s'assurer que les données sont à jour
         \Cache::forget('tests_mensuels_' . $classe->id . '_' . $mois . '_' . $annee);
@@ -2514,7 +2560,6 @@ class NoteController extends Controller
             ->get();
 
         // Récupérer les élèves de la classe pour l'année scolaire active
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
         $eleves = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->with('utilisateur')
@@ -2547,14 +2592,9 @@ class NoteController extends Controller
             $resultat['rang'] = $rang++;
         }
 
-        // Créer un tableau des mois
-        $moisListe = [
-            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
-        ];
-
-        return view('notes.mensuel.resultats', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe'));
+        return view('notes.mensuel.resultats', compact(
+            'classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive'
+        ));
     }
 
     /**
@@ -3784,6 +3824,9 @@ class NoteController extends Controller
             ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
             })
+            ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }])
             ->orderBy('nom')
             ->get();
         } else {
@@ -3791,6 +3834,9 @@ class NoteController extends Controller
             $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
             })
+            ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }])
             ->orderBy('nom')
             ->get();
         }
@@ -3822,7 +3868,7 @@ class NoteController extends Controller
         }
 
         // Récupérer l'année scolaire active
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
 
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
@@ -3833,6 +3879,11 @@ class NoteController extends Controller
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->with('utilisateur')
             ->get();
+
+        if ($eleves->isEmpty()) {
+            return redirect()->route('notes.annuel.index')
+                ->with('error', 'Aucun élève inscrit pour cette classe sur l\'année scolaire active.');
+        }
 
         // Déterminer les périodes selon le niveau de la classe
         $isPrimaire = $classe->isPrimaire();

@@ -86,12 +86,11 @@
                                     <th>Priorité</th>
                                     <th>Statut</th>
                                     <th>Date</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($notifications as $notification)
-                                    <tr class="{{ !$notification->lue && $notification->destinataire_id == auth()->id() ? 'table-warning' : '' }}">
+                                    <tr class="table-row-clickable {{ !$notification->lue && $notification->destinataire_id == auth()->id() ? 'table-warning' : '' }}" data-href="{{ route('parent.notifications.show', $notification) }}" role="button" tabindex="0">
                                         <td>
                                             <span class="badge bg-{{ $notification->type == 'question' ? 'info' : ($notification->type == 'demande' ? 'primary' : ($notification->type == 'plainte' ? 'danger' : 'secondary')) }}">
                                                 {{ ucfirst($notification->type) }}
@@ -124,25 +123,6 @@
                                             <small class="text-muted">
                                                 {{ $notification->created_at->format('d/m/Y H:i') }}
                                             </small>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('parent.notifications.show', $notification) }}" 
-                                                   class="btn btn-outline-primary" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($notification->expediteur_id == auth()->id())
-                                                    <form action="{{ route('parent.notifications.destroy', $notification) }}" 
-                                                          method="POST" class="d-inline"
-                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

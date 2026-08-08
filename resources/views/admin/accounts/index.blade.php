@@ -57,12 +57,11 @@ use Illuminate\Support\Facades\Storage;
                         <th>Statut</th>
                         <th>Permissions</th>
                         <th>Date Embauche</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($adminAccounts as $account)
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('admin.accounts.show', $account->id) }}" role="button" tabindex="0">
                         <td>{{ $loop->iteration }}</td>
                         <td>
                             <div class="avatar-sm">
@@ -118,54 +117,10 @@ use Illuminate\Support\Facades\Storage;
                             </div>
                         </td>
                         <td>{{ \Carbon\Carbon::parse($account->date_embauche)->format('d/m/Y') }}</td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.accounts.show', $account->id) }}" 
-                                   class="btn btn-outline-info" title="Voir détails">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('admin.accounts.edit', $account->id) }}" 
-                                   class="btn btn-outline-warning" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{{ route('admin.accounts.permissions', $account->id) }}" 
-                                   class="btn btn-outline-primary" title="Gérer permissions">
-                                    <i class="fas fa-key"></i>
-                                </a>
-                                <a href="{{ route('cartes-personnel-administration.create') }}?personnel_administration_id={{ $account->id }}" 
-                                   class="btn btn-outline-success" title="Créer une carte">
-                                    <i class="fas fa-id-card"></i>
-                                </a>
-                                <button type="button" 
-                                        class="btn btn-outline-secondary" 
-                                        onclick="resetPassword({{ $account->id }})"
-                                        title="Réinitialiser mot de passe">
-                                    <i class="fas fa-lock"></i>
-                                </button>
-                                @if($account->utilisateur->email !== 'admin@gmail.com')
-                                <button type="button" 
-                                        class="btn btn-outline-{{ $account->statut === 'actif' ? 'danger' : 'success' }}" 
-                                        onclick="toggleStatus({{ $account->id }})"
-                                        title="{{ $account->statut === 'actif' ? 'Désactiver' : 'Activer' }}">
-                                    <i class="fas fa-{{ $account->statut === 'actif' ? 'ban' : 'check' }}"></i>
-                                </button>
-                                <form method="POST" action="{{ route('admin.accounts.destroy', $account) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement le compte administrateur {{ $account->utilisateur->prenom }} {{ $account->utilisateur->nom }} ?\n\nCette action supprimera :\n- Le compte administrateur et son compte utilisateur\n- Toutes ses cartes\n- Sa photo de profil\n\nCette action est irréversible !')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                            class="btn btn-outline-danger" 
-                                            title="Supprimer définitivement">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                                @endif
-                            </div>
-                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="11" class="text-center text-muted">
+                        <td colspan="10" class="text-center text-muted">
                             <i class="fas fa-info-circle fa-2x mb-3"></i>
                             <p>Aucun compte administrateur trouvé.</p>
                         </td>

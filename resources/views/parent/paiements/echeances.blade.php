@@ -102,12 +102,11 @@
                                         <th>N° Tranche</th>
                                         <th>Montant</th>
                                         <th>Statut</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($echeancesMois as $echeance)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('parent.paiements.show', $echeance->fraisScolarite) }}" role="button" tabindex="0">
                                             <td>
                                                 <span class="badge bg-{{ $echeance->date_echeance <= now() ? 'danger' : ($echeance->date_echeance <= now()->addDays(7) ? 'warning' : 'light text-dark') }}">
                                                     {{ $echeance->date_echeance->format('d/m/Y') }}
@@ -146,19 +145,6 @@
                                                 <span class="badge bg-{{ $echeance->statut == 'paye' ? 'success' : ($echeance->statut == 'en_attente' ? 'warning' : 'danger') }}">
                                                     {{ ucfirst(str_replace('_', ' ', $echeance->statut)) }}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="{{ route('parent.paiements.show', $echeance->fraisScolarite) }}" 
-                                                       class="btn btn-outline-primary" title="Voir détails">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if($echeance->statut == 'en_attente')
-                                                        <button class="btn btn-outline-success" title="Payer maintenant" disabled>
-                                                            <i class="fas fa-credit-card"></i>
-                                                        </button>
-                                                    @endif
-                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach

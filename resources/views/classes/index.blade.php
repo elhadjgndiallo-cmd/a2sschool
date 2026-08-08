@@ -58,12 +58,11 @@
                         <th scope="col">Section</th>
                         <th scope="col">Effectif</th>
                         <th scope="col">Statut</th>
-                        <th scope="col" class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($classes as $classe)
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('classes.show', $classe->id) }}" role="button" tabindex="0">
                         <td>{{ $classe->nom }}</td>
                         <td>{{ $classe->niveau }}</td>
                         <td>{{ $classe->section }}</td>
@@ -73,49 +72,10 @@
                                 {{ $classe->actif ? 'Actif' : 'Inactif' }}
                             </span>
                         </td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('classes.show', $classe->id) }}" class="btn btn-outline-primary" title="Voir détails">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('classes.edit', $classe->id) }}" class="btn btn-outline-secondary" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{{ route('emplois-temps.show', $classe->id) }}" class="btn btn-outline-info" title="Emploi du temps">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </a>
-                                @if($classe->actif)
-                                <form method="POST" action="{{ route('classes.deactivate', $classe) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver la classe {{ $classe->nom }} ?\n\nCette action rendra la classe inactive.')">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn btn-outline-warning" title="Désactiver">
-                                        <i class="fas fa-pause"></i>
-                                    </button>
-                                </form>
-                                @else
-                                <form method="POST" action="{{ route('classes.reactivate', $classe) }}" class="d-inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn btn-outline-success" title="Réactiver">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                </form>
-                                @endif
-                                <form method="POST" action="{{ route('classes.delete-permanent', $classe) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement la classe {{ $classe->nom }} ?\n\nCette action supprimera :\n- La classe\n- Tous les emplois du temps associés\n\nNote : La classe ne peut pas être supprimée si elle contient des élèves.\n\nCette action est irréversible !')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer définitivement">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="5" class="text-center py-4">
                             <p class="text-muted mb-0">
                                 <i class="fas fa-info-circle me-1"></i>
                                 Aucune classe trouvée

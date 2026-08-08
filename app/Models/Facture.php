@@ -104,6 +104,11 @@ class Facture extends Model
         return in_array($this->statut, self::statutsActifs(), true);
     }
 
+    public function peutEtreAnnulee(): bool
+    {
+        return in_array($this->statut, ['payee', 'en_cours'], true);
+    }
+
     public function resteAPayer(): float
     {
         $totalDu = round((float) $this->sous_total - (float) $this->montant_remise, 2);

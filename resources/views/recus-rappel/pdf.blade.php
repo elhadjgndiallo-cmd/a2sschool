@@ -43,55 +43,89 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            padding: 5px 10px;
+            background: white;
+            color: #333;
+            padding: 8px 12px;
+            border-bottom: 2px solid #333;
+            flex-shrink: 0;
+        }
+
+        .header-row {
             display: flex;
             align-items: center;
-            flex-shrink: 0;
+            justify-content: space-between;
+            gap: 10px;
         }
-        
-        .header-logo {
-            width: 50px;
-            height: 50px;
-            margin-right: 12px;
-            flex-shrink: 0;
+
+        .header-logo-col {
+            flex: 0 0 70px;
+            text-align: left;
         }
-        
-        .header-logo img {
-            width: 100%;
-            height: 100%;
+
+        .header-logo-col img {
+            max-width: 70px;
+            max-height: 70px;
             object-fit: contain;
-            border-radius: 5px;
         }
-        
-        .header-content {
-            flex: 1;
+
+        .header-center-col {
+            flex: 1 1 auto;
             text-align: center;
+            padding: 0 8px;
         }
-        
-        .header h1 {
+
+        .header-center-col .school-name {
             margin: 0;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
+            color: #1a1a1a;
         }
-        
-        .header p {
+
+        .header-center-col .school-slogan,
+        .header-center-col .school-year {
             margin: 2px 0 0 0;
-            font-size: 10px;
-            opacity: 0.9;
+            font-size: 9px;
+            color: #555;
         }
-        
+
+        .header-center-col .doc-title {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            font-weight: bold;
+            color: #007bff;
+            text-transform: uppercase;
+        }
+
+        .header-center-col .doc-num {
+            margin: 2px 0 0 0;
+            font-size: 9px;
+            color: #666;
+        }
+
+        .header-right-col {
+            flex: 0 0 28%;
+            text-align: right;
+            font-size: 9px;
+            line-height: 1.35;
+            color: #333;
+        }
+
+        .header-right-col p {
+            margin: 0 0 3px 0;
+        }
+
         .print-controls {
-            margin-top: 10px;
+            margin: 10px auto 0;
+            text-align: center;
+            max-width: 842px;
         }
-        
+
         .btn-print {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid white;
+            background: #007bff;
+            border: 1px solid #007bff;
             color: white;
             padding: 6px 12px;
-            border-radius: 15px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 11px;
             font-weight: bold;
@@ -99,9 +133,9 @@
         }
         
         .btn-print:hover {
-            background: white;
-            color: #007bff;
-            transform: translateY(-1px);
+            background: #0056b3;
+            border-color: #0056b3;
+            color: white;
         }
         
         .btn-print i {
@@ -317,37 +351,50 @@
             }
             
             .header {
-                background: #007bff !important;
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
+                background: white !important;
+                color: #333 !important;
                 padding: 2mm 3mm !important;
-                min-height: 15mm !important;
-                max-height: 15mm !important;
-                display: flex !important;
-                align-items: center !important;
+                min-height: 18mm !important;
+                max-height: 22mm !important;
+                border-bottom: 1.5px solid #333 !important;
                 page-break-inside: avoid !important;
                 page-break-after: avoid !important;
             }
-            
-            .header-logo {
-                width: 30px !important;
-                height: 30px !important;
-                margin-right: 6px !important;
+
+            .header-row {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
             }
-            
-            .header-content {
-                flex: 1 !important;
-                text-align: center !important;
+
+            .header-logo-col {
+                flex: 0 0 18mm !important;
             }
-            
-            .header h1 {
-                font-size: 12px !important;
-                margin: 0 !important;
+
+            .header-logo-col img {
+                max-width: 16mm !important;
+                max-height: 16mm !important;
             }
-            
-            .header p {
-                font-size: 7px !important;
-                margin: 0 !important;
+
+            .header-center-col .school-name {
+                font-size: 11px !important;
+            }
+
+            .header-center-col .school-slogan,
+            .header-center-col .school-year {
+                font-size: 6px !important;
+            }
+
+            .header-center-col .doc-title {
+                font-size: 9px !important;
+            }
+
+            .header-center-col .doc-num {
+                font-size: 6px !important;
+            }
+
+            .header-right-col {
+                font-size: 6px !important;
             }
             
             .print-controls {
@@ -531,28 +578,44 @@
     <div class="recu-container">
         <!-- En-tête -->
         <div class="header">
-            <div class="header-logo">
-                @if($schoolInfo['logo_url'])
-                    <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo de l'école">
-                @else
-                    <div style="width: 100%; height: 100%; background: rgba(255,255,255,0.2); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                        🏫
-                    </div>
-                @endif
-            </div>
-            <div class="header-content">
-                <h1>REÇU DE RAPPEL</h1>
-                <p>{{ $schoolInfo['school_name'] ?? 'École' }}</p>
-                <p>N° {{ $recuRappel->numero_recu_rappel }}</p>
-                <div class="print-controls">
-                    <button onclick="imprimerRecu()" class="btn-print">
-                        <i class="fas fa-print"></i> Imprimer en PDF
-                    </button>
-                    <button onclick="retourPage()" class="btn-print" style="margin-left: 10px;">
-                        <i class="fas fa-arrow-left"></i> Retour
-                    </button>
+            <div class="header-row">
+                <div class="header-logo-col">
+                    @if(!empty($schoolInfo['logo_url']))
+                        <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo de l'école">
+                    @endif
+                </div>
+                <div class="header-center-col">
+                    <h1 class="school-name">{{ $schoolInfo['school_name'] ?? 'École' }}</h1>
+                    @if(!empty($schoolInfo['school_slogan']))
+                        <p class="school-slogan">{{ $schoolInfo['school_slogan'] }}</p>
+                    @endif
+                    @if(!empty($schoolInfo['year_name']))
+                        <p class="school-year">Année scolaire : {{ $schoolInfo['year_name'] }}</p>
+                    @endif
+                    <h2 class="doc-title">Reçu de rappel de paiement</h2>
+                    <p class="doc-num">N° {{ $recuRappel->numero_recu_rappel }}</p>
+                </div>
+                <div class="header-right-col">
+                    @if(!empty($schoolInfo['school_address']))
+                        <p>{{ $schoolInfo['school_address'] }}</p>
+                    @endif
+                    @if(!empty($schoolInfo['school_phone']))
+                        <p>Tél : {{ $schoolInfo['school_phone'] }}</p>
+                    @endif
+                    @if(!empty($schoolInfo['school_email']))
+                        <p>{{ $schoolInfo['school_email'] }}</p>
+                    @endif
                 </div>
             </div>
+        </div>
+
+        <div class="print-controls">
+            <button onclick="imprimerRecu()" class="btn-print">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <button onclick="retourPage()" class="btn-print" style="margin-left: 10px; background: #6c757d; border-color: #6c757d;">
+                <i class="fas fa-arrow-left"></i> Retour
+            </button>
         </div>
         
         <!-- Contenu principal -->
@@ -610,7 +673,7 @@
                 <div class="paiement-details">
                     <div class="info-item">
                         <span class="info-label">Date de rappel :</span>
-                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y à H:i') }}</span>
+                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y') }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Date d'échéance :</span>

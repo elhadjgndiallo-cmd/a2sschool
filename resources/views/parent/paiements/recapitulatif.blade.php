@@ -157,12 +157,11 @@
                                             <th>Montant payé</th>
                                             <th>Montant restant</th>
                                             <th>Statut</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($data['frais'] as $frais)
-                                            <tr>
+                                            <tr class="table-row-clickable" data-href="{{ route('parent.paiements.show', $frais) }}" role="button" tabindex="0">
                                                 <td>
                                                     <strong>{{ $frais->libelle }}</strong>
                                                     @if($frais->paiement_par_tranches)
@@ -188,14 +187,6 @@
                                                     <span class="badge bg-{{ $frais->statut == 'paye' ? 'success' : ($frais->statut == 'en_attente' ? 'warning' : 'danger') }}">
                                                         {{ ucfirst(str_replace('_', ' ', $frais->statut)) }}
                                                     </span>
-                                                </td>
-                                                <td>
-                                                    <div class="btn-group btn-group-sm">
-                                                        <a href="{{ route('parent.paiements.show', $frais) }}" 
-                                                           class="btn btn-outline-primary" title="Voir détails">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach

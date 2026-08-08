@@ -13,26 +13,7 @@
                         Détails de la Sortie
                     </h3>
                     <div>
-                        @if($depense->statut === 'en_attente')
-                            <form action="{{ route('depenses.approuver', $depense) }}" method="POST" class="d-inline">
-                                @csrf
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-check mr-1"></i>
-                                    Approuver
-                                </button>
-                            </form>
-                        @endif
-                        @if($depense->statut === 'approuve')
-                            <a href="{{ route('depenses.payer', $depense) }}" class="btn btn-primary">
-                                <i class="fas fa-money-bill-wave mr-1"></i>
-                                Payer
-                            </a>
-                        @endif
-                        <a href="{{ route('depenses.edit', $depense) }}" class="btn btn-warning ml-2">
-                            <i class="fas fa-edit mr-1"></i>
-                            Modifier
-                        </a>
-                        <a href="{{ route('depenses.index') }}" class="btn btn-secondary ml-2">
+                        <a href="{{ route('depenses.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour
                         </a>
@@ -232,6 +213,41 @@
                                             </p>
                                         </div>
                                     </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 no-print">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                @if($depense->statut === 'en_attente')
+                                    <form action="{{ route('depenses.approuver', $depense) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check me-1"></i> Approuver
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($depense->statut === 'approuve')
+                                    <a href="{{ route('depenses.payer', $depense) }}" class="btn btn-primary">
+                                        <i class="fas fa-money-bill-wave me-1"></i> Payer
+                                    </a>
+                                @endif
+                                <a href="{{ route('depenses.edit', $depense) }}" class="btn btn-warning">
+                                    <i class="fas fa-edit me-1"></i> Modifier
+                                </a>
+                                @if(!in_array($depense->statut, ['paye', 'annule']))
+                                    <form action="{{ route('depenses.annuler', $depense) }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette sortie ?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            <i class="fas fa-ban me-1"></i> Annuler
+                                        </button>
+                                    </form>
                                 @endif
                             </div>
                         </div>

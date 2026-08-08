@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AnneeScolaire;
+use App\Models\BonSalaireEnseignant;
 use App\Models\SalaireEnseignant;
 use App\Models\Enseignant;
 use App\Models\Depense;
@@ -96,7 +97,7 @@ class SalaireEnseignantController extends Controller
     public function show(SalaireEnseignant $salaire)
     {
         try {
-            $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+            $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar', 'bonsAvance']);
             
             // Vérifier que l'enseignant a un utilisateur associé
             if (!$salaire->enseignant || !$salaire->enseignant->utilisateur) {
@@ -261,6 +262,7 @@ class SalaireEnseignantController extends Controller
             }
             
             // Supprimer le salaire
+            $salaire->libererAvancesLiees();
             $salaire->delete();
 
             DB::commit();
@@ -279,107 +281,86 @@ class SalaireEnseignantController extends Controller
     }
 
     /**
-     * Calculer automatiquement les salaires pour une période
-     */
-    public function calculerSalairesPeriode(Request $request)
-    {
-        $request->validate([
-            'periode_debut' => 'required|date',
-            'periode_fin' => 'required|date|after:periode_debut',
-            'taux_horaire_defaut' => 'required|numeric|min:0',
-            'salaire_base_defaut' => 'required|numeric|min:0'
-        ]);
-
-        $enseignants = Enseignant::listeDeroulante();
-        $salairesCrees = 0;
-
-        foreach ($enseignants as $enseignant) {
-            // Vérifier qu'il n'y a pas déjà un salaire pour cette période
-            $existingSalaire = SalaireEnseignant::where('enseignant_id', $enseignant->id)
-                ->where('periode_debut', $request->periode_debut)
-                ->where('periode_fin', $request->periode_fin)
-                ->first();
-
-            if (!$existingSalaire) {
-                // Calculer le nombre d'heures (exemple: 20h par semaine × 4 semaines)
-                $nombreHeures = 80; // À adapter selon vos besoins
-
-                $salaire = SalaireEnseignant::create([
-                    'enseignant_id' => $enseignant->id,
-                    'periode_debut' => $request->periode_debut,
-                    'periode_fin' => $request->periode_fin,
-                    'nombre_heures' => $nombreHeures,
-                    'taux_horaire' => $request->taux_horaire_defaut,
-                    'salaire_base' => $request->salaire_base_defaut,
-                    'prime_anciennete' => 0,
-                    'prime_performance' => 0,
-                    'prime_heures_supplementaires' => 0,
-                    'deduction_absences' => 0,
-                    'deduction_autres' => 0
-                ]);
-
-                $salaire->calculerSalaires();
-                $salairesCrees++;
-            }
-        }
-
-        return redirect()->route('salaires.index')
-            ->with('success', "Calcul automatique terminé. {$salairesCrees} salaires créés.");
-    }
-
-    /**
      * Afficher les rapports de salaires
      */
     public function rapports(Request $request)
     {
-        $dateDebut = $request->get('date_debut', now()->startOfMonth());
-        $dateFin = $request->get('date_fin', now()->endOfMonth());
+        $anneeScolaire = AnneeScolaire::anneeActive();
+        $anneesScolaires = AnneeScolaire::orderByDesc('date_debut')->get();
+
+        $mode = $request->get('mode', 'mois');
+        $mois = $request->get('mois', now()->format('Y-m'));
+        $anneeScolaireId = $request->get('annee_scolaire_id', $anneeScolaire?->id);
+
+        if ($mode === 'annee' && $anneeScolaireId) {
+            $annee = AnneeScolaire::find($anneeScolaireId);
+            $dateDebut = $annee?->date_debut?->format('Y-m-d') ?? now()->startOfYear()->format('Y-m-d');
+            $dateFin = $annee?->date_fin?->format('Y-m-d') ?? now()->endOfYear()->format('Y-m-d');
+            $periodeLibelle = $annee?->nom ?? 'Année scolaire';
+        } else {
+            $carbonMois = \Carbon\Carbon::createFromFormat('Y-m', $mois)->startOfMonth();
+            $dateDebut = $carbonMois->copy()->startOfMonth()->format('Y-m-d');
+            $dateFin = $carbonMois->copy()->endOfMonth()->format('Y-m-d');
+            $periodeLibelle = $carbonMois->translatedFormat('F Y');
+            $mode = 'mois';
+        }
+
+        $baseQuery = SalaireEnseignant::query()
+            ->whereBetween('periode_debut', [$dateDebut, $dateFin]);
+
+        if ($anneeScolaireId) {
+            $baseQuery->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaireId));
+        }
 
         $stats = [
-            'total_salaires' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->count(),
-            'salaires_payes' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->payes()->count(),
-            'salaires_valides' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->valides()->count(),
-            'salaires_calcules' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->calcules()->count(),
-            'montant_total_brut' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->sum('salaire_brut'),
-            'montant_total_net' => SalaireEnseignant::parPeriode($dateDebut, $dateFin)->sum('salaire_net')
+            'total_salaires' => (clone $baseQuery)->count(),
+            'salaires_payes' => (clone $baseQuery)->payes()->count(),
+            'salaires_valides' => (clone $baseQuery)->valides()->count(),
+            'salaires_calcules' => (clone $baseQuery)->calcules()->count(),
+            'montant_total_brut' => (clone $baseQuery)->sum('salaire_brut'),
+            'montant_total_net' => (clone $baseQuery)->sum('salaire_net'),
+            'montant_total_avances' => (clone $baseQuery)->sum('deduction_avances'),
         ];
 
-        // Salaires par enseignant
-        $salairesParEnseignant = SalaireEnseignant::parPeriode($dateDebut, $dateFin)
+        $salairesParEnseignant = (clone $baseQuery)
             ->with('enseignant.utilisateur')
-            ->selectRaw('enseignant_id, COUNT(*) as count, SUM(salaire_net) as total_net')
+            ->selectRaw('enseignant_id, COUNT(*) as count, SUM(salaire_net) as total_net, SUM(salaire_brut) as total_brut, SUM(deduction_avances) as total_avances')
             ->groupBy('enseignant_id')
             ->get();
 
-        return view('salaires.rapports', compact('stats', 'salairesParEnseignant', 'dateDebut', 'dateFin'));
-    }
+        $salairesListe = (clone $baseQuery)
+            ->with(['enseignant.utilisateur'])
+            ->orderBy('periode_debut')
+            ->orderBy('id')
+            ->get();
 
-    /**
-     * Générer le bon de salaire PDF
-     */
-    public function genererBonSalaire(SalaireEnseignant $salaire)
-    {
-        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
-        
-        // Récupérer les informations de l'établissement
-        $etablissement = \App\Models\Etablissement::first();
-        
-        // Pour l'instant, retourner la vue HTML (temporaire)
-        return view('salaires.bon-salaire-pdf', compact('salaire', 'etablissement'));
-    }
+        $statsAvances = [
+            'total_bons' => BonSalaireEnseignant::query()
+                ->when($anneeScolaireId, fn ($q) => $q->where('annee_scolaire_id', $anneeScolaireId))
+                ->whereBetween('date_bon', [$dateDebut, $dateFin])
+                ->whereIn('statut', ['actif', 'deduit'])
+                ->count(),
+            'montant_bons' => BonSalaireEnseignant::query()
+                ->when($anneeScolaireId, fn ($q) => $q->where('annee_scolaire_id', $anneeScolaireId))
+                ->whereBetween('date_bon', [$dateDebut, $dateFin])
+                ->whereIn('statut', ['actif', 'deduit'])
+                ->sum('montant'),
+        ];
 
-    /**
-     * Afficher le bon de salaire dans le navigateur
-     */
-    public function afficherBonSalaire(SalaireEnseignant $salaire)
-    {
-        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
-        
-        // Récupérer les informations de l'établissement
-        $etablissement = \App\Models\Etablissement::first();
-        
-        // Pour l'instant, retourner la vue HTML (temporaire)
-        return view('salaires.bon-salaire-pdf', compact('salaire', 'etablissement'));
+        return view('salaires.rapports', compact(
+            'stats',
+            'statsAvances',
+            'salairesParEnseignant',
+            'salairesListe',
+            'dateDebut',
+            'dateFin',
+            'periodeLibelle',
+            'mode',
+            'mois',
+            'anneeScolaireId',
+            'anneesScolaires',
+            'anneeScolaire'
+        ));
     }
 
     /**
@@ -387,12 +368,10 @@ class SalaireEnseignantController extends Controller
      */
     public function genererBulletinSalaire(SalaireEnseignant $salaire)
     {
-        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar', 'bonsAvance']);
         
-        // Récupérer les informations de l'établissement
         $etablissement = \App\Models\Etablissement::first();
         
-        // Pour l'instant, retourner la vue HTML (temporaire)
         return view('salaires.bulletin-salaire-pdf', compact('salaire', 'etablissement'));
     }
 
@@ -401,12 +380,10 @@ class SalaireEnseignantController extends Controller
      */
     public function afficherBulletinSalaire(SalaireEnseignant $salaire)
     {
-        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+        $salaire->load(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar', 'bonsAvance']);
         
-        // Récupérer les informations de l'établissement
         $etablissement = \App\Models\Etablissement::first();
         
-        // Pour l'instant, retourner la vue HTML (temporaire)
         return view('salaires.bulletin-salaire-pdf', compact('salaire', 'etablissement'));
     }
 }

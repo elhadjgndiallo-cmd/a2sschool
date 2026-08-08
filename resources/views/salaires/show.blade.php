@@ -13,53 +13,6 @@
                         Détails du Salaire
                     </h3>
                     <div>
-                        @if($salaire->statut === 'calculé')
-                            <a href="{{ route('salaires.edit', $salaire) }}" class="btn btn-warning">
-                                <i class="fas fa-edit mr-1"></i>
-                                Modifier
-                            </a>
-                            <form action="{{ route('salaires.valider', $salaire) }}" method="POST" style="display: inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success" 
-                                        onclick="return confirm('Valider ce salaire ?')">
-                                    <i class="fas fa-check mr-1"></i>
-                                    Valider
-                                </button>
-                            </form>
-                        @endif
-                        
-                        @if($salaire->statut === 'validé')
-                            <a href="{{ route('salaires.payer.form', $salaire) }}" class="btn btn-primary">
-                                <i class="fas fa-money-bill-wave mr-1"></i>
-                                Payer
-                            </a>
-                        @endif
-                        
-                        <!-- Boutons pour générer les documents -->
-                        <div class="btn-group mr-2">
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-file-pdf mr-1"></i>
-                                    Documents PDF
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{{ route('salaires.bon-salaire.download', $salaire) }}" target="_blank">
-                                        <i class="fas fa-download mr-2"></i>Bon de Salaire (Télécharger)
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('salaires.bon-salaire.view', $salaire) }}" target="_blank">
-                                        <i class="fas fa-eye mr-2"></i>Bon de Salaire (Aperçu)
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{{ route('salaires.bulletin-salaire.download', $salaire) }}" target="_blank">
-                                        <i class="fas fa-download mr-2"></i>Bulletin de Salaire (Télécharger)
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('salaires.bulletin-salaire.view', $salaire) }}" target="_blank">
-                                        <i class="fas fa-eye mr-2"></i>Bulletin de Salaire (Aperçu)
-                                    </a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        
                         <a href="{{ route('salaires.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour
@@ -225,9 +178,15 @@
                                                     <td>Autres déductions:</td>
                                                     <td class="text-right text-danger">{{ number_format($salaire->deduction_autres, 0, ',', ' ') }} GNF</td>
                                                 </tr>
+                                                @if((float) $salaire->deduction_avances > 0)
+                                                <tr>
+                                                    <td>Avances (bons de salaire):</td>
+                                                    <td class="text-right text-danger">{{ number_format($salaire->deduction_avances, 0, ',', ' ') }} GNF</td>
+                                                </tr>
+                                                @endif
                                                 <tr class="table-danger">
                                                     <td><strong>Total déductions:</strong></td>
-                                                    <td class="text-right"><strong class="text-danger">{{ number_format($salaire->deduction_absences + $salaire->deduction_autres, 0, ',', ' ') }} GNF</strong></td>
+                                                    <td class="text-right"><strong class="text-danger">{{ number_format($salaire->deduction_absences + $salaire->deduction_autres + (float) $salaire->deduction_avances, 0, ',', ' ') }} GNF</strong></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -298,6 +257,46 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                @if($salaire->statut === 'calculé')
+                    <a href="{{ route('salaires.edit', $salaire) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i> Modifier
+                    </a>
+                    <form action="{{ route('salaires.valider', $salaire) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Valider ce salaire ?')">
+                            <i class="fas fa-check me-1"></i> Valider
+                        </button>
+                    </form>
+                @endif
+                @if($salaire->statut === 'validé')
+                    <a href="{{ route('salaires.payer.form', $salaire) }}" class="btn btn-primary">
+                        <i class="fas fa-money-bill-wave me-1"></i> Payer
+                    </a>
+                @endif
+                <a href="{{ route('salaires.bulletin-salaire.download', $salaire) }}" class="btn btn-info" target="_blank">
+                    <i class="fas fa-download me-1"></i> Bulletin (PDF)
+                </a>
+                <a href="{{ route('salaires.bulletin-salaire.view', $salaire) }}" class="btn btn-outline-info" target="_blank">
+                    <i class="fas fa-eye me-1"></i> Aperçu bulletin
+                </a>
+                <form action="{{ route('salaires.destroy', $salaire) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce salaire ?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>

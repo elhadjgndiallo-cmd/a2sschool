@@ -13,14 +13,6 @@
                         Reçu de Rappel - {{ $recuRappel->numero_recu_rappel }}
                     </h3>
                     <div>
-                        <a href="{{ route('recus-rappel.pdf', $recuRappel) }}" class="btn btn-success">
-                            <i class="fas fa-print mr-1"></i>
-                            Imprimer
-                        </a>
-                        <a href="{{ route('recus-rappel.edit', $recuRappel) }}" class="btn btn-warning">
-                            <i class="fas fa-edit mr-1"></i>
-                            Modifier
-                        </a>
                         <a href="{{ route('recus-rappel.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour
@@ -167,6 +159,30 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('recus-rappel.pdf', $recuRappel) }}" class="btn btn-success" target="_blank">
+                    <i class="fas fa-print me-1"></i> Imprimer
+                </a>
+                <a href="{{ route('recus-rappel.edit', $recuRappel) }}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </a>
+                <form action="{{ route('recus-rappel.destroy', $recuRappel) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce reçu de rappel ?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>

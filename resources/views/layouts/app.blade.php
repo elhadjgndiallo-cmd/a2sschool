@@ -57,6 +57,15 @@
             font-size: 0.75rem;
         }
         
+        /* Lignes de tableau cliquables (listes sans colonne Actions) */
+        tr.table-row-clickable {
+            cursor: pointer;
+        }
+
+        tr.table-row-clickable:hover {
+            background-color: rgba(13, 110, 253, 0.06) !important;
+        }
+
         /* Boutons dans les tableaux */
         .table .btn {
             padding: 0.2rem 0.4rem;
@@ -772,6 +781,7 @@
                     { href: '{{ route("comptabilite.entrees") }}', icon: 'fas fa-arrow-up', text: 'Entrées' },
                     { href: '{{ route("comptabilite.sorties") }}', icon: 'fas fa-arrow-down', text: 'Sorties' },
                     { href: '{{ route("factures.index") }}', icon: 'fas fa-file-invoice', text: 'Facturation' },
+                    { href: '{{ route("comptabilite.impayes-mensuels") }}', icon: 'fas fa-user-times', text: 'Impayés mensuels' },
                     { href: '{{ route("recus-rappel.index") }}', icon: 'fas fa-bell', text: 'Reçus de Rappel' }
                 ],
                 'rapports': @json(\App\Helpers\PermissionHelper::getFilteredSubmenus('rapports')),
@@ -1126,6 +1136,31 @@
                     }
                 });
             }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('tr.table-row-clickable[data-href]').forEach(function(row) {
+                row.addEventListener('click', function(e) {
+                    if (e.target.closest('a, button, form, input, select, label, textarea')) {
+                        return;
+                    }
+                    const href = row.getAttribute('data-href');
+                    if (href) {
+                        window.location.href = href;
+                    }
+                });
+
+                row.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const href = row.getAttribute('data-href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    }
+                });
+            });
         });
     </script>
     @stack('scripts')

@@ -86,12 +86,11 @@
                                     <th>Montant</th>
                                     <th>Méthode</th>
                                     <th>Encaisse par</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($paiements as $paiement)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('parent.paiements.show', $paiement->fraisScolarite) }}" role="button" tabindex="0">
                                         <td>
                                             <span class="badge bg-light text-dark">
                                                 {{ $paiement->date_paiement->format('d/m/Y') }}
@@ -130,14 +129,6 @@
                                             <small class="text-muted">
                                                 {{ $paiement->encaissePar->nom ?? 'N/A' }}
                                             </small>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('parent.paiements.show', $paiement->fraisScolarite) }}" 
-                                                   class="btn btn-outline-primary" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

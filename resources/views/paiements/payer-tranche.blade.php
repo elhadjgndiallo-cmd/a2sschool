@@ -10,7 +10,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <i class="fas fa-credit-card mr-2"></i>
-                        Paiement du Mois {{ $tranche->numero_tranche }}
+                        Paiement — {{ $tranche->libelle_mois }}
                     </h3>
                 </div>
                 <div class="card-body">

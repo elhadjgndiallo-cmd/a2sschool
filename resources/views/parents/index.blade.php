@@ -204,17 +204,16 @@
                             <th scope="col">Lien</th>
                             <th scope="col" class="text-center">Enfants</th>
                             <th scope="col" class="text-center">Statut</th>
-                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($parents as $parent)
-                        <tr>
+                        <tr class="table-row-clickable" data-href="{{ route('parents.show', $parent->id) }}" role="button" tabindex="0">
                             <td><strong>{{ $parent->utilisateur->nom }}</strong></td>
                             <td>{{ $parent->utilisateur->prenom }}</td>
                             <td>
                                 @if($parent->utilisateur->telephone)
-                                    <a href="tel:{{ $parent->utilisateur->telephone }}" class="phone-link text-decoration-none">
+                                    <a href="tel:{{ $parent->utilisateur->telephone }}" class="phone-link text-decoration-none" onclick="event.stopPropagation()">
                                         <i class="fas fa-phone me-1"></i>
                                         <span class="phone-number">{{ $parent->utilisateur->telephone }}</span>
                                     </a>
@@ -224,7 +223,7 @@
                             </td>
                             <td>
                                 @if($parent->utilisateur->email)
-                                    <a href="mailto:{{ $parent->utilisateur->email }}" class="text-decoration-none">
+                                    <a href="mailto:{{ $parent->utilisateur->email }}" class="text-decoration-none" onclick="event.stopPropagation()">
                                         <i class="fas fa-envelope me-1"></i>{{ $parent->utilisateur->email }}
                                     </a>
                                 @else
@@ -252,22 +251,6 @@
                                 @else
                                     <span class="badge bg-danger">Inactif</span>
                                 @endif
-                            </td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('parents.show', $parent->id) }}" 
-                                       class="btn btn-outline-info" 
-                                       title="Voir les détails">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if(auth()->user()->hasPermission('eleves.edit'))
-                                    <a href="{{ route('parents.edit', $parent->id) }}" 
-                                       class="btn btn-outline-warning" 
-                                       title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    @endif
-                                </div>
                             </td>
                         </tr>
                         @endforeach

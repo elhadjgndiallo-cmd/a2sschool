@@ -1084,6 +1084,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/recus-rappel', [\App\Http\Controllers\RecuRappelController::class, 'store'])->name('recus-rappel.store')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/search-eleves', [\App\Http\Controllers\RecuRappelController::class, 'searchEleves'])->name('recus-rappel.search-eleves')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/eleve/{eleve}/frais', [\App\Http\Controllers\RecuRappelController::class, 'getFraisEleve'])->name('recus-rappel.frais-eleve')->middleware('check.permission:paiements.create');
+        Route::get('/recus-rappel/depuis-impayes', [\App\Http\Controllers\RecuRappelController::class, 'creerDepuisImpayes'])->name('recus-rappel.depuis-impayes')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'show'])->name('recus-rappel.show')->middleware('check.permission:paiements.view');
         Route::get('/recus-rappel/{recuRappel}/edit', [\App\Http\Controllers\RecuRappelController::class, 'edit'])->name('recus-rappel.edit')->middleware('check.permission:paiements.edit');
         Route::put('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'update'])->name('recus-rappel.update')->middleware('check.permission:paiements.edit');
@@ -1101,6 +1102,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/factures/{facture}/edit', [\App\Http\Controllers\FacturationController::class, 'edit'])->name('factures.edit')->middleware('check.permission:paiements.edit');
         Route::put('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'update'])->name('factures.update')->middleware('check.permission:paiements.edit');
         Route::post('/factures/{facture}/payer-reste', [\App\Http\Controllers\FacturationController::class, 'payerReste'])->name('factures.payer-reste')->middleware('check.permission:paiements.edit');
+        Route::post('/factures/{facture}/annuler', [\App\Http\Controllers\FacturationController::class, 'annuler'])->name('factures.annuler')->middleware('check.permission:paiements.edit');
         Route::delete('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'destroy'])->name('factures.destroy')->middleware('check.permission:paiements.delete');
         Route::get('/factures/{facture}/lignes-edition', [\App\Http\Controllers\FacturationController::class, 'lignesFactureEdition'])->name('factures.lignes-edition')->middleware('check.permission:paiements.edit');
         Route::get('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'show'])->name('factures.show')->middleware('check.permission:paiements.view');
@@ -1156,6 +1158,12 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     // Routes pour la gestion des salaires des enseignants (Admin et Personnel Admin)
     Route::middleware('role:admin,personnel_admin')->group(function () {
         Route::get('/salaires', [SalaireEnseignantController::class, 'index'])->name('salaires.index')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/rapports', [SalaireEnseignantController::class, 'rapports'])->name('salaires.rapports')->middleware('check.permission:salaires.rapports');
+        Route::get('/salaires/bons', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'index'])->name('salaires.bons.index')->middleware('check.permission:salaires.view');
+        Route::get('/salaires/bons/create', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'create'])->name('salaires.bons.create')->middleware('check.permission:salaires.create');
+        Route::post('/salaires/bons', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'store'])->name('salaires.bons.store')->middleware('check.permission:salaires.create');
+        Route::get('/salaires/bons/{bon}', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'show'])->name('salaires.bons.show')->middleware('check.permission:salaires.view');
+        Route::delete('/salaires/bons/{bon}', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'destroy'])->name('salaires.bons.destroy')->middleware('check.permission:salaires.delete');
         Route::get('/salaires/create', [SalaireEnseignantController::class, 'create'])->name('salaires.create')->middleware('check.permission:salaires.create');
         Route::post('/salaires', [SalaireEnseignantController::class, 'store'])->name('salaires.store')->middleware('check.permission:salaires.create');
         Route::get('/salaires/{salaire}', [SalaireEnseignantController::class, 'show'])->name('salaires.show')->middleware('check.permission:salaires.view');
@@ -1165,10 +1173,6 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/salaires/{salaire}/valider', [SalaireEnseignantController::class, 'valider'])->name('salaires.valider')->middleware('check.permission:salaires.valider');
         Route::get('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payerForm'])->name('salaires.payer.form')->middleware('check.permission:salaires.payer');
         Route::post('/salaires/{salaire}/payer', [SalaireEnseignantController::class, 'payer'])->name('salaires.payer')->middleware('check.permission:salaires.payer');
-        Route::post('/salaires/calculer-periode', [SalaireEnseignantController::class, 'calculerSalairesPeriode'])->name('salaires.calculer-periode')->middleware('check.permission:salaires.create');
-        Route::get('/salaires/rapports', [SalaireEnseignantController::class, 'rapports'])->name('salaires.rapports')->middleware('check.permission:salaires.rapports');
-        Route::get('/salaires/{salaire}/bon-salaire/download', [SalaireEnseignantController::class, 'genererBonSalaire'])->name('salaires.bon-salaire.download')->middleware('check.permission:salaires.view');
-        Route::get('/salaires/{salaire}/bon-salaire/view', [SalaireEnseignantController::class, 'afficherBonSalaire'])->name('salaires.bon-salaire.view')->middleware('check.permission:salaires.view');
         Route::get('/salaires/{salaire}/bulletin-salaire/download', [SalaireEnseignantController::class, 'genererBulletinSalaire'])->name('salaires.bulletin-salaire.download')->middleware('check.permission:salaires.view');
         Route::get('/salaires/{salaire}/bulletin-salaire/view', [SalaireEnseignantController::class, 'afficherBulletinSalaire'])->name('salaires.bulletin-salaire.view')->middleware('check.permission:salaires.view');
     });
@@ -1197,6 +1201,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/comptabilite/entrees', [ComptabiliteController::class, 'entrees'])->name('comptabilite.entrees')->middleware('check.permission:comptabilite.entrees');
         Route::get('/comptabilite/sorties', [ComptabiliteController::class, 'sorties'])->name('comptabilite.sorties')->middleware('check.permission:comptabilite.sorties');
         Route::get('/comptabilite/rapport-journalier', [ComptabiliteController::class, 'rapportJournalier'])->name('comptabilite.rapport-journalier')->middleware('check.permission:comptabilite.rapports');
+        Route::get('/comptabilite/impayes-mensuels', [ComptabiliteController::class, 'impayesMensuels'])->name('comptabilite.impayes-mensuels')->middleware('check.permission:comptabilite.rapports');
     });
     
     

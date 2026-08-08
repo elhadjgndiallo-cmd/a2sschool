@@ -17,14 +17,6 @@ use Illuminate\Support\Facades\Storage;
             <i class="fas fa-arrow-left me-1"></i>
             Retour
         </a>
-        <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" class="btn btn-outline-primary ms-2">
-            <i class="fas fa-edit me-1"></i>
-            Modifier
-        </a>
-        <button type="button" class="btn btn-info ms-2 no-print" onclick="window.print()">
-            <i class="fas fa-print me-1"></i>
-            Imprimer (A4)
-        </button>
     </div>
 </div>
 
@@ -407,6 +399,72 @@ use Illuminate\Support\Facades\Storage;
         @endif
     </div>
 </div>
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="resetPassword({{ $enseignant->id }})">
+                <i class="fas fa-key me-1"></i> Réinitialiser mot de passe
+            </button>
+            <button type="button" class="btn btn-info" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> Imprimer (A4)
+            </button>
+            @if($enseignant->actif)
+                <form method="POST" action="{{ route('enseignants.destroy', $enseignant) }}" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action rendra l\'enseignant inactif et il ne pourra plus accéder à son compte.')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-pause me-1"></i> Désactiver
+                    </button>
+                </form>
+            @else
+                <form action="{{ route('enseignants.reactivate', $enseignant->id) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir réactiver cet enseignant ?')">
+                    @csrf
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play me-1"></i> Réactiver
+                    </button>
+                </form>
+            @endif
+            <form method="POST" action="{{ route('enseignants.delete-permanent', $enseignant) }}" class="d-inline"
+                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'enseignant {{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'enseignant et son compte utilisateur\n- Tous ses salaires\n- Toutes ses cartes\n- Sa photo de profil\n- Toutes les relations avec les classes\n\nCette action est irréversible !')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function resetPassword(id) {
+    if (confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet enseignant ?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('/enseignants') }}/${id}/reset-password`;
+        form.style.display = 'none';
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+@endpush
+
 @push('styles')
 <style>
 /* Styles d'impression A4 pour la page Enseignant */

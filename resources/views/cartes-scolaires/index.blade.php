@@ -107,14 +107,13 @@
                                         <th>Date d'émission</th>
                                         <th>Date d'expiration</th>
                                         <th>Statut</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                             <tbody>
                                 @forelse($cartes as $carte)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('cartes-scolaires.show', $carte) }}" role="button" tabindex="0">
                                         <td>
-                                            <input type="checkbox" name="cartes[]" value="{{ $carte->id }}" class="carte-checkbox" onchange="updateImprimerButton()">
+                                            <input type="checkbox" name="cartes[]" value="{{ $carte->id }}" class="carte-checkbox" onchange="updateImprimerButton()" onclick="event.stopPropagation()">
                                         </td>
                                         <td>
                                             <span class="badge bg-info">{{ $carte->numero_carte }}</span>
@@ -165,49 +164,10 @@
                                             @endphp
                                             <span class="badge {{ $badgeClass }}">{{ $carte->statut_libelle }}</span>
                                         </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('cartes-scolaires.show', $carte) }}" 
-                                                   class="btn btn-sm btn-outline-primary" 
-                                                   title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('cartes-scolaires.edit', $carte) }}" 
-                                                   class="btn btn-sm btn-outline-warning" 
-                                                   title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="{{ route('cartes-scolaires.imprimer', $carte) }}" 
-                                                   class="btn btn-sm btn-outline-info" 
-                                                   title="Imprimer" 
-                                                   target="_blank">
-                                                    <i class="fas fa-print"></i>
-                                                </a>
-                                                @if($carte->statut === 'active')
-                                                    <a href="{{ route('cartes-scolaires.renouveler', $carte) }}" 
-                                                       class="btn btn-sm btn-outline-success" 
-                                                       title="Renouveler">
-                                                        <i class="fas fa-sync"></i>
-                                                    </a>
-                                                @endif
-                                                <form action="{{ route('cartes-scolaires.destroy', $carte) }}" 
-                                                      method="POST" 
-                                                      class="d-inline"
-                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" 
-                                                            class="btn btn-sm btn-outline-danger" 
-                                                            title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center py-4">
+                                        <td colspan="8" class="text-center py-4">
                                             <div class="text-muted">
                                                 <i class="fas fa-id-card fa-3x mb-3"></i>
                                                 <p>Aucune carte scolaire trouvée.</p>

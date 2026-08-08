@@ -102,7 +102,6 @@
                             <th>Mensuel</th>
                             <th>Total Annuel</th>
                             <th>Statut</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -120,7 +119,7 @@
                             // Frais de réinscription configurés ou 50% de l'inscription si non défini
                             $fraisReinscription = $tarif->frais_reinscription > 0 ? $tarif->frais_reinscription : ($tarif->frais_inscription * 0.5);
                         @endphp
-                        <tr>
+                        <tr class="table-row-clickable" data-href="{{ route('tarifs.show', $tarif) }}" role="button" tabindex="0">
                             <td>
                                 @if($tarif->classe)
                                     <strong class="text-primary">{{ $tarif->classe->nom }}</strong>
@@ -185,24 +184,6 @@
                                         <i class="fas fa-pause-circle me-1"></i>Inactif
                                     </span>
                                 @endif
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('tarifs.show', $tarif) }}" class="btn btn-sm btn-outline-info" title="Voir détails">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{{ route('tarifs.edit', $tarif) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form action="{{ route('tarifs.destroy', $tarif) }}" method="POST" class="d-inline" 
-                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce tarif ?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
                             </td>
                         </tr>
                         @endforeach

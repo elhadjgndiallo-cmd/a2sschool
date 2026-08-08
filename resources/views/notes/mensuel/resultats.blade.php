@@ -9,23 +9,6 @@
         Résultats Tests Mensuels - {{ $classe->nom }}
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <a href="{{ route('notes.mensuel.modifier', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-               class="btn btn-sm btn-warning">
-                <i class="fas fa-edit me-1"></i>
-                Modifier Notes
-            </a>
-            <a href="{{ route('notes.mensuel.resultats.imprimer', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-               class="btn btn-sm btn-primary" target="_blank">
-                <i class="fas fa-print me-1"></i>
-                Imprimer
-            </a>
-            <a href="{{ route('notes.mensuel.detail-notes.imprimer', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-               class="btn btn-sm btn-info" target="_blank">
-                <i class="fas fa-file-alt me-1"></i>
-                Imprimer Détail des notes
-            </a>
-        </div>
         <a href="{{ route('notes.mensuel.classe', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
            class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i>
@@ -45,7 +28,13 @@
     <div class="card-body">
         <form method="GET" action="{{ route('notes.mensuel.resultats', $classe->id) }}">
             <div class="row">
+                @if(isset($anneeScolaireActive))
                 <div class="col-md-4">
+                    <label class="form-label">Année scolaire</label>
+                    <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
+                </div>
+                @endif
+                <div class="col-md-3">
                     <label for="mois" class="form-label">Mois</label>
                     <select name="mois" id="mois" class="form-select">
                         @foreach($moisListe as $num => $nom)
@@ -55,17 +44,17 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="annee" class="form-label">Année</label>
                     <select name="annee" id="annee" class="form-select">
-                        @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
-                        <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
-                            {{ $i }}
+                        @foreach(($anneesDisponibles ?? [date('Y')]) as $anneeOption)
+                        <option value="{{ $anneeOption }}" {{ $annee == $anneeOption ? 'selected' : '' }}>
+                            {{ $anneeOption }}
                         </option>
-                        @endfor
+                        @endforeach
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-search me-1"></i>
                         Filtrer
@@ -160,7 +149,6 @@
                         <th scope="col">Prénom</th>
                         <th scope="col" class="text-center">Moyenne</th>
                         <th scope="col" class="text-center">Mention</th>
-                        <th scope="col" class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -191,7 +179,7 @@
                             $color = 'danger';
                         }
                     @endphp
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('notes.mensuel.eleve.details', $eleve->id) }}?mois={{ $mois }}&annee={{ $annee }}" role="button" tabindex="0">
                         <td class="text-center">
                             @if($rang <= 3)
                                 <span class="badge bg-{{ $rang == 1 ? 'warning' : ($rang == 2 ? 'secondary' : 'success') }}">
@@ -215,22 +203,6 @@
                         </td>
                         <td class="text-center">
                             <span class="badge bg-{{ $color }}">{{ $appreciation }}</span>
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ route('notes.mensuel.eleve.details', $eleve->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-                                   class="btn btn-outline-info" 
-                                   title="Voir les détails">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                @if(auth()->user()->hasPermission('notes.edit'))
-                                <a href="{{ route('notes.mensuel.modifier', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" 
-                                   class="btn btn-outline-warning" 
-                                   title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                @endif
-                            </div>
                         </td>
                     </tr>
                     @endforeach
@@ -295,4 +267,25 @@
     </div>
 </div>
 @endif
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            @if(auth()->user()->hasPermission('notes.edit'))
+            <a href="{{ route('notes.mensuel.modifier', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier les notes
+            </a>
+            @endif
+            <a href="{{ route('notes.mensuel.resultats.imprimer', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-print me-1"></i> Imprimer
+            </a>
+            <a href="{{ route('notes.mensuel.detail-notes.imprimer', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn btn-info" target="_blank">
+                <i class="fas fa-file-alt me-1"></i> Imprimer le détail des notes
+            </a>
+        </div>
+    </div>
+</div>
 @endsection

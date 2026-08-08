@@ -7,275 +7,132 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
                         <i class="fas fa-chart-bar mr-2"></i>
-                        Rapports de Salaires des Enseignants
+                        Rapports de salaires — {{ $periodeLibelle }}
                     </h3>
+                    <a href="{{ route('salaires.index') }}" class="btn btn-secondary btn-sm">Retour aux bulletins</a>
                 </div>
                 <div class="card-body">
-                    <!-- Filtres de période -->
                     <div class="card mb-4">
                         <div class="card-body">
                             <form method="GET" action="{{ route('salaires.rapports') }}">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="date_debut">Date Début</label>
-                                            <input type="date" name="date_debut" id="date_debut" class="form-control" 
-                                                   value="{{ $dateDebut }}">
-                                        </div>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Type de rapport</label>
+                                        <select name="mode" id="mode_rapport" class="form-select">
+                                            <option value="mois" {{ $mode === 'mois' ? 'selected' : '' }}>Par mois</option>
+                                            <option value="annee" {{ $mode === 'annee' ? 'selected' : '' }}>Par année scolaire</option>
+                                        </select>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label for="date_fin">Date Fin</label>
-                                            <input type="date" name="date_fin" id="date_fin" class="form-control" 
-                                                   value="{{ $dateFin }}">
-                                        </div>
+                                    <div class="col-md-3" id="filtre_mois" style="{{ $mode === 'annee' ? 'display:none' : '' }}">
+                                        <label class="form-label">Mois</label>
+                                        <input type="month" name="mois" class="form-control" value="{{ $mois }}">
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label>&nbsp;</label>
-                                            <button type="submit" class="btn btn-primary btn-block">
-                                                <i class="fas fa-search mr-1"></i>
-                                                Filtrer
-                                            </button>
-                                        </div>
+                                    <div class="col-md-3" id="filtre_annee" style="{{ $mode === 'mois' ? 'display:none' : '' }}">
+                                        <label class="form-label">Année scolaire</label>
+                                        <select name="annee_scolaire_id" class="form-select">
+                                            @foreach($anneesScolaires as $a)
+                                                <option value="{{ $a->id }}" {{ (int)$anneeScolaireId === (int)$a->id ? 'selected' : '' }}>{{ $a->nom }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search mr-1"></i> Afficher</button>
                                     </div>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <!-- Statistiques générales -->
                     <div class="row mb-4">
-                        <div class="col-md-2">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ $stats['total_salaires'] }}</h3>
-                                    <p class="mb-0">Total Salaires</p>
-                                </div>
-                            </div>
+                        <div class="col-md-2"><div class="card bg-primary text-white text-center p-3"><h4>{{ $stats['total_salaires'] }}</h4><small>Bulletins</small></div></div>
+                        <div class="col-md-2"><div class="card bg-success text-white text-center p-3"><h4>{{ $stats['salaires_payes'] }}</h4><small>Payés</small></div></div>
+                        <div class="col-md-2"><div class="card bg-info text-white text-center p-3"><h4>{{ $stats['salaires_valides'] }}</h4><small>Validés</small></div></div>
+                        <div class="col-md-2"><div class="card bg-warning text-dark text-center p-3"><h4>{{ $stats['salaires_calcules'] }}</h4><small>Calculés</small></div></div>
+                        <div class="col-md-2"><div class="card bg-danger text-white text-center p-3"><h4>{{ number_format($stats['montant_total_brut']/1000,0) }}K</h4><small>Brut GNF</small></div></div>
+                        <div class="col-md-2"><div class="card bg-secondary text-white text-center p-3"><h4>{{ number_format($stats['montant_total_net']/1000,0) }}K</h4><small>Net GNF</small></div></div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6>Avances sur la période</h6>
+                                <p class="mb-0"><strong>{{ $statsAvances['total_bons'] }}</strong> bon(s) — <strong>{{ number_format($statsAvances['montant_bons'], 0, ',', ' ') }} GNF</strong></p>
+                            </div></div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ $stats['salaires_payes'] }}</h3>
-                                    <p class="mb-0">Payés</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ $stats['salaires_valides'] }}</h3>
-                                    <p class="mb-0">Validés</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ $stats['salaires_calcules'] }}</h3>
-                                    <p class="mb-0">Calculés</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-danger text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ number_format($stats['montant_total_brut'] / 1000, 0) }}K</h3>
-                                    <p class="mb-0">Total Brut (GNF)</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-secondary text-white">
-                                <div class="card-body text-center">
-                                    <h3>{{ number_format($stats['montant_total_net'] / 1000, 0) }}K</h3>
-                                    <p class="mb-0">Total Net (GNF)</p>
-                                </div>
-                            </div>
+                        <div class="col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6>Avances déduites sur bulletins</h6>
+                                <p class="mb-0"><strong>{{ number_format($stats['montant_total_avances'] ?? 0, 0, ',', ' ') }} GNF</strong></p>
+                            </div></div>
                         </div>
                     </div>
 
-                    <!-- Répartition des statuts -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Répartition des Statuts</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row text-center">
-                                        <div class="col-3">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-success">{{ $stats['salaires_payes'] }}</h4>
-                                                <small>Payés</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-info">{{ $stats['salaires_valides'] }}</h4>
-                                                <small>Validés</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-warning">{{ $stats['salaires_calcules'] }}</h4>
-                                                <small>Calculés</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-primary">{{ $stats['total_salaires'] - $stats['salaires_payes'] - $stats['salaires_valides'] - $stats['salaires_calcules'] }}</h4>
-                                                <small>Autres</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Montants Totaux</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row text-center">
-                                        <div class="col-6">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-danger">{{ number_format($stats['montant_total_brut'] / 1000, 0) }}K GNF</h4>
-                                                <small>Salaire Brut Total</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="border rounded p-2">
-                                                <h4 class="text-success">{{ number_format($stats['montant_total_net'] / 1000, 0) }}K GNF</h4>
-                                                <small>Salaire Net Total</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <hr>
-                                    <div class="text-center">
-                                        <h5 class="text-info">
-                                            Différence: {{ number_format(($stats['montant_total_brut'] - $stats['montant_total_net']) / 1000, 0) }}K GNF
-                                        </h5>
-                                        <small class="text-muted">Total des déductions</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Salaires par enseignant -->
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-users mr-2"></i>
-                                Salaires par Enseignant
-                            </h5>
-                            <a href="{{ route('salaires.index') }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-list mr-1"></i>
-                                Voir Tous
-                            </a>
-                        </div>
-                        <div class="card-body">
-                            @if($salairesParEnseignant->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-striped">
-                                        <thead class="thead-dark">
-                                            <tr>
-                                                <th>Enseignant</th>
-                                                <th>Nombre de Salaires</th>
-                                                <th>Total Net (GNF)</th>
-                                                <th>Moyenne par Salaire</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($salairesParEnseignant as $salaire)
-                                                <tr>
-                                                    <td>
-                                                        <strong>{{ $salaire->enseignant->utilisateur->nom }} {{ $salaire->enseignant->utilisateur->prenom }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">{{ $salaire->enseignant->utilisateur->email }}</small>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge badge-info">{{ $salaire->count }}</span>
-                                                    </td>
-                                                    <td class="text-right">
-                                                        <strong class="text-success">
-                                                            {{ number_format($salaire->total_net, 0, ',', ' ') }} GNF
-                                                        </strong>
-                                                    </td>
-                                                    <td class="text-right">
-                                                        <strong class="text-primary">
-                                                            {{ number_format($salaire->total_net / $salaire->count, 0, ',', ' ') }} GNF
-                                                        </strong>
-                                                    </td>
-                                                    <td>
-                                                        <a href="{{ route('salaires.index', ['enseignant_id' => $salaire->enseignant_id]) }}" 
-                                                           class="btn btn-sm btn-info" title="Voir les salaires">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                        <tfoot class="table-dark">
-                                            <tr>
-                                                <th colspan="2">TOTAL</th>
-                                                <th class="text-right">
-                                                    {{ number_format($salairesParEnseignant->sum('total_net'), 0, ',', ' ') }} GNF
-                                                </th>
-                                                <th class="text-right">
-                                                    {{ number_format($salairesParEnseignant->sum('total_net') / $salairesParEnseignant->sum('count'), 0, ',', ' ') }} GNF
-                                                </th>
-                                                <th></th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                    <div class="card mb-4">
+                        <div class="card-header"><strong>Synthèse par enseignant</strong></div>
+                        <div class="card-body p-0">
+                            @if($salairesParEnseignant->count())
+                            <table class="table table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Enseignant</th>
+                                        <th class="text-center">Bulletins</th>
+                                        <th class="text-end">Brut</th>
+                                        <th class="text-end">Avances déduites</th>
+                                        <th class="text-end">Net payé</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($salairesParEnseignant as $row)
+                                    <tr>
+                                        <td>{{ $row->enseignant->utilisateur->nom }} {{ $row->enseignant->utilisateur->prenom }}</td>
+                                        <td class="text-center">{{ $row->count }}</td>
+                                        <td class="text-end">{{ number_format($row->total_brut, 0, ',', ' ') }}</td>
+                                        <td class="text-end text-danger">{{ number_format($row->total_avances, 0, ',', ' ') }}</td>
+                                        <td class="text-end text-success"><strong>{{ number_format($row->total_net, 0, ',', ' ') }}</strong></td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                             @else
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-coins fa-3x mb-3"></i>
-                                    <p>Aucun salaire trouvé pour cette période</p>
-                                </div>
+                            <p class="text-muted p-3 mb-0">Aucun bulletin sur cette période.</p>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Résumé de la période -->
-                    <div class="card mt-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-calendar mr-2"></i>
-                                Résumé de la Période
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <h6>Période Analysée</h6>
-                                    <p class="mb-1"><strong>Début:</strong> {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }}</p>
-                                    <p class="mb-1"><strong>Fin:</strong> {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}</p>
-                                    <p class="mb-0"><strong>Durée:</strong> {{ \Carbon\Carbon::parse($dateDebut)->diffInDays(\Carbon\Carbon::parse($dateFin)) + 1 }} jours</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <h6>Statistiques</h6>
-                                    <p class="mb-1"><strong>Nombre d'enseignants:</strong> {{ $salairesParEnseignant->count() }}</p>
-                                    <p class="mb-1"><strong>Total des salaires:</strong> {{ $stats['total_salaires'] }}</p>
-                                    <p class="mb-0"><strong>Taux de paiement:</strong> {{ $stats['total_salaires'] > 0 ? round(($stats['salaires_payes'] / $stats['total_salaires']) * 100, 1) : 0 }}%</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <h6>Montants</h6>
-                                    <p class="mb-1"><strong>Salaire brut moyen:</strong> {{ $stats['total_salaires'] > 0 ? number_format($stats['montant_total_brut'] / $stats['total_salaires'], 0, ',', ' ') : 0 }} GNF</p>
-                                    <p class="mb-1"><strong>Salaire net moyen:</strong> {{ $stats['total_salaires'] > 0 ? number_format($stats['montant_total_net'] / $stats['total_salaires'], 0, ',', ' ') : 0 }} GNF</p>
-                                    <p class="mb-0"><strong>Déductions moyennes:</strong> {{ $stats['total_salaires'] > 0 ? number_format(($stats['montant_total_brut'] - $stats['montant_total_net']) / $stats['total_salaires'], 0, ',', ' ') : 0 }} GNF</p>
-                                </div>
-                            </div>
+                    <div class="card">
+                        <div class="card-header"><strong>Détail des bulletins</strong></div>
+                        <div class="card-body p-0">
+                            @if($salairesListe->count())
+                            <table class="table table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Enseignant</th>
+                                        <th>Période</th>
+                                        <th>Statut</th>
+                                        <th class="text-end">Brut</th>
+                                        <th class="text-end">Avances</th>
+                                        <th class="text-end">Net</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($salairesListe as $s)
+                                    <tr>
+                                        <td>{{ $s->enseignant->utilisateur->nom }} {{ $s->enseignant->utilisateur->prenom }}</td>
+                                        <td>{{ $s->periode_debut->format('d/m/Y') }} — {{ $s->periode_fin->format('d/m/Y') }}</td>
+                                        <td>{{ $s->statut_libelle }}</td>
+                                        <td class="text-end">{{ number_format($s->salaire_brut, 0, ',', ' ') }}</td>
+                                        <td class="text-end">{{ number_format($s->deduction_avances, 0, ',', ' ') }}</td>
+                                        <td class="text-end"><strong>{{ number_format($s->salaire_net, 0, ',', ' ') }}</strong></td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            @else
+                            <p class="text-muted p-3 mb-0">Aucun bulletin.</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -284,3 +141,12 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('mode_rapport')?.addEventListener('change', function() {
+    document.getElementById('filtre_mois').style.display = this.value === 'mois' ? '' : 'none';
+    document.getElementById('filtre_annee').style.display = this.value === 'annee' ? '' : 'none';
+});
+</script>
+@endpush

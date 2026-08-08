@@ -119,12 +119,11 @@
                         <th>Enseignants</th>
                         <th>Couleur</th>
                         <th>Statut</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($matieres as $matiere)
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('matieres.show', $matiere) }}" role="button" tabindex="0">
                         <td>
                             <span class="badge" style="background-color: {{ $matiere->couleur }}; color: white;">
                                 {{ $matiere->code }}
@@ -160,44 +159,6 @@
                             @else
                             <span class="badge bg-secondary">Inactif</span>
                             @endif
-                        </td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('matieres.show', $matiere) }}" 
-                                   class="btn btn-outline-info" title="Voir détails">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('matieres.edit', $matiere) }}" 
-                                   class="btn btn-outline-primary" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                @if($matiere->actif)
-                                <form method="POST" action="{{ route('matieres.deactivate', $matiere) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver la matière {{ $matiere->nom }} ?\n\nCette action rendra la matière inactive et elle ne pourra plus être utilisée pour les nouvelles notes.')">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn btn-outline-warning" title="Désactiver">
-                                        <i class="fas fa-pause"></i>
-                                    </button>
-                                </form>
-                                @else
-                                <form method="POST" action="{{ route('matieres.reactivate', $matiere) }}" class="d-inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn btn-outline-success" title="Réactiver">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                </form>
-                                @endif
-                                <form method="POST" action="{{ route('matieres.delete-permanent', $matiere) }}" class="d-inline" 
-                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement la matière {{ $matiere->nom }} ?\n\nCette action supprimera :\n- La matière\n- Toutes les notes associées\n- Tous les emplois du temps associés\n- Toutes les absences associées\n- Toutes les associations avec les enseignants\n\nCette action est irréversible !')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer définitivement">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
                         </td>
                     </tr>
                     @endforeach

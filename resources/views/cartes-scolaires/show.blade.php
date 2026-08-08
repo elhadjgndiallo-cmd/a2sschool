@@ -251,31 +251,29 @@
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-end">
-                                <a href="{{ route('cartes-scolaires.edit', $cartes_scolaire) }}" class="btn btn-warning me-2">
-                                    <i class="fas fa-edit me-2"></i>Modifier
+                    <div class="card mb-4 no-print">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('cartes-scolaires.edit', $cartes_scolaire) }}" class="btn btn-warning">
+                                    <i class="fas fa-edit me-1"></i> Modifier
                                 </a>
-                                <a href="{{ route('cartes-scolaires.imprimer', $cartes_scolaire) }}" 
-                                   class="btn btn-info me-2" 
-                                   target="_blank">
-                                    <i class="fas fa-print me-2"></i>Imprimer
+                                <a href="{{ route('cartes-scolaires.imprimer', $cartes_scolaire) }}" class="btn btn-info" target="_blank">
+                                    <i class="fas fa-print me-1"></i> Imprimer
                                 </a>
                                 @if($cartes_scolaire->statut === 'active')
-                                    <a href="{{ route('cartes-scolaires.renouveler', $cartes_scolaire) }}" class="btn btn-success me-2">
-                                        <i class="fas fa-sync me-2"></i>Renouveler
+                                    <a href="{{ route('cartes-scolaires.renouveler', $cartes_scolaire) }}" class="btn btn-success">
+                                        <i class="fas fa-sync me-1"></i> Renouveler
                                     </a>
                                 @endif
-                                <form action="{{ route('cartes-scolaires.destroy', $cartes_scolaire) }}" 
-                                      method="POST" 
-                                      class="d-inline"
+                                <form action="{{ route('cartes-scolaires.destroy', $cartes_scolaire) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="fas fa-trash me-2"></i>Supprimer
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i> Supprimer
                                     </button>
                                 </form>
                             </div>

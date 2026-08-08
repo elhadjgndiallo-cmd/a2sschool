@@ -9,14 +9,9 @@
         {{ $matiere->nom }}
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <a href="{{ route('matieres.edit', $matiere) }}" class="btn btn-primary">
-                <i class="fas fa-edit me-1"></i>Modifier
-            </a>
-            <a href="{{ route('matieres.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>Retour
-            </a>
-        </div>
+        <a href="{{ route('matieres.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Retour
+        </a>
     </div>
 </div>
 
@@ -197,5 +192,44 @@
     </div>
 </div>
 @endif
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('matieres.edit', $matiere) }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier
+            </a>
+            @if($matiere->actif)
+                <form method="POST" action="{{ route('matieres.deactivate', $matiere) }}" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver la matière {{ $matiere->nom }} ?')">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-pause me-1"></i> Désactiver
+                    </button>
+                </form>
+            @else
+                <form method="POST" action="{{ route('matieres.reactivate', $matiere) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play me-1"></i> Réactiver
+                    </button>
+                </form>
+            @endif
+            <form method="POST" action="{{ route('matieres.delete-permanent', $matiere) }}" class="d-inline"
+                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement la matière {{ $matiere->nom }} ?\n\nCette action est irréversible !')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 
 @endsection

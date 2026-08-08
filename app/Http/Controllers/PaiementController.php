@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\FraisScolarite;
+use App\Services\FacturationService;
 use App\Models\Paiement;
 use App\Models\TranchePaiement;
 use App\Models\Eleve;
 use App\Models\Entree;
 use App\Models\TarifClasse;
-use App\Services\FacturationService;
 use App\Services\PaiementScolariteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -255,7 +255,8 @@ public function store(Request $request)
         // Supprimer les tranches créées hors période puis répartir les paiements
         $this->nettoyerTranchesHorsPeriode($frais);
         $this->repartirPaiementsSurTranches($frais);
-        
+        $this->facturationService->reconcilierTranchesFrais($frais);
+
         $frais->load(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
         return view('paiements.show', compact('frais'));
     }

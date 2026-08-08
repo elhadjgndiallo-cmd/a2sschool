@@ -126,12 +126,11 @@
                                     <th>Bénéficiaire</th>
                                     <th>Montant</th>
                                     <th>Statut</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($depenses as $depense)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('depenses.show', $depense) }}" role="button" tabindex="0">
                                         <td>{{ $depense->date_depense->format('d/m/Y') }}</td>
                                         <td>
                                             <strong>{{ $depense->libelle }}</strong>
@@ -169,36 +168,10 @@
                                                     <span class="badge badge-secondary">{{ $depense->statut }}</span>
                                             @endswitch
                                         </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('depenses.show', $depense) }}" 
-                                                   class="btn btn-sm btn-info" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('depenses.edit', $depense) }}" 
-                                                   class="btn btn-sm btn-warning" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                @if($depense->statut === 'en_attente')
-                                                    <form action="{{ route('depenses.approuver', $depense) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-success" title="Approuver">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                @if($depense->statut === 'approuve')
-                                                    <a href="{{ route('depenses.payer', $depense) }}" 
-                                                       class="btn btn-sm btn-primary" title="Payer">
-                                                        <i class="fas fa-money-bill-wave"></i>
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">
+                                        <td colspan="6" class="text-center text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2"></i>
                                             <br>
                                             Aucune sortie trouvée

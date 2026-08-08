@@ -164,12 +164,11 @@
                                             <th>Statut</th>
                                             <th>Créé le</th>
                                         @endif
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($evenements as $evenement)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('evenements.show', $evenement->id) }}" role="button" tabindex="0">
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="color-indicator" style="background-color: {{ $evenement->couleur }}; width: 15px; height: 15px; border-radius: 3px; margin-right: 8px; border: 1px solid #dee2e6;"></div>
@@ -210,27 +209,6 @@
                                                 </td>
                                                 <td>{{ $evenement->created_at->format('d/m/Y H:i') }}</td>
                                             @endif
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('evenements.show', $evenement->id) }}" class="btn btn-sm btn-info" title="Voir">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if(auth()->user()->hasPermission('evenements.edit') && (auth()->user()->hasPermission('evenements.manage_all') || $evenement->createur_id === Auth::id()))
-                                                        <a href="{{ route('evenements.edit', $evenement->id) }}" class="btn btn-sm btn-warning" title="Modifier">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    @endif
-                                                    @if(auth()->user()->hasPermission('evenements.delete') && (auth()->user()->hasPermission('evenements.manage_all') || $evenement->createur_id === Auth::id()))
-                                                        <form action="{{ route('evenements.destroy', $evenement->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

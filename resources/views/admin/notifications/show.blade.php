@@ -174,20 +174,34 @@
                         <small class="text-muted">{{ $message->updated_at->format('d/m/Y à H:i') }}</small>
                     </div>
                 @endif
-
-                <div class="mt-4">
-                    <form action="{{ route('admin.notifications.destroy', $message) }}" 
-                          method="POST" 
-                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                            <i class="fas fa-trash me-1"></i>
-                            Supprimer ce message
-                        </button>
-                    </form>
-                </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            @if(!$message->lue && $message->destinataire_id == auth()->id())
+                <form action="{{ route('admin.notifications.marquer-lue', $message) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PUT')
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-envelope-open me-1"></i> Marquer comme lue
+                    </button>
+                </form>
+            @endif
+            <form action="{{ route('admin.notifications.destroy', $message) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-trash me-1"></i> Supprimer ce message
+                </button>
+            </form>
         </div>
     </div>
 </div>

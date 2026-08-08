@@ -9,14 +9,9 @@
         Statistiques des Notes - {{ $classe->nom }}
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{{ route('notes.index') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('notes.statistiques') }}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i>
             Retour
-        </a>
-        <a href="{{ route('notes.statistiques.classe.imprimer', $classe->id) }}?periode={{ $periode }}" 
-           class="btn btn-success ms-2" target="_blank">
-            <i class="fas fa-print me-1"></i>
-            Imprimer
         </a>
     </div>
 </div>
@@ -28,6 +23,12 @@
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('notes.statistiques.classe', $classe->id) }}" class="row g-3">
+            @if(isset($anneeScolaireActive))
+            <div class="col-md-4">
+                <label class="form-label">Année scolaire</label>
+                <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
+            </div>
+            @endif
             <div class="col-md-4">
                 <label for="periode" class="form-label">Période</label>
                 <select class="form-select" id="periode" name="periode" onchange="this.form.submit()">
@@ -106,12 +107,11 @@
                         <th width="12%">Moyenne</th>
                         <th width="8%">Rang</th>
                         <th width="15%">Mention</th>
-                        <th width="13%">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($statistiques as $stat)
-                    <tr>
+                    <tr class="table-row-clickable" data-href="{{ route('notes.eleve', $stat['eleve']->id) }}?periode={{ urlencode($periode) }}" role="button" tabindex="0">
                         <td>
                             <span class="text-muted fw-bold">{{ $stat['eleve']->numero_etudiant }}</span>
                         </td>
@@ -166,20 +166,6 @@
                                 @endif
                                 {{ $appreciation['label'] }}
                             </span>
-                        </td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('notes.eleve', $stat['eleve']->id) }}?periode={{ urlencode($periode) }}" 
-                                   class="btn btn-outline-info" 
-                                   title="Voir le bulletin">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('notes.saisir', $classe->id) }}" 
-                                   class="btn btn-outline-primary" 
-                                   title="Saisir des notes">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
                         </td>
                     </tr>
                     @endforeach
@@ -308,6 +294,23 @@
     </div>
 </div>
 @endif
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('notes.statistiques.classe.imprimer', $classe->id) }}?periode={{ $periode }}"
+               class="btn btn-success" target="_blank">
+                <i class="fas fa-print me-1"></i> Imprimer
+            </a>
+            <a href="{{ route('notes.saisir', $classe->id) }}" class="btn btn-primary">
+                <i class="fas fa-edit me-1"></i> Saisir des notes
+            </a>
+        </div>
+    </div>
+</div>
 
 @push('styles')
 <style>

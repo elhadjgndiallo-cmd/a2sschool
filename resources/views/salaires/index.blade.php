@@ -23,12 +23,16 @@
                     <div>
                         <a href="{{ route('salaires.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus mr-1"></i>
-                            Nouveau Salaire
+                            Nouveau bulletin
                         </a>
-                        <button type="button" class="btn btn-success ml-2" data-bs-toggle="modal" data-bs-target="#calculerModal">
-                            <i class="fas fa-calculator mr-1"></i>
-                            Calculer Période
-                        </button>
+                        <a href="{{ route('salaires.bons.create') }}" class="btn btn-warning ml-2">
+                            <i class="fas fa-hand-holding-usd mr-1"></i>
+                            Bon de salaire (avance)
+                        </a>
+                        <a href="{{ route('salaires.bons.index') }}" class="btn btn-outline-warning ml-2">
+                            <i class="fas fa-receipt mr-1"></i>
+                            Avances
+                        </a>
                         <a href="{{ route('salaires.rapports') }}" class="btn btn-info ml-2">
                             <i class="fas fa-chart-bar mr-1"></i>
                             Rapports
@@ -114,12 +118,11 @@
                                         <th>Salaire Brut</th>
                                         <th>Salaire Net</th>
                                         <th>Statut</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($salaires as $salaire)
-                                        <tr>
+                                        <tr class="table-row-clickable" data-href="{{ route('salaires.show', $salaire) }}" role="button" tabindex="0">
                                             <td>
                                                 <strong>{{ $salaire->enseignant->utilisateur->nom }} {{ $salaire->enseignant->utilisateur->prenom }}</strong>
                                                 <br>
@@ -162,62 +165,6 @@
                                                         <span class="badge badge-secondary">{{ $salaire->statut }}</span>
                                                 @endswitch
                                             </td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('salaires.show', $salaire) }}" 
-                                                       class="btn btn-sm btn-info" title="Voir détails">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    
-                                                    <!-- Boutons pour générer les documents -->
-                                                    <div class="btn-group" role="group">
-                                                        <a href="{{ route('salaires.bon-salaire.download', $salaire) }}" 
-                                                           class="btn btn-sm btn-outline-primary" title="Bon de salaire" target="_blank">
-                                                            <i class="fas fa-file-pdf"></i>
-                                                        </a>
-                                                        <a href="{{ route('salaires.bulletin-salaire.download', $salaire) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Bulletin de salaire" target="_blank">
-                                                            <i class="fas fa-file-alt"></i>
-                                                        </a>
-                                                    </div>
-                                                    
-                                                    @if($salaire->statut === 'calculé')
-                                                        <a href="{{ route('salaires.edit', $salaire) }}" 
-                                                           class="btn btn-sm btn-warning" title="Modifier">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <form action="{{ route('salaires.valider', $salaire) }}" 
-                                                              method="POST" style="display: inline;">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-success" 
-                                                                    title="Valider" 
-                                                                    onclick="return confirm('Valider ce salaire ?')">
-                                                                <i class="fas fa-check"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                    
-                                                    @if($salaire->statut === 'validé')
-                                                        <a href="{{ route('salaires.payer.form', $salaire) }}" 
-                                                           class="btn btn-sm btn-primary" title="Payer">
-                                                            <i class="fas fa-money-bill-wave"></i>
-                                                        </a>
-                                                    @endif
-                                                    
-                                                    @if($salaire->statut !== 'payé')
-                                                        <form action="{{ route('salaires.destroy', $salaire) }}" 
-                                                              method="POST" style="display: inline;">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-danger" 
-                                                                    title="Supprimer" 
-                                                                    onclick="return confirm('Supprimer ce salaire ?')">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -232,7 +179,7 @@
                         <div class="text-center text-muted py-5">
                             <i class="fas fa-coins fa-3x mb-3"></i>
                             <h5>Aucun salaire trouvé</h5>
-                            <p>Commencez par créer un nouveau salaire ou calculer les salaires pour une période.</p>
+                            <p>Commencez par créer un bulletin de salaire ou un bon d'avance.</p>
                         </div>
                     @endif
                 </div>
@@ -241,67 +188,5 @@
     </div>
 </div>
 
-<!-- Modal pour calculer les salaires d'une période -->
-<div class="modal fade" id="calculerModal" tabindex="-1" aria-labelledby="calculerModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="calculerModalLabel">
-                    <i class="fas fa-calculator mr-2"></i>
-                    Calculer les Salaires pour une Période
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('salaires.calculer-periode') }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="periode_debut">Période Début <span class="text-danger">*</span></label>
-                                <input type="date" name="periode_debut" id="periode_debut" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="periode_fin">Période Fin <span class="text-danger">*</span></label>
-                                <input type="date" name="periode_fin" id="periode_fin" class="form-control" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="taux_horaire_defaut">Taux Horaire Défaut (GNF) <span class="text-danger">*</span></label>
-                                <input type="number" name="taux_horaire_defaut" id="taux_horaire_defaut" 
-                                       class="form-control" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="salaire_base_defaut">Salaire de Base Défaut (GNF) <span class="text-danger">*</span></label>
-                                <input type="number" name="salaire_base_defaut" id="salaire_base_defaut" 
-                                       class="form-control" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle mr-2"></i>
-                        <strong>Note:</strong> Cette action créera automatiquement un salaire pour chaque enseignant 
-                        avec les paramètres par défaut (80 heures par mois). Vous pourrez ensuite modifier 
-                        individuellement chaque salaire selon les besoins.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-calculator mr-1"></i>
-                        Calculer les Salaires
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endsection
 

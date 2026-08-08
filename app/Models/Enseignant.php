@@ -65,6 +65,16 @@ class Enseignant extends Model
         return $this->hasMany(SalaireEnseignant::class);
     }
 
+    public function bonsSalaire()
+    {
+        return $this->hasMany(BonSalaireEnseignant::class);
+    }
+
+    public function totalAvancesActives(): float
+    {
+        return (float) $this->bonsSalaire()->actifs()->sum('montant');
+    }
+
     /**
      * Scope pour les enseignants actifs
      */

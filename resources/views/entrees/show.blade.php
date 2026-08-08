@@ -4,17 +4,24 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="page-title-box">
-                <h4 class="page-title">Détails de l'Entrée</h4>
-                <p class="text-muted">Informations détaillées sur l'entrée</p>
-            </div>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <div>
+            <h1 class="h2 mb-0">
+                <i class="fas fa-arrow-down me-2"></i>
+                Détails de l'Entrée
+            </h1>
+            <p class="text-muted mb-0">Informations détaillées sur l'entrée</p>
+        </div>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ route('entrees.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Retour
+            </a>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-8">
+        <div class="col-lg-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Informations de l'Entrée</h5>
@@ -95,29 +102,28 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('entrees.edit', $entree) }}" class="btn btn-warning">
-                            <i class="fas fa-edit me-1"></i>Modifier
-                        </a>
-                        <a href="{{ route('entrees.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                        </a>
-                        <form action="{{ route('entrees.destroy', $entree) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger w-100">
-                                <i class="fas fa-trash me-1"></i>Supprimer
-                            </button>
-                        </form>
-                    </div>
-                </div>
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('entrees.edit', $entree) }}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </a>
+                <a href="{{ route('entrees.recu', $entree) }}" class="btn btn-info" target="_blank">
+                    <i class="fas fa-file-pdf me-1"></i> Télécharger reçu
+                </a>
+                <form action="{{ route('entrees.destroy', $entree) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée ?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>

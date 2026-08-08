@@ -279,6 +279,23 @@ class FacturationController extends Controller
         }
     }
 
+    public function annuler(Facture $facture)
+    {
+        if (!auth()->user()->hasPermission('paiements.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à annuler des factures.');
+        }
+
+        try {
+            $numero = $facture->numero_facture;
+            $this->facturationService->annulerFacture($facture);
+
+            return redirect()->route('factures.show', $facture)
+                ->with('success', "Facture {$numero} annulée. Les paiements, les mois concernés et l'entrée comptable ont été remis à jour.");
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
     public function lignesFactureEdition(Facture $facture)
     {
         if (!auth()->user()->hasPermission('paiements.edit')) {

@@ -13,38 +13,7 @@
                         Détails du Frais de Scolarité
                     </h3>
                     <div>
-                        @if($frais->montant_restant > 0)
-                            @if($frais->paiement_par_tranches)
-                                <button class="btn btn-warning" onclick="payerTranche()">
-                                    <i class="fas fa-credit-card mr-1"></i>
-                                    Payer un Mois
-                                </button>
-                            @else
-                                <a href="{{ route('paiements.payer-direct', $frais) }}" class="btn btn-success">
-                                    <i class="fas fa-money-bill-wave mr-1"></i>
-                                    Payer
-                                </a>
-                            @endif
-                        @endif
-                        
-                        @if($frais->montant_restant > 0)
-                            <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" class="btn btn-danger ml-2">
-                                <i class="fas fa-bell mr-1"></i>
-                                Créer Reçu de Rappel
-                            </a>
-                        @endif
-                        
-                        @if($frais->paiements->count() > 0)
-                            <a href="{{ route('paiements.recu', $frais) }}" class="btn btn-info ml-2" target="_blank">
-                                <i class="fas fa-file-pdf mr-1"></i>
-                                Télécharger Reçu
-                            </a>
-                            <a href="{{ route('paiements.recu', $frais) }}?print=1" class="btn btn-warning ml-2" target="_blank">
-                                <i class="fas fa-print mr-1"></i>
-                                Imprimer PDF
-                            </a>
-                        @endif
-                        <a href="{{ route('paiements.index') }}" class="btn btn-secondary ml-2">
+                        <a href="{{ route('paiements.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Retour
                         </a>
@@ -174,7 +143,7 @@
                                     <table class="table table-bordered">
                                         <thead class="thead-dark">
                                             <tr>
-                                                <th>Tranche</th>
+                                                <th>Mois</th>
                                                 <th>Montant</th>
                                                 <th>Échéance</th>
                                                 <th>Statut</th>
@@ -187,7 +156,7 @@
                                             @foreach($frais->tranchesPaiement->sortBy('numero_tranche') as $tranche)
                                                 <tr class="{{ $tranche->isEnRetard() ? 'table-danger' : '' }}">
                                                     <td>
-                                                        <strong>Mois {{ $tranche->numero_tranche }}</strong>
+                                                        <strong>{{ $tranche->libelle_mois }}</strong>
                                                     </td>
                                                     <td>{{ number_format($tranche->montant_tranche, 0, ',', ' ') }} GNF</td>
                                                     <td>{{ $tranche->date_echeance->format('d/m/Y') }}</td>
@@ -285,6 +254,74 @@
                             </div>
                         </div>
                     @endif
+
+                    @php
+                        $prochaineTranche = $frais->paiement_par_tranches
+                            ? $frais->tranchesPaiement->where('statut', '!=', 'paye')->sortBy('numero_tranche')->first()
+                            : null;
+                    @endphp
+
+                    <div class="card mb-4">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0"><i class="fas fa-bolt mr-2"></i>Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                @if($frais->eleve)
+                                    <a href="{{ route('eleves.show', $frais->eleve->id) }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-user mr-1"></i> Voir l'élève
+                                    </a>
+                                @endif
+
+                                @if($frais->montant_restant > 0)
+                                    @if($frais->paiement_par_tranches)
+                                        @if($prochaineTranche)
+                                            <a href="{{ route('paiements.payer-tranche', $prochaineTranche) }}" class="btn btn-warning">
+                                                <i class="fas fa-credit-card mr-1"></i> Payer un mois
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('paiements.payer-direct', $frais) }}" class="btn btn-success">
+                                            <i class="fas fa-money-bill-wave mr-1"></i> Payer tout
+                                        </a>
+                                    @else
+                                        <a href="{{ route('paiements.payer-direct', $frais) }}" class="btn btn-success">
+                                            <i class="fas fa-money-bill-wave mr-1"></i> Payer
+                                        </a>
+                                    @endif
+
+                                    <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" class="btn btn-danger">
+                                        <i class="fas fa-bell mr-1"></i> Créer reçu de rappel
+                                    </a>
+                                @endif
+
+                                @if($frais->paiements->count() > 0)
+                                    <a href="{{ route('paiements.recu', $frais) }}" class="btn btn-info" target="_blank">
+                                        <i class="fas fa-file-pdf mr-1"></i> Télécharger reçu
+                                    </a>
+                                    <a href="{{ route('paiements.recu', $frais) }}?print=1" class="btn btn-outline-info" target="_blank">
+                                        <i class="fas fa-print mr-1"></i> Imprimer reçu
+                                    </a>
+
+                                    <form method="POST" action="{{ route('paiements.annuler-dernier-paiement', $frais) }}" class="d-inline"
+                                          onsubmit="return confirm('Êtes-vous sûr de vouloir annuler le dernier paiement de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera le dernier paiement et recalculera le montant restant.');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-warning">
+                                            <i class="fas fa-undo mr-1"></i> Annuler le dernier paiement
+                                        </button>
+                                    </form>
+                                @endif
+
+                                <form method="POST" action="{{ route('paiements.destroy', $frais) }}" class="d-inline"
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer les frais \'{{ $frais->libelle }}\' de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement les frais, les paiements, les tranches et les entrées comptables liées.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash mr-1"></i> Supprimer les frais
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -204,11 +204,11 @@
     
 </div>
 
-<!-- Informations personnelles et scolaires côte à côte en haut -->
-<div class="row g-3 mb-4">
+<!-- Informations personnelles et scolaires côte à côte -->
+<div class="row g-3 mb-4 align-items-stretch">
     <!-- Informations personnelles -->
-    <div class="col-12 col-lg-5">
-        <div class="card mb-4">
+    <div class="col-12 col-md-6">
+        <div class="card h-100">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Informations Personnelles</h5>
             </div>
@@ -255,6 +255,7 @@
                             </span>
                             <span class="badge bg-info ms-2">{{ ucfirst($eleve->statut) }}</span>
                         </p>
+                        </div>
                     </div>
                 </div>
                 
@@ -310,9 +311,9 @@
         </div>
     </div>
     
-    <!-- Informations scolaires (à droite sur desktop) -->
-    <div class="col-12 col-lg-7">
-        <div class="card mb-4">
+    <!-- Informations scolaires -->
+    <div class="col-12 col-md-6">
+        <div class="card h-100">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">Informations Scolaires</h5>
             </div>
@@ -362,19 +363,6 @@
                     </div>
                 </div>
                 
-                <!-- Actions rapides -->
-                <div class="mt-3">
-                    <h6 class="border-bottom pb-2">Actions rapides</h6>
-                    <div class="d-flex flex-wrap gap-2">
-                        <a href="{{ route('absences.eleve', $eleve->id) }}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-calendar-times me-1"></i>
-                            Voir absences
-                        </a>
-                        <a href="{{ route('notes.eleve', $eleve->id) }}" class="btn btn-sm btn-outline-info">
-                            <i class="fas fa-graduation-cap me-1"></i>
-                            Voir notes
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -553,6 +541,85 @@
 			</p>
 		@endif
 	</div>
+</div>
+
+<!-- Actions sur l'élève -->
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('eleves.edit', $eleve->id) }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier
+            </a>
+
+            @if($eleve->actif)
+                <form method="POST" action="{{ route('eleves.deactivate', $eleve) }}" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action rendra l\'élève inactif et il ne pourra plus accéder à son compte.')">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-pause me-1"></i> Désactiver
+                    </button>
+                </form>
+            @else
+                <form method="POST" action="{{ route('eleves.reactivate', $eleve) }}" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play me-1"></i> Réactiver
+                    </button>
+                </form>
+            @endif
+
+            @if($eleve->exempte_frais)
+                <button type="button" class="btn btn-secondary" disabled title="Élève exempté des frais de scolarité">
+                    <i class="fas fa-gift me-1"></i> Exempté des frais
+                </button>
+            @elseif($eleve->fraisScolarite->where('type_frais', 'scolarite')->count() > 0)
+                <button type="button" class="btn btn-outline-success" disabled title="Frais de scolarité déjà créés">
+                    <i class="fas fa-check-circle me-1"></i> Frais créés
+                </button>
+            @else
+                <a href="{{ route('paiements.create') }}?eleve_id={{ $eleve->id }}" class="btn btn-success">
+                    <i class="fas fa-credit-card me-1"></i> Créer frais de scolarité
+                </a>
+            @endif
+
+            @php
+                $carteActive = $eleve->cartesScolaires->where('statut', 'active')->first();
+            @endphp
+            @if($carteActive)
+                <button type="button" class="btn btn-outline-info" disabled title="Carte scolaire active ({{ $carteActive->numero_carte }})">
+                    <i class="fas fa-id-card me-1"></i> Carte active
+                </button>
+            @else
+                <a href="{{ route('cartes-scolaires.create') }}?eleve_id={{ $eleve->id }}" class="btn btn-primary">
+                    <i class="fas fa-id-card me-1"></i> Créer carte scolaire
+                </a>
+            @endif
+
+            <a href="{{ route('absences.eleve', $eleve->id) }}" class="btn btn-outline-warning">
+                <i class="fas fa-calendar-times me-1"></i> Voir absences
+            </a>
+            <a href="{{ route('notes.eleve', $eleve->id) }}" class="btn btn-outline-info">
+                <i class="fas fa-graduation-cap me-1"></i> Voir notes
+            </a>
+            <a href="{{ route('factures.create') }}?eleve_id={{ $eleve->id }}" class="btn btn-outline-primary">
+                <i class="fas fa-file-invoice me-1"></i> Facturation
+            </a>
+
+            <form method="POST" action="{{ route('eleves.delete-permanent', $eleve) }}" class="d-inline"
+                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'élève et son compte utilisateur\n- Tous ses frais de scolarité\n- Toutes ses notes\n- Toutes ses absences\n- Ses cartes scolaires\n- Sa photo de profil\n- Toutes les relations avec les parents\n\nCette action est irréversible !')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Modal pour upload de photo -->

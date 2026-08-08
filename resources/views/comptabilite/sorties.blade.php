@@ -140,12 +140,18 @@
                                         <th>Type</th>
                                         <th class="text-end" style="width: 150px;">Montant</th>
                                         <th>Enregistré par</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($sorties as $sortie)
-                                        <tr>
+                                        @php
+                                            $sortieHref = match(true) {
+                                                isset($sortie->type) && $sortie->type == 'salaire' && isset($sortie->data) => route('salaires.show', $sortie->data),
+                                                isset($sortie->data) => route('depenses.show', $sortie->data),
+                                                default => '#',
+                                            };
+                                        @endphp
+                                        <tr class="table-row-clickable" data-href="{{ $sortieHref }}" role="button" tabindex="0">
                                             <td>
                                                 <i class="fas fa-calendar text-muted me-1"></i>
                                                 @if(isset($sortie->date) && $sortie->date)
@@ -196,53 +202,6 @@
                                                         @endif
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                @if(isset($sortie->type) && $sortie->type == 'depense' && isset($sortie->data))
-                                                    <div class="btn-group btn-group-sm">
-                                                        <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        <a href="{{ route('depenses.edit', $sortie->data) }}" class="btn btn-outline-warning" title="Modifier">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <form method="POST" action="{{ route('depenses.destroy', $sortie->data) }}" 
-                                                              style="display: inline;" 
-                                                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                @elseif(isset($sortie->type) && $sortie->type == 'salaire' && isset($sortie->data))
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="btn-group btn-group-sm">
-                                                            <a href="{{ route('salaires.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
-                                                            @if(auth()->user()->hasPermission('salaires.delete'))
-                                                                <form method="POST" action="{{ route('salaires.destroy', $sortie->data) }}" 
-                                                                      style="display: inline;" 
-                                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce paiement de salaire ?')">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                                        <i class="fas fa-trash"></i>
-                                                                    </button>
-                                                                </form>
-                                                            @endif
-                                                        </div>
-                                                        <span class="badge bg-info">Salaire</span>
-                                                    </div>
-                                                @elseif(isset($sortie->data))
-                                                    <div class="btn-group btn-group-sm">
-                                                        <a href="{{ route('depenses.show', $sortie->data) }}" class="btn btn-outline-primary" title="Voir">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                    </div>
-                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

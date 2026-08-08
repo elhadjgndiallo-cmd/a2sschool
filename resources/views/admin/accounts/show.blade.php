@@ -17,10 +17,6 @@ use Illuminate\Support\Facades\Storage;
             <i class="fas fa-arrow-left me-1"></i>
             Retour à la liste
         </a>
-        <a href="{{ route('admin.accounts.edit', $adminAccount->id) }}" class="btn btn-outline-warning ms-2">
-            <i class="fas fa-edit me-1"></i>
-            Modifier
-        </a>
     </div>
 </div>
 
@@ -48,31 +44,6 @@ use Illuminate\Support\Facades\Storage;
                 <span class="badge bg-{{ $adminAccount->statut === 'actif' ? 'success' : ($adminAccount->statut === 'inactif' ? 'danger' : 'warning') }} fs-6">
                     {{ ucfirst($adminAccount->statut) }}
                 </span>
-            </div>
-        </div>
-        
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5 class="mb-0">Actions Rapides</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ route('admin.accounts.edit', $adminAccount->id) }}" class="btn btn-outline-warning">
-                        <i class="fas fa-edit me-2"></i>Modifier le Compte
-                    </a>
-                    <a href="{{ route('admin.accounts.permissions', $adminAccount->id) }}" class="btn btn-outline-primary">
-                        <i class="fas fa-key me-2"></i>Gérer les Permissions
-                    </a>
-                    <button type="button" class="btn btn-outline-secondary" onclick="resetPassword({{ $adminAccount->id }})">
-                        <i class="fas fa-lock me-2"></i>Réinitialiser Mot de Passe
-                    </button>
-                    @if($adminAccount->utilisateur->email !== 'admin@gmail.com')
-                    <button type="button" class="btn btn-outline-{{ $adminAccount->statut === 'actif' ? 'danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
-                        <i class="fas fa-{{ $adminAccount->statut === 'actif' ? 'ban' : 'check' }} me-2"></i>
-                        {{ $adminAccount->statut === 'actif' ? 'Désactiver' : 'Activer' }} le Compte
-                    </button>
-                    @endif
-                </div>
             </div>
         </div>
     </div>
@@ -301,6 +272,31 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                 @endif
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4 no-print">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('admin.accounts.edit', $adminAccount->id) }}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Modifier
+            </a>
+            <a href="{{ route('admin.accounts.permissions', $adminAccount->id) }}" class="btn btn-primary">
+                <i class="fas fa-key me-1"></i> Gérer les permissions
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="resetPassword({{ $adminAccount->id }})">
+                <i class="fas fa-lock me-1"></i> Réinitialiser mot de passe
+            </button>
+            @if($adminAccount->utilisateur->email !== 'admin@gmail.com')
+                <button type="button" class="btn btn-{{ $adminAccount->statut === 'actif' ? 'danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
+                    <i class="fas fa-{{ $adminAccount->statut === 'actif' ? 'ban' : 'check' }} me-1"></i>
+                    {{ $adminAccount->statut === 'actif' ? 'Désactiver' : 'Activer' }} le compte
+                </button>
+            @endif
         </div>
     </div>
 </div>

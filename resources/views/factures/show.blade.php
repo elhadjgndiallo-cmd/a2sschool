@@ -21,6 +21,15 @@
                 </a>
             @endif
             <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-success" target="_blank"><i class="fas fa-receipt me-1"></i> Reçu / PDF</a>
+            @if(auth()->user()->hasPermission('paiements.edit') && $facture->peutEtreAnnulee())
+                <form method="POST" action="{{ route('factures.annuler', $facture) }}" class="d-inline"
+                      onsubmit="return confirm('Annuler cette facture ?\n\nLes paiements liés seront retirés, les mois concernés seront recrédités et l\'entrée comptable sera supprimée.')">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-ban me-1"></i> Annuler la facture
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('factures.index') }}" class="btn btn-secondary">Retour</a>
             @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
                 <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"

@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ComptabiliteEntreesStatsService;
 use App\Services\ComptabiliteSortiesStatsService;
+use App\Services\FacturationService;
 use Illuminate\Support\Facades\Cache;
 
 class ComptabiliteController extends Controller
@@ -48,80 +49,10 @@ class ComptabiliteController extends Controller
 
         $toutesLesEntrees = $entreesStats->buildListEntries(new Request(), $anneeScolaireActive)
             ->take(10);
-            
-        // OPTIMISATION: Récupérer DIRECTEMENT les 10 dernières dépenses (au lieu de toutes)
-        $depensesRecentes = Depense::select([
-                'id', 'libelle', 'montant', 'date_depense', 'type_depense', 
-                'approuve_par', 'paye_par', 'description'
-            ])
-            ->with([
-                'approuvePar:id,nom,prenom', 
-                'payePar:id,nom,prenom'
-            ])
-            ->where('annee_scolaire_id', $anneeScolaireActive->id)
-            ->excluantSalairesModule()
-            ->orderBy('date_depense', 'desc')
-            ->limit(10) // Directement limité à 10
-            ->get();
-        
-        // OPTIMISATION: Récupérer DIRECTEMENT les 10 derniers salaires (au lieu de tous)
-        $salairesRecents = SalaireEnseignant::select([
-                'id', 'enseignant_id', 'salaire_net', 'date_paiement', 
-                'periode_debut', 'periode_fin', 'paye_par'
-            ])
-            ->where('statut', 'payé')
-            ->whereNotNull('date_paiement')
-            ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaireActive->id))
-            ->with([
-                'enseignant:id,utilisateur_id',
-                'enseignant.utilisateur:id,nom,prenom',
-                'payePar:id,nom,prenom'
-            ])
-            ->orderBy('date_paiement', 'desc')
-            ->limit(10) // Directement limité à 10
-            ->get();
-        
-        // Combiner les sorties (dépenses + salaires) et prendre les 10 plus récentes
-        $toutesLesSorties = collect();
-        
-        // Ajouter les dépenses récentes
-        foreach ($depensesRecentes as $depense) {
-            $toutesLesSorties->push((object) [
-                'id' => 'depense_' . $depense->id,
-                'type' => 'depense',
-                'date' => $depense->date_depense,
-                'description' => $depense->libelle,
-                'montant' => $depense->montant,
-                'type_depense' => $depense->type_depense,
-                'enregistre_par' => $depense->approuvePar,
-                'data' => $depense
-            ]);
-        }
-        
-        // Ajouter les salaires récents
-        foreach ($salairesRecents as $salaire) {
-            $enseignantNom = optional($salaire->enseignant)->utilisateur 
-                ? ($salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom)
-                : 'Enseignant';
-            
-            $dateDebut = $salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A';
-            $dateFin = $salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A';
-            $description = 'Salaire ' . $enseignantNom . ' - ' . $dateDebut . ' - ' . $dateFin;
-            
-            $toutesLesSorties->push((object) [
-                'id' => 'salaire_' . $salaire->id,
-                'type' => 'salaire',
-                'date' => $salaire->date_paiement,
-                'description' => $description,
-                'montant' => $salaire->salaire_net,
-                'type_depense' => 'salaire_enseignant',
-                'enregistre_par' => $salaire->payePar,
-                'data' => $salaire
-            ]);
-        }
-        
-        // Trier par date décroissante et limiter aux 10 dernières
-        $toutesLesSorties = $toutesLesSorties->sortByDesc('date')->take(10);
+
+        $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
+        $toutesLesSorties = $sortiesStatsService->buildListEntries(new Request(), $anneeScolaireActive)
+            ->take(10);
         
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
         $totalRevenus = $stats['revenus_total'];
@@ -1297,5 +1228,71 @@ class ComptabiliteController extends Controller
     {
         return $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
             && abs((float) $depense->montant - (float) $salaire->salaire_net) < 0.01;
+    }
+
+    /**
+     * Rapport des élèves n'ayant pas payé les mois sélectionnés, par classe.
+     */
+    public function impayesMensuels(Request $request, FacturationService $facturationService)
+    {
+        set_time_limit(120);
+
+        $anneesScolaires = \App\Models\AnneeScolaire::orderByDesc('date_debut')->get();
+        $anneeScolaire = $request->filled('annee_scolaire_id')
+            ? \App\Models\AnneeScolaire::find($request->annee_scolaire_id)
+            : \App\Models\AnneeScolaire::anneeActive();
+
+        if (!$anneeScolaire) {
+            return redirect()->route('comptabilite.index')
+                ->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $classes = Classe::orderBy('nom')->get();
+        $moisOptions = $facturationService->getMoisFacturationOptions($anneeScolaire);
+        $typesFrais = [
+            'scolarite' => 'Scolarité',
+            'cantine' => 'Cantine',
+            'transport' => 'Transport',
+        ];
+
+        $moisSelectionnes = array_values(array_filter((array) $request->input('mois', [])));
+        $classeId = $request->filled('classe_id') ? (int) $request->classe_id : null;
+        $typeFrais = $request->input('type_frais', 'scolarite');
+        $resultats = collect();
+        $aRecherche = false;
+
+        if ($request->has('filtrer')) {
+            $request->validate([
+                'classe_id' => 'required|exists:classes,id',
+                'mois' => 'required|array|min:1',
+                'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
+                'type_frais' => 'in:scolarite,cantine,transport',
+            ], [
+                'classe_id.required' => 'Veuillez sélectionner une classe.',
+                'mois.required' => 'Veuillez cocher au moins un mois.',
+                'mois.min' => 'Veuillez cocher au moins un mois.',
+            ]);
+
+            $aRecherche = true;
+            $resultats = $facturationService->rechercherElevesImpayes(
+                $anneeScolaire,
+                $moisSelectionnes,
+                $classeId,
+                $typeFrais
+            );
+        }
+
+        return view('comptabilite.impayes-mensuels', compact(
+            'anneeScolaire',
+            'anneesScolaires',
+            'classes',
+            'moisOptions',
+            'typesFrais',
+            'moisSelectionnes',
+            'classeId',
+            'typeFrais',
+            'resultats',
+            'aRecherche'
+        ));
     }
 }

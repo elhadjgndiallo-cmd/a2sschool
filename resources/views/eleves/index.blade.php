@@ -199,12 +199,11 @@ use Illuminate\Support\Facades\Storage;
                         <th>Classe</th>
                         <th>Statut</th>
                         <th>Frais</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($eleves as $eleve)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('eleves.show', $eleve) }}" role="button" tabindex="0">
                         <td>
                             <x-profile-image 
                                 :photo-path="$eleve->utilisateur->photo_profil ?? null"
@@ -222,8 +221,6 @@ use Illuminate\Support\Facades\Storage;
                         </td>
                         <td>
                                             <strong>{{ $eleve->classe->nom ?? 'N/A' }}</strong>
-                            <br>
-                                            <small class="text-muted">{{ $eleve->classe->niveau ?? '' }}</small>
                         </td>
                         <td>
                                             @if($eleve->actif)
@@ -234,111 +231,15 @@ use Illuminate\Support\Facades\Storage;
                         </td>
                         <td>
                             @if($eleve->exempte_frais)
-                                <span class="badge bg-danger">
-                                    <i class="fas fa-gift me-1"></i>
-                                    NON
-                                </span>
-                                <br>
-                                                <small class="text-muted">Exempté des frais</small>
+                                <span class="badge bg-danger">NON</span>
                             @else
-                                <span class="badge bg-success">
-                                    <i class="fas fa-credit-card me-1"></i>
-                                    OUI
-                                </span>
-                                                <br>
-                                @if($eleve->paiement_annuel)
-                                                    <small class="badge bg-info">Paiement annuel</small>
-                                                @else
-                                                    <small class="text-muted">Paiement mensuel</small>
-                                @endif
+                                <span class="badge bg-success">OUI</span>
                             @endif
-                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('eleves.show', $eleve) }}" 
-                                                   class="btn btn-sm btn-info" 
-                                                   title="Voir détails"
-                                                   onclick="return testButton('eleve', {{ $eleve->id }})">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                                <a href="{{ route('eleves.edit', $eleve) }}" 
-                                                   class="btn btn-sm btn-warning" 
-                                                   title="Modifier"
-                                                   onclick="return testEditButton('eleve', {{ $eleve->id }})">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                                
-                                                @if($eleve->actif)
-                                                    <form method="POST" action="{{ route('eleves.deactivate', $eleve) }}" class="d-inline" 
-                                                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action rendra l\'élève inactif et il ne pourra plus accéder à son compte.')">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="btn btn-sm btn-danger" 
-                                                                title="Désactiver l'élève">
-                                                            <i class="fas fa-pause"></i>
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <form method="POST" action="{{ route('eleves.reactivate', $eleve) }}" class="d-inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="btn btn-sm btn-success" 
-                                                                title="Réactiver l'élève">
-                                                            <i class="fas fa-play"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                
-                                                <!-- Bouton de suppression définitive -->
-                                                <form method="POST" action="{{ route('eleves.delete-permanent', $eleve) }}" class="d-inline" 
-                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement l\'élève {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }} ?\n\nCette action supprimera :\n- L\'élève et son compte utilisateur\n- Tous ses frais de scolarité\n- Toutes ses notes\n- Toutes ses absences\n- Ses cartes scolaires\n- Sa photo de profil\n- Toutes les relations avec les parents\n\nCette action est irréversible !')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                                            title="Supprimer définitivement">
-                                                        <i class="fas fa-trash-alt"></i>
-                                                    </button>
-                                                </form>
-                                                
-                                    @if($eleve->exempte_frais)
-                                        <button class="btn btn-sm btn-secondary" 
-                                                title="Élève exempté des frais de scolarité" 
-                                                disabled>
-                                            <i class="fas fa-gift"></i>
-                                        </button>
-                                    @elseif($eleve->fraisScolarite->where('type_frais', 'scolarite')->count() > 0)
-                                        <button class="btn btn-sm btn-warning" 
-                                                title="Frais de scolarité déjà créés pour cet élève" 
-                                                disabled>
-                                            <i class="fas fa-check-circle"></i>
-                                        </button>
-                                    @else
-                                        <a href="{{ route('paiements.create') }}?eleve_id={{ $eleve->id }}" 
-                                           class="btn btn-sm btn-success" 
-                                           title="Créer des frais de scolarité">
-                                            <i class="fas fa-credit-card"></i>
-                                        </a>
-                                    @endif
-                                    
-                                    @if($eleve->cartesScolaires->where('statut', 'active')->count() > 0)
-                                        <button class="btn btn-sm btn-info" 
-                                                title="Carte scolaire active ({{ $eleve->cartesScolaires->where('statut', 'active')->first()->numero_carte }})" 
-                                                disabled>
-                                            <i class="fas fa-id-card"></i>
-                                        </button>
-                                    @else
-                                        <a href="{{ route('cartes-scolaires.create') }}?eleve_id={{ $eleve->id }}" 
-                                           class="btn btn-sm btn-primary" 
-                                           title="Créer une carte scolaire">
-                                            <i class="fas fa-id-card"></i>
-                                        </a>
-                                    @endif
-                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                                        <td colspan="8" class="text-center text-muted">
+                                        <td colspan="7" class="text-center text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2"></i>
                                             <br>
                                             Aucun élève trouvé
@@ -405,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.form.submit();
         });
     }
-    
+
     // Vérifier que la fonction est disponible après le chargement du DOM
     console.log('Après DOM chargé, fonction confirmPermanentDelete:', typeof confirmPermanentDelete);
 });

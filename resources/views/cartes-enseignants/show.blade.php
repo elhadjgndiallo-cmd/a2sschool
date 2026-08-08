@@ -16,21 +16,9 @@ $schoolInfo = SchoolHelper::getDocumentInfo();
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-id-card me-2"></i>Détails de la Carte Enseignant</h2>
                 <div>
-                    <a href="{{ route('cartes-enseignants.index') }}" class="btn btn-secondary me-2">
+                    <a href="{{ route('cartes-enseignants.index') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
-                    <a href="{{ route('cartes-enseignants.edit', $cartes_enseignant) }}" class="btn btn-warning me-2">
-                        <i class="fas fa-edit me-2"></i>Modifier
-                    </a>
-                    <a href="{{ route('cartes-enseignants.imprimer', $cartes_enseignant) }}" 
-                       class="btn btn-info me-2" target="_blank">
-                        <i class="fas fa-print me-2"></i>Imprimer
-                    </a>
-                    @if($cartes_enseignant->statut === 'active')
-                        <a href="{{ route('cartes-enseignants.renouveler', $cartes_enseignant) }}" class="btn btn-success">
-                            <i class="fas fa-sync me-2"></i>Renouveler
-                        </a>
-                    @endif
                 </div>
             </div>
 
@@ -271,30 +259,29 @@ $schoolInfo = SchoolHelper::getDocumentInfo();
                 </div>
             </div>
 
-            <!-- Actions -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-end">
-                        <a href="{{ route('cartes-enseignants.edit', $cartes_enseignant) }}" class="btn btn-warning me-2">
-                            <i class="fas fa-edit me-2"></i>Modifier
+            <div class="card mb-4 no-print">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ route('cartes-enseignants.edit', $cartes_enseignant) }}" class="btn btn-warning">
+                            <i class="fas fa-edit me-1"></i> Modifier
                         </a>
-                        <a href="{{ route('cartes-enseignants.imprimer', $cartes_enseignant) }}" 
-                           class="btn btn-info me-2" target="_blank">
-                            <i class="fas fa-print me-2"></i>Imprimer
+                        <a href="{{ route('cartes-enseignants.imprimer', $cartes_enseignant) }}" class="btn btn-info" target="_blank">
+                            <i class="fas fa-print me-1"></i> Imprimer
                         </a>
                         @if($cartes_enseignant->statut === 'active')
-                            <a href="{{ route('cartes-enseignants.renouveler', $cartes_enseignant) }}" class="btn btn-success me-2">
-                                <i class="fas fa-sync me-2"></i>Renouveler
+                            <a href="{{ route('cartes-enseignants.renouveler', $cartes_enseignant) }}" class="btn btn-success">
+                                <i class="fas fa-sync me-1"></i> Renouveler
                             </a>
                         @endif
-                        <form action="{{ route('cartes-enseignants.destroy', $cartes_enseignant) }}" 
-                              method="POST" 
-                              class="d-inline"
+                        <form action="{{ route('cartes-enseignants.destroy', $cartes_enseignant) }}" method="POST" class="d-inline"
                               onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash me-2"></i>Supprimer
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i> Supprimer
                             </button>
                         </form>
                     </div>

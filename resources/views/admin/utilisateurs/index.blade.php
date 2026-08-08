@@ -44,15 +44,14 @@
                                     <th>Rôle</th>
                                     <th>Statut</th>
                                     <th>Date de création</th>
-                                    <th style="width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($utilisateurs as $utilisateur)
-                                <tr>
+                                <tr class="table-row-clickable" data-href="{{ route('admin.utilisateurs.edit', $utilisateur) }}" role="button" tabindex="0">
                                     <td>
                                         <div class="form-check">
-                                            <input type="checkbox" class="form-check-input" id="user-{{ $utilisateur->id }}">
+                                            <input type="checkbox" class="form-check-input" id="user-{{ $utilisateur->id }}" onclick="event.stopPropagation()">
                                             <label class="form-check-label" for="user-{{ $utilisateur->id }}">&nbsp;</label>
                                         </div>
                                     </td>
@@ -100,33 +99,10 @@
                                         @endif
                                     </td>
                                     <td>{{ $utilisateur->created_at->format('d/m/Y') }}</td>
-                                    <td>
-                                        <div class="d-flex gap-2">
-                                            <a href="{{ route('admin.utilisateurs.edit', $utilisateur->id) }}" class="btn btn-sm btn-primary" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form action="{{ route('admin.utilisateurs.toggle', $utilisateur->id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="btn btn-sm {{ $utilisateur->actif ? 'btn-warning' : 'btn-success' }}" title="{{ $utilisateur->actif ? 'Désactiver' : 'Activer' }}">
-                                                    <i class="fas {{ $utilisateur->actif ? 'fa-ban' : 'fa-check' }}"></i>
-                                                </button>
-                                            </form>
-                                            @if($utilisateur->role !== 'admin' || auth()->user()->id !== $utilisateur->id)
-                                                <form action="{{ route('admin.utilisateurs.destroy', $utilisateur->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
-                                                        <i class="fas fa-trash-alt"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="7" class="text-center">Aucun utilisateur trouvé</td>
+                                    <td colspan="6" class="text-center">Aucun utilisateur trouvé</td>
                                 </tr>
                                 @endforelse
                             </tbody>

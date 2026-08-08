@@ -132,12 +132,11 @@
                                         <th width="15%">Date de Fin</th>
                                         <th width="12%">Statut</th>
                                         <th width="12%">État</th>
-                                        <th width="16%" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($annees as $index => $annee)
-                                    <tr class="{{ $annee->active ? 'table-success' : '' }}">
+                                    <tr class="table-row-clickable {{ $annee->active ? 'table-success' : '' }}" data-href="{{ route('annees-scolaires.show', $annee) }}" role="button" tabindex="0">
                                         <td class="text-center">
                                             <strong>{{ $index + 1 }}</strong>
                                         </td>
@@ -188,46 +187,6 @@
                                                     <i class="fas fa-pause-circle me-1"></i>Inactive
                                                 </span>
                                             @endif
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                @if(!$annee->active)
-                                                    <form action="{{ route('annees-scolaires.activer', $annee) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-success" 
-                                                                onclick="return confirm('Activer cette année scolaire ?\n\nCela désactivera automatiquement l\'année actuellement active.')"
-                                                                title="Activer cette année">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <button class="btn btn-success" disabled title="Année actuellement active">
-                                                        <i class="fas fa-star"></i>
-                                                    </button>
-                                                @endif
-                                                
-                                                <a href="{{ route('annees-scolaires.edit', $annee) }}" 
-                                                   class="btn btn-outline-primary"
-                                                   title="Modifier cette année">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                
-                                                @if(!$annee->active)
-                                                    <form action="{{ route('annees-scolaires.destroy', $annee) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger" 
-                                                                onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette année scolaire ?\n\nCette action est irréversible.')"
-                                                                title="Supprimer cette année">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <button class="btn btn-outline-secondary" disabled title="Impossible de supprimer l'année active">
-                                                        <i class="fas fa-lock"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
                                         </td>
                                     </tr>
                                     @endforeach

@@ -12,12 +12,6 @@
                         <i class="fas fa-user-tie me-2"></i>Détails du Personnel d'Administration
                     </h3>
                     <div class="btn-group">
-                        <a href="{{ route('personnel-administration.edit', $personnelAdministration) }}" class="btn btn-warning">
-                            <i class="fas fa-edit me-1"></i>Modifier
-                        </a>
-                        <a href="{{ route('personnel-administration.permissions', $personnelAdministration) }}" class="btn btn-primary">
-                            <i class="fas fa-key me-1"></i>Permissions
-                        </a>
                         <a href="{{ route('personnel-administration.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Retour
                         </a>
@@ -210,6 +204,58 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('personnel-administration.edit', $personnelAdministration) }}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </a>
+                <a href="{{ route('personnel-administration.permissions', $personnelAdministration) }}" class="btn btn-primary">
+                    <i class="fas fa-key me-1"></i> Permissions
+                </a>
+                <a href="{{ route('cartes-personnel-administration.create') }}?personnel_administration_id={{ $personnelAdministration->id }}" class="btn btn-success">
+                    <i class="fas fa-id-card me-1"></i> Créer une carte
+                </a>
+                <form method="POST" action="{{ route('personnel-administration.reset-password', $personnelAdministration) }}" class="d-inline"
+                      onsubmit="return confirm('Réinitialiser le mot de passe ?')">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-lock me-1"></i> Réinitialiser mot de passe
+                    </button>
+                </form>
+                @if($personnelAdministration->statut === 'actif')
+                    <form method="POST" action="{{ route('personnel-administration.destroy', $personnelAdministration) }}" class="d-inline"
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir désactiver le personnel {{ $personnelAdministration->utilisateur->prenom }} {{ $personnelAdministration->utilisateur->nom }} ?\n\nCette action rendra le personnel inactif et il ne pourra plus accéder à son compte.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-pause me-1"></i> Désactiver
+                        </button>
+                    </form>
+                @else
+                    <form action="{{ route('personnel-administration.reactivate', $personnelAdministration->id) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir réactiver ce personnel ?')">
+                        @csrf
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-play me-1"></i> Réactiver
+                        </button>
+                    </form>
+                @endif
+                <form method="POST" action="{{ route('personnel-administration.delete-permanent', $personnelAdministration) }}" class="d-inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement le personnel {{ $personnelAdministration->utilisateur->prenom }} {{ $personnelAdministration->utilisateur->nom }} ?\n\nCette action est irréversible !')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
+                    </button>
+                </form>
             </div>
         </div>
     </div>

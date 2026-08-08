@@ -117,12 +117,11 @@
                                     <th>Échéance</th>
                                     <th>Statut</th>
                                     <th>Paiement</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($fraisScolarite as $frais)
-                                    <tr>
+                                    <tr class="table-row-clickable" data-href="{{ route('paiements.show', $frais) }}" role="button" tabindex="0">
                                         <td>
                                             <strong>{{ $frais->eleve->utilisateur->nom ?? 'N/A' }} {{ $frais->eleve->utilisateur->prenom ?? 'N/A' }}</strong>
                                         </td>
@@ -130,7 +129,8 @@
                                             @if($frais->eleve && $frais->eleve->id)
                                                 <a href="{{ route('eleves.show', $frais->eleve->id) }}" 
                                                    class="text-primary text-decoration-none" 
-                                                   title="Voir le profil de l'élève">
+                                                   title="Voir le profil de l'élève"
+                                                   onclick="event.stopPropagation()">
                                                     <i class="fas fa-user me-1"></i>
                                                     {{ $frais->eleve->numero_etudiant ?? 'N/A' }}
                                                 </a>
@@ -190,70 +190,10 @@
                                                 Reste: {{ number_format($frais->montant_restant, 0, ',', ' ') }} GNF
                                             </small>
                                         </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('paiements.show', $frais) }}" 
-                                                   class="btn btn-sm btn-info" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($frais->montant_restant > 0)
-                                                    @if($frais->paiement_par_tranches)
-                                                        @php
-                                                            $prochaineTranche = $frais->tranchesPaiement()
-                                                                ->where('statut', 'en_attente')
-                                                                ->orderBy('numero_tranche')
-                                                                ->first();
-                                                        @endphp
-                                                        @if($prochaineTranche)
-                                                            <div class="btn-group" role="group">
-                                                                <a href="{{ route('paiements.payer-tranche', $prochaineTranche) }}" 
-                                                                   class="btn btn-sm btn-warning" title="Payer mois">
-                                                                    <i class="fas fa-credit-card"></i>
-                                                                </a>
-                                                                <a href="{{ route('paiements.payer-direct', $frais) }}" 
-                                                                   class="btn btn-sm btn-success" title="Payer tout">
-                                                                    <i class="fas fa-money-bill-wave"></i>
-                                                                </a>
-                                                            </div>
-                                                        @else
-                                                            <button class="btn btn-sm btn-secondary" disabled title="Toutes les tranches sont payées">
-                                                                <i class="fas fa-check"></i>
-                                                            </button>
-                                                        @endif
-                                                    @else
-                                                        <a href="{{ route('paiements.payer-direct', $frais) }}" 
-                                                           class="btn btn-sm btn-success" title="Payer">
-                                                            <i class="fas fa-money-bill-wave"></i>
-                                                        </a>
-                                                    @endif
-                                                @endif
-                                                @if($frais->montant_restant > 0)
-                                                    <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" 
-                                                       class="btn btn-sm btn-danger" title="Créer reçu de rappel">
-                                                        <i class="fas fa-bell"></i>
-                                                    </a>
-                                                @endif
-                                                @if($frais->paiements()->count() > 0)
-                                                    <form method="POST" action="{{ route('paiements.annuler-dernier-paiement', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler le dernier paiement de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement le dernier paiement et recalculera le montant restant.');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-danger" title="Annuler le dernier paiement">
-                                                            <i class="fas fa-undo"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                <form method="POST" action="{{ route('paiements.destroy', $frais) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer les frais \'{{ $frais->libelle }}\' de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera définitivement :\n- Les frais de scolarité\n- Tous les paiements associés\n- Les tranches de paiement\n- Les entrées comptables liées');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer les frais">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="text-center text-muted">
+                                        <td colspan="9" class="text-center text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2"></i>
                                             <br>
                                             Aucun frais de scolarité trouvé
@@ -324,11 +264,5 @@
         </div>
     </div>
 </div>
-
-@push('scripts')
-<script>
-// Script pour d'autres fonctionnalités si nécessaire
-</script>
-@endpush
 
 @endsection
