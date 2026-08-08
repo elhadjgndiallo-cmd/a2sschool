@@ -9,6 +9,7 @@ use App\Models\Matiere;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use App\Services\ImageService;
 
 class EnseignantController extends Controller
@@ -86,7 +87,9 @@ class EnseignantController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
         $matieres = Matiere::actif()->get();
-        return view('enseignants.create', compact('matieres'));
+        $prochainNumeroEmploye = Enseignant::generateNextNumeroEmploye();
+
+        return view('enseignants.create', compact('matieres', 'prochainNumeroEmploye'));
     }
 
     /**
@@ -94,17 +97,24 @@ class EnseignantController extends Controller
      */
     public function store(Request $request)
     {
+        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|unique:utilisateurs,email|max:191',
             'telephone' => 'required|string|max:20',
-            'adresse' => 'required|string',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string|max:255',
+            'adresse' => 'nullable|string|max:500',
+            'date_naissance' => 'nullable|date',
+            'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'required|in:M,F',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048|dimensions:min_width=100,min_height=100,max_width=2000,max_height=2000',
-            'numero_employe' => 'required|string|max:50|unique:enseignants,numero_employe',
             'specialite' => 'required|string|max:255',
             'date_embauche' => 'required|date',
             'statut' => 'required|in:titulaire,contractuel,vacataire',
@@ -112,7 +122,9 @@ class EnseignantController extends Controller
             'matieres.*' => 'exists:matieres,id',
         ]);
 
-        DB::transaction(function() use ($request) {
+        DB::transaction(function() use ($request, $anneeScolaireActive) {
+            $numeroEmploye = Enseignant::generateNextNumeroEmploye();
+
             // Créer l'utilisateur
             $utilisateur = Utilisateur::create([
                 'name' => $request->prenom . ' ' . $request->nom, // Champ name requis
@@ -122,9 +134,9 @@ class EnseignantController extends Controller
                 'password' => Hash::make('password123'), // Mot de passe par défaut
                 'role' => 'teacher',
                 'telephone' => $request->telephone,
-                'adresse' => $request->adresse,
-                'date_naissance' => $request->date_naissance,
-                'lieu_naissance' => $request->lieu_naissance,
+                'adresse' => $request->adresse ?: null,
+                'date_naissance' => $request->date_naissance ?: null,
+                'lieu_naissance' => $request->lieu_naissance ?: null,
                 'sexe' => $request->sexe,
                 'actif' => true,
             ]);
@@ -144,7 +156,8 @@ class EnseignantController extends Controller
             // Créer l'enseignant
             $enseignant = Enseignant::create([
                 'utilisateur_id' => $utilisateur->id,
-                'numero_employe' => $request->numero_employe,
+                'annee_scolaire_id' => $anneeScolaireActive->id,
+                'numero_employe' => $numeroEmploye,
                 'specialite' => $request->specialite,
                 'date_embauche' => $request->date_embauche,
                 'statut' => $request->statut,
@@ -301,7 +314,14 @@ class EnseignantController extends Controller
             'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'required|in:M,F',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'numero_employe' => 'nullable|string|max:50|unique:enseignants,numero_employe,' . $enseignant->id,
+            'numero_employe' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('enseignants', 'numero_employe')
+                    ->where('annee_scolaire_id', $enseignant->annee_scolaire_id)
+                    ->ignore($enseignant->id),
+            ],
             'specialite' => 'nullable|string|max:255',
             'date_embauche' => 'nullable|date|before_or_equal:today',
             'statut' => 'required|in:titulaire,contractuel,vacataire',
@@ -855,7 +875,7 @@ class EnseignantController extends Controller
             $message .= " Erreurs: " . implode(', ', $erreurs);
         }
 
-        return redirect()->route('enseignants.reinscription')
+        return redirect()->route('enseignants.index')
             ->with($enseignantsReinscris > 0 ? 'success' : 'error', $message);
     }
 }

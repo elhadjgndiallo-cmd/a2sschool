@@ -127,6 +127,7 @@ class NoteController extends Controller
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
             // Admin et Personnel Admin voient seulement les enseignants qui enseignent dans cette classe
             $enseignants = \App\Models\Enseignant::with(['utilisateur', 'emploisTemps.matiere'])
+                ->pourAnneeActive()
                 ->whereHas('emploisTemps', function($query) use ($classe) {
                     $query->where('classe_id', $classe->id)
                           ->where('actif', true);
@@ -1106,11 +1107,42 @@ class NoteController extends Controller
      */
     public function parametres()
     {
-        $matieres = Matiere::actif()->get();
-        $classes = Classe::actif()->get();
-        $periodesScolaires = \App\Models\PeriodeScolaire::getPeriodesActives();
-        
-        return view('notes.parametres', compact('matieres', 'classes', 'periodesScolaires'));
+        $periodesScolaires = \App\Models\PeriodeScolaire::ordered()->get();
+        $periodesJson = $periodesScolaires->mapWithKeys(function ($periode) {
+            return [
+                $periode->id => [
+                    'id' => $periode->id,
+                    'nom' => $periode->nom,
+                    'date_debut' => $periode->date_debut->format('Y-m-d'),
+                    'date_fin' => $periode->date_fin->format('Y-m-d'),
+                    'date_conseil' => $periode->date_conseil->format('Y-m-d'),
+                    'couleur' => $periode->couleur,
+                    'actif' => (bool) $periode->actif,
+                    'ordre' => $periode->ordre,
+                ],
+            ];
+        });
+
+        return view('notes.parametres', compact('periodesScolaires', 'periodesJson'));
+    }
+
+    /**
+     * Règles de validation communes pour les périodes scolaires.
+     */
+    private function validatePeriodeScolaireRequest(Request $request): array
+    {
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'date_debut' => 'required|date',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'date_conseil' => 'required|date|after_or_equal:date_fin',
+            'couleur' => 'required|string|in:primary,success,warning,danger,info,secondary',
+            'ordre' => 'required|integer|min:1|max:10',
+        ]);
+
+        $validated['actif'] = $request->boolean('actif');
+
+        return $validated;
     }
 
     /**
@@ -1795,7 +1827,7 @@ class NoteController extends Controller
             $enseignants = collect([$enseignant]);
             $matieres = $enseignant->matieres()->actif()->get();
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
-            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+            $enseignants = Enseignant::listeDeroulante();
             $matieres = Matiere::actif()->get();
         } else {
             abort(403, 'Vous n\'êtes pas autorisé.');
@@ -1920,22 +1952,12 @@ class NoteController extends Controller
      */
     public function updatePeriodeScolaire(Request $request, $id)
     {
-        $request->validate([
-            'nom' => 'required|string|max:255',
-            'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
-            'date_conseil' => 'required|date|after:date_fin',
-            'couleur' => 'required|string|in:primary,success,warning,danger,info,secondary',
-            'actif' => 'boolean',
-            'ordre' => 'required|integer|min:1|max:10',
-        ]);
-
         $periode = \App\Models\PeriodeScolaire::findOrFail($id);
-        $periode->update($request->all());
+        $periode->update($this->validatePeriodeScolaireRequest($request));
 
         return response()->json([
             'success' => true,
-            'message' => 'Période scolaire mise à jour avec succès'
+            'message' => 'Période scolaire mise à jour avec succès',
         ]);
     }
 
@@ -1944,22 +1966,12 @@ class NoteController extends Controller
      */
     public function createPeriodeScolaire(Request $request)
     {
-        $request->validate([
-            'nom' => 'required|string|max:255',
-            'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
-            'date_conseil' => 'required|date|after:date_fin',
-            'couleur' => 'required|string|in:primary,success,warning,danger,info,secondary',
-            'actif' => 'boolean',
-            'ordre' => 'required|integer|min:1|max:10',
-        ]);
-
-        $periode = \App\Models\PeriodeScolaire::create($request->all());
+        $periode = \App\Models\PeriodeScolaire::create($this->validatePeriodeScolaireRequest($request));
 
         return response()->json([
             'success' => true,
             'message' => 'Période scolaire créée avec succès',
-            'periode' => $periode
+            'periode' => $periode,
         ]);
     }
 
@@ -2164,6 +2176,7 @@ class NoteController extends Controller
         } else {
             // Admin et Personnel Admin voient tous les enseignants de la classe
             $enseignants = \App\Models\Enseignant::with(['utilisateur', 'emploisTemps.matiere'])
+                ->pourAnneeActive()
                 ->whereHas('emploisTemps', function($query) use ($classe) {
                     $query->where('classe_id', $classe->id)
                           ->where('actif', true);
@@ -2330,7 +2343,7 @@ class NoteController extends Controller
             $enseignants = collect([$enseignant]);
             $matieres = $enseignant->matieres()->actif()->get();
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
-            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+            $enseignants = Enseignant::listeDeroulante();
             $matieres = Matiere::actif()->get();
         } else {
             abort(403, 'Vous n\'êtes pas autorisé.');
@@ -2898,7 +2911,7 @@ class NoteController extends Controller
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);
                 })
                 ->get();
-            $enseignants = Enseignant::with('utilisateur')->actif()->get();
+            $enseignants = Enseignant::listeDeroulante();
         } else if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
             $classes = Classe::actif()

@@ -121,12 +121,14 @@ class FraisScolarite extends Model
             return false;
         }
 
-        $montantParTranche = $this->montant / $this->nombre_tranches;
+        $montantParTranche = $this->montant_tranche > 0
+            ? (float) $this->montant_tranche
+            : $this->montant / $this->nombre_tranches;
         $dateDebut = $this->date_debut_tranches ?? $this->date_echeance;
-        
+
         for ($i = 1; $i <= $this->nombre_tranches; $i++) {
             $dateEcheance = $this->calculerDateEcheance($dateDebut, $i);
-            
+
             TranchePaiement::create([
                 'frais_scolarite_id' => $this->id,
                 'numero_tranche' => $i,
@@ -135,7 +137,7 @@ class FraisScolarite extends Model
                 'statut' => 'en_attente'
             ]);
         }
-        
+
         return true;
     }
 
@@ -154,20 +156,23 @@ class FraisScolarite extends Model
      */
     public function numeroTranchePourMois(\Carbon\Carbon $mois): int
     {
-        $debut = \Carbon\Carbon::parse($this->date_debut_tranches ?? $this->date_echeance)->startOfMonth();
         $mois = $mois->copy()->startOfMonth();
+        $debut = \Carbon\Carbon::parse($this->date_debut_tranches ?? $this->date_echeance)->startOfMonth();
 
-        if ($mois->lt($debut)) {
-            throw new \InvalidArgumentException('Mois hors période de facturation.');
+        $moisFacturation = [10, 11, 12, 1, 2, 3, 4, 5, 6];
+        $anneeDebut = $debut->month >= 10 ? $debut->year : $debut->year - 1;
+        $anneeFin = $anneeDebut + 1;
+
+        foreach ($moisFacturation as $index => $numeroMois) {
+            $annee = $numeroMois >= 10 ? $anneeDebut : $anneeFin;
+            $periode = \Carbon\Carbon::create($annee, $numeroMois, 1)->startOfMonth();
+
+            if ($periode->format('Y-m') === $mois->format('Y-m')) {
+                return $index + 1;
+            }
         }
 
-        $numero = $debut->diffInMonths($mois) + 1;
-
-        if ($numero > (int) $this->nombre_tranches) {
-            throw new \InvalidArgumentException('Mois hors période de facturation.');
-        }
-
-        return $numero;
+        throw new \InvalidArgumentException('Mois hors période de facturation.');
     }
 
     /**

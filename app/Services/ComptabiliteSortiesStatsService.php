@@ -8,9 +8,12 @@ use App\Models\SalaireEnseignant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class ComptabiliteSortiesStatsService
 {
+    private const CACHE_TTL = 180;
+
     /**
      * Total des sorties : dépenses (hors doublons salaires) + salaires enseignants payés.
      */
@@ -19,16 +22,25 @@ class ComptabiliteSortiesStatsService
         $request = $request ?? new Request();
 
         if (!$anneeScolaire) {
-            return [
-                'total' => 0,
-                'nombre' => 0,
-                'moyenne' => 0,
-                'total_depenses' => 0,
-                'total_salaires' => 0,
-            ];
+            return $this->emptyStats();
         }
 
-        $entries = $this->buildListEntries($request, $anneeScolaire);
+        if ($this->shouldCacheStats($request)) {
+            return Cache::remember(
+                'comptabilite_sorties_stats_' . $anneeScolaire->id,
+                self::CACHE_TTL,
+                fn () => $this->computeStatsFast($request, $anneeScolaire)
+            );
+        }
+
+        return $this->statsFromEntries($this->buildListEntries($request, $anneeScolaire));
+    }
+
+    /**
+     * Calcule les stats à partir d'une collection déjà construite (évite une double requête).
+     */
+    public function statsFromEntries(Collection $entries): array
+    {
         $depenses = $entries->where('type', 'depense');
         $salaires = $entries->where('type', 'salaire');
 
@@ -36,6 +48,78 @@ class ComptabiliteSortiesStatsService
         $totalSalaires = (float) $salaires->sum('montant');
         $total = $totalDepenses + $totalSalaires;
         $nombre = $entries->count();
+
+        return [
+            'total' => $total,
+            'nombre' => $nombre,
+            'moyenne' => $nombre > 0 ? $total / $nombre : 0,
+            'total_depenses' => $totalDepenses,
+            'total_salaires' => $totalSalaires,
+        ];
+    }
+
+    private function emptyStats(): array
+    {
+        return [
+            'total' => 0,
+            'nombre' => 0,
+            'moyenne' => 0,
+            'total_depenses' => 0,
+            'total_salaires' => 0,
+        ];
+    }
+
+    private function shouldCacheStats(Request $request): bool
+    {
+        return !$request->filled('date_debut')
+            && !$request->filled('date_fin')
+            && !$request->filled('type_depense');
+    }
+
+    /**
+     * Totaux via agrégats SQL (sans charger toutes les lignes).
+     */
+    private function computeStatsFast(Request $request, AnneeScolaire $anneeScolaire): array
+    {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
+        $totalSalaires = (float) $this->baseSalairesQuery($request, $anneeScolaire, $periode)
+            ->sum('salaire_net');
+
+        $nombreSalaires = $this->baseSalairesQuery($request, $anneeScolaire, $periode)->count();
+
+        $dedupLookup = $this->buildSalaryDedupLookup(
+            $this->baseSalairesQuery($request, $anneeScolaire, $periode)
+                ->get(['date_paiement', 'salaire_net'])
+        );
+
+        $totalDepensesNormales = (float) $this->baseDepensesQuery($request, $anneeScolaire, $periode)
+            ->where('type_depense', '!=', 'salaire_enseignant')
+            ->sum('montant');
+
+        $nombreDepensesNormales = $this->baseDepensesQuery($request, $anneeScolaire, $periode)
+            ->where('type_depense', '!=', 'salaire_enseignant')
+            ->count();
+
+        $depensesSalaireManuelles = $this->baseDepensesQuery($request, $anneeScolaire, $periode)
+            ->where('type_depense', 'salaire_enseignant')
+            ->get();
+
+        $totalSalairesManuels = 0.0;
+        $nombreSalairesManuels = 0;
+
+        foreach ($depensesSalaireManuelles as $depense) {
+            if ($this->depenseLieeAuModuleSalaires($depense, $dedupLookup)) {
+                continue;
+            }
+
+            $totalSalairesManuels += (float) $depense->montant;
+            $nombreSalairesManuels++;
+        }
+
+        $totalDepenses = $totalDepensesNormales + $totalSalairesManuels;
+        $total = $totalDepenses + $totalSalaires;
+        $nombre = $nombreDepensesNormales + $nombreSalairesManuels + $nombreSalaires;
 
         return [
             'total' => $total,
@@ -74,11 +158,12 @@ class ComptabiliteSortiesStatsService
     {
         $depenses = $this->fetchDepenses($request, $anneeScolaire);
         $salairesPayes = $this->fetchSalairesPayes($request, $anneeScolaire);
+        $dedupLookup = $this->buildSalaryDedupLookup($salairesPayes);
 
         $allSorties = collect();
 
         foreach ($depenses as $depense) {
-            if ($this->depenseCorrespondSalairePayeCollection($depense, $salairesPayes)) {
+            if ($this->depenseLieeAuModuleSalaires($depense, $dedupLookup)) {
                 continue;
             }
 
@@ -89,7 +174,7 @@ class ComptabiliteSortiesStatsService
             $allSorties->push($this->mapSalaireToListEntry($salaire));
         }
 
-        return $this->sortByDateAsc($allSorties);
+        return $this->sortByDateDesc($allSorties);
     }
 
     /**
@@ -105,28 +190,85 @@ class ComptabiliteSortiesStatsService
             return false;
         }
 
-        return $depense->date_depense->format('Y-m-d') === $salaire->date_paiement->format('Y-m-d')
-            && abs((float) $depense->montant - (float) $salaire->salaire_net) < 0.01;
+        return $this->salaryDedupKey(
+            $depense->date_depense->format('Y-m-d'),
+            (float) $depense->montant
+        ) === $this->salaryDedupKey(
+            $salaire->date_paiement->format('Y-m-d'),
+            (float) $salaire->salaire_net
+        );
     }
 
-    private function depenseCorrespondSalairePayeCollection(Depense $depense, Collection $salairesPayes): bool
+    /**
+     * Index O(1) pour la déduplication dépense ↔ salaire payé.
+     *
+     * @return array<string, true>
+     */
+    public function buildSalaryDedupLookup(Collection $salairesPayes): array
     {
+        $lookup = [];
+
         foreach ($salairesPayes as $salaire) {
-            if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
-                return true;
+            if (!$salaire->date_paiement) {
+                continue;
             }
+
+            $lookup[$this->salaryDedupKey(
+                $salaire->date_paiement->format('Y-m-d'),
+                (float) $salaire->salaire_net
+            )] = true;
+        }
+
+        return $lookup;
+    }
+
+    private function salaryDedupKey(string $date, float $montant): string
+    {
+        return $date . '|' . number_format($montant, 2, '.', '');
+    }
+
+    /**
+     * Dépense salaire déjà comptée via le module salaires (à exclure des sorties manuelles).
+     */
+    public function depenseLieeAuModuleSalaires(Depense $depense, array $dedupLookup = []): bool
+    {
+        if ($depense->type_depense !== 'salaire_enseignant') {
+            return false;
+        }
+
+        if (Depense::hasSalaireEnseignantLinkColumn() && $depense->salaire_enseignant_id) {
+            return true;
+        }
+
+        if ($dedupLookup !== []) {
+            return $this->isDepenseInSalaryLookup($depense, $dedupLookup);
         }
 
         return false;
     }
 
-    private function fetchDepenses(Request $request, AnneeScolaire $anneeScolaire): Collection
+    private function isDepenseSalaireEnseignant(Depense $depense): bool
     {
-        $periode = $this->resolveDateRange($anneeScolaire, $request);
+        return $depense->type_depense === 'salaire_enseignant';
+    }
 
-        $query = Depense::with(['approuvePar', 'payePar'])
+    private function isDepenseInSalaryLookup(Depense $depense, array $lookup): bool
+    {
+        if ($depense->type_depense !== 'salaire_enseignant' || !$depense->date_depense) {
+            return false;
+        }
+
+        return isset($lookup[$this->salaryDedupKey(
+            $depense->date_depense->format('Y-m-d'),
+            (float) $depense->montant
+        )]);
+    }
+
+    private function baseDepensesQuery(Request $request, AnneeScolaire $anneeScolaire, array $periode)
+    {
+        $query = Depense::query()
             ->where('statut', '!=', 'annule')
-            ->whereBetween('date_depense', [$periode['debut'], $periode['fin']]);
+            ->where('annee_scolaire_id', $anneeScolaire->id);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_depense', '>=', $request->date_debut);
@@ -140,20 +282,18 @@ class ComptabiliteSortiesStatsService
             $query->where('type_depense', $request->type_depense);
         }
 
-        return $query->orderBy('date_depense', 'desc')->get();
+        return $query;
     }
 
-    private function fetchSalairesPayes(Request $request, AnneeScolaire $anneeScolaire): Collection
+    private function baseSalairesQuery(Request $request, AnneeScolaire $anneeScolaire, array $periode)
     {
         if ($request->filled('type_depense') && $request->type_depense !== 'salaire_enseignant') {
-            return collect();
+            return SalaireEnseignant::whereRaw('1 = 0');
         }
-
-        $periode = $this->resolveDateRange($anneeScolaire, $request);
 
         $query = SalaireEnseignant::where('statut', 'payé')
             ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [$periode['debut'], $periode['fin']]);
+            ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id));
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_paiement', '>=', $request->date_debut);
@@ -163,7 +303,33 @@ class ComptabiliteSortiesStatsService
             $query->whereDate('date_paiement', '<=', $request->date_fin);
         }
 
-        return $query->with(['enseignant.utilisateur', 'payePar', 'validePar'])
+        return $query;
+    }
+
+    private function fetchDepenses(Request $request, AnneeScolaire $anneeScolaire): Collection
+    {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
+        return $this->baseDepensesQuery($request, $anneeScolaire, $periode)
+            ->with([
+                'approuvePar:id,nom,prenom,role,photo_profil',
+                'payePar:id,nom,prenom,role,photo_profil',
+            ])
+            ->orderBy('date_depense', 'desc')
+            ->get();
+    }
+
+    private function fetchSalairesPayes(Request $request, AnneeScolaire $anneeScolaire): Collection
+    {
+        $periode = $this->resolveDateRange($anneeScolaire, $request);
+
+        return $this->baseSalairesQuery($request, $anneeScolaire, $periode)
+            ->with([
+                'enseignant:id,utilisateur_id',
+                'enseignant.utilisateur:id,nom,prenom',
+                'payePar:id,nom,prenom,role,photo_profil',
+                'validePar:id,nom,prenom,role,photo_profil',
+            ])
             ->orderBy('date_paiement', 'desc')
             ->get();
     }

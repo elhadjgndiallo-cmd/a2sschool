@@ -38,12 +38,7 @@ class EmploiTempsController extends Controller
             ->orderBy('nom')
             ->get();
         $matieres = Matiere::actif()->orderBy('nom')->get();
-        $enseignants = Enseignant::where('enseignants.actif', true)
-            ->with('utilisateur')
-            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
-            ->orderBy('utilisateurs.name')
-            ->select('enseignants.*')
-            ->get();
+        $enseignants = Enseignant::listeDeroulante($anneeScolaireActive?->id);
         
         return view('emplois-temps.index', compact('classes', 'matieres', 'enseignants', 'anneeScolaireActive'));
     }
@@ -159,6 +154,8 @@ class EmploiTempsController extends Controller
             })->sortBy('heure_debut')->values();
         }
         
+        $enseignants = Enseignant::listeDeroulante($anneeScolaireActive?->id);
+
         // Si c'est une classe primaire, utiliser la vue spéciale pour primaire
         if ($isPrimaire) {
             // Heures spéciales pour le primaire
@@ -178,13 +175,13 @@ class EmploiTempsController extends Controller
                 '15:00'   // 15h00-16h00
             ];
             
-            return view('emplois-temps.show-primaire', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive'));
+            return view('emplois-temps.show-primaire', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive', 'enseignants'));
         }
         
         // Pour le secondaire, utiliser la vue standard
         $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
         
-        return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive'));
+        return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive', 'enseignants'));
     }
 
     /**

@@ -40,10 +40,8 @@ class CheckPermission
         }
         
         // Vérifier si l'utilisateur a la permission requise
-        if ($user->role === 'personnel_admin' && $user->personnelAdministration) {
-            if ($user->personnelAdministration->hasPermission($permission)) {
-                return $next($request);
-            }
+        if ($user->hasPermission($permission)) {
+            return $next($request);
         }
         
         // Debug: Log pour voir qui essaie d'accéder

@@ -8,10 +8,18 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-coins mr-2"></i>
-                        Gestion des Salaires des Enseignants
-                    </h3>
+                    <div>
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-coins mr-2"></i>
+                            Gestion des Salaires des Enseignants
+                        </h3>
+                        @if($anneeScolaire ?? null)
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-alt me-1"></i>
+                                Année scolaire active : <strong>{{ $anneeScolaire->nom }}</strong>
+                            </small>
+                        @endif
+                    </div>
                     <div>
                         <a href="{{ route('salaires.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus mr-1"></i>

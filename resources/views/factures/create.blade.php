@@ -14,7 +14,7 @@
                 <input type="hidden" name="eleve_id" id="eleve_id" value="{{ $eleve?->id }}">
 
                 <div class="row mb-3">
-                    <div class="col-md-12">
+                    <div class="col-md-8">
                         <label for="eleve_search" class="form-label">Rechercher un élève</label>
                         <div class="form-text mb-2">Seuls les élèves ayant des frais mensuels impayés (scolarité, cantine, transport) sont affichés.</div>
                         <div class="input-group">
@@ -24,6 +24,16 @@
                             <button type="button" class="btn btn-outline-secondary" id="search_eleve_btn"><i class="fas fa-search"></i></button>
                         </div>
                         <div id="eleves_results" class="mt-2" style="display:none;"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="classe_filter" class="form-label">Filtrer par classe</label>
+                        <select id="classe_filter" class="form-select">
+                            <option value="">Toutes les classes</option>
+                            @foreach($classes as $classe)
+                                <option value="{{ $classe->id }}">{{ $classe->nom }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Sélectionnez une classe puis lancez la recherche.</div>
                     </div>
                 </div>
 
@@ -45,15 +55,15 @@
                     <input type="hidden" name="mode" value="mois">
 
                     <p class="text-muted small mb-3">
-                        Cochez les mois à facturer. Saisissez un montant versé inférieur au total pour un paiement partiel ou une avance sur le mois suivant.
+                        Cochez les frais à facturer (inscription, réinscription, scolarité, etc.). Le montant versé se met à jour automatiquement selon votre sélection.
                     </p>
-                    <div class="table-responsive mb-3">
-                        <table class="table table-bordered table-sm">
+                    <div class="table-responsive mb-2">
+                        <table class="table table-bordered table-sm mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:40px"><input type="checkbox" id="select_all_lignes" title="Tout sélectionner"></th>
                                     <th>Type</th>
-                                    <th>Mois</th>
+                                    <th>Libellé</th>
                                     <th class="text-end">Montant</th>
                                     <th>Source</th>
                                 </tr>
@@ -61,8 +71,36 @@
                             <tbody id="lignes_body">
                                 <tr><td colspan="5" class="text-muted text-center">Sélectionnez un élève</td></tr>
                             </tbody>
+                            <tfoot class="table-light" id="totaux_footer">
+                                <tr>
+                                    <td colspan="3" class="text-end border-top pt-2"><strong>Total brut</strong></td>
+                                    <td class="text-end border-top pt-2"><strong id="foot_brut">0 GNF</strong></td>
+                                    <td class="border-top"></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end text-danger"><strong>Remise</strong></td>
+                                    <td class="text-end text-danger"><strong id="foot_remise">0 GNF</strong></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Total</strong></td>
+                                    <td class="text-end"><strong id="foot_total">0 GNF</strong></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end text-success"><strong>Total payé</strong></td>
+                                    <td class="text-end text-success"><strong id="foot_paye">0 GNF</strong></td>
+                                    <td></td>
+                                </tr>
+                                <tr id="foot_reste_row">
+                                    <td colspan="3" class="text-end text-warning"><strong>Reste à payer</strong></td>
+                                    <td class="text-end text-warning"><strong id="foot_reste">0 GNF</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
+                    <p class="text-muted small mb-3"><em>NB : le total est le montant qui reste après la remise.</em></p>
 
                     <div class="row mb-3 align-items-start g-3">
                         <div class="col-md-6 col-lg-5">
@@ -108,18 +146,9 @@
                             <div class="mb-3">
                                 <label class="form-label">Montant versé (GNF)</label>
                                 <input type="number" name="montant_verse" id="montant_verse" class="form-control" min="1" step="1" placeholder="Ex. 300000">
-                                <div class="form-text">Peut être inférieur au total dû. La remise s'applique sur le total dû.</div>
+                                <div class="form-text">La remise s'applique sur le sous-total des lignes cochées. Le montant versé peut être inférieur au total dû pour un paiement partiel.</div>
                             </div>
-                            <div id="repartition_info" class="alert alert-info py-2 small mb-3" style="display:none;"></div>
-                            <div class="card bg-light border">
-                                <div class="card-body py-2 px-3">
-                                    <div class="d-flex justify-content-between align-items-center py-1"><span>Sous-total</span><strong id="recap_sous_total">0 GNF</strong></div>
-                                    <div class="d-flex justify-content-between align-items-center py-1 text-danger"><span>Remise</span><strong id="recap_remise">0 GNF</strong></div>
-                                    <div class="d-flex justify-content-between align-items-center py-1 border-top pt-1"><span>Total dû</span><strong id="recap_total_du">0 GNF</strong></div>
-                                    <div class="d-flex justify-content-between align-items-center fs-5 border-top pt-2 mt-1"><span>Total à payer</span><strong id="recap_total" class="text-success">0 GNF</strong></div>
-                                    <div class="d-flex justify-content-between align-items-center py-1 text-warning" id="recap_reste_row" style="display:none;"><span>Reste à payer</span><strong id="recap_reste">0 GNF</strong></div>
-                                </div>
-                            </div>
+                            <div id="repartition_info" class="alert alert-info py-2 small mb-0" style="display:none;"></div>
                         </div>
                     </div>
                 </div>
@@ -139,6 +168,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const eleveSearch = document.getElementById('eleve_search');
+    const classeFilter = document.getElementById('classe_filter');
     const elevesResults = document.getElementById('eleves_results');
     const eleveInfo = document.getElementById('eleve_info');
     const eleveDetails = document.getElementById('eleve_details');
@@ -153,7 +183,24 @@ document.addEventListener('DOMContentLoaded', function() {
     let montantVerseManuel = false;
     let recapTimer = null;
 
-    const typeLabels = { scolarite: 'Scolarité', cantine: 'Cantine', transport: 'Transport' };
+    const typeLabels = {
+        scolarite: 'Scolarité', cantine: 'Cantine', transport: 'Transport',
+        inscription: 'Inscription', reinscription: 'Réinscription',
+        uniforme: 'Uniforme', livres: 'Livres', autre: 'Autre', autres: 'Autres'
+    };
+
+    function libelleAffiche(l) {
+        if (['inscription', 'reinscription', 'uniforme', 'livres', 'autre', 'autres'].includes(l.type_frais)) {
+            return l.libelle;
+        }
+        return l.libelle.split('—').pop()?.trim() || l.mois;
+    }
+
+    function sourceBadge(l) {
+        if (l.source === 'frais') return '<span class="badge bg-warning text-dark">Frais unique</span>';
+        if (l.source === 'tranche') return '<span class="badge bg-primary">Tranche</span>';
+        return '<span class="badge bg-secondary">Tarif</span>';
+    }
 
     function formatGnf(n) {
         return Math.round(n).toLocaleString('fr-FR') + ' GNF';
@@ -161,9 +208,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function searchEleves() {
         const search = eleveSearch.value.trim();
-        if (search.length < 2) { elevesResults.style.display = 'none'; return; }
+        const classeId = classeFilter.value;
+        if (search.length < 2 && !classeId) {
+            elevesResults.style.display = 'none';
+            return;
+        }
 
-        fetch(`{{ url('/factures/search-eleves') }}?search=${encodeURIComponent(search)}`, {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (classeId) params.set('classe_id', classeId);
+
+        fetch(`{{ url('/factures/search-eleves') }}?${params.toString()}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(r => r.json())
@@ -196,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadLignes(eleveId) {
-            lignesBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
+        lignesBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
         fetch(`{{ url('/factures/eleve') }}/${eleveId}/lignes`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -209,23 +264,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             lignesCache = data.lignes || [];
             if (!lignesCache.length) {
-                lignesBody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Aucun frais mensuel disponible</td></tr>';
+                lignesBody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Aucun frais disponible</td></tr>';
                 submitBtn.disabled = true;
                 return;
             }
             lignesBody.innerHTML = lignesCache.map(l => `
-                <tr>
+                <tr data-ligne-id="${l.id}">
                     <td><input type="checkbox" name="lignes[]" value="${l.id}" class="ligne-check" data-montant="${l.montant}"></td>
                     <td>${typeLabels[l.type_frais] || l.type_frais}</td>
-                    <td>${l.libelle.split('—').pop()?.trim() || l.mois}</td>
-                    <td class="text-end">${formatGnf(l.montant)}</td>
-                    <td><span class="badge bg-${l.source === 'tranche' ? 'primary' : 'secondary'}">${l.source === 'tranche' ? 'Tranche' : 'Tarif'}</span></td>
+                    <td>${libelleAffiche(l)}</td>
+                    <td class="text-end col-brut">${formatGnf(l.montant)}</td>
+                    <td>${sourceBadge(l)}</td>
                 </tr>
             `).join('');
             document.querySelectorAll('.ligne-check').forEach(cb => cb.addEventListener('change', () => {
                 montantVerseManuel = false;
                 updateRecap();
             }));
+            resetRecap();
             updateRecap();
         });
     }
@@ -235,40 +291,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetRecap() {
-        document.getElementById('recap_sous_total').textContent = '0 GNF';
-        document.getElementById('recap_remise').textContent = '0 GNF';
-        document.getElementById('recap_total_du').textContent = '0 GNF';
-        document.getElementById('recap_total').textContent = '0 GNF';
-        document.getElementById('recap_reste').textContent = '0 GNF';
-        document.getElementById('recap_reste_row').style.display = 'none';
+        document.getElementById('foot_brut').textContent = '0 GNF';
+        document.getElementById('foot_remise').textContent = '0 GNF';
+        document.getElementById('foot_total').textContent = '0 GNF';
+        document.getElementById('foot_paye').textContent = '0 GNF';
+        document.getElementById('foot_reste').textContent = '0 GNF';
+        document.getElementById('foot_reste_row').style.display = '';
         repartitionInfo.style.display = 'none';
         repartitionInfo.innerHTML = '';
     }
 
     function applyRecap(t) {
-        document.getElementById('recap_sous_total').textContent = formatGnf(t.sous_total || 0);
-        document.getElementById('recap_remise').textContent = formatGnf(t.montant_remise || 0);
-        document.getElementById('recap_total_du').textContent = formatGnf(t.total_du ?? t.total ?? 0);
-        document.getElementById('recap_total').textContent = formatGnf(t.total || 0);
+        document.getElementById('foot_brut').textContent = formatGnf(t.sous_total || 0);
+        document.getElementById('foot_remise').textContent = (t.montant_remise || 0) > 0
+            ? '−' + formatGnf(t.montant_remise) : formatGnf(0);
+        document.getElementById('foot_total').textContent = formatGnf(t.total_du ?? t.total ?? 0);
+        document.getElementById('foot_paye').textContent = formatGnf(t.total || t.montant_verse || 0);
 
         const reste = t.reste_a_payer || 0;
-        document.getElementById('recap_reste').textContent = formatGnf(reste);
-        document.getElementById('recap_reste_row').style.display = reste > 0 ? 'flex' : 'none';
+        document.getElementById('foot_reste').textContent = formatGnf(reste);
+        document.getElementById('foot_reste_row').style.display = reste > 0 ? '' : 'none';
 
-        if (!montantVerseManuel && (t.montant_verse || t.total)) {
-            montantVerse.value = Math.round(t.montant_verse || t.total || 0);
+        if (!montantVerseManuel && (t.total_du ?? t.total)) {
+            montantVerse.value = Math.round(t.total_du ?? t.total ?? 0);
         }
 
-        if (t.lignes && t.lignes.length) {
+        if (t.lignes && t.lignes.length && reste > 0) {
             repartitionInfo.style.display = 'block';
-            repartitionInfo.innerHTML = '<strong>Répartition :</strong><ul class="mb-0 ps-3 mt-1">' + t.lignes.map(l => {
+            repartitionInfo.innerHTML = '<strong>Répartition du paiement :</strong><ul class="mb-0 ps-3 mt-1">' + t.lignes.filter(l => l.montant > 0 || l.reste > 0).map(l => {
                 const parts = [];
-                if (l.montant > 0) {
-                    parts.push(`<strong>${formatGnf(l.montant)}</strong>`);
-                }
-                if (l.reste > 0) {
-                    parts.push(`<span class="text-warning">(reste ${formatGnf(l.reste)})</span>`);
-                }
+                if (l.montant > 0) parts.push(`<strong>${formatGnf(l.montant)}</strong>`);
+                if (l.reste > 0) parts.push(`<span class="text-warning">(reste ${formatGnf(l.reste)})</span>`);
                 return `<li>${l.libelle}${parts.length ? ' : ' + parts.join(' ') : ''}</li>`;
             }).join('') + '</ul>';
         } else {
@@ -306,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     lignes: selected,
                     remise_type: remiseType.value,
                     remise_valeur: parseFloat(remiseValeur.value) || 0,
-                    montant_verse: montantSaisi > 0 ? montantSaisi : null
+                    montant_verse: montantVerseManuel && montantSaisi > 0 ? montantSaisi : null
                 })
             })
             .then(r => r.json().then(data => ({ ok: r.ok, data })))
@@ -331,6 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('search_eleve_btn').addEventListener('click', searchEleves);
     eleveSearch.addEventListener('keyup', e => { if (e.key === 'Enter') { e.preventDefault(); searchEleves(); } });
+    classeFilter.addEventListener('change', searchEleves);
     remiseType.addEventListener('change', () => { montantVerseManuel = false; updateRecap(); });
     remiseValeur.addEventListener('input', () => { montantVerseManuel = false; updateRecap(); });
     montantVerse.addEventListener('input', () => { montantVerseManuel = true; updateRecap(); });

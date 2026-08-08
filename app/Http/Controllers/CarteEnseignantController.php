@@ -35,8 +35,7 @@ class CarteEnseignantController extends Controller
 
         $cartes = $query->orderBy('created_at', 'desc')->paginate(20);
         
-        // Pour les filtres
-        $enseignants = Enseignant::with('utilisateur')->where('actif', true)->get();
+        $enseignants = Enseignant::listeDeroulante();
         
         return view('cartes-enseignants.index', compact('cartes', 'enseignants'));
     }
@@ -47,11 +46,16 @@ class CarteEnseignantController extends Controller
     public function create()
     {
         $enseignants = Enseignant::with('utilisateur')
-            ->where('actif', true)
-            ->whereDoesntHave('cartesEnseignants', function($query) {
+            ->actif()
+            ->pourAnneeActive()
+            ->whereDoesntHave('cartesEnseignants', function ($query) {
                 $query->where('statut', 'active');
             })
-            ->get();
+            ->get()
+            ->sortBy(fn ($enseignant) => strtolower(trim(
+                ($enseignant->utilisateur->nom ?? '') . ' ' . ($enseignant->utilisateur->prenom ?? '')
+            )))
+            ->values();
 
         return view('cartes-enseignants.create', compact('enseignants'));
     }

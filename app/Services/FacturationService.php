@@ -7,6 +7,7 @@ use App\Models\Eleve;
 use App\Models\Facture;
 use App\Models\FactureLigne;
 use App\Models\FraisScolarite;
+use App\Models\Paiement;
 use App\Models\TarifClasse;
 use App\Models\TranchePaiement;
 use Carbon\Carbon;
@@ -17,15 +18,61 @@ class FacturationService
 {
     private const TYPES_MENSUELS = ['scolarite', 'cantine', 'transport'];
 
+    /** Mois facturables de l'année scolaire : octobre → juin (9 mois). */
+    private const MOIS_FACTURATION_ANNEE = [10, 11, 12, 1, 2, 3, 4, 5, 6];
+
     private const LABELS_TYPE = [
         'scolarite' => 'Scolarité',
         'cantine' => 'Cantine',
         'transport' => 'Transport',
+        'inscription' => 'Inscription',
+        'reinscription' => 'Réinscription',
     ];
+
+    private const TYPES_ENTREE = ['inscription', 'reinscription'];
 
     public function __construct(
         private PaiementScolariteService $paiementScolariteService
     ) {}
+
+    /**
+     * Génère tous les frais scolaires d'un élève à partir du tarif de sa classe.
+     */
+    public function genererFraisInscriptionEleve(
+        Eleve $eleve,
+        bool $gratuitInscription = false,
+        bool $gratuitReinscription = false
+    ): void {
+        if ($eleve->exempte_frais) {
+            return;
+        }
+
+        $eleve->loadMissing(['classe', 'anneeScolaire']);
+
+        $anneeScolaire = $eleve->anneeScolaire ?? AnneeScolaire::anneeActive();
+        if (!$anneeScolaire || !$eleve->classe_id) {
+            return;
+        }
+
+        $tarif = $this->getTarifClasse($eleve, $anneeScolaire);
+        if (!$tarif) {
+            return;
+        }
+
+        DB::transaction(function () use ($eleve, $anneeScolaire, $tarif, $gratuitInscription, $gratuitReinscription) {
+            $this->creerFraisEntreeInscription($eleve, $tarif, $gratuitInscription, $gratuitReinscription);
+
+            foreach (self::TYPES_MENSUELS as $type) {
+                if ($this->montantMensuelTarif($tarif, $type) > 0) {
+                    $this->assurerFrais($eleve, $anneeScolaire, $tarif, $type);
+                }
+            }
+
+            $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais d\'uniforme', (float) $tarif->frais_uniforme);
+            $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais de livres', (float) $tarif->frais_livres);
+            $this->creerFraisUnique($eleve, $anneeScolaire, 'Autres frais', (float) $tarif->frais_autres);
+        });
+    }
 
     public function getLignesDisponibles(Eleve $eleve, ?AnneeScolaire $anneeScolaire = null): array
     {
@@ -35,10 +82,22 @@ class FacturationService
         }
 
         $eleve->loadMissing(['classe']);
-        $lignes = collect();
+        $tarif = $this->getTarifClasse($eleve, $anneeScolaire);
 
-        $moisCourant = now()->startOfMonth();
-        $debutPeriode = Carbon::parse($anneeScolaire->date_debut)->startOfMonth();
+        if ($tarif) {
+            $this->assurerFraisEleve($eleve, $anneeScolaire, $tarif);
+        }
+
+        $lignes = $this->getLignesFraisUnitaires($eleve);
+        if ($tarif) {
+            $lignes = $lignes->merge($this->getLignesEntreeDepuisTarif($eleve, $tarif, $lignes));
+        }
+
+        if (!$tarif) {
+            return $this->trierLignesDisponibles($lignes);
+        }
+
+        $moisFacturation = $this->moisAnneeScolaireFacturation($anneeScolaire);
 
         $fraisList = FraisScolarite::where('eleve_id', $eleve->id)
             ->whereIn('type_frais', self::TYPES_MENSUELS)
@@ -51,11 +110,6 @@ class FacturationService
         }
         $fraisList->load(['tranchesPaiement' => fn ($q) => $q->orderBy('numero_tranche')]);
 
-        $tarif = $this->getTarifClasse($eleve, $anneeScolaire);
-        if (!$tarif) {
-            return [];
-        }
-
         foreach (self::TYPES_MENSUELS as $type) {
             $montantMensuel = $this->montantMensuelTarif($tarif, $type);
             if ($montantMensuel <= 0) {
@@ -63,14 +117,8 @@ class FacturationService
             }
 
             $frais = $fraisList->firstWhere('type_frais', $type);
-            $nombreMois = (int) ($frais?->nombre_tranches ?? $tarif->nombre_tranches);
 
-            foreach ($this->moisPeriodeTranches($debutPeriode, $nombreMois) as $mois) {
-                // Mois futurs : pas de paiement anticipé
-                if ($mois->gt($moisCourant)) {
-                    continue;
-                }
-
+            foreach ($moisFacturation as $mois) {
                 $tranche = $frais?->tranchesPaiement->first(
                     fn (TranchePaiement $t) => Carbon::parse($t->date_echeance)->format('Y-m') === $mois->format('Y-m')
                 );
@@ -84,9 +132,6 @@ class FacturationService
                     }
 
                     $libelle = $this->libelleLigne($type, $mois);
-                    if ($reste + 0.00001 < $montantTranche) {
-                        $libelle .= ' (reste ' . number_format($reste, 0, ',', ' ') . ' GNF)';
-                    }
 
                     $lignes->push($this->formatLigne([
                         'id' => 'tranche:' . $tranche->id,
@@ -117,10 +162,7 @@ class FacturationService
             }
         }
 
-        return $lignes
-            ->sortBy([['mois', 'asc'], ['type_frais', 'asc']])
-            ->values()
-            ->all();
+        return $this->trierLignesDisponibles($lignes);
     }
 
     public function aFraisImpayes(Eleve $eleve, ?AnneeScolaire $anneeScolaire = null): bool
@@ -129,7 +171,13 @@ class FacturationService
             return false;
         }
 
-        return count($this->getLignesDisponibles($eleve, $anneeScolaire)) > 0;
+        if (count($this->getLignesDisponibles($eleve, $anneeScolaire)) > 0) {
+            return true;
+        }
+
+        return FraisScolarite::where('eleve_id', $eleve->id)
+            ->whereIn('statut', ['en_attente', 'en_retard'])
+            ->exists();
     }
 
     /**
@@ -138,7 +186,8 @@ class FacturationService
      */
     public function calculerTotaux(array $lignesSelection, string $remiseType, float $remiseValeur): array
     {
-        $sousTotal = round(collect($lignesSelection)->sum('montant'), 2);
+        $lignesTriees = $this->ordonnerLignesPourPaiement($lignesSelection);
+        $sousTotal = round(collect($lignesTriees)->sum('montant'), 2);
         $montantRemise = $this->calculerMontantRemise($sousTotal, $remiseType, $remiseValeur);
         $total = max(0, round($sousTotal - $montantRemise, 2));
         $lignesAvecDu = $this->lignesAvecMontantDu($lignesSelection, $montantRemise);
@@ -152,37 +201,39 @@ class FacturationService
     }
 
     /**
-     * Applique la remise globale sur les derniers mois (sans répartir sur chaque ligne).
-     * Ex. remise 4 400 sur Nov 9 600 + Déc 74 800 → Déc dû = 70 400, Nov = 9 600.
+     * Répartit la remise globale proportionnellement au sous-total de chaque ligne.
      *
      * @param  array<int, array<string, mixed>>  $lignesSelection
      * @return array<int, array<string, mixed>>
      */
     private function lignesAvecMontantDu(array $lignesSelection, float $montantRemise): array
     {
-        $lignesTriees = collect($lignesSelection)->sortBy('mois')->values()->all();
-        $montantsDu = array_map(
-            fn (array $ligne) => round((float) $ligne['montant'], 2),
-            $lignesTriees
-        );
-
-        $remiseRestante = round($montantRemise, 2);
-        for ($i = count($lignesTriees) - 1; $i >= 0 && $remiseRestante > 0.001; $i--) {
-            $deduction = min($remiseRestante, $montantsDu[$i]);
-            $montantsDu[$i] = round($montantsDu[$i] - $deduction, 2);
-            $remiseRestante = round($remiseRestante - $deduction, 2);
-        }
+        $lignesTriees = $this->ordonnerLignesPourPaiement($lignesSelection);
+        $sousTotal = round(collect($lignesTriees)->sum(fn (array $ligne) => (float) $ligne['montant']), 2);
+        $montantRemise = round($montantRemise, 2);
+        $remiseRestante = $montantRemise;
+        $count = count($lignesTriees);
 
         $result = [];
         foreach ($lignesTriees as $i => $ligne) {
             $brut = round((float) $ligne['montant'], 2);
-            $du = $montantsDu[$i];
+
+            if ($montantRemise <= 0 || $sousTotal <= 0) {
+                $remiseLigne = 0;
+            } elseif ($i === $count - 1) {
+                $remiseLigne = $remiseRestante;
+            } else {
+                $remiseLigne = round($montantRemise * $brut / $sousTotal, 2);
+                $remiseRestante = round($remiseRestante - $remiseLigne, 2);
+            }
+
+            $du = max(0, round($brut - $remiseLigne, 2));
 
             $result[] = array_merge($ligne, [
                 'montant_brut' => $brut,
                 'montant_du' => $du,
-                'remise_ligne' => round($brut - $du, 2),
-                'montant_remise' => 0,
+                'remise_ligne' => $remiseLigne,
+                'montant_remise' => $remiseLigne,
                 'montant_net' => $du,
             ]);
         }
@@ -203,7 +254,7 @@ class FacturationService
         float $remiseValeur,
         float $montantVerse
     ): array {
-        $lignesTriees = collect($lignesSelection)->sortBy('mois')->values()->all();
+        $lignesTriees = $this->ordonnerLignesPourPaiement($lignesSelection);
         $totaux = $this->calculerTotaux($lignesTriees, $remiseType, $remiseValeur);
         $totalDu = $totaux['total'];
 
@@ -231,6 +282,7 @@ class FacturationService
                 break;
             }
 
+            $brutMois = round((float) ($ligne['montant_brut'] ?? $ligne['montant'] ?? 0), 2);
             $du = round((float) ($ligne['montant_du'] ?? $ligne['montant_net'] ?? $ligne['montant']), 2);
             if ($du <= 0) {
                 continue;
@@ -242,22 +294,19 @@ class FacturationService
                 continue;
             }
 
+            $remiseLigne = round((float) ($ligne['remise_ligne'] ?? 0), 2);
+            $ratio = $du > 0.00001 ? ($paye / $du) : 1;
+            $remisePayee = round($remiseLigne * $ratio, 2);
             $resteLigne = round($du - $paye, 2);
-            $partiel = $resteLigne > 0.01;
-            $libelle = preg_replace('/\s*\((?:reste|partiel)[^)]*\)/', '', $ligne['libelle'] ?? '') ?? ($ligne['libelle'] ?? '');
-
-            if ($partiel) {
-                $libelle .= ' (partiel ' . number_format($paye, 0, ',', ' ') . ' / ' . number_format($du, 0, ',', ' ') . ' GNF)';
-            } elseif ($resteLigne > 0.01) {
-                $libelle .= ' (reste ' . number_format($resteLigne, 0, ',', ' ') . ' GNF)';
-            }
+            $partiel = $paye + 0.00001 < $brutMois;
+            $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
 
             $lignesPayees[] = array_merge($ligne, [
                 'libelle' => $libelle,
-                'montant_brut' => $paye,
+                'montant_brut' => $brutMois,
                 'montant_remise' => 0,
                 'montant_net' => $paye,
-                'remise_ligne' => (float) ($ligne['remise_ligne'] ?? 0),
+                'remise_ligne' => $remisePayee,
                 'reste' => $resteLigne,
                 'partiel' => $partiel,
             ]);
@@ -277,7 +326,7 @@ class FacturationService
                 continue;
             }
 
-            $libelle = preg_replace('/\s*\((?:reste|partiel)[^)]*\)/', '', $ligne['libelle'] ?? '') ?? ($ligne['libelle'] ?? '');
+            $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
             $lignesPayees[] = array_merge($ligne, [
                 'libelle' => $libelle,
                 'montant_brut' => 0,
@@ -345,10 +394,7 @@ class FacturationService
             }
 
             $partiel = $verse + 0.00001 < $du;
-            $libelle = $ligne['libelle'];
-            if ($partiel) {
-                $libelle .= ' (partiel ' . number_format($verse, 0, ',', ' ') . ' / ' . number_format($du, 0, ',', ' ') . ' GNF)';
-            }
+            $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
 
             $allocation[] = [
                 'id' => $ligne['id'],
@@ -438,7 +484,7 @@ class FacturationService
                 'mode_paiement' => $data['mode_paiement'],
                 'reference_paiement' => $preparation['reference'],
                 'observations' => $preparation['observations'],
-                'statut' => 'payee',
+                'statut' => $this->statutDepuisTotaux($preparation['totaux']),
                 'genere_par' => auth()->id(),
             ]);
 
@@ -467,7 +513,7 @@ class FacturationService
         foreach ($facture->lignes as $ligne) {
             $id = $this->ligneIdFromFactureLigne($ligne);
             $mois = Carbon::parse($ligne->mois);
-            $libelle = preg_replace('/\s*\([^)]*\)\s*$/', '', $ligne->libelle) ?: $ligne->libelle;
+            $libelle = $this->nettoyerLibelleAffichage($ligne->libelle) ?: $ligne->libelle;
             $montant = $this->montantLigneFacturePourEdition($ligne, $disponibles->get($id));
 
             if ($disponibles->has($id)) {
@@ -484,7 +530,9 @@ class FacturationService
 
             $disponibles->put($id, $this->formatLigne([
                 'id' => $id,
-                'source' => $ligne->tranche_paiement_id ? 'tranche' : 'tarif',
+                'source' => $ligne->tranche_paiement_id
+                    ? 'tranche'
+                    : ($ligne->frais_scolarite_id ? 'frais' : 'tarif'),
                 'type_frais' => $ligne->type_frais,
                 'mois' => $mois->format('Y-m-d'),
                 'libelle' => $libelle,
@@ -514,22 +562,10 @@ class FacturationService
             ->all();
     }
 
-    public function supprimerFacture(Facture $facture): void
-    {
-        if ($facture->statut !== 'payee') {
-            throw new \RuntimeException('Cette facture est déjà annulée.');
-        }
-
-        DB::transaction(function () use ($facture) {
-            $this->annulerEffetsFacture($facture);
-            $facture->delete();
-        });
-    }
-
     public function modifierFacture(Facture $facture, array $data): Facture
     {
-        if ($facture->statut !== 'payee') {
-            throw new \RuntimeException('Seules les factures payées peuvent être modifiées.');
+        if (!$facture->estModifiable()) {
+            throw new \RuntimeException('Seules les factures payées ou en cours peuvent être modifiées.');
         }
 
         $eleve = Eleve::with('classe')->findOrFail($facture->eleve_id);
@@ -560,7 +596,7 @@ class FacturationService
                 'mode_paiement' => $preparation['data']['mode_paiement'],
                 'reference_paiement' => $preparation['reference'],
                 'observations' => $preparation['observations'],
-                'statut' => 'payee',
+                'statut' => $this->statutDepuisTotaux($preparation['totaux']),
             ]);
 
             $this->enregistrerLignesEtPaiementsFacture(
@@ -577,6 +613,151 @@ class FacturationService
             $this->paiementScolariteService->mettreAJourEntreeComptableFacture($facture->fresh(['lignes']));
 
             return $facture->fresh(['lignes', 'eleve.utilisateur', 'eleve.classe', 'generePar']);
+        });
+    }
+
+    /**
+     * Encaisse le solde restant d'une facture en cours sans repasser par l'écran de modification.
+     */
+    public function payerResteFacture(Facture $facture, array $data): Facture
+    {
+        if ($facture->statut !== 'en_cours') {
+            throw new \RuntimeException('Seules les factures en cours peuvent recevoir un paiement du solde.');
+        }
+
+        $reste = $facture->resteAPayer();
+        if ($reste <= 0.01) {
+            throw new \RuntimeException('Cette facture est déjà entièrement payée.');
+        }
+
+        $eleve = Eleve::with('classe')->findOrFail($facture->eleve_id);
+        $anneeScolaire = $facture->anneeScolaire ?? AnneeScolaire::find($facture->annee_scolaire_id);
+
+        if (!$anneeScolaire) {
+            throw new \RuntimeException('Année scolaire introuvable pour cette facture.');
+        }
+
+        if ($eleve->exempte_frais) {
+            throw new \RuntimeException('Cet élève est exempté de frais de scolarité.');
+        }
+
+        $tarif = $this->getTarifClasse($eleve, $anneeScolaire);
+        if ($tarif) {
+            $this->assurerFraisEleve($eleve, $anneeScolaire, $tarif);
+        }
+
+        $typeFrais = $this->detecterTypeFraisPourSolde($facture, $eleve, $anneeScolaire);
+        $datePaiement = $data['date_paiement'] ?? $facture->date_facture->format('Y-m-d');
+        $observations = $facture->observations;
+        $suffixe = 'Solde de ' . number_format($reste, 0, ',', ' ') . ' GNF payé le ' . now()->format('d/m/Y');
+
+        if (!empty($data['observations'])) {
+            $observations = trim(($observations ? $observations . ' | ' : '') . $data['observations']);
+        }
+
+        $observations = $observations ? $observations . ' | ' . $suffixe : $suffixe;
+
+        return DB::transaction(function () use (
+            $facture,
+            $data,
+            $reste,
+            $eleve,
+            $anneeScolaire,
+            $tarif,
+            $typeFrais,
+            $datePaiement,
+            $observations
+        ) {
+            $lignesRepartition = $this->repartirMontantSurMois($eleve, $typeFrais, $reste, $anneeScolaire);
+
+            $lignesCalculees = array_map(fn (array $ligne) => [
+                'id' => $ligne['id'],
+                'source' => $ligne['source'],
+                'type_frais' => $ligne['type_frais'],
+                'mois' => $ligne['mois'],
+                'libelle' => $ligne['libelle'],
+                'montant_brut' => (float) ($ligne['montant_du_mois'] ?? $ligne['montant']),
+                'montant_du_mois' => (float) ($ligne['montant_du_mois'] ?? $ligne['montant']),
+                'montant_remise' => 0,
+                'montant_net' => (float) $ligne['montant'],
+                'remise_ligne' => 0,
+                'tranche_id' => $ligne['tranche_id'] ?? null,
+                'frais_id' => $ligne['frais_id'] ?? null,
+                'partiel' => (bool) ($ligne['partiel'] ?? false),
+            ], $lignesRepartition);
+
+            $totalDu = round((float) $facture->sous_total - (float) $facture->montant_remise, 2);
+            $nouveauTotalPaye = round((float) $facture->total + $reste, 2);
+            $nouveauTotalPaye = min($nouveauTotalPaye, $totalDu);
+
+            $facture->update([
+                'total' => $nouveauTotalPaye,
+                'mode_paiement' => $data['mode_paiement'],
+                'reference_paiement' => $data['reference_paiement'] ?? $facture->reference_paiement,
+                'observations' => $observations,
+                'statut' => ($nouveauTotalPaye >= $totalDu - 0.01) ? 'payee' : 'en_cours',
+            ]);
+
+            $dataEmission = [
+                'date_facture' => $datePaiement,
+                'mode_paiement' => $data['mode_paiement'],
+            ];
+
+            $this->enregistrerLignesEtPaiementsFacture(
+                $facture,
+                $eleve,
+                $anneeScolaire,
+                $tarif,
+                [
+                    'sous_total' => (float) $facture->sous_total,
+                    'montant_remise' => (float) $facture->montant_remise,
+                    'total' => $nouveauTotalPaye,
+                    'lignes' => $lignesCalculees,
+                ],
+                $dataEmission,
+                $facture->numero_facture,
+                $observations
+            );
+
+            $this->paiementScolariteService->mettreAJourEntreeComptableFacture($facture->fresh(['lignes']));
+
+            return $facture->fresh(['lignes', 'eleve.utilisateur', 'eleve.classe', 'generePar']);
+        });
+    }
+
+    /**
+     * Détermine sur quel type de frais répartir le solde (mois impayés).
+     */
+    private function detecterTypeFraisPourSolde(Facture $facture, Eleve $eleve, AnneeScolaire $anneeScolaire): string
+    {
+        $reste = $facture->resteAPayer();
+        $disponibles = collect($this->getLignesDisponibles($eleve, $anneeScolaire))
+            ->filter(fn (array $ligne) => (float) ($ligne['montant'] ?? 0) > 0.01);
+
+        foreach (['scolarite', 'cantine', 'transport'] as $type) {
+            $somme = $disponibles->where('type_frais', $type)->sum(fn (array $ligne) => (float) $ligne['montant']);
+            if ($somme + 0.01 >= $reste) {
+                return $type;
+            }
+        }
+
+        $premierType = $disponibles->pluck('type_frais')->first();
+        if ($premierType && in_array($premierType, self::TYPES_MENSUELS, true)) {
+            return $premierType;
+        }
+
+        return 'scolarite';
+    }
+
+    public function supprimerFacture(Facture $facture): void
+    {
+        if ($facture->statut === 'annulee') {
+            throw new \RuntimeException('Cette facture est déjà annulée.');
+        }
+
+        DB::transaction(function () use ($facture) {
+            $this->annulerEffetsFacture($facture);
+            $facture->delete();
         });
     }
 
@@ -604,6 +785,9 @@ class FacturationService
 
         $mode = $data['mode'] ?? 'mois';
         $tarif = $this->getTarifClasse($eleve, $anneeScolaire);
+        if ($tarif) {
+            $this->assurerFraisEleve($eleve, $anneeScolaire, $tarif);
+        }
         $reference = $data['reference_paiement'] ?? null;
         $observations = $data['observations'] ?? null;
 
@@ -664,7 +848,7 @@ class FacturationService
                 throw new \RuntimeException('Sélectionnez au moins une ligne à facturer.');
             }
 
-            $lignesSelection = collect($lignesSelection)->sortBy('mois')->values()->all();
+            $lignesSelection = $this->ordonnerLignesPourPaiement($lignesSelection);
 
             $montantVerse = round((float) ($data['montant_verse'] ?? 0), 2);
             if ($montantVerse <= 0) {
@@ -704,14 +888,69 @@ class FacturationService
         string $numeroFacture,
         ?string $observations
     ): void {
-        $lignesTriees = collect($totaux['lignes'])->sortBy([
-            ['mois', 'asc'],
-            ['type_frais', 'asc'],
-        ])->values()->all();
+        $lignesTriees = $this->ordonnerLignesPourPaiement($totaux['lignes']);
 
         foreach ($lignesTriees as $ligneCalculee) {
             $montantAPayerLigne = round((float) ($ligneCalculee['montant_net'] ?? 0), 2);
             if ($montantAPayerLigne <= 0 || !empty($ligneCalculee['non_paye'])) {
+                continue;
+            }
+
+            if ($this->estLigneFraisUnitaire($ligneCalculee)) {
+                $frais = $this->resoudreFraisUnitaire($eleve, $tarif, $ligneCalculee);
+                $remiseLigne = round((float) ($ligneCalculee['remise_ligne'] ?? 0), 2);
+                $montantBrut = round((float) ($ligneCalculee['montant_brut'] ?? $montantAPayerLigne + $remiseLigne), 2);
+                $creditFrais = round($montantAPayerLigne + $remiseLigne, 2);
+                $resteFrais = round((float) $frais->montant_restant, 2);
+
+                if ($creditFrais - $resteFrais > 0.01) {
+                    throw new \RuntimeException(
+                        'Le montant pour « ' . ($ligneCalculee['libelle'] ?? '') . ' » dépasse le reste dû.'
+                    );
+                }
+
+                if ($remiseLigne > 0) {
+                    $frais->update([
+                        'montant' => max(0, round((float) $frais->montant - $remiseLigne, 2)),
+                    ]);
+                    $frais->refresh();
+                    $resteFrais = round((float) $frais->montant_restant, 2);
+                }
+
+                if ($montantAPayerLigne - $resteFrais > 0.01) {
+                    throw new \RuntimeException(
+                        'Le montant pour « ' . ($ligneCalculee['libelle'] ?? '') . ' » dépasse le reste dû.'
+                    );
+                }
+
+                $paiement = Paiement::create([
+                    'frais_scolarite_id' => $frais->id,
+                    'montant_paye' => $montantAPayerLigne,
+                    'date_paiement' => $data['date_facture'],
+                    'mode_paiement' => $data['mode_paiement'],
+                    'reference_paiement' => $numeroFacture,
+                    'observations' => $observations,
+                    'encaisse_par' => (int) auth()->id(),
+                ]);
+
+                $frais->refresh();
+                if ((float) $frais->montant_restant <= 0.01) {
+                    $frais->update(['statut' => 'paye']);
+                }
+
+                FactureLigne::create([
+                    'facture_id' => $facture->id,
+                    'type_frais' => $ligneCalculee['type_frais'],
+                    'mois' => $ligneCalculee['mois'],
+                    'libelle' => $ligneCalculee['libelle'],
+                    'montant_brut' => $montantBrut,
+                    'montant_remise' => 0,
+                    'montant_net' => $montantAPayerLigne,
+                    'tranche_paiement_id' => null,
+                    'frais_scolarite_id' => $frais->id,
+                    'paiement_id' => $paiement->id,
+                ]);
+
                 continue;
             }
 
@@ -722,6 +961,11 @@ class FacturationService
             $montantAPayer = $montantAPayerLigne;
             $remiseLigne = round((float) ($ligneCalculee['remise_ligne'] ?? 0), 2);
             $creditTranche = round($montantAPayer + $remiseLigne, 2);
+            $brutMois = round((float) (
+                $ligneCalculee['montant_brut']
+                ?? $ligneCalculee['montant_du_mois']
+                ?? $tranche->montant_tranche
+            ), 2);
 
             if ($creditTranche > $resteTranche + 0.01) {
                 throw new \RuntimeException(
@@ -752,8 +996,8 @@ class FacturationService
                 'type_frais' => $ligneCalculee['type_frais'],
                 'mois' => $ligneCalculee['mois'],
                 'libelle' => $ligneCalculee['libelle'],
-                'montant_brut' => $creditTranche,
-                'montant_remise' => $remiseLigne,
+                'montant_brut' => $brutMois,
+                'montant_remise' => 0,
                 'montant_net' => $montantAPayer,
                 'tranche_paiement_id' => $tranche->id,
                 'frais_scolarite_id' => $tranche->frais_scolarite_id,
@@ -764,10 +1008,18 @@ class FacturationService
 
     private function ligneIdFromFactureLigne(FactureLigne $ligne): string
     {
+        if (!$ligne->tranche_paiement_id && $ligne->frais_scolarite_id) {
+            return 'frais:' . $ligne->frais_scolarite_id;
+        }
+
         $mois = Carbon::parse($ligne->mois);
 
         if ($ligne->tranche_paiement_id) {
             return 'tranche:' . $ligne->tranche_paiement_id;
+        }
+
+        if (in_array($ligne->type_frais, self::TYPES_ENTREE, true)) {
+            return 'tarif:' . $ligne->type_frais;
         }
 
         return 'tarif:' . $ligne->type_frais . ':' . $mois->format('Y-m');
@@ -793,6 +1045,14 @@ class FacturationService
             return round($reste + $creditFacture, 2);
         }
 
+        $ligne->loadMissing('fraisScolarite');
+        $frais = $ligne->fraisScolarite;
+        if ($frais) {
+            $reste = max(0, round((float) $frais->montant_restant, 2));
+
+            return round($reste + $creditFacture, 2);
+        }
+
         return $creditFacture;
     }
 
@@ -802,6 +1062,10 @@ class FacturationService
         ?TarifClasse $tarif,
         array $ligne
     ): TranchePaiement {
+        if (($ligne['source'] ?? '') === 'frais') {
+            throw new \RuntimeException('Les frais unitaires ne passent pas par une tranche mensuelle.');
+        }
+
         if (!empty($ligne['tranche_id'])) {
             $tranche = TranchePaiement::with('fraisScolarite')->findOrFail($ligne['tranche_id']);
             if ($tranche->statut === 'paye') {
@@ -820,6 +1084,113 @@ class FacturationService
         $montantMensuel = (float) ($ligne['montant_du_mois'] ?? $ligne['montant_brut'] ?? $ligne['montant'] ?? 0);
 
         return $this->assurerTrancheMois($frais, $mois, $montantMensuel, $anneeScolaire);
+    }
+
+    private function assurerFraisEleve(Eleve $eleve, AnneeScolaire $anneeScolaire, TarifClasse $tarif): void
+    {
+        $this->creerFraisEntreeInscription($eleve, $tarif, false, false);
+
+        foreach (self::TYPES_MENSUELS as $type) {
+            if ($this->montantMensuelTarif($tarif, $type) > 0) {
+                $this->assurerFrais($eleve, $anneeScolaire, $tarif, $type);
+            }
+        }
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function getLignesEntreeDepuisTarif(Eleve $eleve, TarifClasse $tarif, Collection $lignesExistantes): Collection
+    {
+        $typesDeja = $lignesExistantes->pluck('type_frais')->all();
+        $lignes = collect();
+
+        if ($eleve->type_inscription === 'reinscription'
+            && !in_array('reinscription', $typesDeja, true)
+            && !$this->fraisExisteDeja($eleve->id, 'reinscription')) {
+            $montant = $this->montantFraisReinscription($tarif);
+            if ($montant > 0) {
+                $lignes->push($this->formatLigneEntreeTarif('reinscription', $montant, 'Frais de réinscription'));
+            }
+        } elseif (in_array($eleve->type_inscription, ['nouvelle', 'transfert'], true)
+            && !in_array('inscription', $typesDeja, true)
+            && !$this->fraisExisteDeja($eleve->id, 'inscription')) {
+            $montant = (float) $tarif->frais_inscription;
+            if ($montant > 0) {
+                $lignes->push($this->formatLigneEntreeTarif('inscription', $montant, 'Frais d\'inscription'));
+            }
+        }
+
+        return $lignes;
+    }
+
+    private function formatLigneEntreeTarif(string $typeFrais, float $montant, string $libelle): array
+    {
+        return $this->formatLigne([
+            'id' => 'tarif:' . $typeFrais,
+            'source' => 'tarif',
+            'type_frais' => $typeFrais,
+            'mois' => now()->format('Y-m-d'),
+            'libelle' => $libelle,
+            'montant' => round($montant, 2),
+            'montant_du_mois' => round($montant, 2),
+            'partiel' => false,
+            'tranche_id' => null,
+            'frais_id' => null,
+        ]);
+    }
+
+    private function estLigneFraisUnitaire(array $ligne): bool
+    {
+        if (($ligne['source'] ?? '') === 'frais') {
+            return true;
+        }
+
+        return ($ligne['source'] ?? '') === 'tarif'
+            && in_array($ligne['type_frais'] ?? '', self::TYPES_ENTREE, true);
+    }
+
+    private function resoudreFraisUnitaire(Eleve $eleve, ?TarifClasse $tarif, array $ligne): FraisScolarite
+    {
+        if (!empty($ligne['frais_id'])) {
+            return FraisScolarite::findOrFail($ligne['frais_id']);
+        }
+
+        if (($ligne['source'] ?? '') === 'tarif' && $tarif) {
+            $this->creerFraisEntreeInscription($eleve, $tarif, false, false);
+        }
+
+        return FraisScolarite::where('eleve_id', $eleve->id)
+            ->where('type_frais', $ligne['type_frais'])
+            ->whereIn('statut', ['en_attente', 'en_retard'])
+            ->firstOrFail();
+    }
+
+    /**
+     * Inscription / réinscription en premier, puis les mois de scolarité chronologiques.
+     *
+     * @param  array<int, array<string, mixed>>  $lignes
+     * @return array<int, array<string, mixed>>
+     */
+    private function ordonnerLignesPourPaiement(array $lignes): array
+    {
+        return collect($lignes)
+            ->sortBy([
+                fn (array $ligne) => in_array($ligne['type_frais'] ?? '', self::TYPES_ENTREE, true) ? 0 : 1,
+                ['mois', 'asc'],
+                ['type_frais', 'asc'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $lignes
+     * @return array<int, array<string, mixed>>
+     */
+    private function trierLignesDisponibles(Collection $lignes): array
+    {
+        return $this->ordonnerLignesPourPaiement($lignes->all());
     }
 
     private function assurerFrais(
@@ -844,17 +1215,20 @@ class FacturationService
 
         $montantMensuel = $this->montantMensuelTarif($tarif, $typeFrais);
         $classeNom = $eleve->classe?->nom ?? 'Classe';
-        $dateDebut = $this->dateDebutTranches(null, $anneeScolaire);
+        $moisFacturation = $this->moisAnneeScolaireFacturation($anneeScolaire);
+        $dateDebut = $moisFacturation->first()->copy();
+        $dateFin = $moisFacturation->last()->copy();
+        $nombreMois = $this->nombreMoisFacturation();
 
         $frais = FraisScolarite::create([
             'eleve_id' => $eleve->id,
             'libelle' => (self::LABELS_TYPE[$typeFrais] ?? ucfirst($typeFrais)) . ' - ' . $classeNom . ' - ' . $anneeScolaire->nom,
-            'montant' => $montantMensuel * $tarif->nombre_tranches,
-            'date_echeance' => $dateDebut->copy()->addMonths($tarif->nombre_tranches - 1),
+            'montant' => $montantMensuel * $nombreMois,
+            'date_echeance' => $dateFin,
             'type_frais' => $typeFrais,
             'statut' => 'en_attente',
             'paiement_par_tranches' => true,
-            'nombre_tranches' => $tarif->nombre_tranches,
+            'nombre_tranches' => $nombreMois,
             'montant_tranche' => $montantMensuel,
             'periode_tranche' => $tarif->periode_tranche ?? 'mensuel',
             'date_debut_tranches' => $dateDebut->format('Y-m-d'),
@@ -875,7 +1249,6 @@ class FacturationService
         $this->realignerTranchesSiNecessaire($frais, $anneeScolaire);
         $frais->loadMissing('tranchesPaiement');
         $mois = $mois->copy()->startOfMonth();
-        $debutPeriode = Carbon::parse($anneeScolaire->date_debut)->startOfMonth();
 
         $tranche = $frais->tranchesPaiement
             ->filter(fn (TranchePaiement $t) => $t->numero_tranche <= (int) $frais->nombre_tranches)
@@ -891,13 +1264,9 @@ class FacturationService
             return $tranche;
         }
 
-        if ($mois->lt($debutPeriode)) {
-            throw new \RuntimeException('Le mois sélectionné est antérieur au début de l\'année scolaire.');
-        }
-
-        $numero = $debutPeriode->diffInMonths($mois) + 1;
-        if ($numero > (int) $frais->nombre_tranches) {
-            throw new \RuntimeException('Le mois sélectionné est hors de la période de facturation (' . (int) $frais->nombre_tranches . ' mois).');
+        $numero = $this->numeroTranchePourMoisAnneeScolaire($anneeScolaire, $mois);
+        if ($numero === null) {
+            throw new \RuntimeException('Le mois sélectionné est hors de la période de facturation (Octobre à Juin).');
         }
 
         $tranche = $frais->tranchesPaiement->firstWhere('numero_tranche', $numero);
@@ -917,7 +1286,7 @@ class FacturationService
             'frais_scolarite_id' => $frais->id,
             'numero_tranche' => $numero,
             'montant_tranche' => $montantAttendu,
-            'date_echeance' => $this->dateEcheanceTranche($debutPeriode, $frais->periode_tranche ?? 'mensuel', $numero),
+            'date_echeance' => $mois->format('Y-m-d'),
             'statut' => 'en_attente',
             'montant_paye' => 0,
         ]);
@@ -933,8 +1302,8 @@ class FacturationService
             return;
         }
 
-        $debutAnnee = Carbon::parse($anneeScolaire->date_debut)->startOfMonth();
-        $debutFrais = Carbon::parse($frais->date_debut_tranches ?? $anneeScolaire->date_debut)->startOfMonth();
+        $debutAnnee = $this->dateDebutTranches(null, $anneeScolaire);
+        $debutFrais = Carbon::parse($frais->date_debut_tranches ?? $debutAnnee)->startOfMonth();
 
         if ($debutFrais->eq($debutAnnee)) {
             return;
@@ -948,7 +1317,10 @@ class FacturationService
         }
 
         $frais->tranchesPaiement()->delete();
-        $frais->update(['date_debut_tranches' => $debutAnnee->format('Y-m-d')]);
+        $frais->update([
+            'date_debut_tranches' => $debutAnnee->format('Y-m-d'),
+            'nombre_tranches' => $this->nombreMoisFacturation(),
+        ]);
         $frais->creerTranchesPaiement();
         $frais->unsetRelation('tranchesPaiement');
     }
@@ -981,10 +1353,52 @@ class FacturationService
                 ->first();
     }
 
-    /** Date de début de la période de facturation = début de l'année scolaire. */
+    /** Date de début de la période de facturation = octobre de l'année scolaire. */
     private function dateDebutTranches(?FraisScolarite $frais, AnneeScolaire $anneeScolaire): Carbon
     {
-        return Carbon::parse($anneeScolaire->date_debut)->startOfMonth();
+        return $this->moisAnneeScolaireFacturation($anneeScolaire)->first()->copy();
+    }
+
+    private function nombreMoisFacturation(): int
+    {
+        return count(self::MOIS_FACTURATION_ANNEE);
+    }
+
+    /**
+     * @return Collection<int, Carbon>
+     */
+    private function moisAnneeScolaireFacturation(AnneeScolaire $anneeScolaire): Collection
+    {
+        $anneeDebut = $this->anneeDebutFacturation($anneeScolaire);
+        $anneeFin = $anneeDebut + 1;
+
+        return collect(self::MOIS_FACTURATION_ANNEE)->map(
+            fn (int $mois) => Carbon::create($mois >= 10 ? $anneeDebut : $anneeFin, $mois, 1)->startOfMonth()
+        );
+    }
+
+    private function anneeDebutFacturation(AnneeScolaire $anneeScolaire): int
+    {
+        if (preg_match('#^(\d{4})\s*[-/]#', trim($anneeScolaire->nom), $matches)) {
+            return (int) $matches[1];
+        }
+
+        $debut = Carbon::parse($anneeScolaire->date_debut);
+
+        return $debut->month >= 10 ? $debut->year : $debut->year - 1;
+    }
+
+    private function numeroTranchePourMoisAnneeScolaire(AnneeScolaire $anneeScolaire, Carbon $mois): ?int
+    {
+        $cible = $mois->copy()->startOfMonth()->format('Y-m');
+
+        foreach ($this->moisAnneeScolaireFacturation($anneeScolaire)->values() as $index => $periode) {
+            if ($periode->format('Y-m') === $cible) {
+                return $index + 1;
+            }
+        }
+
+        return null;
     }
 
     /** @return Collection<int, Carbon> */
@@ -1023,6 +1437,13 @@ class FacturationService
         return min($montant, $sousTotal);
     }
 
+    private function nettoyerLibelleAffichage(?string $libelle): string
+    {
+        $libelle = trim((string) $libelle);
+
+        return trim((string) preg_replace('/\s*\((?:reste|partiel)[^)]*\)/u', '', $libelle));
+    }
+
     private function libelleLigne(string $typeFrais, Carbon $mois): string
     {
         $label = self::LABELS_TYPE[$typeFrais] ?? ucfirst($typeFrais);
@@ -1043,5 +1464,176 @@ class FacturationService
     private function formatLigne(array $ligne): array
     {
         return $ligne;
+    }
+
+    /**
+     * Frais uniques impayés : inscription, réinscription, uniforme, etc.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function getLignesFraisUnitaires(Eleve $eleve): Collection
+    {
+        return FraisScolarite::where('eleve_id', $eleve->id)
+            ->whereNotIn('type_frais', self::TYPES_MENSUELS)
+            ->whereIn('statut', ['en_attente', 'en_retard'])
+            ->get()
+            ->map(function (FraisScolarite $frais) {
+                $reste = round((float) $frais->montant_restant, 2);
+                if ($reste <= 0) {
+                    return null;
+                }
+
+                return $this->formatLigne([
+                    'id' => 'frais:' . $frais->id,
+                    'source' => 'frais',
+                    'type_frais' => $frais->type_frais,
+                    'mois' => ($frais->date_echeance ?? now())->format('Y-m-d'),
+                    'libelle' => $frais->libelle,
+                    'montant' => $reste,
+                    'montant_du_mois' => $reste,
+                    'partiel' => false,
+                    'tranche_id' => null,
+                    'frais_id' => $frais->id,
+                ]);
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function creerFraisEntreeInscription(
+        Eleve $eleve,
+        TarifClasse $tarif,
+        bool $gratuitInscription,
+        bool $gratuitReinscription
+    ): void {
+        if ($eleve->type_inscription === 'reinscription') {
+            if ($this->fraisExisteDeja($eleve->id, 'reinscription')) {
+                return;
+            }
+
+            if ($gratuitReinscription) {
+                FraisScolarite::create([
+                    'eleve_id' => $eleve->id,
+                    'libelle' => 'Frais de réinscription (GRATUIT)',
+                    'montant' => 0,
+                    'date_echeance' => now(),
+                    'statut' => 'paye',
+                    'type_frais' => 'reinscription',
+                    'description' => 'Frais de réinscription GRATUIT pour l\'année scolaire',
+                    'paiement_par_tranches' => false,
+                    'actif' => true,
+                ]);
+
+                return;
+            }
+
+            $montant = $this->montantFraisReinscription($tarif);
+            if ($montant <= 0) {
+                return;
+            }
+
+            FraisScolarite::create([
+                'eleve_id' => $eleve->id,
+                'libelle' => 'Frais de réinscription',
+                'montant' => $montant,
+                'date_echeance' => now()->addDays(30),
+                'statut' => 'en_attente',
+                'type_frais' => 'reinscription',
+                'description' => 'Frais de réinscription pour l\'année scolaire',
+                'paiement_par_tranches' => false,
+                'actif' => true,
+            ]);
+
+            return;
+        }
+
+        if (!in_array($eleve->type_inscription, ['nouvelle', 'transfert'], true)) {
+            return;
+        }
+
+        if ($this->fraisExisteDeja($eleve->id, 'inscription')) {
+            return;
+        }
+
+        if ((float) $tarif->frais_inscription <= 0 && !$gratuitInscription) {
+            return;
+        }
+
+        $montant = $gratuitInscription ? 0 : (float) $tarif->frais_inscription;
+        $statut = $gratuitInscription ? 'paye' : 'en_attente';
+
+        FraisScolarite::create([
+            'eleve_id' => $eleve->id,
+            'libelle' => 'Frais d\'inscription' . ($gratuitInscription ? ' (GRATUIT)' : ''),
+            'montant' => $montant,
+            'date_echeance' => $gratuitInscription ? now() : now()->addDays(30),
+            'statut' => $statut,
+            'type_frais' => 'inscription',
+            'description' => $gratuitInscription
+                ? 'Frais d\'inscription GRATUIT pour l\'année scolaire'
+                : 'Frais d\'inscription pour l\'année scolaire',
+            'paiement_par_tranches' => false,
+            'actif' => true,
+        ]);
+    }
+
+    private function creerFraisUnique(
+        Eleve $eleve,
+        AnneeScolaire $anneeScolaire,
+        string $libelleBase,
+        float $montant
+    ): void {
+        if ($montant <= 0) {
+            return;
+        }
+
+        $libelle = $libelleBase . ' - ' . ($eleve->classe?->nom ?? 'Classe') . ' - ' . $anneeScolaire->nom;
+
+        if (FraisScolarite::where('eleve_id', $eleve->id)
+            ->where('libelle', $libelle)
+            ->where('statut', '!=', 'annule')
+            ->exists()) {
+            return;
+        }
+
+        FraisScolarite::create([
+            'eleve_id' => $eleve->id,
+            'libelle' => $libelle,
+            'montant' => $montant,
+            'date_echeance' => now()->addDays(30),
+            'statut' => 'en_attente',
+            'type_frais' => 'autre',
+            'paiement_par_tranches' => false,
+            'actif' => true,
+        ]);
+    }
+
+    private function fraisExisteDeja(int $eleveId, string $typeFrais): bool
+    {
+        return FraisScolarite::where('eleve_id', $eleveId)
+            ->where('type_frais', $typeFrais)
+            ->where('statut', '!=', 'annule')
+            ->exists();
+    }
+
+    /**
+     * Montant des frais de réinscription (aligné sur l'affichage /tarifs).
+     */
+    private function montantFraisReinscription(TarifClasse $tarif): float
+    {
+        if ((float) $tarif->frais_reinscription > 0) {
+            return (float) $tarif->frais_reinscription;
+        }
+
+        return round((float) $tarif->frais_inscription * 0.5, 2);
+    }
+
+    private function statutDepuisTotaux(array $totaux): string
+    {
+        if (!array_key_exists('reste_a_payer', $totaux)) {
+            return 'payee';
+        }
+
+        return ((float) $totaux['reste_a_payer']) > 0.01 ? 'en_cours' : 'payee';
     }
 }

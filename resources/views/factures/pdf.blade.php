@@ -5,7 +5,9 @@
     <title>Facture {{ $facture->numero_facture }}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; font-size: 13px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 3px solid #28a745; padding-bottom: 15px; margin-bottom: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #28a745; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-logo { height: 70px; max-width: 120px; object-fit: contain; flex-shrink: 0; }
         .header h1 { margin: 0; color: #28a745; font-size: 22px; }
         .meta { margin-bottom: 20px; }
         .meta div { margin-bottom: 4px; }
@@ -25,10 +27,15 @@
     </div>
 
     <div class="header">
-        <div>
-            <h1>{{ $schoolInfo['school_name'] }}</h1>
-            <div>{{ $schoolInfo['school_address'] }}</div>
-            <div>{{ $schoolInfo['school_phone'] }} — {{ $schoolInfo['school_email'] }}</div>
+        <div class="header-left">
+            @if(!empty($schoolInfo['logo_url']))
+                <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo {{ $schoolInfo['school_name'] }}" class="header-logo">
+            @endif
+            <div>
+                <h1>{{ $schoolInfo['school_name'] }}</h1>
+                <div>{{ $schoolInfo['school_address'] }}</div>
+                <div>{{ $schoolInfo['school_phone'] }} — {{ $schoolInfo['school_email'] }}</div>
+            </div>
         </div>
         <div style="text-align:right;">
             <div style="font-size:18px;font-weight:bold;">FACTURE</div>
@@ -48,42 +55,40 @@
         <thead>
             <tr>
                 <th>Libellé</th>
-                <th class="text-end">Montant brut</th>
-                <th class="text-end">Remise</th>
-                <th class="text-end">Net</th>
+                <th class="text-end">Montant</th>
             </tr>
         </thead>
         <tbody>
             @foreach($facture->lignes as $ligne)
                 <tr>
-                    <td>{{ $ligne->libelle }}</td>
-                    <td class="text-end">{{ number_format($ligne->montant_brut, 0, ',', ' ') }} GNF</td>
-                    <td class="text-end">{{ number_format($ligne->montant_remise, 0, ',', ' ') }} GNF</td>
-                    <td class="text-end">{{ number_format($ligne->montant_net, 0, ',', ' ') }} GNF</td>
+                    <td>{{ $ligne->libelleAffiche() }}</td>
+                    <td class="text-end">{{ number_format($ligne->montantAffiche(), 0, ',', ' ') }} GNF</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
+    @php
+        $totalApresRemise = round((float) $facture->sous_total - (float) $facture->montant_remise, 2);
+        $resteAPayer = max(0, round($totalApresRemise - (float) $facture->total, 2));
+    @endphp
+
     <table class="totaux">
-        <tr><td>Sous-total</td><td class="text-end">{{ number_format($facture->sous_total, 0, ',', ' ') }} GNF</td></tr>
+        <tr><td>Total brut</td><td class="text-end">{{ number_format($facture->sous_total, 0, ',', ' ') }} GNF</td></tr>
         <tr>
             <td>Remise {{ $facture->remise_type === 'pourcentage' ? '(' . number_format($facture->remise_valeur, 0) . '%)' : '' }}</td>
-            <td class="text-end">-{{ number_format($facture->montant_remise, 0, ',', ' ') }} GNF</td>
+            <td class="text-end">−{{ number_format($facture->montant_remise, 0, ',', ' ') }} GNF</td>
         </tr>
+        <tr><td><strong>Total</strong></td><td class="text-end"><strong>{{ number_format($totalApresRemise, 0, ',', ' ') }} GNF</strong></td></tr>
         <tr class="total-row"><td>Total payé</td><td class="text-end">{{ number_format($facture->total, 0, ',', ' ') }} GNF</td></tr>
+        @if($resteAPayer > 0)
+        <tr><td>Reste à payer</td><td class="text-end">{{ number_format($resteAPayer, 0, ',', ' ') }} GNF</td></tr>
+        @endif
     </table>
 
     <p style="margin-top:30px;">
         <strong>Mode de paiement :</strong> {{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}<br>
-        <strong>Statut :</strong> Payée<br>
-        @if($facture->observations)
-            <strong>Observations :</strong> {{ $facture->observations }}
-        @endif
-    </p>
-
-    <p style="margin-top:40px;font-size:11px;color:#666;">
-        Document généré le {{ now()->format('d/m/Y H:i') }} — {{ $facture->generePar->prenom ?? '' }} {{ $facture->generePar->nom ?? '' }}
+        <strong>Statut :</strong> {{ $facture->statutLibelle() }}
     </p>
 </body>
 </html>

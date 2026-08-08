@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Depense extends Model
 {
@@ -24,7 +25,9 @@ class Depense extends Model
         'paye_par',
         'date_approbation',
         'date_paiement',
-        'observations'
+        'observations',
+        'annee_scolaire_id',
+        'salaire_enseignant_id',
     ];
 
     protected $casts = [
@@ -48,6 +51,42 @@ class Depense extends Model
     public function payePar()
     {
         return $this->belongsTo(Utilisateur::class, 'paye_par');
+    }
+
+    public function anneeScolaire()
+    {
+        return $this->belongsTo(AnneeScolaire::class, 'annee_scolaire_id');
+    }
+
+    public function salaireEnseignant()
+    {
+        return $this->belongsTo(SalaireEnseignant::class, 'salaire_enseignant_id');
+    }
+
+    public static function hasSalaireEnseignantLinkColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('depenses', 'salaire_enseignant_id');
+        }
+
+        return $hasColumn;
+    }
+
+    /**
+     * Dépenses visibles côté comptabilité (hors doublons salaires module).
+     */
+    public function scopeExcluantSalairesModule($query)
+    {
+        if (static::hasSalaireEnseignantLinkColumn()) {
+            return $query->where(function ($q) {
+                $q->where('type_depense', '!=', 'salaire_enseignant')
+                    ->orWhereNull('salaire_enseignant_id');
+            });
+        }
+
+        return $query->where('type_depense', '!=', 'salaire_enseignant');
     }
 
     /**

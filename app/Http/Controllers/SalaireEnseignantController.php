@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AnneeScolaire;
 use App\Models\SalaireEnseignant;
 use App\Models\Enseignant;
 use App\Models\Depense;
@@ -16,7 +17,13 @@ class SalaireEnseignantController extends Controller
      */
     public function index(Request $request)
     {
+        $anneeScolaire = AnneeScolaire::anneeActive();
+
         $query = SalaireEnseignant::with(['enseignant.utilisateur', 'calculePar', 'validePar', 'payePar']);
+
+        if ($anneeScolaire) {
+            $query->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id));
+        }
 
         // Filtres
         if ($request->filled('enseignant_id')) {
@@ -32,14 +39,9 @@ class SalaireEnseignantController extends Controller
         }
 
         $salaires = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(20);
-        $enseignants = Enseignant::with('utilisateur')
-            ->where('actif', true)
-            ->get()
-            ->sortBy(function($enseignant) {
-                return $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
-            });
+        $enseignants = Enseignant::listeDeroulante($anneeScolaire?->id);
 
-        return view('salaires.index', compact('salaires', 'enseignants'));
+        return view('salaires.index', compact('salaires', 'enseignants', 'anneeScolaire'));
     }
 
     /**
@@ -47,12 +49,7 @@ class SalaireEnseignantController extends Controller
      */
     public function create()
     {
-        $enseignants = Enseignant::with('utilisateur')
-            ->where('actif', true)
-            ->get()
-            ->sortBy(function($enseignant) {
-                return $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
-            });
+        $enseignants = Enseignant::listeDeroulante();
         return view('salaires.create', compact('enseignants'));
     }
 
@@ -126,12 +123,7 @@ class SalaireEnseignantController extends Controller
      */
     public function edit(SalaireEnseignant $salaire)
     {
-        $enseignants = Enseignant::with('utilisateur')
-            ->where('actif', true)
-            ->get()
-            ->sortBy(function($enseignant) {
-                return $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
-            });
+        $enseignants = Enseignant::listeDeroulante();
         return view('salaires.edit', compact('salaire', 'enseignants'));
     }
 
@@ -201,7 +193,7 @@ class SalaireEnseignantController extends Controller
             $salaire->marquerCommePaye($request->date_paiement);
 
             // Créer une dépense correspondante avec la même date de paiement
-            Depense::create([
+            $depensePayload = [
                 'libelle' => 'Salaire ' . $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom . ' - ' . $salaire->periode_formatee,
                 'montant' => $salaire->salaire_net,
                 'date_depense' => $request->date_paiement,
@@ -213,8 +205,15 @@ class SalaireEnseignantController extends Controller
                 'reference_paiement' => $request->reference_paiement,
                 'paye_par' => auth()->id(),
                 'date_paiement' => $request->date_paiement,
-                'observations' => 'Paiement automatique depuis le système de salaires'
-            ]);
+                'observations' => 'Paiement automatique depuis le système de salaires',
+                'annee_scolaire_id' => \App\Models\AnneeScolaire::anneeActive()?->id,
+            ];
+
+            if (Depense::hasSalaireEnseignantLinkColumn()) {
+                $depensePayload['salaire_enseignant_id'] = $salaire->id;
+            }
+
+            Depense::create($depensePayload);
 
             DB::commit();
             return redirect()->route('salaires.show', $salaire)
@@ -237,12 +236,16 @@ class SalaireEnseignantController extends Controller
                 $salaire->load(['enseignant.utilisateur']);
                 
                 // Trouver la dépense associée au salaire
-                $depense = Depense::where('type_depense', 'salaire_enseignant')
-                    ->where('montant', $salaire->salaire_net)
-                    ->where('date_depense', $salaire->date_paiement)
-                    ->where('beneficiaire', $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom)
-                    ->where('observations', 'like', '%Paiement automatique depuis le système de salaires%')
-                    ->first();
+                $depense = Depense::hasSalaireEnseignantLinkColumn()
+                    ? Depense::where('salaire_enseignant_id', $salaire->id)->first()
+                    : null;
+
+                $depense = $depense ?? Depense::where('type_depense', 'salaire_enseignant')
+                        ->where('montant', $salaire->salaire_net)
+                        ->where('date_depense', $salaire->date_paiement)
+                        ->where('beneficiaire', $salaire->enseignant->utilisateur->nom . ' ' . $salaire->enseignant->utilisateur->prenom)
+                        ->where('observations', 'like', '%Paiement automatique depuis le système de salaires%')
+                        ->first();
                 
                 if ($depense) {
                     $depense->delete();
@@ -287,7 +290,7 @@ class SalaireEnseignantController extends Controller
             'salaire_base_defaut' => 'required|numeric|min:0'
         ]);
 
-        $enseignants = Enseignant::all();
+        $enseignants = Enseignant::listeDeroulante();
         $salairesCrees = 0;
 
         foreach ($enseignants as $enseignant) {

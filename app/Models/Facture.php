@@ -84,4 +84,50 @@ class Facture extends Model
     {
         return $this->hasMany(FactureLigne::class);
     }
+
+    public static function statutsFiltre(): array
+    {
+        return [
+            'payee' => 'Payée',
+            'en_cours' => 'En cours',
+            'annulee' => 'Annulée',
+        ];
+    }
+
+    public static function statutsActifs(): array
+    {
+        return ['payee', 'en_cours'];
+    }
+
+    public function estModifiable(): bool
+    {
+        return in_array($this->statut, self::statutsActifs(), true);
+    }
+
+    public function resteAPayer(): float
+    {
+        $totalDu = round((float) $this->sous_total - (float) $this->montant_remise, 2);
+
+        return max(0, round($totalDu - (float) $this->total, 2));
+    }
+
+    public function statutLibelle(): string
+    {
+        return match ($this->statut) {
+            'payee' => 'Payée',
+            'en_cours' => 'En cours',
+            'annulee' => 'Annulée',
+            default => ucfirst((string) $this->statut),
+        };
+    }
+
+    public function statutBadgeClass(): string
+    {
+        return match ($this->statut) {
+            'payee' => 'success',
+            'en_cours' => 'warning',
+            'annulee' => 'secondary',
+            default => 'secondary',
+        };
+    }
 }

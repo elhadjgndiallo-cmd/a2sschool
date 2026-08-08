@@ -39,7 +39,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <input type="text" name="search" class="form-control" placeholder="N° facture, élève..." value="{{ request('search') }}">
                 </div>
                 <div class="col-md-2">
@@ -51,12 +51,20 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="date" name="date_debut" class="form-control" value="{{ request('date_debut') }}">
+                    <select name="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        @foreach(\App\Models\Facture::statutsFiltre() as $valeur => $libelle)
+                            <option value="{{ $valeur }}" {{ request('statut') === $valeur ? 'selected' : '' }}>{{ $libelle }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="date" name="date_fin" class="form-control" value="{{ request('date_fin') }}">
+                    <input type="date" name="date_debut" class="form-control" value="{{ request('date_debut') }}" title="Date début">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <input type="date" name="date_fin" class="form-control" value="{{ request('date_fin') }}" title="Date fin">
+                </div>
+                <div class="col-12 col-md-auto">
                     <button type="submit" class="btn btn-outline-primary"><i class="fas fa-filter"></i> Filtrer</button>
                     <a href="{{ route('factures.index') }}" class="btn btn-outline-secondary">Réinitialiser</a>
                 </div>
@@ -90,18 +98,24 @@
                                 <td class="text-end">{{ number_format($facture->total, 0, ',', ' ') }} GNF</td>
                                 <td>{{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}</td>
                                 <td>
-                                    <span class="badge bg-{{ $facture->statut === 'payee' ? 'success' : 'secondary' }}">
-                                        {{ $facture->statut === 'payee' ? 'Payée' : 'Annulée' }}
+                                    <span class="badge bg-{{ $facture->statutBadgeClass() }}">
+                                        {{ $facture->statutLibelle() }}
                                     </span>
                                 </td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ route('factures.show', $facture) }}" class="btn btn-outline-primary" title="Voir"><i class="fas fa-eye"></i></a>
-                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'payee')
+                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
+                                            <button type="button" class="btn btn-outline-success" title="Payer le reste"
+                                                    data-bs-toggle="modal" data-bs-target="#payerReste{{ $facture->id }}">
+                                                <i class="fas fa-money-bill-wave"></i>
+                                            </button>
+                                        @endif
+                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->estModifiable())
                                             <a href="{{ route('factures.edit', $facture) }}" class="btn btn-outline-warning" title="Modifier"><i class="fas fa-edit"></i></a>
                                         @endif
                                         <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-outline-success" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a>
-                                        @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'payee')
+                                        @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
                                             <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
                                                   onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront retirés.')">
                                                 @csrf
@@ -125,5 +139,13 @@
             <div class="card-footer">{{ $factures->links() }}</div>
         @endif
     </div>
+
+    @foreach($factures as $facture)
+        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
+            @push('modals')
+                @include('factures.partials.modal-payer-reste', ['facture' => $facture, 'modalId' => 'payerReste' . $facture->id])
+            @endpush
+        @endif
+    @endforeach
 </div>
 @endsection

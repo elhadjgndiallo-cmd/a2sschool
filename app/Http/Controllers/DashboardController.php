@@ -61,9 +61,11 @@ class DashboardController extends Controller
         try {
             $user = Auth::user();
             
-            // Mettre en cache les statistiques pour 5 minutes
-            $stats = Cache::remember('admin_dashboard_stats', self::CACHE_DURATION, function () {
-                $anneeScolaireActive = AnneeScolaire::anneeActive();
+            // Mettre en cache les statistiques pour 5 minutes (par année scolaire active)
+            $anneeScolaireActive = AnneeScolaire::anneeActive();
+            $cacheKey = 'admin_dashboard_stats_' . ($anneeScolaireActive?->id ?? 'none');
+
+            $stats = Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($anneeScolaireActive) {
                 $requestVide = new Request();
 
                 $statsRevenus = $anneeScolaireActive
@@ -77,18 +79,36 @@ class DashboardController extends Controller
                 $totalRevenus = $statsRevenus['total'] ?? 0;
                 $totalSorties = $statsSorties['total'] ?? 0;
 
+                $elevesIds = $anneeScolaireActive
+                    ? Eleve::where('annee_scolaire_id', $anneeScolaireActive->id)->pluck('id')
+                    : collect();
+
                 return [
-                    'eleves' => Eleve::count(),
-                    'enseignants' => Enseignant::count(),
-                    'parents' => ParentModel::count(),
+                    'eleves' => $anneeScolaireActive
+                        ? Eleve::where('annee_scolaire_id', $anneeScolaireActive->id)->count()
+                        : 0,
+                    'enseignants' => $anneeScolaireActive
+                        ? Enseignant::where('annee_scolaire_id', $anneeScolaireActive->id)->count()
+                        : 0,
+                    'parents' => $anneeScolaireActive
+                        ? ParentModel::whereHas('eleves', function ($q) use ($anneeScolaireActive) {
+                            $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+                        })->count()
+                        : 0,
                     'classes' => Classe::count(),
                     'matieres' => Matiere::count(),
                     'paiements_total' => $totalRevenus,
                     'total_revenus' => $totalRevenus,
                     'total_sorties' => $totalSorties,
                     'benefice_total' => $totalRevenus - $totalSorties,
-                    'absences_total' => Absence::count(),
-                    'notes_total' => Note::count(),
+                    'absences_total' => $anneeScolaireActive
+                        ? Absence::whereHas('eleve', function ($q) use ($anneeScolaireActive) {
+                            $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+                        })->count()
+                        : 0,
+                    'notes_total' => $elevesIds->isNotEmpty()
+                        ? Note::whereIn('eleve_id', $elevesIds)->count()
+                        : 0,
                 ];
             });
             

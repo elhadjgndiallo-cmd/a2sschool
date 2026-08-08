@@ -15,7 +15,8 @@ class Entree extends Model
         'source',
         'mode_paiement',
         'reference',
-        'enregistre_par'
+        'enregistre_par',
+        'annee_scolaire_id',
     ];
 
     protected $casts = [
@@ -29,6 +30,11 @@ class Entree extends Model
     public function enregistrePar(): BelongsTo
     {
         return $this->belongsTo(Utilisateur::class, 'enregistre_par');
+    }
+
+    public function anneeScolaire(): BelongsTo
+    {
+        return $this->belongsTo(AnneeScolaire::class, 'annee_scolaire_id');
     }
 
     /**

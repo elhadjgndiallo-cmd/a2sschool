@@ -8,6 +8,7 @@ use App\Models\TranchePaiement;
 use App\Models\Eleve;
 use App\Models\Entree;
 use App\Models\TarifClasse;
+use App\Services\FacturationService;
 use App\Services\PaiementScolariteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 class PaiementController extends Controller
 {
     public function __construct(
-        private PaiementScolariteService $paiementScolariteService
+        private PaiementScolariteService $paiementScolariteService,
+        private FacturationService $facturationService
     ) {}
     /**
      * Annuler le dernier paiement d'un frais de scolarité
@@ -546,71 +548,11 @@ public function store(Request $request)
      */
     public function creerFraisAutomatiques(Eleve $eleve, $gratuitInscription = false, $gratuitReinscription = false)
     {
-        // Debug pour voir les valeurs reçues
-        \Log::info('creerFraisAutomatiques appelé avec:', [
-            'eleve_id' => $eleve->id,
-            'gratuitInscription' => $gratuitInscription,
-            'gratuitReinscription' => $gratuitReinscription,
-            'type_inscription' => $eleve->type_inscription
-        ]);
-        
-        // Vérifier si l'élève est exempté des frais
-        if ($eleve->exempte_frais) {
-            return;
-        }
-
-        // Récupérer le tarif de la classe
-        $tarif = TarifClasse::where('classe_id', $eleve->classe_id)
-            ->where('actif', true)
-            ->first();
-
-        if (!$tarif) {
-            return; // Pas de tarif configuré pour cette classe
-        }
-
-        DB::beginTransaction();
-        try {
-            // 1. Créer les frais d'inscription ou de réinscription
-            if ($eleve->type_inscription === 'nouvelle' && $tarif->frais_inscription > 0) {
-                // Frais d'inscription pour nouvelle inscription
-                $montantInscription = $gratuitInscription ? 0 : $tarif->frais_inscription;
-                $statutInscription = $gratuitInscription ? 'paye' : 'en_attente';
-                
-                FraisScolarite::create([
-                    'eleve_id' => $eleve->id,
-                    'libelle' => 'Frais d\'inscription' . ($gratuitInscription ? ' (GRATUIT)' : ''),
-                    'montant' => $montantInscription,
-                    'date_echeance' => $gratuitInscription ? now() : now()->addDays(30), // 30 jours pour payer
-                    'statut' => $statutInscription,
-                    'type_frais' => 'inscription',
-                    'description' => $gratuitInscription ? 'Frais d\'inscription GRATUIT pour l\'année scolaire' : 'Frais d\'inscription pour l\'année scolaire',
-                    'paiement_par_tranches' => false
-                ]);
-            } elseif ($eleve->type_inscription === 'reinscription' && $tarif->frais_reinscription > 0) {
-                // Frais de réinscription
-                $montantReinscription = $gratuitReinscription ? 0 : $tarif->frais_reinscription;
-                $statutReinscription = $gratuitReinscription ? 'paye' : 'en_attente';
-                
-                FraisScolarite::create([
-                    'eleve_id' => $eleve->id,
-                    'libelle' => 'Frais de réinscription' . ($gratuitReinscription ? ' (GRATUIT)' : ''),
-                    'montant' => $montantReinscription,
-                    'date_echeance' => $gratuitReinscription ? now() : now()->addDays(30), // 30 jours pour payer
-                    'statut' => $statutReinscription,
-                    'type_frais' => 'reinscription',
-                    'description' => $gratuitReinscription ? 'Frais de réinscription GRATUIT pour l\'année scolaire' : 'Frais de réinscription pour l\'année scolaire',
-                    'paiement_par_tranches' => false
-                ]);
-            }
-
-            // Note: Les frais de scolarité, cantine et transport doivent être créés manuellement
-            // par l'utilisateur ou le comptable via l'interface de gestion des paiements
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollback();
-            throw $e;
-        }
+        $this->facturationService->genererFraisInscriptionEleve(
+            $eleve,
+            (bool) $gratuitInscription,
+            (bool) $gratuitReinscription
+        );
     }
 
     /**

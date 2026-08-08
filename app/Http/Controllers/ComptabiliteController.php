@@ -44,55 +44,10 @@ class ComptabiliteController extends Controller
                 fn() => $this->getComptabiliteStats($anneeScolaireActive)
             );
         
-        // Récupérer toutes les entrées manuelles de l'année scolaire active (LIMITÉ à 15)
-        $entreesManuelles = Entree::with('enregistrePar:id,nom,prenom')
-            ->whereBetween('date_entree', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
-            ->orderBy('date_entree', 'desc')
-            ->limit(15) // Réduit de 30 à 15
-            ->get();
-        
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
 
-        // Paiements récents avec relations ciblées (LIMITÉ à 15)
-        $paiementsFrais = $entreesStats
-            ->paiementsFraisForComptabiliteQuery(new Request(), $anneeScolaireActive)
-            ->limit(15) // Réduit de 30 à 15
-            ->get();
-
-        // Index léger pour exclure les doublons
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiementsFrais);
-
-        $toutesLesEntrees = collect();
-
-        foreach ($entreesManuelles as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
-            }
-
-            $toutesLesEntrees->push((object) [
-                'id' => 'entree_' . $entree->id,
-                'type' => 'entree',
-                'date' => $entree->date_entree,
-                'description' => $entree->description,
-                'montant' => $entree->montant,
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree,
-            ]);
-        }
-
-        foreach ($paiementsFrais as $paiement) {
-            $entry = $entreesStats->mapPaiementToListEntry($paiement, new Request());
-            if ($entry) {
-                $toutesLesEntrees->push($entry);
-            }
-        }
-        
-        // Trier par date décroissante et limiter aux 10 dernières pour le dashboard
-        $toutesLesEntrees = $toutesLesEntrees->sortByDesc('date')->take(10);
+        $toutesLesEntrees = $entreesStats->buildListEntries(new Request(), $anneeScolaireActive)
+            ->take(10);
             
         // OPTIMISATION: Récupérer DIRECTEMENT les 10 dernières dépenses (au lieu de toutes)
         $depensesRecentes = Depense::select([
@@ -103,10 +58,8 @@ class ComptabiliteController extends Controller
                 'approuvePar:id,nom,prenom', 
                 'payePar:id,nom,prenom'
             ])
-            ->whereBetween('date_depense', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->excluantSalairesModule()
             ->orderBy('date_depense', 'desc')
             ->limit(10) // Directement limité à 10
             ->get();
@@ -118,10 +71,7 @@ class ComptabiliteController extends Controller
             ])
             ->where('statut', 'payé')
             ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaireActive->date_debut->format('Y-m-d'),
-                $anneeScolaireActive->date_fin->format('Y-m-d')
-            ])
+            ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaireActive->id))
             ->with([
                 'enseignant:id,utilisateur_id',
                 'enseignant.utilisateur:id,nom,prenom',
@@ -320,111 +270,30 @@ class ComptabiliteController extends Controller
      */
     public function entrees(Request $request)
     {
-        // Récupérer l'année scolaire (filtrée ou active par défaut)
-        $anneeScolaireId = $request->filled('annee_scolaire_id') 
-            ? $request->annee_scolaire_id 
+        $anneeScolaireId = $request->filled('annee_scolaire_id')
+            ? $request->annee_scolaire_id
             : (\App\Models\AnneeScolaire::anneeActive()?->id);
-        
-        $anneeScolaire = $anneeScolaireId 
+
+        $anneeScolaire = $anneeScolaireId
             ? \App\Models\AnneeScolaire::find($anneeScolaireId)
             : \App\Models\AnneeScolaire::anneeActive();
-        
+
         if (!$anneeScolaire) {
             return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
-        
-        // Récupérer les entrées manuelles
-        $query = Entree::with('enregistrePar');
-        
-        // Filtrer par période de l'année scolaire sélectionnée
-        if ($anneeScolaire) {
-            $query->whereBetween('date_entree', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d')
-            ]);
-        }
-        
-        // Filtres supplémentaires
-        if ($request->filled('date_debut')) {
-            $query->whereDate('date_entree', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $query->whereDate('date_entree', '<=', $request->date_fin);
-        }
-        
-        if ($request->filled('source')) {
-            $query->where('source', $request->source);
-        }
-        
-        // Filtre par montant minimum
-        if ($request->filled('montant_min')) {
-            $query->where('montant', '>=', $request->montant_min);
-        }
-        
-        // Filtre par montant maximum
-        if ($request->filled('montant_max')) {
-            $query->where('montant', '<=', $request->montant_max);
-        }
-        
-        // Filtre par type d'entrée
-        if ($request->filled('type_entree')) {
-            if ($request->type_entree == 'manuelle') {
-                // Ne rien faire, on garde les entrées manuelles
-            } elseif ($request->type_entree == 'paiement') {
-                // On ne récupérera que les paiements plus tard
-                $query->whereRaw('1 = 0'); // Ne récupérer aucune entrée manuelle
-            }
-        }
-        
-        $entrees = $query->orderBy('date_entree', 'desc')->get();
 
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
+        $listRequest = $this->entreesListRequest($request, $anneeScolaire);
 
-        $paiementsFrais = $entreesStats
-            ->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)
-            ->get();
+        $allEntries = $entreesStats->buildListEntries($listRequest, $anneeScolaire);
 
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiementsFrais);
-
-        $allEntries = collect();
-
-        foreach ($entrees as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
-            }
-
-            if ($request->filled('type_entree') && $request->type_entree === 'paiement') {
-                continue;
-            }
-
-            $allEntries->push((object) [
-                'id' => 'entree_' . $entree->id,
-                'type' => 'entree',
-                'date' => $entree->date_entree,
-                'description' => $entree->description,
-                'montant' => $entree->montant,
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'data' => $entree,
-            ]);
-        }
-
-        foreach ($paiementsFrais as $paiement) {
-            $entry = $entreesStats->mapPaiementToListEntry($paiement, $request);
-            if ($entry) {
-                $allEntries->push($entry);
-            }
-        }
-
-        $allEntries = $allEntries->sortByDesc('date');
+        $statsEntrees = $entreesStats->statsFromEntries($allEntries);
 
         $perPage = 50;
         $currentPage = request()->get('page', 1);
         $offset = ($currentPage - 1) * $perPage;
         $items = $allEntries->slice($offset, $perPage);
-        
-        // Créer un objet de pagination personnalisé
+
         $paginatedEntries = new \Illuminate\Pagination\LengthAwarePaginator(
             $items,
             $allEntries->count(),
@@ -435,75 +304,56 @@ class ComptabiliteController extends Controller
                 'pageName' => 'page',
             ]
         );
-        
-        // Ajouter les paramètres de requête à la pagination
+
         $paginatedEntries->appends(request()->query());
-        
-        // Statistiques des entrées (filtrées par année scolaire sélectionnée)
-        $statsEntrees = $this->getStatsEntrees($request, $anneeScolaire);
-        
-        // Sources disponibles pour les filtres basées sur les types de frais des paiements
-        $sources = [];
-        
-        // Récupérer les types de frais uniques des paiements de l'année sélectionnée
-        $typesFraisQuery = \App\Models\Paiement::whereHas('fraisScolarite.eleve', function($q) use ($anneeScolaire) {
-            if ($anneeScolaire) {
-                $q->where('annee_scolaire_id', $anneeScolaire->id);
-            }
-        })
-        ->whereHas('fraisScolarite', function($q) {
-            $q->whereNotNull('type_frais');
-        })
-        ->with('fraisScolarite');
-        
-        $paiementsPourSources = $typesFraisQuery->get();
-        
-        // Fonction pour convertir le type de frais en libellé de source
-        $getSourceFromTypeFrais = function($typeFrais) {
-            $sources = [
-                'inscription' => 'Inscription',
-                'reinscription' => 'Réinscription',
-                'scolarite' => 'Frais de scolarité',
-                'cantine' => 'Cantine',
-                'transport' => 'Transport',
-                'activites' => 'Activités',
-                'autre' => 'Autres frais'
-            ];
-            return $sources[$typeFrais] ?? 'Autres frais';
-        };
-        
-        // Récupérer les sources uniques à partir des types de frais
-        foreach ($paiementsPourSources as $paiement) {
-            $typeFrais = $paiement->fraisScolarite->type_frais ?? 'autre';
-            $source = $getSourceFromTypeFrais($typeFrais);
-            if (!in_array($source, $sources)) {
-                $sources[] = $source;
-            }
-        }
-        
-        // Ajouter aussi les sources des entrées manuelles (non liées aux paiements)
-        $sourcesEntreesQuery = Entree::query();
-        if ($anneeScolaire) {
-            $sourcesEntreesQuery->whereBetween('date_entree', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d')
-            ]);
-        }
-        // Exclure les sources automatiques créées par les paiements
-        $sourcesEntreesQuery->whereNotIn('source', ['Scolarité', 'Inscription', 'Réinscription', 'Transport', 'Cantine', 'Uniforme', 'Livres', 'Autres frais', 'Paiements scolaires']);
-        $sourcesEntrees = $sourcesEntreesQuery->select('source')->distinct()->orderBy('source')->pluck('source')->toArray();
-        
-        // Combiner les sources
-        $sources = array_merge($sources, $sourcesEntrees);
-        $sources = array_unique($sources);
-        sort($sources);
-        
-        $sources = collect($sources);
-        
-        // Récupérer toutes les années scolaires pour le filtre
+
+        $sources = $this->getEntreesSourcesForFilter($anneeScolaire, $entreesStats);
         $anneesScolaires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
-        
+
         return view('comptabilite.entrees', compact('paginatedEntries', 'statsEntrees', 'sources', 'anneeScolaire', 'anneesScolaires'));
+    }
+
+    /**
+     * Requête pour la liste entrées (période étendue si année active).
+     */
+    private function entreesListRequest(Request $request, \App\Models\AnneeScolaire $anneeScolaire): Request
+    {
+        return $request;
+    }
+
+    /**
+     * Sources disponibles pour le filtre entrées (requête légère).
+     */
+    private function getEntreesSourcesForFilter(\App\Models\AnneeScolaire $anneeScolaire, ComptabiliteEntreesStatsService $entreesStats): \Illuminate\Support\Collection
+    {
+        $typesFrais = DB::table('paiements')
+            ->join('frais_scolarite', 'paiements.frais_scolarite_id', '=', 'frais_scolarite.id')
+            ->join('eleves', 'frais_scolarite.eleve_id', '=', 'eleves.id')
+            ->where('eleves.annee_scolaire_id', $anneeScolaire->id)
+            ->whereNotNull('frais_scolarite.type_frais')
+            ->distinct()
+            ->pluck('frais_scolarite.type_frais');
+
+        $sources = $typesFrais->map(fn ($type) => $entreesStats->sourceFromTypeFrais($type))->unique()->values()->all();
+
+        $sourcesEntrees = Entree::query()
+            ->where('annee_scolaire_id', $anneeScolaire->id)
+            ->whereNotIn('source', ComptabiliteEntreesStatsService::SOURCES_SCOLARITE)
+            ->select('source')
+            ->distinct()
+            ->orderBy('source')
+            ->pluck('source')
+            ->toArray();
+
+        $sources = array_unique(array_merge($sources, $sourcesEntrees));
+
+        if (\App\Models\Facture::whereIn('statut', \App\Models\Facture::statutsActifs())->where('annee_scolaire_id', $anneeScolaire->id)->exists()) {
+            $sources[] = 'Frais de scolarité';
+        }
+
+        sort($sources);
+
+        return collect($sources);
     }
 
     /**
@@ -524,137 +374,16 @@ class ComptabiliteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner une année scolaire.');
         }
 
-        $query = Depense::with(['approuvePar', 'payePar']);
+        $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
+        $allSorties = $sortiesStatsService->buildListEntries($request, $anneeScolaire);
 
-        $query->whereBetween('date_depense', [
-            $anneeScolaire->date_debut->format('Y-m-d'),
-            $anneeScolaire->date_fin->format('Y-m-d'),
-        ]);
-        
-        // Filtres supplémentaires
-        if ($request->filled('date_debut')) {
-            $query->whereDate('date_depense', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $query->whereDate('date_depense', '<=', $request->date_fin);
-        }
-        
-        if ($request->filled('type_depense')) {
-            $query->where('type_depense', $request->type_depense);
-        }
-        
-        // Exclure les dépenses salaire en doublon (représentées par la table salaires)
-        if (!$request->filled('type_depense') || $request->type_depense !== 'salaire_enseignant') {
-            $query->where('type_depense', '!=', 'salaire_enseignant');
-        }
+        $statsSorties = $sortiesStatsService->statsFromEntries($allSorties);
 
-        $depenses = $query->orderBy('date_depense', 'desc')->get();
-
-        $salairesQuery = SalaireEnseignant::where('statut', 'payé')
-            ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ]);
-        
-        // Appliquer les filtres de date supplémentaires (comme pour les dépenses)
-        if ($request->filled('date_debut')) {
-            $salairesQuery->whereDate('date_paiement', '>=', $request->date_debut);
-        }
-        
-        if ($request->filled('date_fin')) {
-            $salairesQuery->whereDate('date_paiement', '<=', $request->date_fin);
-        }
-        
-        // Filtrer par type si spécifié
-        if ($request->filled('type_depense') && $request->type_depense !== 'salaire_enseignant') {
-            // Si le filtre n'est pas pour salaire_enseignant, ne pas inclure les salaires
-            $salairesPayes = collect();
-        } else {
-            // Trier par date de paiement décroissante (plus récentes en premier)
-            $salairesPayes = $salairesQuery->with(['enseignant.utilisateur', 'payePar'])
-                ->orderBy('date_paiement', 'desc')
-                ->get();
-        }
-        
-        // Combiner les deux collections et créer une pagination unifiée
-        $allSorties = collect();
-        
-        // Ajouter les dépenses avec un type (en excluant celles qui correspondent à un salaire)
-        foreach ($depenses as $depense) {
-            // Vérifier si cette dépense correspond à un salaire (pour éviter les doublons)
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($depense->type_depense === 'salaire_enseignant' && 
-                    $depense->date_depense->format('Y-m-d') == $salaire->date_paiement->format('Y-m-d') &&
-                    abs($depense->montant - $salaire->salaire_net) < 0.01) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
-            
-            // Si c'est une dépense de salaire déjà représentée par un salaire payé, on la saute pour éviter les doublons
-            if ($correspondSalaire) {
-                continue;
-            }
-            
-            $allSorties->push((object) [
-                'id' => 'depense_' . $depense->id,
-                'type' => 'depense',
-                'date' => $depense->date_depense,
-                'libelle' => $depense->libelle,
-                'montant' => $depense->montant,
-                'type_depense' => $depense->type_depense,
-                'description' => $depense->description,
-                'approuve_par' => $depense->approuvePar,
-                'paye_par' => $depense->payePar,
-                'data' => $depense
-            ]);
-        }
-        
-        // Ajouter TOUS les salaires d'enseignants payés (déjà filtrés par date dans la requête)
-        foreach ($salairesPayes as $salaire) {
-            $enseignantNom = $salaire->enseignant && $salaire->enseignant->utilisateur ? 
-                ($salaire->enseignant->utilisateur->prenom . ' ' . $salaire->enseignant->utilisateur->nom) : 
-                'Enseignant inconnu';
-            
-            $allSorties->push((object) [
-                'id' => 'salaire_' . $salaire->id,
-                'type' => 'salaire',
-                'date' => $salaire->date_paiement,
-                'libelle' => 'Salaire - ' . $enseignantNom . ' (' . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - ' . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A') . ')',
-                'montant' => $salaire->salaire_net ?? 0,
-                'type_depense' => 'salaire_enseignant',
-                'description' => 'Paiement de salaire pour la période ' . ($salaire->periode_debut ? $salaire->periode_debut->format('d/m/Y') : 'N/A') . ' - ' . ($salaire->periode_fin ? $salaire->periode_fin->format('d/m/Y') : 'N/A'),
-                'approuve_par' => $salaire->validePar ?? null,
-                'paye_par' => $salaire->payePar ?? null,
-                'data' => $salaire
-            ]);
-        }
-        
-        // Trier par date de sortie décroissante (plus récentes en haut)
-        // date_depense pour les dépenses, date_paiement pour les salaires
-        $allSorties = $allSorties->sortByDesc(function($item) {
-            // S'assurer que la date est bien un objet Carbon pour le tri
-            if ($item->date instanceof \Carbon\Carbon) {
-                return $item->date->timestamp;
-            }
-            // Si c'est une chaîne, la convertir en timestamp
-            if (is_string($item->date)) {
-                return strtotime($item->date);
-            }
-            // Si null, retourner 0 pour mettre en fin
-            return 0;
-        })->values();
-        
-        // Créer une pagination manuelle (comme dans entrees)
         $perPage = 20;
         $currentPage = request()->get('page', 1);
         $offset = ($currentPage - 1) * $perPage;
         $items = $allSorties->slice($offset, $perPage)->values();
-        
-        // Créer un objet de pagination personnalisé avec la collection
+
         $sorties = new \Illuminate\Pagination\LengthAwarePaginator(
             $items,
             $allSorties->count(),
@@ -665,20 +394,15 @@ class ComptabiliteController extends Controller
                 'pageName' => 'page',
             ]
         );
-        
-        // Ajouter les paramètres de requête à la pagination
+
         $sorties->appends(request()->query());
-        
-        $statsSorties = $this->getStatsSorties($request, $anneeScolaire);
 
-        $typesDepenseQuery = Depense::query()
-            ->whereBetween('date_depense', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ])
-            ->where('type_depense', '!=', 'salaire_enseignant');
+        $periodeSorties = $sortiesStatsService->effectiveSchoolYearDateRange($anneeScolaire);
 
-        $typesDepense = $typesDepenseQuery->select('type_depense')
+        $typesDepense = Depense::query()
+            ->whereBetween('date_depense', [$periodeSorties['debut'], $periodeSorties['fin']])
+            ->where('type_depense', '!=', 'salaire_enseignant')
+            ->select('type_depense')
             ->distinct()
             ->orderBy('type_depense')
             ->pluck('type_depense')
@@ -686,13 +410,16 @@ class ComptabiliteController extends Controller
 
         $salairesDansAnnee = SalaireEnseignant::where('statut', 'payé')
             ->whereNotNull('date_paiement')
-            ->whereBetween('date_paiement', [
-                $anneeScolaire->date_debut->format('Y-m-d'),
-                $anneeScolaire->date_fin->format('Y-m-d'),
-            ])
+            ->whereBetween('date_paiement', [$periodeSorties['debut'], $periodeSorties['fin']])
             ->exists();
 
-        if ($salairesDansAnnee && !in_array('salaire_enseignant', $typesDepense, true)) {
+        $depensesSalaireOrphelines = Depense::query()
+            ->where('type_depense', 'salaire_enseignant')
+            ->where('statut', '!=', 'annule')
+            ->whereBetween('date_depense', [$periodeSorties['debut'], $periodeSorties['fin']])
+            ->exists();
+
+        if (($salairesDansAnnee || $depensesSalaireOrphelines) && !in_array('salaire_enseignant', $typesDepense, true)) {
             $typesDepense[] = 'salaire_enseignant';
             sort($typesDepense);
         }
@@ -1420,12 +1147,34 @@ class ComptabiliteController extends Controller
             $totalEntreesMois = $statsMois['total'];
             
             // Total sorties (dépenses + salaires)
-            $totalDepensesMois = Depense::where('statut', '!=', 'annule')
+            $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
+            $dedupLookupMois = $sortiesStatsService->buildSalaryDedupLookup(
+                SalaireEnseignant::where('statut', 'payé')
+                    ->whereNotNull('date_paiement')
+                    ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id))
+                    ->whereBetween('date_paiement', [$debutMoisStr, $finMoisStr])
+                    ->get(['date_paiement', 'salaire_net'])
+            );
+
+            $totalDepensesMois = (float) Depense::where('statut', '!=', 'annule')
+                ->where('annee_scolaire_id', $anneeScolaire->id)
                 ->whereBetween('date_depense', [$debutMoisStr, $finMoisStr])
+                ->where('type_depense', '!=', 'salaire_enseignant')
                 ->sum('montant');
+
+            foreach (Depense::where('statut', '!=', 'annule')
+                ->where('annee_scolaire_id', $anneeScolaire->id)
+                ->whereBetween('date_depense', [$debutMoisStr, $finMoisStr])
+                ->where('type_depense', 'salaire_enseignant')
+                ->get() as $depenseSalaire) {
+                if (!$sortiesStatsService->depenseLieeAuModuleSalaires($depenseSalaire, $dedupLookupMois)) {
+                    $totalDepensesMois += (float) $depenseSalaire->montant;
+                }
+            }
             
             $totalSalairesMois = SalaireEnseignant::where('statut', 'payé')
                 ->whereNotNull('date_paiement')
+                ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id))
                 ->whereBetween('date_paiement', [$debutMoisStr, $finMoisStr])
                 ->sum('salaire_net');
             
@@ -1459,53 +1208,33 @@ class ComptabiliteController extends Controller
         $debutStr = $dateDebut->format('Y-m-d');
         $finStr = $dateFin->format('Y-m-d');
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
-
-        $entrees = Entree::with('enregistrePar')
-            ->whereBetween('date_entree', [$debutStr, $finStr])
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        $paiementsQuery = Paiement::withComptabiliteAffichage()
-            ->whereBetween('paiements.date_paiement', [$debutStr, $finStr]);
+        $anneeScolaire = $anneeScolaire ?? \App\Models\AnneeScolaire::anneeActive();
 
         if ($anneeScolaire) {
-            $paiementsQuery->forAnneeScolaire($anneeScolaire->id);
-        }
-
-        $paiements = $paiementsQuery->orderBy('paiements.created_at', 'asc')->get();
-        $duplicateLookup = $entreesStats->buildPaiementDuplicateLookup($paiements);
-
-        foreach ($entrees as $entree) {
-            if ($entreesStats->isPaiementDuplicateEntry($entree, $duplicateLookup)) {
-                continue;
+            foreach ($entreesStats->buildJournalEntrees($dateDebut, $dateFin, $anneeScolaire) as $ligne) {
+                $journal->push($ligne);
             }
+        } else {
+            $entrees = Entree::with('enregistrePar')
+                ->whereBetween('date_entree', [$debutStr, $finStr])
+                ->orderBy('created_at', 'asc')
+                ->get();
 
-            $journal->push([
-                'date' => $entree->date_entree,
-                'libelle' => $entree->description ?? $entree->libelle,
-                'entree' => (float) $entree->montant,
-                'sortie' => 0,
-                'type' => 'entree_manuelle',
-                'source' => $entree->source,
-                'enregistre_par' => $entree->enregistrePar,
-                'created_at' => $entree->created_at,
-            ]);
+            foreach ($entrees as $entree) {
+                $journal->push([
+                    'date' => $entree->date_entree,
+                    'libelle' => $entree->description ?? $entree->libelle,
+                    'entree' => (float) $entree->montant,
+                    'sortie' => 0,
+                    'type' => 'entree_manuelle',
+                    'source' => $entree->source,
+                    'enregistre_par' => $entree->enregistrePar,
+                    'created_at' => $entree->created_at,
+                ]);
+            }
         }
 
-        foreach ($paiements as $paiement) {
-            $source = $entreesStats->sourceFromTypeFrais($paiement->fraisScolarite->type_frais ?? 'autre');
-
-            $journal->push([
-                'date' => $paiement->date_paiement,
-                'libelle' => $entreesStats->paiementJournalLibelle($paiement),
-                'entree' => (float) $paiement->montant_paye,
-                'sortie' => 0,
-                'type' => 'paiement_scolarite',
-                'source' => $source,
-                'enregistre_par' => $paiement->encaissePar,
-                'created_at' => $paiement->created_at,
-            ]);
-        }
+        $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
 
         $depenses = Depense::with(['approuvePar', 'payePar'])
             ->where('statut', '!=', 'annule')
@@ -1520,16 +1249,10 @@ class ComptabiliteController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        foreach ($depenses as $depense) {
-            $correspondSalaire = false;
-            foreach ($salairesPayes as $salaire) {
-                if ($this->depenseCorrespondSalairePaye($depense, $salaire)) {
-                    $correspondSalaire = true;
-                    break;
-                }
-            }
+        $dedupLookup = $sortiesStatsService->buildSalaryDedupLookup($salairesPayes);
 
-            if ($correspondSalaire) {
+        foreach ($depenses as $depense) {
+            if ($sortiesStatsService->depenseLieeAuModuleSalaires($depense, $dedupLookup)) {
                 continue;
             }
 

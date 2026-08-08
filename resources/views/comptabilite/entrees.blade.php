@@ -241,6 +241,9 @@
                                                         <a href="{{ route('factures.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir la facture">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
+                                                        <a href="{{ route('factures.pdf', $entry->data) }}" class="btn btn-outline-success" title="Reçu / PDF" target="_blank">
+                                                            <i class="fas fa-receipt"></i>
+                                                        </a>
                                                     @else
                                                         <a href="{{ route('entrees.show', $entry->data) }}" class="btn btn-outline-primary" title="Voir">
                                                             <i class="fas fa-eye"></i>

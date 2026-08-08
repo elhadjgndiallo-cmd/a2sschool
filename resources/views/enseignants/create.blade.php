@@ -126,9 +126,9 @@ use Illuminate\Support\Facades\Storage;
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="date_naissance" class="form-label">Date de Naissance *</label>
+                                <label for="date_naissance" class="form-label">Date de Naissance <small class="text-muted">(optionnel)</small></label>
                                 <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" 
-                                       id="date_naissance" name="date_naissance" value="{{ old('date_naissance') }}" required>
+                                       id="date_naissance" name="date_naissance" value="{{ old('date_naissance') }}">
                                 @error('date_naissance')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -136,9 +136,9 @@ use Illuminate\Support\Facades\Storage;
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="lieu_naissance" class="form-label">Lieu de Naissance *</label>
+                                <label for="lieu_naissance" class="form-label">Lieu de Naissance <small class="text-muted">(optionnel)</small></label>
                                 <input type="text" class="form-control @error('lieu_naissance') is-invalid @enderror" 
-                                       id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance') }}" required>
+                                       id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance') }}">
                                 @error('lieu_naissance')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -160,9 +160,9 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                     
                     <div class="mb-3">
-                        <label for="adresse" class="form-label">Adresse *</label>
+                        <label for="adresse" class="form-label">Adresse <small class="text-muted">(optionnel)</small></label>
                         <textarea class="form-control @error('adresse') is-invalid @enderror" 
-                                  id="adresse" name="adresse" rows="2" required>{{ old('adresse') }}</textarea>
+                                  id="adresse" name="adresse" rows="2">{{ old('adresse') }}</textarea>
                         @error('adresse')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -181,9 +181,12 @@ use Illuminate\Support\Facades\Storage;
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="numero_employe" class="form-label">Numéro d'Employé *</label>
-                                <input type="text" class="form-control @error('numero_employe') is-invalid @enderror" 
-                                       id="numero_employe" name="numero_employe" value="{{ old('numero_employe') }}" required>
+                                <label for="numero_employe" class="form-label">Numéro d'Employé</label>
+                                <input type="text" class="form-control bg-light @error('numero_employe') is-invalid @enderror" 
+                                       id="numero_employe" name="numero_employe"
+                                       value="{{ old('numero_employe', $prochainNumeroEmploye ?? '') }}"
+                                       readonly>
+                                <small class="text-muted">Généré automatiquement (ex. ENS00001)</small>
                                 @error('numero_employe')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -305,6 +308,8 @@ use Illuminate\Support\Facades\Storage;
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const numeroEmployeInitial = document.getElementById('numero_employe')?.value || '';
+
     // Prévisualisation de la photo
     const photoInput = document.getElementById('photo_profil');
     const photoPreview = document.getElementById('photoPreview');
@@ -372,6 +377,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validation Bootstrap
     const form = document.querySelector('.needs-validation');
     if (form) {
+        form.addEventListener('reset', function() {
+            setTimeout(function() {
+                const numeroField = document.getElementById('numero_employe');
+                if (numeroField && numeroEmployeInitial) {
+                    numeroField.value = numeroEmployeInitial;
+                }
+            }, 0);
+        });
+
         form.addEventListener('submit', function(event) {
             if (!form.checkValidity()) {
                 event.preventDefault();

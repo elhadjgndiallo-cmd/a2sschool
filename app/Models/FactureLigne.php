@@ -49,4 +49,42 @@ class FactureLigne extends Model
     {
         return $this->belongsTo(Paiement::class);
     }
+
+    /**
+     * Libellé affiché sur la facture (sans mention partiel / reste).
+     */
+    public function libelleAffiche(): string
+    {
+        $libelle = trim((string) $this->libelle);
+
+        return trim((string) preg_replace('/\s*\((?:reste|partiel)[^)]*\)/u', '', $libelle));
+    }
+
+    /**
+     * Montant mensuel / unitaire affiché sur la facture (remise uniquement au total brut).
+     */
+    public function montantAffiche(): float
+    {
+        if ($this->tranche_paiement_id) {
+            $tranche = $this->relationLoaded('tranchePaiement')
+                ? $this->tranchePaiement
+                : $this->tranchePaiement()->first();
+
+            if ($tranche) {
+                return (float) $tranche->montant_tranche;
+            }
+        }
+
+        if ($this->frais_scolarite_id) {
+            $frais = $this->relationLoaded('fraisScolarite')
+                ? $this->fraisScolarite
+                : $this->fraisScolarite()->first();
+
+            if ($frais) {
+                return (float) $frais->montant;
+            }
+        }
+
+        return (float) $this->montant_brut;
+    }
 }

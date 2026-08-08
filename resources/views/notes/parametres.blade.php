@@ -13,109 +13,10 @@
                 </a>
             </div>
 
-            <div class="row">
-                <!-- Gestion des coefficients des matières -->
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Coefficients des Matières</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="coefficientsForm">
-                                @csrf
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Matière</th>
-                                                <th>Coefficient</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($matieres as $matiere)
-                                            <tr>
-                                                <td>{{ $matiere->nom }}</td>
-                                                <td>
-                                                    <input type="number" 
-                                                           class="form-control form-control-sm" 
-                                                           value="{{ $matiere->coefficient }}" 
-                                                           min="1" max="10" step="0.5"
-                                                           data-matiere="{{ $matiere->id }}">
-                                                </td>
-                                                <td>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-success"
-                                                            onclick="updateCoefficient({{ $matiere->id }})">
-                                                        <i class="fas fa-save"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Paramètres généraux -->
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Paramètres Généraux</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="parametresForm">
-                                @csrf
-                                <div class="mb-3">
-                                    <label class="form-label">Note minimale</label>
-                                    <input type="number" class="form-control" value="0" min="0" max="20" step="0.25">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Note maximale</label>
-                                    <input type="number" class="form-control" value="20" min="0" max="20" step="0.25">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Seuil de réussite</label>
-                                    <input type="number" class="form-control" value="10" min="0" max="20" step="0.25">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Arrondi des moyennes</label>
-                                    <select class="form-select">
-                                        <option value="0.01">Au centième (0.01)</option>
-                                        <option value="0.1">Au dixième (0.1)</option>
-                                        <option value="0.25">Au quart (0.25)</option>
-                                        <option value="0.5" selected>À la demi (0.5)</option>
-                                        <option value="1">À l'unité (1)</option>
-                                    </select>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="afficherRang" checked>
-                                    <label class="form-check-label" for="afficherRang">
-                                        Afficher le rang dans les bulletins
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="calculerMoyenne" checked>
-                                    <label class="form-check-label" for="calculerMoyenne">
-                                        Calcul automatique des moyennes
-                                    </label>
-                                </div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Enregistrer
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Barème d'évaluation -->
-            <div class="row mt-4">
+            <div class="row">
                 <div class="col-md-12">
-                    <div class="card">
+                    <div class="card mb-4">
                         <div class="card-header">
                             <h5 class="mb-0">Barème d'Évaluation</h5>
                         </div>
@@ -187,7 +88,7 @@
             </div>
 
             <!-- Périodes scolaires -->
-            <div class="row mt-4">
+            <div class="row">
                 <div class="col-md-12">
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
@@ -227,7 +128,7 @@
                                 </div>
                                 @endforeach
                             </div>
-                            
+
                             @if($periodesScolaires->isEmpty())
                             <div class="text-center text-muted py-4">
                                 <i class="fas fa-calendar-alt fa-3x mb-3"></i>
@@ -256,7 +157,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nom" class="form-label">Nom de la période</label>
-                        <input type="text" class="form-control" id="nom" name="nom" required>
+                        <input type="text" class="form-control" id="nom" name="nom" placeholder="Ex. Trimestre 1" required>
                     </div>
                     <div class="mb-3">
                         <label for="date_debut" class="form-label">Date de début</label>
@@ -283,7 +184,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="ordre" class="form-label">Ordre d'affichage</label>
-                        <input type="number" class="form-control" id="ordre" name="ordre" min="1" max="10" value="1" required>
+                        <input type="number" class="form-control" id="ordre" name="ordre" min="1" max="10" value="{{ $periodesScolaires->count() + 1 }}" required>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="actif" name="actif" checked>
@@ -311,7 +212,6 @@
             </div>
             <form id="editPeriodeForm">
                 @csrf
-                @method('PUT')
                 <input type="hidden" id="edit_periode_id" name="id">
                 <div class="modal-body">
                     <div class="mb-3">
@@ -363,62 +263,28 @@
 
 @push('scripts')
 <script>
-function updateCoefficient(matiereId) {
-    const input = document.querySelector(`input[data-matiere="${matiereId}"]`);
-    const coefficient = input.value;
-    
-    // Simulation de mise à jour
-    fetch(`/api/matiere/${matiereId}/coefficient`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ coefficient: coefficient })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Animation de succès
-            input.classList.add('border-success');
-            setTimeout(() => {
-                input.classList.remove('border-success');
-            }, 2000);
-            
-            // Toast de confirmation
-            showToast('Coefficient mis à jour avec succès', 'success');
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la mise à jour', 'error');
-    });
-}
+const periodesListe = @json($periodesJson->values());
+const periodesParId = Object.fromEntries(periodesListe.map((periode) => [String(periode.id), periode]));
+const updatePeriodeUrlTemplate = @json(route('notes.periodes.update', ['id' => '__ID__']));
+const deletePeriodeUrlTemplate = @json(route('notes.periodes.delete', ['id' => '__ID__']));
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
 function showToast(message, type) {
-    // Créer un toast Bootstrap
-    const toastHtml = `
-        <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
-            <div class="d-flex">
-                <div class="toast-body">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+    const toastElement = document.createElement('div');
+    toastElement.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    toastElement.setAttribute('role', 'alert');
+    toastElement.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     `;
-    
-    // Ajouter le toast au DOM
-    const toastContainer = document.getElementById('toast-container') || createToastContainer();
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-    
-    // Afficher le toast
-    const toastElement = toastContainer.lastElementChild;
+    toastContainer.appendChild(toastElement);
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
-    
-    // Supprimer le toast après affichage
-    toastElement.addEventListener('hidden.bs.toast', () => {
-        toastElement.remove();
-    });
+    toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
 }
 
 function createToastContainer() {
@@ -429,68 +295,63 @@ function createToastContainer() {
     return container;
 }
 
-// Gestion du formulaire des paramètres généraux
-document.getElementById('parametresForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    showToast('Paramètres enregistrés avec succès', 'success');
-});
+async function parseJsonResponse(response) {
+    const data = await response.json().catch(() => ({}));
 
-// Fonctions pour gérer les périodes scolaires
-let periodesData = {};
+    if (!response.ok) {
+        let message = data.message || 'Une erreur est survenue';
 
-// Charger les données des périodes
-function loadPeriodesData() {
-    // Les données sont déjà disponibles via Blade
-    @foreach($periodesScolaires as $periode)
-    periodesData[{{ $periode->id }}] = {
-        id: {{ $periode->id }},
-        nom: '{{ $periode->nom }}',
-        date_debut: '{{ $periode->date_debut->format('Y-m-d') }}',
-        date_fin: '{{ $periode->date_fin->format('Y-m-d') }}',
-        date_conseil: '{{ $periode->date_conseil->format('Y-m-d') }}',
-        couleur: '{{ $periode->couleur }}',
-        actif: {{ $periode->actif ? 'true' : 'false' }},
-        ordre: {{ $periode->ordre }}
-    };
-    @endforeach
+        if (data.errors) {
+            message = Object.values(data.errors).flat().join(' ');
+        }
+
+        throw new Error(message);
+    }
+
+    return data;
 }
 
-// Ajouter une période scolaire
-document.getElementById('addPeriodeForm').addEventListener('submit', function(e) {
+function buildPeriodeFormData(form, actifCheckboxId) {
+    const formData = new FormData(form);
+    formData.set('actif', document.getElementById(actifCheckboxId).checked ? '1' : '0');
+
+    return formData;
+}
+
+document.getElementById('addPeriodeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
-    const formData = new FormData(this);
-    const data = Object.fromEntries(formData.entries());
-    data.actif = document.getElementById('actif').checked;
-    
-    fetch('{{ route("notes.periodes.create") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
+
+    try {
+        const response = await fetch('{{ route("notes.periodes.create") }}', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: buildPeriodeFormData(this, 'actif'),
+        });
+
+        const data = await parseJsonResponse(response);
+
         if (data.success) {
             showToast(data.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('addPeriodeModal')).hide();
-            location.reload(); // Recharger pour afficher la nouvelle période
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addPeriodeModal'))
+                || bootstrap.Modal.getOrCreateInstance(document.getElementById('addPeriodeModal'));
+            modal.hide();
+            window.location.reload();
         }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la création', 'error');
-    });
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
 });
 
-// Modifier une période scolaire
 function editPeriode(id) {
-    const periode = periodesData[id];
-    if (!periode) return;
-    
-    // Remplir le formulaire d'édition
+    const periode = periodesParId[String(id)];
+    if (!periode) {
+        showToast('Période introuvable', 'error');
+        return;
+    }
+
     document.getElementById('edit_periode_id').value = periode.id;
     document.getElementById('edit_nom').value = periode.nom;
     document.getElementById('edit_date_debut').value = periode.date_debut;
@@ -498,73 +359,72 @@ function editPeriode(id) {
     document.getElementById('edit_date_conseil').value = periode.date_conseil;
     document.getElementById('edit_couleur').value = periode.couleur;
     document.getElementById('edit_ordre').value = periode.ordre;
-    document.getElementById('edit_actif').checked = periode.actif;
-    
-    // Afficher le modal
-    new bootstrap.Modal(document.getElementById('editPeriodeModal')).show();
+    document.getElementById('edit_actif').checked = !!periode.actif;
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editPeriodeModal'));
+    modal.show();
 }
 
-// Soumettre la modification
-document.getElementById('editPeriodeForm').addEventListener('submit', function(e) {
+document.getElementById('editPeriodeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
-    const formData = new FormData(this);
-    const data = Object.fromEntries(formData.entries());
-    data.actif = document.getElementById('edit_actif').checked;
-    const id = data.id;
-    delete data.id;
-    
-    fetch(`{{ route("notes.periodes.update", ":id") }}`.replace(':id', id), {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
+
+    const id = document.getElementById('edit_periode_id').value;
+    const formData = buildPeriodeFormData(this, 'edit_actif');
+    formData.append('_method', 'PUT');
+
+    try {
+        const response = await fetch(updatePeriodeUrlTemplate.replace('__ID__', id), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: formData,
+        });
+
+        const data = await parseJsonResponse(response);
+
         if (data.success) {
             showToast(data.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editPeriodeModal')).hide();
-            location.reload(); // Recharger pour afficher les modifications
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editPeriodeModal'))
+                || bootstrap.Modal.getOrCreateInstance(document.getElementById('editPeriodeModal'));
+            modal.hide();
+            window.location.reload();
         }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la modification', 'error');
-    });
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
 });
 
-// Supprimer une période scolaire
-function deletePeriode(id) {
+async function deletePeriode(id) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette période scolaire ?')) {
         return;
     }
-    
-    fetch(`{{ route("notes.periodes.delete", ":id") }}`.replace(':id', id), {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
+
+    const formData = new FormData();
+    formData.append('_method', 'DELETE');
+    formData.append('_token', csrfToken);
+
+    try {
+        const response = await fetch(deletePeriodeUrlTemplate.replace('__ID__', id), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: formData,
+        });
+
+        const data = await parseJsonResponse(response);
+
         if (data.success) {
             showToast(data.message, 'success');
-            location.reload(); // Recharger pour supprimer la période
+            window.location.reload();
         }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la suppression', 'error');
-    });
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
 }
-
-// Initialiser les données au chargement
-document.addEventListener('DOMContentLoaded', function() {
-    loadPeriodesData();
-});
 </script>
 @endpush
 @endsection

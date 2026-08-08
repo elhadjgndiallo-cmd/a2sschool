@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AnneeScolaire;
 use App\Models\Depense;
 use App\Models\Enseignant;
 use Illuminate\Http\Request;
@@ -14,7 +15,13 @@ class DepenseController extends Controller
      */
     public function index(Request $request)
     {
+        $anneeScolaire = AnneeScolaire::anneeActive();
+
         $query = Depense::with(['approuvePar', 'payePar']);
+
+        if ($anneeScolaire) {
+            $query->where('annee_scolaire_id', $anneeScolaire->id);
+        }
 
         // Filtres
         if ($request->filled('type_depense')) {
@@ -39,7 +46,7 @@ class DepenseController extends Controller
 
         $depenses = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        return view('depenses.index', compact('depenses'));
+        return view('depenses.index', compact('depenses', 'anneeScolaire'));
     }
 
     /**
@@ -47,9 +54,7 @@ class DepenseController extends Controller
      */
     public function create()
     {
-        $enseignants = Enseignant::join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
-            ->orderBy('utilisateurs.name')
-            ->get();
+        $enseignants = Enseignant::listeDeroulante();
         return view('depenses.create', compact('enseignants'));
     }
 
@@ -69,7 +74,9 @@ class DepenseController extends Controller
             'observations' => 'nullable|string'
         ]);
 
-        $depense = Depense::create($request->all());
+        $depense = Depense::create(array_merge($request->all(), [
+            'annee_scolaire_id' => \App\Models\AnneeScolaire::anneeActive()?->id,
+        ]));
 
         return redirect()->route('depenses.show', $depense)
             ->with('success', 'Dépense créée avec succès.');
@@ -89,7 +96,7 @@ class DepenseController extends Controller
      */
     public function edit(Depense $depense)
     {
-        $enseignants = Enseignant::with('utilisateur')->get()->sortBy('utilisateur.nom');
+        $enseignants = Enseignant::listeDeroulante();
         return view('depenses.edit', compact('depense', 'enseignants'));
     }
 
@@ -237,7 +244,8 @@ class DepenseController extends Controller
             'type_depense' => 'salaire_enseignant',
             'description' => $request->description ?? 'Salaire mensuel de l\'enseignant',
             'beneficiaire' => $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom,
-            'statut' => 'en_attente'
+            'statut' => 'en_attente',
+            'annee_scolaire_id' => \App\Models\AnneeScolaire::anneeActive()?->id,
         ]);
 
         return redirect()->route('depenses.show', $depense)

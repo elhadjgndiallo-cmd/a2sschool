@@ -10,9 +10,12 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class ComptabiliteEntreesStatsService
 {
+    private const CACHE_TTL = 180;
+
     public const SOURCES_SCOLARITE = [
         'Scolarité',
         'Inscription',
@@ -34,24 +37,33 @@ class ComptabiliteEntreesStatsService
         $request = $request ?? new Request();
 
         if (!$anneeScolaire) {
-            return [
-                'total' => 0,
-                'nombre' => 0,
-                'moyenne' => 0,
-                'total_manuelles' => 0,
-                'total_paiements' => 0,
-                'nombre_manuelles' => 0,
-                'nombre_paiements' => 0,
-            ];
+            return $this->emptyStats();
+        }
+
+        if ($this->shouldCacheStats($request)) {
+            return Cache::remember(
+                'comptabilite_entrees_stats_' . $anneeScolaire->id,
+                self::CACHE_TTL,
+                fn () => $this->statsFromEntries(
+                    $this->buildListEntries($this->requestForYearTotals($request, $anneeScolaire), $anneeScolaire)
+                )
+            );
         }
 
         $statsRequest = $this->requestForYearTotals($request, $anneeScolaire);
-        $merged = $this->buildMergedEntries($statsRequest, $anneeScolaire);
 
-        $total = (float) $merged->sum('montant');
-        $nombre = $merged->count();
-        $manuelles = $merged->where('type', 'entree');
-        $paiements = $merged->whereIn('type', ['paiement', 'facture']);
+        return $this->statsFromEntries($this->buildListEntries($statsRequest, $anneeScolaire));
+    }
+
+    /**
+     * Calcule les stats à partir d'une collection déjà construite (évite une double requête).
+     */
+    public function statsFromEntries(Collection $entries): array
+    {
+        $total = (float) $entries->sum('montant');
+        $nombre = $entries->count();
+        $manuelles = $entries->where('type', 'entree');
+        $paiements = $entries->whereIn('type', ['paiement', 'facture']);
 
         return [
             'total' => $total,
@@ -62,6 +74,29 @@ class ComptabiliteEntreesStatsService
             'nombre_manuelles' => $manuelles->count(),
             'nombre_paiements' => $paiements->count(),
         ];
+    }
+
+    private function emptyStats(): array
+    {
+        return [
+            'total' => 0,
+            'nombre' => 0,
+            'moyenne' => 0,
+            'total_manuelles' => 0,
+            'total_paiements' => 0,
+            'nombre_manuelles' => 0,
+            'nombre_paiements' => 0,
+        ];
+    }
+
+    private function shouldCacheStats(Request $request): bool
+    {
+        return !$request->filled('date_debut')
+            && !$request->filled('date_fin')
+            && !$request->filled('source')
+            && !$request->filled('type_entree')
+            && !$request->filled('montant_min')
+            && !$request->filled('montant_max');
     }
 
     /**
@@ -129,11 +164,7 @@ class ComptabiliteEntreesStatsService
      */
     public function requestAnneeScolaireComplete(AnneeScolaire $anneeScolaire): Request
     {
-        return new Request([
-            'date_debut' => $anneeScolaire->date_debut->format('Y-m-d'),
-            'date_fin' => $anneeScolaire->date_fin->format('Y-m-d'),
-            'annee_scolaire_complete' => true,
-        ]);
+        return new Request();
     }
 
     /**
@@ -141,10 +172,8 @@ class ComptabiliteEntreesStatsService
      */
     public function buildListEntries(Request $request, AnneeScolaire $anneeScolaire): Collection
     {
-        $periode = $this->resolveDateRange($anneeScolaire, $request);
-        $query = Entree::with('enregistrePar');
-
-        $query->whereBetween('date_entree', [$periode['debut'], $periode['fin']]);
+        $query = Entree::with('enregistrePar')
+            ->where('annee_scolaire_id', $anneeScolaire->id);
 
         if ($request->filled('date_debut')) {
             $query->whereDate('date_entree', '>=', $request->date_debut);
@@ -170,17 +199,24 @@ class ComptabiliteEntreesStatsService
             $query->whereRaw('1 = 0');
         }
 
-        $entrees = $query->orderByDesc('date_entree')->get();
+        $entrees = $query->with('enregistrePar:id,nom,prenom,role,photo_profil')
+            ->orderByDesc('date_entree')
+            ->get();
         $factures = $this->facturesForComptabiliteQuery($request, $anneeScolaire)->get();
-        $numerosFactures = $factures->pluck('numero_facture')->flip()->all();
+        $referencesFacturesPayees = Facture::query()
+            ->whereIn('statut', Facture::statutsActifs())
+            ->pluck('numero_facture')
+            ->flip()
+            ->all();
 
         $paiementsFrais = $this->paiementsFraisForComptabiliteQuery($request, $anneeScolaire)->get();
         $duplicateLookup = $this->buildPaiementDuplicateLookup($paiementsFrais);
+        $duplicateLookup['factures'] = $referencesFacturesPayees;
 
         $allEntries = collect();
 
         foreach ($entrees as $entree) {
-            if ($entree->reference && isset($numerosFactures[$entree->reference])) {
+            if ($entree->reference && isset($referencesFacturesPayees[$entree->reference])) {
                 continue;
             }
 
@@ -201,7 +237,11 @@ class ComptabiliteEntreesStatsService
         if (!$request->filled('type_entree') || $request->type_entree !== 'manuelle') {
             foreach ($factures as $facture) {
                 $entry = $this->mapFactureToListEntry($facture, $request);
-                if ($entry) {
+                if (!$entry) {
+                    continue;
+                }
+
+                if ($this->shouldIncludeFactureByDate($entry->date, $request)) {
                     $allEntries->push($entry);
                 }
             }
@@ -214,19 +254,74 @@ class ComptabiliteEntreesStatsService
             }
         }
 
-        return $allEntries->sort(function ($a, $b) {
-            $tsA = $a->date instanceof \Carbon\Carbon ? $a->date->timestamp : strtotime((string) $a->date);
-            $tsB = $b->date instanceof \Carbon\Carbon ? $b->date->timestamp : strtotime((string) $b->date);
+        return $this->sortByDateDesc($allEntries);
+    }
+
+    public function sortByDateDesc(Collection $entries): Collection
+    {
+        return $entries->sort(function ($a, $b) {
+            $tsA = $this->entryDateTimestamp($a);
+            $tsB = $this->entryDateTimestamp($b);
 
             if ($tsA !== $tsB) {
-                return $tsA <=> $tsB;
+                return $tsB <=> $tsA;
             }
 
             $createdA = isset($a->data->created_at) ? $a->data->created_at->timestamp : 0;
             $createdB = isset($b->data->created_at) ? $b->data->created_at->timestamp : 0;
 
-            return $createdA <=> $createdB;
+            return $createdB <=> $createdA;
         })->values();
+    }
+
+    private function entryDateTimestamp(object $item): int
+    {
+        if ($item->date instanceof Carbon) {
+            return $item->date->timestamp;
+        }
+
+        return strtotime((string) $item->date) ?: 0;
+    }
+
+    /**
+     * Entrées du rapport journalier (une ligne par facture, sans double comptage).
+     */
+    public function buildJournalEntrees(Carbon $dateDebut, Carbon $dateFin, AnneeScolaire $anneeScolaire): Collection
+    {
+        $request = new Request([
+            'date_debut' => $dateDebut->format('Y-m-d'),
+            'date_fin' => $dateFin->format('Y-m-d'),
+        ]);
+
+        return $this->buildListEntries($request, $anneeScolaire)
+            ->map(fn ($entry) => $this->mapEntryToJournalLine($entry))
+            ->values();
+    }
+
+    public function mapEntryToJournalLine(object $entry): array
+    {
+        $libelle = $entry->description;
+        if (!empty($entry->detail)) {
+            $libelle .= ' — ' . $entry->detail;
+        }
+
+        $createdAt = $entry->data->created_at ?? $entry->date;
+        $type = match ($entry->type) {
+            'facture' => 'facture',
+            'paiement' => 'paiement_scolarite',
+            default => 'entree_manuelle',
+        };
+
+        return [
+            'date' => $entry->date,
+            'libelle' => $libelle,
+            'entree' => (float) $entry->montant,
+            'sortie' => 0,
+            'type' => $type,
+            'source' => $entry->source,
+            'enregistre_par' => $entry->enregistre_par,
+            'created_at' => $createdAt,
+        ];
     }
 
     /**
@@ -250,13 +345,10 @@ class ComptabiliteEntreesStatsService
      */
     public function paiementsFraisForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
-        $periode = $this->resolveDateRange($anneeScolaire, $request);
-
         $query = Paiement::query()
             ->sansFacture()
             ->forAnneeScolaire($anneeScolaire->id)
-            ->withComptabiliteAffichage()
-            ->whereBetween('paiements.date_paiement', [$periode['debut'], $periode['fin']]);
+            ->withComptabiliteAffichage();
 
         if ($request->filled('date_debut')) {
             $query->whereDate('paiements.date_paiement', '>=', $request->date_debut);
@@ -282,12 +374,9 @@ class ComptabiliteEntreesStatsService
      */
     public function facturesForComptabiliteQuery(Request $request, AnneeScolaire $anneeScolaire): Builder
     {
-        $periode = $this->resolveDateRange($anneeScolaire, $request);
-
         $query = Facture::query()
-            ->where('statut', 'payee')
+            ->whereIn('statut', Facture::statutsActifs())
             ->where('annee_scolaire_id', $anneeScolaire->id)
-            ->whereBetween('date_facture', [$periode['debut'], $periode['fin']])
             ->with([
                 'eleve.utilisateur:id,nom,prenom',
                 'eleve.classe:id,nom',
@@ -295,14 +384,6 @@ class ComptabiliteEntreesStatsService
                 'generePar:id,nom,prenom',
                 'lignes:id,facture_id,libelle',
             ]);
-
-        if ($request->filled('date_debut')) {
-            $query->whereDate('date_facture', '>=', $request->date_debut);
-        }
-
-        if ($request->filled('date_fin')) {
-            $query->whereDate('date_facture', '<=', $request->date_fin);
-        }
 
         if ($request->filled('montant_min')) {
             $query->where('total', '>=', $request->montant_min);
@@ -313,6 +394,47 @@ class ComptabiliteEntreesStatsService
         }
 
         return $query->orderByDesc('date_facture');
+    }
+
+    public function dateComptableFacture(Facture $facture): Carbon
+    {
+        $entree = Entree::query()
+            ->where('reference', $facture->numero_facture)
+            ->first();
+
+        if ($entree) {
+            return $entree->date_entree instanceof Carbon
+                ? $entree->date_entree->copy()
+                : Carbon::parse($entree->date_entree);
+        }
+
+        if ($facture->created_at) {
+            return $facture->created_at->copy()->startOfDay();
+        }
+
+        return $facture->date_facture instanceof Carbon
+            ? $facture->date_facture->copy()
+            : Carbon::parse($facture->date_facture);
+    }
+
+    /**
+     * Filtre par date uniquement pour le journal journalier (même jour début/fin).
+     */
+    private function shouldIncludeFactureByDate(Carbon|string $date, Request $request): bool
+    {
+        if (!$request->filled('date_debut') || !$request->filled('date_fin')) {
+            return true;
+        }
+
+        if ($request->date_debut !== $request->date_fin) {
+            return true;
+        }
+
+        $dateComptable = $date instanceof Carbon ? $date->copy()->startOfDay() : Carbon::parse($date)->startOfDay();
+        $debut = Carbon::parse($request->date_debut)->startOfDay();
+        $fin = Carbon::parse($request->date_fin)->endOfDay();
+
+        return $dateComptable->between($debut, $fin);
     }
 
     public function factureEleveResume(Facture $facture): string
@@ -362,7 +484,7 @@ class ComptabiliteEntreesStatsService
         return (object) [
             'id' => 'facture_' . $facture->id,
             'type' => 'facture',
-            'date' => $facture->date_facture,
+            'date' => $this->dateComptableFacture($facture),
             'description' => 'Paiement frais scolarité - ' . $this->factureEleveResume($facture),
             'detail' => 'Facture ' . $facture->numero_facture . ' — '
                 . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
@@ -483,7 +605,7 @@ class ComptabiliteEntreesStatsService
 
     public function isPaiementDuplicateEntry(Entree $entree, array $lookup): bool
     {
-        if ($entree->reference && Facture::where('numero_facture', $entree->reference)->exists()) {
+        if ($entree->reference && isset($lookup['factures'][$entree->reference])) {
             return false;
         }
 

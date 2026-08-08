@@ -39,6 +39,10 @@ class FacturationController extends Controller
             $query->whereHas('eleve', fn ($q) => $q->where('classe_id', $request->classe_id));
         }
 
+        if ($request->filled('statut') && array_key_exists($request->statut, Facture::statutsFiltre())) {
+            $query->where('statut', $request->statut);
+        }
+
         if ($request->filled('date_debut')) {
             $query->whereDate('date_facture', '>=', $request->date_debut);
         }
@@ -59,7 +63,7 @@ class FacturationController extends Controller
             });
         }
 
-        $factures = $query->orderByDesc('date_facture')->orderByDesc('id')->paginate(20);
+        $factures = $query->orderByDesc('date_facture')->orderByDesc('id')->paginate(20)->withQueryString();
         $classes = Classe::orderBy('nom')->get();
         $anneesScolaires = AnneeScolaire::orderByDesc('date_debut')->get();
 
@@ -82,7 +86,9 @@ class FacturationController extends Controller
             $eleve = Eleve::with(['utilisateur', 'classe'])->find($request->eleve_id);
         }
 
-        return view('factures.create', compact('eleve', 'anneeScolaire'));
+        $classes = Classe::orderBy('nom')->get();
+
+        return view('factures.create', compact('eleve', 'anneeScolaire', 'classes'));
     }
 
     public function store(Request $request)
@@ -145,7 +151,7 @@ class FacturationController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à consulter cette facture.');
         }
 
-        $facture->load(['lignes.fraisScolarite', 'lignes.paiement', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'anneeScolaire']);
+        $facture->load(['lignes.tranchePaiement', 'lignes.fraisScolarite', 'lignes.paiement', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'anneeScolaire']);
 
         return view('factures.show', compact('facture'));
     }
@@ -156,9 +162,9 @@ class FacturationController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à modifier des factures.');
         }
 
-        if ($facture->statut !== 'payee') {
+        if (!$facture->estModifiable()) {
             return redirect()->route('factures.show', $facture)
-                ->with('error', 'Seules les factures payées peuvent être modifiées.');
+                ->with('error', 'Cette facture ne peut plus être modifiée.');
         }
 
         $facture->load(['eleve.utilisateur', 'eleve.classe', 'lignes', 'anneeScolaire']);
@@ -223,6 +229,39 @@ class FacturationController extends Controller
         }
     }
 
+    public function payerReste(Request $request, Facture $facture)
+    {
+        if (!auth()->user()->hasPermission('paiements.edit')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à enregistrer un paiement sur cette facture.');
+        }
+
+        $request->validate([
+            'mode_paiement' => 'required|in:especes,cheque,virement,carte,mobile_money',
+            'reference_paiement' => 'nullable|string|max:255',
+            'date_paiement' => 'nullable|date',
+            'observations' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $reste = $facture->resteAPayer();
+            $facture = $this->facturationService->payerResteFacture($facture, [
+                'mode_paiement' => $request->mode_paiement,
+                'reference_paiement' => $request->reference_paiement,
+                'date_paiement' => $request->date_paiement ?? now()->toDateString(),
+                'observations' => $request->observations,
+            ]);
+
+            $message = 'Solde de ' . number_format($reste, 0, ',', ' ') . ' GNF enregistré.';
+            if ($facture->statut === 'payee') {
+                $message .= ' La facture est maintenant payée.';
+            }
+
+            return redirect()->route('factures.show', $facture)->with('success', $message);
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+    }
+
     public function destroy(Facture $facture)
     {
         if (!auth()->user()->hasPermission('paiements.delete')) {
@@ -246,7 +285,7 @@ class FacturationController extends Controller
             return response()->json(['error' => 'Non autorisé'], 403);
         }
 
-        if ($facture->statut !== 'payee') {
+        if (!$facture->estModifiable()) {
             return response()->json(['error' => 'Cette facture ne peut plus être modifiée.', 'lignes' => []], 422);
         }
 
@@ -264,15 +303,9 @@ class FacturationController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à consulter cette facture.');
         }
 
-        $facture->load(['lignes', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'anneeScolaire']);
+        $facture->load(['lignes.tranchePaiement', 'lignes.fraisScolarite', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'anneeScolaire']);
 
-        $etablissement = \App\Models\Etablissement::principal();
-        $schoolInfo = [
-            'school_name' => $etablissement?->nom ?? 'École A2S',
-            'school_address' => $etablissement?->adresse ?? '',
-            'school_phone' => $etablissement?->telephone ?? '',
-            'school_email' => $etablissement?->email ?? '',
-        ];
+        $schoolInfo = \App\Helpers\SchoolHelper::getDocumentInfo();
 
         $html = view('factures.pdf', compact('facture', 'schoolInfo'))->render();
 
@@ -296,6 +329,10 @@ class FacturationController extends Controller
             $query->where('annee_scolaire_id', $anneeActive->id);
         }
 
+        if ($request->filled('classe_id')) {
+            $query->where('classe_id', $request->classe_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -306,11 +343,14 @@ class FacturationController extends Controller
             });
         }
 
-        $eleves = $query->limit(40)->get();
+        $limit = $request->filled('classe_id') ? 80 : 40;
+        $take = $request->filled('classe_id') ? 30 : 10;
+
+        $eleves = $query->limit($limit)->get();
 
         $resultats = $eleves
             ->filter(fn (Eleve $eleve) => $this->facturationService->aFraisImpayes($eleve, $anneeActive))
-            ->take(10)
+            ->take($take)
             ->values();
 
         return response()->json($resultats);
@@ -372,13 +412,14 @@ class FacturationController extends Controller
         }
 
         try {
+            $totauxBase = $this->facturationService->calculerTotaux(
+                $selection,
+                $request->remise_type,
+                (float) ($request->remise_valeur ?? 0)
+            );
+
             $montantVerse = (float) ($request->montant_verse ?? 0);
             if ($montantVerse <= 0) {
-                $totauxBase = $this->facturationService->calculerTotaux(
-                    $selection,
-                    $request->remise_type,
-                    (float) ($request->remise_valeur ?? 0)
-                );
                 $montantVerse = $totauxBase['total'];
             }
 
@@ -397,12 +438,19 @@ class FacturationController extends Controller
                 'total' => $totaux['total'],
                 'reste_a_payer' => $totaux['reste_a_payer'],
                 'lignes' => array_map(fn ($l) => [
+                    'id' => $l['id'] ?? null,
                     'libelle' => $l['libelle'],
                     'montant' => $l['montant_net'],
                     'reste' => $l['reste'] ?? 0,
                     'partiel' => $l['partiel'] ?? false,
                     'non_paye' => $l['non_paye'] ?? false,
                 ], $totaux['lignes']),
+                'lignes_detail' => array_map(fn ($l) => [
+                    'id' => $l['id'] ?? null,
+                    'montant_brut' => (float) ($l['montant_brut'] ?? $l['montant'] ?? 0),
+                    'montant_remise' => (float) ($l['remise_ligne'] ?? $l['montant_remise'] ?? 0),
+                    'montant_net' => (float) ($l['montant_du'] ?? $l['montant_net'] ?? 0),
+                ], $totauxBase['lignes'] ?? $totaux['lignes']),
             ]);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);

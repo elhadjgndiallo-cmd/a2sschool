@@ -34,12 +34,7 @@ class MatiereController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à créer des matières.');
         }
         
-        $enseignants = Enseignant::with('utilisateur')
-            ->where('enseignants.actif', true)
-            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
-            ->orderBy('utilisateurs.name')
-            ->select('enseignants.*')
-            ->get();
+        $enseignants = Enseignant::listeDeroulante();
             
         return view('matieres.create', compact('enseignants'));
     }
@@ -117,12 +112,7 @@ class MatiereController extends Controller
      */
     public function edit(Matiere $matiere)
     {
-        $enseignants = Enseignant::with('utilisateur')
-            ->where('enseignants.actif', true)
-            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
-            ->orderBy('utilisateurs.name')
-            ->select('enseignants.*')
-            ->get();
+        $enseignants = Enseignant::listeDeroulante();
             
         $matiereEnseignants = $matiere->enseignants->pluck('id')->toArray();
         

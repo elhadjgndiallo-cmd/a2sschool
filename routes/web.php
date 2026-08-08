@@ -257,13 +257,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/notes/bulletin/verifier/{token}', [NoteController::class, 'verifierBulletin'])->name('notes.bulletin.verify');
         Route::get('/notes/rapport-global', [NoteController::class, 'rapportGlobal'])->name('notes.rapport-global')->middleware('check.permission:notes.view');
         Route::get('/notes/export', [NoteController::class, 'exporterNotes'])->name('notes.export')->middleware('check.permission:notes.view');
-        Route::get('/notes/parametres', [NoteController::class, 'parametres'])->name('notes.parametres')->middleware('check.permission:notes.view');
+        Route::get('/notes/parametres', [NoteController::class, 'parametres'])->name('notes.parametres')->middleware('check.permission:notes.edit');
         Route::post('/notes/classes/periodes', [NoteController::class, 'createClassePeriode'])->name('notes.classes.periodes.create')->middleware('check.permission:notes.edit');
         Route::put('/notes/classes/periodes/{id}', [NoteController::class, 'updateClassePeriode'])->name('notes.classes.periodes.update')->middleware('check.permission:notes.edit');
-        Route::delete('/notes/classes/periodes/{id}', [NoteController::class, 'deleteClassePeriode'])->name('notes.classes.periodes.delete')->middleware('check.permission:notes.delete');
-        Route::post('/notes/periodes-scolaires', [NoteController::class, 'createPeriodeScolaire'])->name('notes.periodes.create')->middleware('check.permission:notes.create');
+        Route::delete('/notes/classes/periodes/{id}', [NoteController::class, 'deleteClassePeriode'])->name('notes.classes.periodes.delete')->middleware('check.permission:notes.edit');
+        Route::post('/notes/periodes-scolaires', [NoteController::class, 'createPeriodeScolaire'])->name('notes.periodes.create')->middleware('check.permission:notes.edit');
         Route::put('/notes/periodes-scolaires/{id}', [NoteController::class, 'updatePeriodeScolaire'])->name('notes.periodes.update')->middleware('check.permission:notes.edit');
-        Route::delete('/notes/periodes-scolaires/{id}', [NoteController::class, 'deletePeriodeScolaire'])->name('notes.periodes.delete')->middleware('check.permission:notes.delete');
+        Route::delete('/notes/periodes-scolaires/{id}', [NoteController::class, 'deletePeriodeScolaire'])->name('notes.periodes.delete')->middleware('check.permission:notes.edit');
         Route::get('/api/matiere/{matiere}/coefficient', [NoteController::class, 'getCoefficientMatiere'])->name('api.matiere.coefficient');
         
         // Routes pour les tests mensuels
@@ -1100,6 +1100,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::post('/factures/preview-repartition', [\App\Http\Controllers\FacturationController::class, 'previewRepartition'])->name('factures.preview-repartition')->middleware('check.permission:paiements.create');
         Route::get('/factures/{facture}/edit', [\App\Http\Controllers\FacturationController::class, 'edit'])->name('factures.edit')->middleware('check.permission:paiements.edit');
         Route::put('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'update'])->name('factures.update')->middleware('check.permission:paiements.edit');
+        Route::post('/factures/{facture}/payer-reste', [\App\Http\Controllers\FacturationController::class, 'payerReste'])->name('factures.payer-reste')->middleware('check.permission:paiements.edit');
         Route::delete('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'destroy'])->name('factures.destroy')->middleware('check.permission:paiements.delete');
         Route::get('/factures/{facture}/lignes-edition', [\App\Http\Controllers\FacturationController::class, 'lignesFactureEdition'])->name('factures.lignes-edition')->middleware('check.permission:paiements.edit');
         Route::get('/factures/{facture}', [\App\Http\Controllers\FacturationController::class, 'show'])->name('factures.show')->middleware('check.permission:paiements.view');

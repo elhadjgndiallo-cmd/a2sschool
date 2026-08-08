@@ -174,7 +174,7 @@
                         <label for="enseignant_id" class="form-label">Enseignant <span class="text-danger">*</span></label>
                         <select name="enseignant_id" id="enseignant_id" class="form-control" required>
                             <option value="">Sélectionner un enseignant</option>
-                            @foreach(\App\Models\Enseignant::with('utilisateur')->get() as $enseignant)
+                            @foreach($enseignants as $enseignant)
                                 <option value="{{ $enseignant->id }}">
                                     {{ $enseignant->utilisateur->nom ?? 'N/A' }} {{ $enseignant->utilisateur->prenom ?? 'N/A' }}
                                 </option>

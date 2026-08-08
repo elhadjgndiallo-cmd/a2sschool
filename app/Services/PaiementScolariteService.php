@@ -8,6 +8,8 @@ use App\Models\FactureLigne;
 use App\Models\FraisScolarite;
 use App\Models\Paiement;
 use App\Models\TranchePaiement;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class PaiementScolariteService
 {
@@ -88,15 +90,31 @@ class PaiementScolariteService
         if ($entree) {
             $entree->update($payload);
 
+            $this->invaliderCacheComptabilite($facture->annee_scolaire_id);
+
             return $entree->fresh();
         }
 
-        return Entree::create($payload);
+        $entree = Entree::create($payload);
+        $this->invaliderCacheComptabilite($facture->annee_scolaire_id);
+
+        return $entree;
     }
 
     public function supprimerEntreeComptableFacture(Facture $facture): void
     {
         Entree::where('reference', $facture->numero_facture)->delete();
+        $this->invaliderCacheComptabilite($facture->annee_scolaire_id);
+    }
+
+    private function invaliderCacheComptabilite(?int $anneeScolaireId): void
+    {
+        if (!$anneeScolaireId) {
+            return;
+        }
+
+        Cache::forget('comptabilite_entrees_stats_' . $anneeScolaireId);
+        Cache::forget('comptabilite_stats_' . $anneeScolaireId);
     }
 
     /**
@@ -120,6 +138,11 @@ class PaiementScolariteService
                 'montant_paye' => $nouveauMontantPaye,
                 'statut' => $nouveauMontantPaye + 0.00001 >= (float) $tranche->montant_tranche ? 'paye' : 'en_attente',
                 'date_paiement' => $nouveauMontantPaye > 0 ? $tranche->date_paiement : null,
+            ]);
+        } elseif ($ligne->fraisScolarite && (float) $ligne->montant_remise > 0) {
+            $frais = $ligne->fraisScolarite;
+            $frais->update([
+                'montant' => round((float) $frais->montant + (float) $ligne->montant_remise, 2),
             ]);
         }
 
@@ -170,11 +193,12 @@ class PaiementScolariteService
             'libelle' => $libelle,
             'description' => $description,
             'montant' => $facture->total,
-            'date_entree' => $facture->date_facture,
+            'date_entree' => Carbon::today()->format('Y-m-d'),
             'source' => 'Paiements scolaires',
             'mode_paiement' => $facture->mode_paiement,
             'reference' => $facture->numero_facture,
             'enregistre_par' => $facture->genere_par,
+            'annee_scolaire_id' => $facture->annee_scolaire_id,
         ];
     }
 
@@ -219,6 +243,7 @@ class PaiementScolariteService
             'mode_paiement' => $paiement->mode_paiement,
             'reference' => $paiement->reference_paiement,
             'enregistre_par' => $paiement->encaisse_par,
+            'annee_scolaire_id' => $eleve->annee_scolaire_id,
         ]);
     }
 }
