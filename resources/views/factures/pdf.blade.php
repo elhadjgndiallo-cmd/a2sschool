@@ -22,9 +22,11 @@
     </style>
 </head>
 <body>
+    @unless(request('print'))
     <div class="no-print" style="margin-bottom:15px;">
         <button onclick="window.print()">Imprimer</button>
     </div>
+    @endunless
 
     <div class="header">
         <div class="header-left">
@@ -90,5 +92,31 @@
         <strong>Mode de paiement :</strong> {{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}<br>
         <strong>Statut :</strong> {{ $facture->statutLibelle() }}
     </p>
+    @if(request('print'))
+        <script>
+        (function () {
+            var returnUrl = @json(route('factures.show', $facture));
+
+            function retourFacture() {
+                window.location.replace(returnUrl);
+            }
+
+            window.addEventListener('load', function () {
+                window.print();
+            });
+
+            window.addEventListener('afterprint', retourFacture);
+
+            if (window.matchMedia) {
+                var mediaQuery = window.matchMedia('print');
+                mediaQuery.addEventListener('change', function (event) {
+                    if (!event.matches) {
+                        setTimeout(retourFacture, 150);
+                    }
+                });
+            }
+        })();
+        </script>
+    @endif
 </body>
 </html>

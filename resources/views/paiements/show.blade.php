@@ -178,17 +178,22 @@
                                                     <td>{{ number_format($tranche->montant_paye, 0, ',', ' ') }} GNF</td>
                                                     <td>{{ $tranche->date_paiement ? $tranche->date_paiement->format('d/m/Y') : '-' }}</td>
                                                     <td>
-                                                        @if($tranche->statut !== 'paye')
-                                                            <a href="{{ route('paiements.payer-tranche', $tranche) }}" 
+                                                        @php
+                                                            $resteTranche = max(0, round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2));
+                                                        @endphp
+                                                        @if($resteTranche > 0.01 && auth()->user()->hasPermission('paiements.create'))
+                                                            <a href="{{ route('factures.create', ['eleve_id' => $frais->eleve_id, 'lignes' => ['tranche:' . $tranche->id]]) }}"
                                                                class="btn btn-sm btn-success">
                                                                 <i class="fas fa-credit-card"></i>
                                                                 Payer
                                                             </a>
-                                                        @else
+                                                        @elseif($resteTranche <= 0.01)
                                                             <span class="text-success">
                                                                 <i class="fas fa-check-circle"></i>
                                                                 Payé
                                                             </span>
+                                                        @else
+                                                            <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
                                                 </tr>
@@ -200,68 +205,58 @@
                         </div>
                     @endif
 
-                    <!-- Historique des paiements -->
-                    @if($frais->paiements->count() > 0)
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-history mr-2"></i>
-                                    Historique des Paiements
-                                </h5>
-                            </div>
-                            <div class="card-body">
+                    <!-- Historique des factures -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history mr-2"></i>
+                                Historique des Paiements
+                            </h5>
+                            @if(auth()->user()->hasPermission('paiements.create'))
+                                <a href="{{ route('factures.create', ['eleve_id' => $frais->eleve_id]) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus mr-1"></i> Nouvelle facture
+                                </a>
+                            @endif
+                        </div>
+                        <div class="card-body">
+                            @if($factures->count() > 0)
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered table-hover mb-0">
                                         <thead class="thead-dark">
                                             <tr>
+                                                <th>N° Facture</th>
                                                 <th>Date</th>
-                                                <th>Montant</th>
+                                                <th class="text-end">Total</th>
                                                 <th>Mode</th>
-                                                <th>Référence</th>
-                                                <th>Reçu</th>
-                                                <th>Encaissé par</th>
-                                                <th>Observations</th>
+                                                <th>Statut</th>
+                                                <th>Émise par</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($frais->paiements->sortByDesc('date_paiement') as $paiement)
-                                                <tr>
-                                                    <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
-                                                    <td><strong>{{ number_format($paiement->montant_paye, 0, ',', ' ') }} GNF</strong></td>
+                                            @foreach($factures as $facture)
+                                                <tr class="table-row-clickable" data-href="{{ route('factures.show', $facture) }}" role="button" tabindex="0">
+                                                    <td><strong>{{ $facture->numero_facture }}</strong></td>
+                                                    <td>{{ $facture->date_facture->format('d/m/Y') }}</td>
+                                                    <td class="text-end"><strong>{{ number_format($facture->total, 0, ',', ' ') }} GNF</strong></td>
+                                                    <td>{{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}</td>
                                                     <td>
-                                                        <span class="badge badge-info">
-                                                            {{ ucfirst($paiement->mode_paiement) }}
+                                                        <span class="badge bg-{{ $facture->statutBadgeClass() }}">
+                                                            {{ $facture->statutLibelle() }}
                                                         </span>
                                                     </td>
-                                                    <td>{{ $paiement->reference_paiement ?? '-' }}</td>
-                                                    <td>
-                                                        <code>{{ $paiement->numero_recu }}</code>
-                                                        <br>
-                                                        <a href="{{ route('paiements.recu', ['frais' => $frais, 'paiement' => $paiement]) }}" 
-                                                           class="btn btn-sm btn-outline-primary mt-1" 
-                                                           target="_blank" 
-                                                           title="Télécharger le reçu">
-                                                            <i class="fas fa-download"></i>
-                                                        </a>
-                                                    </td>
-                                                    <td>{{ $paiement->encaissePar->nom ?? 'N/A' }}</td>
-                                                    <td>{{ $paiement->observations ?? '-' }}</td>
+                                                    <td>{{ $facture->generePar->nom ?? 'N/A' }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            @else
+                                <p class="text-muted mb-0 text-center py-3">Aucune facture enregistrée pour cet élève.</p>
+                            @endif
                         </div>
-                    @endif
+                    </div>
 
-                    @php
-                        $prochaineTranche = $frais->paiement_par_tranches
-                            ? $frais->tranchesPaiement->where('statut', '!=', 'paye')->sortBy('numero_tranche')->first()
-                            : null;
-                    @endphp
-
-                    <div class="card mb-4">
+                    <div class="card mb-4 mt-4">
                         <div class="card-header bg-dark text-white">
                             <h5 class="mb-0"><i class="fas fa-bolt mr-2"></i>Actions</h5>
                         </div>
@@ -274,21 +269,6 @@
                                 @endif
 
                                 @if($frais->montant_restant > 0)
-                                    @if($frais->paiement_par_tranches)
-                                        @if($prochaineTranche)
-                                            <a href="{{ route('paiements.payer-tranche', $prochaineTranche) }}" class="btn btn-warning">
-                                                <i class="fas fa-credit-card mr-1"></i> Payer un mois
-                                            </a>
-                                        @endif
-                                        <a href="{{ route('paiements.payer-direct', $frais) }}" class="btn btn-success">
-                                            <i class="fas fa-money-bill-wave mr-1"></i> Payer tout
-                                        </a>
-                                    @else
-                                        <a href="{{ route('paiements.payer-direct', $frais) }}" class="btn btn-success">
-                                            <i class="fas fa-money-bill-wave mr-1"></i> Payer
-                                        </a>
-                                    @endif
-
                                     <a href="{{ route('recus-rappel.create') }}?eleve_id={{ $frais->eleve->id }}&frais_id={{ $frais->id }}" class="btn btn-danger">
                                         <i class="fas fa-bell mr-1"></i> Créer reçu de rappel
                                     </a>
@@ -301,14 +281,6 @@
                                     <a href="{{ route('paiements.recu', $frais) }}?print=1" class="btn btn-outline-info" target="_blank">
                                         <i class="fas fa-print mr-1"></i> Imprimer reçu
                                     </a>
-
-                                    <form method="POST" action="{{ route('paiements.annuler-dernier-paiement', $frais) }}" class="d-inline"
-                                          onsubmit="return confirm('Êtes-vous sûr de vouloir annuler le dernier paiement de {{ $frais->eleve->utilisateur->nom }} {{ $frais->eleve->utilisateur->prenom }} ?\n\nCette action supprimera le dernier paiement et recalculera le montant restant.');">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline-warning">
-                                            <i class="fas fa-undo mr-1"></i> Annuler le dernier paiement
-                                        </button>
-                                    </form>
                                 @endif
 
                                 <form method="POST" action="{{ route('paiements.destroy', $frais) }}" class="d-inline"
@@ -328,17 +300,4 @@
     </div>
 </div>
 
-@if($frais->paiement_par_tranches)
-<script>
-function payerTranche() {
-    // Rediriger vers le premier mois non payé
-    const moisNonPayes = @json($frais->tranchesPaiement->where('statut', '!=', 'paye')->sortBy('numero_tranche'));
-    if (moisNonPayes.length > 0) {
-        window.location.href = "{{ url('paiements/tranche') }}/" + moisNonPayes[0].id + "/payer";
-    } else {
-        alert('le mois est déjà payés.');
-    }
-}
-</script>
-@endif
 @endsection

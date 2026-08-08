@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Facture;
 use App\Models\FraisScolarite;
 use App\Services\FacturationService;
 use App\Models\Paiement;
@@ -258,7 +259,14 @@ public function store(Request $request)
         $this->facturationService->reconcilierTranchesFrais($frais);
 
         $frais->load(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
-        return view('paiements.show', compact('frais'));
+
+        $factures = Facture::with(['generePar', 'anneeScolaire'])
+            ->where('eleve_id', $frais->eleve_id)
+            ->orderByDesc('date_facture')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('paiements.show', compact('frais', 'factures'));
     }
 
     /**

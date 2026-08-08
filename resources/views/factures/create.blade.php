@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadLignes(id);
     }
 
-    function loadLignes(eleveId) {
+    function loadLignes(eleveId, preselect = []) {
         lignesBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
         fetch(`{{ url('/factures/eleve') }}/${eleveId}/lignes`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -281,6 +281,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 montantVerseManuel = false;
                 updateRecap();
             }));
+            if (preselect.length) {
+                document.querySelectorAll('.ligne-check').forEach(cb => {
+                    if (preselect.includes(cb.value)) {
+                        cb.checked = true;
+                    }
+                });
+            }
             resetRecap();
             updateRecap();
         });
@@ -395,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     @if($eleve)
-        loadLignes({{ $eleve->id }});
+        loadLignes({{ $eleve->id }}, @json($lignesPreselectionnees ?? []));
     @endif
 });
 </script>

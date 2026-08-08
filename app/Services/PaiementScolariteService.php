@@ -131,7 +131,8 @@ class PaiementScolariteService
 
         $tranche = $ligne->tranchePaiement ?? $paiement->tranchePaiement;
         if ($tranche) {
-            $creditTranche = round((float) $ligne->montant_brut, 2);
+            // Même crédit qu'à l'émission : net encaissé + remise ligne
+            $creditTranche = round((float) $ligne->montant_net + (float) $ligne->montant_remise, 2);
             $nouveauMontantPaye = max(0, round((float) $tranche->montant_paye - $creditTranche, 2));
 
             $tranche->update([
@@ -139,11 +140,17 @@ class PaiementScolariteService
                 'statut' => $nouveauMontantPaye + 0.00001 >= (float) $tranche->montant_tranche ? 'paye' : 'en_attente',
                 'date_paiement' => $nouveauMontantPaye > 0 ? $tranche->date_paiement : null,
             ]);
-        } elseif ($ligne->fraisScolarite && (float) $ligne->montant_remise > 0) {
+        } elseif ($ligne->fraisScolarite) {
             $frais = $ligne->fraisScolarite;
-            $frais->update([
-                'montant' => round((float) $frais->montant + (float) $ligne->montant_remise, 2),
-            ]);
+            $remiseLigne = round((float) $ligne->montant_remise, 2);
+            if ($remiseLigne <= 0) {
+                $remiseLigne = max(0, round((float) $ligne->montant_brut - (float) $ligne->montant_net, 2));
+            }
+            if ($remiseLigne > 0) {
+                $frais->update([
+                    'montant' => round((float) $frais->montant + $remiseLigne, 2),
+                ]);
+            }
         }
 
         if ($ligne->fraisScolarite) {

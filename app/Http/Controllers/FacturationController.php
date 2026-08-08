@@ -88,7 +88,12 @@ class FacturationController extends Controller
 
         $classes = Classe::orderBy('nom')->get();
 
-        return view('factures.create', compact('eleve', 'anneeScolaire', 'classes'));
+        $lignesPreselectionnees = array_values(array_filter(
+            (array) $request->input('lignes', []),
+            fn ($id) => is_string($id) && $id !== ''
+        ));
+
+        return view('factures.create', compact('eleve', 'anneeScolaire', 'classes', 'lignesPreselectionnees'));
     }
 
     public function store(Request $request)

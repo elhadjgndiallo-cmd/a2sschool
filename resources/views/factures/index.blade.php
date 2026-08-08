@@ -85,12 +85,11 @@
                             <th class="text-end">Total</th>
                             <th>Mode</th>
                             <th>Statut</th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($factures as $facture)
-                            <tr>
+                            <tr class="table-row-clickable" data-href="{{ route('factures.show', $facture) }}" role="button" tabindex="0">
                                 <td><strong>{{ $facture->numero_facture }}</strong></td>
                                 <td>{{ $facture->date_facture->format('d/m/Y') }}</td>
                                 <td>{{ $facture->eleve->utilisateur->prenom }} {{ $facture->eleve->utilisateur->nom }}</td>
@@ -102,40 +101,10 @@
                                         {{ $facture->statutLibelle() }}
                                     </span>
                                 </td>
-                                <td class="text-end">
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('factures.show', $facture) }}" class="btn btn-outline-primary" title="Voir"><i class="fas fa-eye"></i></a>
-                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
-                                            <button type="button" class="btn btn-outline-success" title="Payer le reste"
-                                                    data-bs-toggle="modal" data-bs-target="#payerReste{{ $facture->id }}">
-                                                <i class="fas fa-money-bill-wave"></i>
-                                            </button>
-                                        @endif
-                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->estModifiable())
-                                            <a href="{{ route('factures.edit', $facture) }}" class="btn btn-outline-warning" title="Modifier"><i class="fas fa-edit"></i></a>
-                                        @endif
-                                        <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-outline-success" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a>
-                                        @if(auth()->user()->hasPermission('paiements.edit') && $facture->peutEtreAnnulee())
-                                            <form method="POST" action="{{ route('factures.annuler', $facture) }}" class="d-inline"
-                                                  onsubmit="return confirm('Annuler cette facture ? Les paiements et l\'entrée comptable seront retirés.')">
-                                                @csrf
-                                                <button type="submit" class="btn btn-outline-danger" title="Annuler la facture"><i class="fas fa-ban"></i></button>
-                                            </form>
-                                        @endif
-                                        @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
-                                            <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
-                                                  onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront retirés.')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
-                                            </form>
-                                        @endif
-                                    </div>
-                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">Aucune facture enregistrée.</td>
+                                <td colspan="7" class="text-center text-muted py-4">Aucune facture enregistrée.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -146,13 +115,5 @@
             <div class="card-footer">{{ $factures->links() }}</div>
         @endif
     </div>
-
-    @foreach($factures as $facture)
-        @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
-            @push('modals')
-                @include('factures.partials.modal-payer-reste', ['facture' => $facture, 'modalId' => 'payerReste' . $facture->id])
-            @endpush
-        @endif
-    @endforeach
 </div>
 @endsection
