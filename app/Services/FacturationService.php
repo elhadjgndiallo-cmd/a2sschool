@@ -629,6 +629,10 @@ class FacturationService
             throw new \RuntimeException('Seules les factures en cours peuvent recevoir un paiement du solde.');
         }
 
+        if ($facture->estFactureComplement()) {
+            throw new \RuntimeException('Impossible de payer un solde sur une facture complémentaire.');
+        }
+
         $reste = $facture->resteAPayer();
         if ($reste <= 0.01) {
             throw new \RuntimeException('Cette facture est déjà entièrement payée.');
@@ -651,15 +655,12 @@ class FacturationService
         }
 
         $typeFrais = $this->detecterTypeFraisPourSolde($facture, $eleve, $anneeScolaire);
-        $datePaiement = $data['date_paiement'] ?? $facture->date_facture->format('Y-m-d');
-        $observations = $facture->observations;
-        $suffixe = 'Solde de ' . number_format($reste, 0, ',', ' ') . ' GNF payé le ' . now()->format('d/m/Y');
+        $datePaiement = $data['date_paiement'] ?? now()->toDateString();
 
+        $observationsComplement = 'Solde de la facture ' . $facture->numero_facture;
         if (!empty($data['observations'])) {
-            $observations = trim(($observations ? $observations . ' | ' : '') . $data['observations']);
+            $observationsComplement .= ' | ' . trim($data['observations']);
         }
-
-        $observations = $observations ? $observations . ' | ' . $suffixe : $suffixe;
 
         return DB::transaction(function () use (
             $facture,
@@ -670,7 +671,7 @@ class FacturationService
             $tarif,
             $typeFrais,
             $datePaiement,
-            $observations
+            $observationsComplement
         ) {
             $lignesRepartition = $this->repartirMontantSurMois($eleve, $typeFrais, $reste, $anneeScolaire);
 
@@ -679,8 +680,8 @@ class FacturationService
                 'source' => $ligne['source'],
                 'type_frais' => $ligne['type_frais'],
                 'mois' => $ligne['mois'],
-                'libelle' => $ligne['libelle'],
-                'montant_brut' => (float) ($ligne['montant_du_mois'] ?? $ligne['montant']),
+                'libelle' => 'Reste à payer',
+                'montant_brut' => (float) $ligne['montant'],
                 'montant_du_mois' => (float) ($ligne['montant_du_mois'] ?? $ligne['montant']),
                 'montant_remise' => 0,
                 'montant_net' => (float) $ligne['montant'],
@@ -690,16 +691,24 @@ class FacturationService
                 'partiel' => (bool) ($ligne['partiel'] ?? false),
             ], $lignesRepartition);
 
-            $totalDu = round((float) $facture->sous_total - (float) $facture->montant_remise, 2);
-            $nouveauTotalPaye = round((float) $facture->total + $reste, 2);
-            $nouveauTotalPaye = min($nouveauTotalPaye, $totalDu);
+            $montantReste = round($reste, 2);
 
-            $facture->update([
-                'total' => $nouveauTotalPaye,
+            $factureComplement = Facture::create([
+                'eleve_id' => $facture->eleve_id,
+                'annee_scolaire_id' => $facture->annee_scolaire_id,
+                'facture_origine_id' => $facture->id,
+                'date_facture' => $datePaiement,
+                'date_echeance' => null,
+                'sous_total' => $montantReste,
+                'remise_type' => 'montant',
+                'remise_valeur' => 0,
+                'montant_remise' => 0,
+                'total' => $montantReste,
                 'mode_paiement' => $data['mode_paiement'],
-                'reference_paiement' => $data['reference_paiement'] ?? $facture->reference_paiement,
-                'observations' => $observations,
-                'statut' => ($nouveauTotalPaye >= $totalDu - 0.01) ? 'payee' : 'en_cours',
+                'reference_paiement' => $data['reference_paiement'] ?? null,
+                'observations' => $observationsComplement,
+                'statut' => 'payee',
+                'genere_par' => auth()->id(),
             ]);
 
             $dataEmission = [
@@ -708,24 +717,27 @@ class FacturationService
             ];
 
             $this->enregistrerLignesEtPaiementsFacture(
-                $facture,
+                $factureComplement,
                 $eleve,
                 $anneeScolaire,
                 $tarif,
                 [
-                    'sous_total' => (float) $facture->sous_total,
-                    'montant_remise' => (float) $facture->montant_remise,
-                    'total' => $nouveauTotalPaye,
+                    'sous_total' => $montantReste,
+                    'montant_remise' => 0,
+                    'total' => $montantReste,
                     'lignes' => $lignesCalculees,
                 ],
                 $dataEmission,
-                $facture->numero_facture,
-                $observations
+                $factureComplement->numero_facture,
+                $observationsComplement
             );
 
-            $this->paiementScolariteService->mettreAJourEntreeComptableFacture($facture->fresh(['lignes']));
+            $this->paiementScolariteService->creerEntreeComptableFacture($factureComplement->fresh(['lignes']));
 
-            return $facture->fresh(['lignes', 'eleve.utilisateur', 'eleve.classe', 'generePar']);
+            // Facture initiale : seul le statut passe à payée (montant et entrée comptable inchangés)
+            $facture->update(['statut' => 'payee']);
+
+            return $factureComplement->fresh(['lignes', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'factureOrigine']);
         });
     }
 
@@ -979,7 +991,8 @@ class FacturationService
             $resteTranche = $this->resteEffectifTranche($tranche);
             $montantAPayer = $montantAPayerLigne;
             $remiseLigne = round((float) ($ligneCalculee['remise_ligne'] ?? 0), 2);
-            if ($remiseLigne <= 0) {
+            // Ne pas confondre paiement partiel et remise (ex. solde restant sur un mois)
+            if ($remiseLigne <= 0 && empty($ligneCalculee['partiel'])) {
                 $brutLigne = round((float) ($ligneCalculee['montant_brut'] ?? 0), 2);
                 $netLigne = round((float) ($ligneCalculee['montant_net'] ?? 0), 2);
                 $remiseLigne = max(0, round($brutLigne - $netLigne, 2));

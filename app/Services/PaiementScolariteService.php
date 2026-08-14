@@ -200,7 +200,7 @@ class PaiementScolariteService
             'libelle' => $libelle,
             'description' => $description,
             'montant' => $facture->total,
-            'date_entree' => Carbon::today()->format('Y-m-d'),
+            'date_entree' => $facture->date_facture?->format('Y-m-d') ?? Carbon::today()->format('Y-m-d'),
             'source' => 'Paiements scolaires',
             'mode_paiement' => $facture->mode_paiement,
             'reference' => $facture->numero_facture,

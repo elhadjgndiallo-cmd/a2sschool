@@ -908,6 +908,11 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     Route::middleware('role:admin,personnel_admin')->group(function () {
         Route::get('eleves', [EleveController::class, 'index'])->name('eleves.index')->middleware('check.permission:eleves.view');
         Route::get('eleves/print', [EleveController::class, 'print'])->name('eleves.print')->middleware('check.permission:eleves.view');
+        Route::get('eleves/import', [\App\Http\Controllers\EleveImportController::class, 'create'])->name('eleves.import.create')->middleware('check.permission:eleves.create');
+        Route::post('eleves/import/preview', [\App\Http\Controllers\EleveImportController::class, 'preview'])->name('eleves.import.preview')->middleware('check.permission:eleves.create');
+        Route::post('eleves/import/confirm', [\App\Http\Controllers\EleveImportController::class, 'confirm'])->name('eleves.import.confirm')->middleware('check.permission:eleves.create');
+        Route::post('eleves/import/cancel', [\App\Http\Controllers\EleveImportController::class, 'cancel'])->name('eleves.import.cancel')->middleware('check.permission:eleves.create');
+        Route::get('eleves/import/modele', [\App\Http\Controllers\EleveImportController::class, 'modele'])->name('eleves.import.modele')->middleware('check.permission:eleves.view');
         Route::get('eleves/create', [EleveController::class, 'create'])->name('eleves.create')->middleware('check.permission:eleves.create');
         Route::get('eleves/create-multi-step', [EleveController::class, 'createMultiStep'])->name('eleves.create-multi-step')->middleware('check.permission:eleves.create');
         Route::post('eleves', [EleveController::class, 'store'])->name('eleves.store')->middleware('check.permission:eleves.create');

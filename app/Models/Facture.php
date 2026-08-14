@@ -27,6 +27,7 @@ class Facture extends Model
         'observations',
         'statut',
         'genere_par',
+        'facture_origine_id',
     ];
 
     protected $casts = [
@@ -85,6 +86,21 @@ class Facture extends Model
         return $this->hasMany(FactureLigne::class);
     }
 
+    public function factureOrigine(): BelongsTo
+    {
+        return $this->belongsTo(Facture::class, 'facture_origine_id');
+    }
+
+    public function facturesComplement(): HasMany
+    {
+        return $this->hasMany(Facture::class, 'facture_origine_id');
+    }
+
+    public function estFactureComplement(): bool
+    {
+        return $this->facture_origine_id !== null;
+    }
+
     public static function statutsFiltre(): array
     {
         return [
@@ -111,6 +127,10 @@ class Facture extends Model
 
     public function resteAPayer(): float
     {
+        if ($this->statut === 'payee') {
+            return 0;
+        }
+
         $totalDu = round((float) $this->sous_total - (float) $this->montant_remise, 2);
 
         return max(0, round($totalDu - (float) $this->total, 2));

@@ -60,6 +60,13 @@ use Illuminate\Support\Facades\Storage;
                             <span class="d-none d-sm-inline">Nouvelle Inscription</span>
                             <span class="d-sm-none">Nouveau</span>
                         </a>
+                        @if(auth()->user()->hasPermission('eleves.create'))
+                            <a href="{{ route('eleves.import.create') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-file-import me-1"></i>
+                                <span class="d-none d-sm-inline">Importer Excel</span>
+                                <span class="d-sm-none">Import</span>
+                            </a>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body">

@@ -26,6 +26,22 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+    @if($facture->factureOrigine)
+        <div class="alert alert-info py-2">
+            Facture complémentaire du solde de
+            <a href="{{ route('factures.show', $facture->factureOrigine) }}">{{ $facture->factureOrigine->numero_facture }}</a>.
+        </div>
+    @endif
+
+    @if($facture->facturesComplement->count())
+        <div class="alert alert-secondary py-2">
+            Solde payé via :
+            @foreach($facture->facturesComplement as $complement)
+                <a href="{{ route('factures.show', $complement) }}" class="me-2">{{ $complement->numero_facture }}</a>
+            @endforeach
+        </div>
+    @endif
+
     <div class="row">
         <div class="col-md-6">
             <div class="card mb-3">
@@ -111,7 +127,7 @@
         </div>
         <div class="card-body">
             <div class="d-flex flex-wrap gap-2">
-                @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
+                @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01 && !$facture->estFactureComplement())
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#payerResteFacture">
                         <i class="fas fa-money-bill-wave me-1"></i>
                         Payer le reste ({{ number_format($facture->resteAPayer(), 0, ',', ' ') }} GNF)
@@ -152,7 +168,7 @@
         </div>
     </div>
 
-    @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01)
+    @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01 && !$facture->estFactureComplement())
         @push('modals')
             @include('factures.partials.modal-payer-reste', ['facture' => $facture, 'modalId' => 'payerResteFacture'])
         @endpush

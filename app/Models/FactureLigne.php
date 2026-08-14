@@ -55,22 +55,36 @@ class FactureLigne extends Model
      */
     public function libelleAffiche(): string
     {
+        if ($this->factureParent()?->estFactureComplement()) {
+            return 'Reste à payer';
+        }
+
         $libelle = trim((string) $this->libelle);
 
         return trim((string) preg_replace('/\s*\((?:reste|partiel)[^)]*\)/u', '', $libelle));
     }
 
     /**
-     * Montant mensuel / unitaire affiché sur la facture (remise uniquement au total brut).
+     * Montant affiché sur la facture (net encaissé sur la ligne, pas le tarif mensuel complet).
      */
     public function montantAffiche(): float
     {
+        $net = (float) $this->montant_net;
+
+        if ($this->factureParent()?->estFactureComplement()) {
+            return $net;
+        }
+
         if ($this->tranche_paiement_id) {
             $tranche = $this->relationLoaded('tranchePaiement')
                 ? $this->tranchePaiement
                 : $this->tranchePaiement()->first();
 
             if ($tranche) {
+                if ($net + 0.01 < (float) $tranche->montant_tranche) {
+                    return $net;
+                }
+
                 return (float) $tranche->montant_tranche;
             }
         }
@@ -80,11 +94,24 @@ class FactureLigne extends Model
                 ? $this->fraisScolarite
                 : $this->fraisScolarite()->first();
 
+            if ($frais && $net + 0.01 < (float) $frais->montant) {
+                return $net;
+            }
+
             if ($frais) {
                 return (float) $frais->montant;
             }
         }
 
         return (float) $this->montant_brut;
+    }
+
+    private function factureParent(): ?Facture
+    {
+        if ($this->relationLoaded('facture')) {
+            return $this->facture;
+        }
+
+        return $this->facture()->first(['id', 'facture_origine_id']);
     }
 }

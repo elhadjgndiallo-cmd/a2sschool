@@ -156,7 +156,17 @@ class FacturationController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à consulter cette facture.');
         }
 
-        $facture->load(['lignes.tranchePaiement', 'lignes.fraisScolarite', 'lignes.paiement', 'eleve.utilisateur', 'eleve.classe', 'generePar', 'anneeScolaire']);
+        $facture->load([
+            'lignes.tranchePaiement',
+            'lignes.fraisScolarite',
+            'lignes.paiement',
+            'eleve.utilisateur',
+            'eleve.classe',
+            'generePar',
+            'anneeScolaire',
+            'factureOrigine',
+            'facturesComplement',
+        ]);
 
         return view('factures.show', compact('facture'));
     }
@@ -249,19 +259,19 @@ class FacturationController extends Controller
 
         try {
             $reste = $facture->resteAPayer();
-            $facture = $this->facturationService->payerResteFacture($facture, [
+            $factureOrigine = $facture;
+            $factureComplement = $this->facturationService->payerResteFacture($facture, [
                 'mode_paiement' => $request->mode_paiement,
                 'reference_paiement' => $request->reference_paiement,
                 'date_paiement' => $request->date_paiement ?? now()->toDateString(),
                 'observations' => $request->observations,
             ]);
 
-            $message = 'Solde de ' . number_format($reste, 0, ',', ' ') . ' GNF enregistré.';
-            if ($facture->statut === 'payee') {
-                $message .= ' La facture est maintenant payée.';
-            }
+            $message = 'Facture complémentaire ' . $factureComplement->numero_facture
+                . ' créée pour le solde de ' . number_format($reste, 0, ',', ' ') . ' GNF. '
+                . 'La facture ' . $factureOrigine->numero_facture . ' et son entrée comptable initiale sont conservées.';
 
-            return redirect()->route('factures.show', $facture)->with('success', $message);
+            return redirect()->route('factures.show', $factureComplement)->with('success', $message);
         } catch (\Throwable $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Services\ImageService;
+use App\Services\EleveInscriptionService;
 use App\Http\Controllers\PaiementController;
 
 class EleveController extends Controller
@@ -23,15 +24,18 @@ class EleveController extends Controller
      * @var ImageService
      */
     protected $imageService;
+
+    protected EleveInscriptionService $inscriptionService;
     
     /**
      * Constructeur
      *
      * @param ImageService $imageService
      */
-    public function __construct(ImageService $imageService)
+    public function __construct(ImageService $imageService, EleveInscriptionService $inscriptionService)
     {
         $this->imageService = $imageService;
+        $this->inscriptionService = $inscriptionService;
     }
     /**
      * Afficher la liste des élèves
@@ -1206,7 +1210,7 @@ class EleveController extends Controller
     public function generateMatricule()
     {
         try {
-            $matricule = $this->generateNewMatricule();
+            $matricule = $this->inscriptionService->generateNewMatricule();
             return response()->json(['matricule' => $matricule]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Erreur lors de la génération du matricule'], 500);
@@ -1634,103 +1638,51 @@ class EleveController extends Controller
         ]);
 
         try {
-            DB::transaction(function() use ($request) {
-                // Créer l'utilisateur de l'élève
-                $utilisateur = Utilisateur::create([
-                    'nom' => $request->nom,
-                    'prenom' => $request->prenom,
-                    'email' => $this->generateStudentEmail($request->prenom, $request->nom),
-                    'password' => Hash::make('student123'),
-                    'telephone' => $request->telephone,
-                    'adresse' => $request->adresse,
-                    'sexe' => $request->sexe,
-                    'date_naissance' => $request->date_naissance,
-                    'lieu_naissance' => $request->lieu_naissance,
-                    'role' => 'student',
-                    'actif' => true,
-                ]);
+            $parentData = null;
+            if ($request->filled('parent_type')) {
+                $parentData = [
+                    'parent_type' => $request->input('parent_type'),
+                    'parent_id' => $request->input('parent_id'),
+                    'parent_prenom' => $request->input('parent_prenom'),
+                    'parent_nom' => $request->input('parent_nom'),
+                    'parent_telephone' => $request->input('parent_telephone'),
+                    'parent_email' => $request->input('parent_email'),
+                    'parent_adresse' => $request->input('parent_adresse'),
+                    'lien_parente' => $request->input('lien_parente'),
+                    'autre_lien_parente' => $request->input('autre_lien_parente'),
+                    'responsable_legal' => $request->boolean('responsable_legal'),
+                    'contact_urgence' => $request->boolean('contact_urgence'),
+                    'autorise_sortie' => $request->boolean('autorise_sortie'),
+                ];
+            }
 
-                // Traiter la photo si elle existe
-                if ($request->hasFile('photo_profil')) {
-                    $photoPath = $this->imageService->resizeAndSaveImage(
-                        $request->file('photo_profil'),
-                        'profile_images',
-                        300,
-                        300
-                    );
-                    $utilisateur->update(['photo_profil' => $photoPath]);
-                }
+            $eleve = $this->inscriptionService->inscrire([
+                'numero_etudiant' => $request->numero_etudiant,
+                'prenom' => $request->prenom,
+                'nom' => $request->nom,
+                'sexe' => $request->sexe,
+                'date_naissance' => $request->date_naissance,
+                'lieu_naissance' => $request->lieu_naissance,
+                'telephone' => $request->telephone,
+                'adresse' => $request->adresse,
+                'situation_matrimoniale' => $request->situation_matrimoniale,
+                'date_inscription' => $request->date_inscription,
+                'type_inscription' => $request->type_inscription,
+                'ecole_origine' => $request->ecole_origine,
+                'statut' => $request->statut,
+                'exempte_frais' => $request->boolean('exempte_frais'),
+                'paiement_annuel' => $request->boolean('paiement_annuel'),
+                'gratuit_inscription' => $request->boolean('gratuit_inscription'),
+                'gratuit_reinscription' => $request->boolean('gratuit_reinscription'),
+            ], (int) $request->classe_id, $parentData, $request->file('photo_profil'));
 
-                // Récupérer l'année scolaire active
-                $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
-                
-                // Créer l'élève
-                $eleve = Eleve::create([
-                    'utilisateur_id' => $utilisateur->id,
-                    'classe_id' => $request->classe_id,
-                    'numero_etudiant' => $request->numero_etudiant,
-                    'date_inscription' => $request->date_inscription,
-                    'type_inscription' => $request->type_inscription,
-                    'ecole_origine' => $request->ecole_origine,
-                    'situation_matrimoniale' => $request->situation_matrimoniale,
-                    'statut' => $request->statut,
-                    'annee_scolaire_id' => $anneeScolaireActive ? $anneeScolaireActive->id : null,
-                    'exempte_frais' => $request->boolean('exempte_frais'),
-                    'paiement_annuel' => $request->boolean('paiement_annuel'),
-                    'actif' => true,
-                ]);
+            $classe = Classe::find($request->classe_id);
+            $classe?->updateEffectifActuel();
 
-                // Gérer le parent (OPTIONNEL)
-                $parentId = null;
-                if ($request->filled('parent_type')) {
-                    if ($request->input('parent_type') === 'existing') {
-                        $parentId = $request->parent_id;
-                    } elseif ($request->input('parent_type') === 'new') {
-                        // Créer un nouveau parent
-                        $parentUtilisateur = Utilisateur::create([
-                            'nom' => $request->parent_nom,
-                            'prenom' => $request->parent_prenom,
-                            'email' => $request->parent_email ?: $this->generateParentEmail($request->parent_prenom, $request->parent_nom),
-                            'password' => Hash::make('parent123'),
-                            'telephone' => $request->parent_telephone,
-                            'adresse' => $request->parent_adresse ?: $request->adresse,
-                            'role' => 'parent',
-                            'actif' => true,
-                        ]);
-
-                        $parent = ParentModel::create([
-                            'utilisateur_id' => $parentUtilisateur->id,
-                        ]);
-
-                        $parentId = $parent->id;
-                    }
-
-                    // Associer le parent à l'élève seulement si parent fourni
-                    if ($parentId) {
-                        $eleve->parents()->attach($parentId, [
-                            'lien_parente' => $request->lien_parente ?? 'tuteur',
-                            'autre_lien_parente' => $request->autre_lien_parente ?? null,
-                            'responsable_legal' => $request->responsable_legal ?? false,
-                            'contact_urgence' => $request->contact_urgence ?? false,
-                            'autorise_sortie' => $request->autorise_sortie ?? false,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-
-                // Créer automatiquement les frais d'inscription et de scolarité
-                $paiementController = app(PaiementController::class);
-                $gratuitInscription = $request->boolean('gratuit_inscription');
-                $gratuitReinscription = $request->boolean('gratuit_reinscription');
-                $paiementController->creerFraisAutomatiques($eleve, $gratuitInscription, $gratuitReinscription);
-            });
-
-            // Nettoyer la session
             session()->forget(['current_step', 'student_data']);
 
             return redirect()->route('eleves.index')
-                ->with('success', 'Élève inscrit avec succès ! Matricule: ' . $request->numero_etudiant);
+                ->with('success', 'Élève inscrit avec succès ! Matricule: ' . $eleve->numero_etudiant);
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'inscription de l\'élève: ' . $e->getMessage());
