@@ -192,7 +192,9 @@ class FacturationService
     {
         $lignesTriees = $this->ordonnerLignesPourPaiement($lignesSelection);
         $sousTotal = round(collect($lignesTriees)->sum('montant'), 2);
-        $montantRemise = $this->calculerMontantRemise($sousTotal, $remiseType, $remiseValeur);
+        $montantRemiseDemandee = $this->calculerMontantRemise($sousTotal, $remiseType, $remiseValeur);
+        $sousTotalRemisable = $this->sousTotalRemisable($lignesTriees);
+        $montantRemise = round(min($montantRemiseDemandee, $sousTotalRemisable), 2);
         $total = max(0, round($sousTotal - $montantRemise, 2));
         $lignesAvecDu = $this->lignesAvecMontantDu($lignesSelection, $montantRemise);
 
@@ -205,44 +207,52 @@ class FacturationService
     }
 
     /**
-     * Répartit la remise globale proportionnellement au sous-total de chaque ligne.
+     * Chaque ligne conserve son montant brut (inscription 30 000, scolarité 120 000, etc.).
+     * La remise globale ne réduit pas le montant dû affiché par ligne.
      *
      * @param  array<int, array<string, mixed>>  $lignesSelection
      * @return array<int, array<string, mixed>>
      */
     private function lignesAvecMontantDu(array $lignesSelection, float $montantRemise): array
     {
+        unset($montantRemise);
+
         $lignesTriees = $this->ordonnerLignesPourPaiement($lignesSelection);
-        $sousTotal = round(collect($lignesTriees)->sum(fn (array $ligne) => (float) $ligne['montant']), 2);
-        $montantRemise = round($montantRemise, 2);
-        $remiseRestante = $montantRemise;
-        $count = count($lignesTriees);
-
         $result = [];
-        foreach ($lignesTriees as $i => $ligne) {
+
+        foreach ($lignesTriees as $ligne) {
             $brut = round((float) $ligne['montant'], 2);
-
-            if ($montantRemise <= 0 || $sousTotal <= 0) {
-                $remiseLigne = 0;
-            } elseif ($i === $count - 1) {
-                $remiseLigne = $remiseRestante;
-            } else {
-                $remiseLigne = round($montantRemise * $brut / $sousTotal, 2);
-                $remiseRestante = round($remiseRestante - $remiseLigne, 2);
-            }
-
-            $du = max(0, round($brut - $remiseLigne, 2));
 
             $result[] = array_merge($ligne, [
                 'montant_brut' => $brut,
-                'montant_du' => $du,
-                'remise_ligne' => $remiseLigne,
-                'montant_remise' => $remiseLigne,
-                'montant_net' => $du,
+                'montant_du' => $brut,
+                'remise_ligne' => 0,
+                'montant_remise' => 0,
+                'montant_net' => $brut,
             ]);
         }
 
         return $result;
+    }
+
+    /**
+     * Montant sur lequel une remise globale peut être appliquée (hors inscription / réinscription).
+     *
+     * @param  array<int, array<string, mixed>>  $lignes
+     */
+    private function sousTotalRemisable(array $lignes): float
+    {
+        return round(
+            collect($lignes)
+                ->filter(fn (array $ligne) => $this->estLigneRemisable($ligne))
+                ->sum(fn (array $ligne) => (float) $ligne['montant']),
+            2
+        );
+    }
+
+    private function estLigneRemisable(array $ligne): bool
+    {
+        return !in_array($ligne['type_frais'] ?? '', self::TYPES_ENTREE, true);
     }
 
     /**
@@ -278,6 +288,7 @@ class FacturationService
             );
         }
 
+        $resteAPayer = max(0, round($totalDu - $montantVerse, 2));
         $reste = $montantVerse;
         $lignesPayees = [];
 
@@ -287,56 +298,58 @@ class FacturationService
             }
 
             $brutMois = round((float) ($ligne['montant_brut'] ?? $ligne['montant'] ?? 0), 2);
-            $du = round((float) ($ligne['montant_du'] ?? $ligne['montant_net'] ?? $ligne['montant']), 2);
-            if ($du <= 0) {
+            if ($brutMois <= 0) {
                 continue;
             }
 
-            $paye = round(min($du, $reste), 2);
+            $paye = round(min($brutMois, $reste), 2);
 
             if ($paye <= 0) {
                 continue;
             }
 
-            $remiseLigne = round((float) ($ligne['remise_ligne'] ?? 0), 2);
-            $ratio = $du > 0.00001 ? ($paye / $du) : 1;
-            $remisePayee = round($remiseLigne * $ratio, 2);
-            $resteLigne = round($du - $paye, 2);
-            $partiel = $paye + 0.00001 < $du || $paye + $remisePayee + 0.00001 < $brutMois;
+            $partiel = $paye + 0.00001 < $brutMois;
             $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
 
             $lignesPayees[] = array_merge($ligne, [
                 'libelle' => $libelle,
                 'montant_brut' => $brutMois,
+                'montant_du' => $brutMois,
                 'montant_remise' => 0,
                 'montant_net' => $paye,
-                'remise_ligne' => $remisePayee,
-                'reste' => $resteLigne,
+                'remise_ligne' => 0,
+                'reste' => 0,
                 'partiel' => $partiel,
             ]);
 
             $reste = round($reste - $paye, 2);
         }
 
+        $this->affecterRemiseSurDerniereLignePayee($lignesPayees, $totaux['montant_remise'], $resteAPayer);
+
         // Mois non touchés par le paiement mais encore dus
         $idsPayes = collect($lignesPayees)->pluck('id')->all();
+        $aUnPaiementPartiel = collect($lignesPayees)->contains(fn (array $l) => !empty($l['partiel']));
+
         foreach ($totaux['lignes'] as $ligne) {
             if (in_array($ligne['id'] ?? null, $idsPayes, true)) {
                 continue;
             }
 
-            $du = round((float) ($ligne['montant_du'] ?? $ligne['montant_net'] ?? 0), 2);
-            if ($du <= 0) {
+            $brut = round((float) ($ligne['montant_brut'] ?? $ligne['montant'] ?? 0), 2);
+            if ($brut <= 0) {
                 continue;
             }
 
             $libelle = $this->nettoyerLibelleAffichage($ligne['libelle'] ?? '');
             $lignesPayees[] = array_merge($ligne, [
                 'libelle' => $libelle,
-                'montant_brut' => 0,
+                'montant_brut' => $brut,
+                'montant_du' => $brut,
                 'montant_remise' => 0,
                 'montant_net' => 0,
-                'reste' => $du,
+                'remise_ligne' => 0,
+                'reste' => $aUnPaiementPartiel ? 0 : $brut,
                 'partiel' => false,
                 'non_paye' => true,
             ]);
@@ -348,9 +361,45 @@ class FacturationService
             'total_du' => $totalDu,
             'montant_verse' => $montantVerse,
             'total' => $montantVerse,
-            'reste_a_payer' => max(0, round($totalDu - $montantVerse, 2)),
+            'reste_a_payer' => $resteAPayer,
             'lignes' => $lignesPayees,
         ];
+    }
+
+    /**
+     * La remise globale est imputée sur la dernière ligne de scolarité encaissée ;
+     * le reste affiché sur une ligne partielle correspond au solde global de la facture.
+     *
+     * @param  array<int, array<string, mixed>>  $lignesPayees
+     */
+    private function affecterRemiseSurDerniereLignePayee(array &$lignesPayees, float $montantRemise, float $resteAPayer): void
+    {
+        $montantRemise = round($montantRemise, 2);
+        if ($montantRemise <= 0 || empty($lignesPayees)) {
+            if ($resteAPayer > 0) {
+                for ($i = count($lignesPayees) - 1; $i >= 0; $i--) {
+                    if (!empty($lignesPayees[$i]['partiel'])) {
+                        $lignesPayees[$i]['reste'] = $resteAPayer;
+                        break;
+                    }
+                }
+            }
+
+            return;
+        }
+
+        for ($i = count($lignesPayees) - 1; $i >= 0; $i--) {
+            if (empty($lignesPayees[$i]['non_paye']) && $this->estLigneRemisable($lignesPayees[$i])) {
+                $lignesPayees[$i]['remise_ligne'] = $montantRemise;
+                $lignesPayees[$i]['montant_remise'] = $montantRemise;
+
+                if (!empty($lignesPayees[$i]['partiel']) && $resteAPayer > 0) {
+                    $lignesPayees[$i]['reste'] = $resteAPayer;
+                }
+
+                break;
+            }
+        }
     }
 
     /**

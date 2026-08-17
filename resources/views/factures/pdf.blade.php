@@ -4,94 +4,227 @@
     <meta charset="UTF-8">
     <title>Facture {{ $facture->numero_facture }}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; font-size: 13px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #28a745; padding-bottom: 15px; margin-bottom: 20px; }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-logo { height: 70px; max-width: 120px; object-fit: contain; flex-shrink: 0; }
-        .header h1 { margin: 0; color: #28a745; font-size: 22px; }
-        .meta { margin-bottom: 20px; }
-        .meta div { margin-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
-        th { background: #f8f9fa; }
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            font-size: 9px;
+            background: #f0f0f0;
+        }
+
+        .no-print { margin: 12px; }
+
+        /*
+         * Feuille A4 paysage (297 × 210 mm)
+         * Grille 2 colonnes = 2 factures A5 portrait (148 × 210 mm)
+         */
+        .sheet-landscape {
+            width: 297mm;
+            height: 210mm;
+            margin: 0 auto;
+            background: #fff;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 210mm;
+        }
+
+        .zone-a5 {
+            width: 100%;
+            height: 210mm;
+            max-height: 210mm;
+            overflow: hidden;
+            padding: 5mm 5mm 4mm;
+            position: relative;
+        }
+
+        .zone-a5:first-child {
+            border-right: 1px dashed #888;
+        }
+
+        .facture-copy {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .copy-label {
+            position: absolute;
+            top: 3mm;
+            right: 5mm;
+            font-size: 7.5px;
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .header {
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 4px;
+            margin-bottom: 5px;
+            flex-shrink: 0;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            margin-bottom: 3px;
+        }
+
+        .header-logo {
+            height: 32px;
+            max-width: 48px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #28a745;
+            font-size: 10px;
+            line-height: 1.15;
+        }
+
+        .school-meta {
+            font-size: 7px;
+            line-height: 1.2;
+            color: #555;
+        }
+
+        .facture-ref {
+            text-align: center;
+            font-size: 8.5px;
+            line-height: 1.3;
+        }
+
+        .facture-title {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .meta {
+            margin-bottom: 5px;
+            font-size: 8px;
+            line-height: 1.3;
+            flex-shrink: 0;
+        }
+
+        .meta div { margin-bottom: 1px; }
+
+        .lignes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 3px 0;
+            font-size: 8px;
+            flex-shrink: 0;
+        }
+
+        .lignes-table th,
+        .lignes-table td {
+            border: 1px solid #dee2e6;
+            padding: 2px 3px;
+            text-align: left;
+        }
+
+        .lignes-table th { background: #f8f9fa; }
+
         .text-end { text-align: right; }
-        .totaux { width: 320px; margin-left: auto; }
-        .totaux td { border: none; padding: 4px 8px; }
-        .total-row { font-size: 16px; font-weight: bold; color: #28a745; border-top: 2px solid #28a745 !important; }
-        @media print { body { padding: 10px; } .no-print { display: none; } }
+
+        .totaux {
+            width: 100%;
+            font-size: 8px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .totaux td {
+            border: none;
+            padding: 1px 2px;
+        }
+
+        .total-row {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #28a745;
+            border-top: 1px solid #28a745 !important;
+        }
+
+        .footer-info {
+            margin-top: auto;
+            padding-top: 3px;
+            font-size: 7px;
+            color: #444;
+            line-height: 1.25;
+            flex-shrink: 0;
+        }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
+
+            html, body {
+                width: 297mm;
+                height: 210mm;
+                background: #fff;
+            }
+
+            .no-print { display: none !important; }
+
+            .sheet-landscape {
+                width: 297mm;
+                height: 210mm;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+
+            .zone-a5 {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media screen {
+            .sheet-landscape {
+                margin: 12px auto;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+            }
+        }
     </style>
 </head>
 <body>
     @unless(request('print'))
-    <div class="no-print" style="margin-bottom:15px;">
-        <button onclick="window.print()">Imprimer</button>
-    </div>
+        <div class="no-print">
+            <button type="button" onclick="window.print()">Imprimer</button>
+        </div>
     @endunless
 
-    <div class="header">
-        <div class="header-left">
-            @if(!empty($schoolInfo['logo_url']))
-                <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo {{ $schoolInfo['school_name'] }}" class="header-logo">
-            @endif
-            <div>
-                <h1>{{ $schoolInfo['school_name'] }}</h1>
-                <div>{{ $schoolInfo['school_address'] }}</div>
-                <div>{{ $schoolInfo['school_phone'] }} — {{ $schoolInfo['school_email'] }}</div>
-            </div>
-        </div>
-        <div style="text-align:right;">
-            <div style="font-size:18px;font-weight:bold;">FACTURE</div>
-            <div><strong>{{ $facture->numero_facture }}</strong></div>
-            <div>Date : {{ $facture->date_facture->format('d/m/Y') }}</div>
-        </div>
+    <div class="sheet-landscape">
+        <section class="zone-a5">
+            @include('factures.partials.pdf-corps', [
+                'facture' => $facture,
+                'schoolInfo' => $schoolInfo,
+                'copyLabel' => 'Copie établissement',
+            ])
+        </section>
+
+        <section class="zone-a5">
+            @include('factures.partials.pdf-corps', [
+                'facture' => $facture,
+                'schoolInfo' => $schoolInfo,
+                'copyLabel' => 'Copie parent',
+            ])
+        </section>
     </div>
 
-    <div class="meta">
-        <div><strong>Élève :</strong> {{ $facture->eleve->utilisateur->prenom }} {{ $facture->eleve->utilisateur->nom }}</div>
-        <div><strong>Matricule :</strong> {{ $facture->eleve->numero_etudiant }}</div>
-        <div><strong>Classe :</strong> {{ $facture->eleve->classe->nom ?? '—' }}</div>
-        <div><strong>Année scolaire :</strong> {{ $facture->anneeScolaire->nom ?? '—' }}</div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Libellé</th>
-                <th class="text-end">Montant</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($facture->lignes as $ligne)
-                <tr>
-                    <td>{{ $ligne->libelleAffiche() }}</td>
-                    <td class="text-end">{{ number_format($ligne->montantAffiche(), 0, ',', ' ') }} GNF</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    @php
-        $totalApresRemise = round((float) $facture->sous_total - (float) $facture->montant_remise, 2);
-        $resteAPayer = max(0, round($totalApresRemise - (float) $facture->total, 2));
-    @endphp
-
-    <table class="totaux">
-        <tr><td>Total brut</td><td class="text-end">{{ number_format($facture->sous_total, 0, ',', ' ') }} GNF</td></tr>
-        <tr>
-            <td>Remise {{ $facture->remise_type === 'pourcentage' ? '(' . number_format($facture->remise_valeur, 0) . '%)' : '' }}</td>
-            <td class="text-end">−{{ number_format($facture->montant_remise, 0, ',', ' ') }} GNF</td>
-        </tr>
-        <tr><td><strong>Total</strong></td><td class="text-end"><strong>{{ number_format($totalApresRemise, 0, ',', ' ') }} GNF</strong></td></tr>
-        <tr class="total-row"><td>Total payé</td><td class="text-end">{{ number_format($facture->total, 0, ',', ' ') }} GNF</td></tr>
-        @if($resteAPayer > 0)
-        <tr><td>Reste à payer</td><td class="text-end">{{ number_format($resteAPayer, 0, ',', ' ') }} GNF</td></tr>
-        @endif
-    </table>
-
-    <p style="margin-top:30px;">
-        <strong>Mode de paiement :</strong> {{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}<br>
-        <strong>Statut :</strong> {{ $facture->statutLibelle() }}
-    </p>
     @if(request('print'))
         <script>
         (function () {
@@ -108,8 +241,7 @@
             window.addEventListener('afterprint', retourFacture);
 
             if (window.matchMedia) {
-                var mediaQuery = window.matchMedia('print');
-                mediaQuery.addEventListener('change', function (event) {
+                window.matchMedia('print').addEventListener('change', function (event) {
                     if (!event.matches) {
                         setTimeout(retourFacture, 150);
                     }
