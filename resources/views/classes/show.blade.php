@@ -46,10 +46,10 @@
                             <td>{{ $classe->section }}</td>
                         </tr>
                         <tr>
-                            <th>Effectif:</th>
+                            <th>Effectif{{ !empty($anneeScolaireActive) ? ' ('.$anneeScolaireActive->nom.')' : '' }}:</th>
                             <td>
-                                <span class="badge bg-{{ $classe->effectif_actuel >= $classe->effectif_max ? 'danger' : 'success' }}">
-                                    {{ $classe->effectif_actuel }} / {{ $classe->effectif_max }}
+                                <span class="badge bg-{{ ($effectifAnnee ?? 0) >= $classe->effectif_max ? 'danger' : 'success' }}">
+                                    {{ $effectifAnnee ?? 0 }} / {{ $classe->effectif_max }}
                                 </span>
                             </td>
                         </tr>
@@ -126,13 +126,16 @@
             </div>
         </div>
         
-        <!-- Matières et enseignants -->
+        <!-- Matières et enseignants (issus de l'emploi du temps) -->
         <div class="card">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Matières et enseignants</h5>
+                <a href="{{ route('emplois-temps.show', $classe->id) }}" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-calendar-alt me-1"></i> Voir l'emploi du temps
+                </a>
             </div>
             <div class="card-body p-0">
-                @if(count($classe->emploisTemps) > 0)
+                @if(($matieresEnseignants ?? collect())->count() > 0)
                 <div class="table-responsive">
                     <table class="table table-hover table-striped align-middle mb-0">
                         <thead class="table-light">
@@ -143,25 +146,16 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @php
-                                $matieres = [];
-                                foreach($classe->emploisTemps as $cours) {
-                                    if (!isset($matieres[$cours->matiere_id])) {
-                                        $matieres[$cours->matiere_id] = [
-                                            'nom' => $cours->matiere->nom,
-                                            'enseignant' => $cours->enseignant->nom . ' ' . $cours->enseignant->prenom,
-                                            'heures' => 1
-                                        ];
-                                    } else {
-                                        $matieres[$cours->matiere_id]['heures']++;
-                                    }
-                                }
-                            @endphp
-                            
-                            @foreach($matieres as $matiere)
+                            @foreach($matieresEnseignants as $matiere)
                             <tr>
                                 <td>{{ $matiere['nom'] }}</td>
-                                <td>{{ $matiere['enseignant'] }}</td>
+                                <td>
+                                    @if(count($matiere['enseignants']) > 0)
+                                        {{ implode(', ', $matiere['enseignants']) }}
+                                    @else
+                                        <span class="text-muted">Non assigné</span>
+                                    @endif
+                                </td>
                                 <td>{{ $matiere['heures'] }}</td>
                             </tr>
                             @endforeach
@@ -172,7 +166,7 @@
                 <div class="text-center py-4">
                     <p class="text-muted mb-0">
                         <i class="fas fa-book me-1"></i>
-                        Aucune matière assignée à cette classe
+                        Aucune matière dans l'emploi du temps de cette classe
                     </p>
                 </div>
                 @endif

@@ -64,37 +64,28 @@ use Illuminate\Support\Facades\Storage;
 </div>
 @else
 
-<!-- Filtres de recherche -->
-<div class="card mb-4">
-    <div class="card-header">
+<div class="card">
+    <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
         <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>Filtrer les élèves
+            <i class="fas fa-users me-2"></i>
+            Élèves des années passées
+            <span class="badge bg-primary">{{ $elevesPassees->total() }}</span>
         </h5>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('eleves.reinscription') }}" id="filterForm">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="search" class="form-label">
-                        <i class="fas fa-search me-1"></i>Nom / Prénom
-                    </label>
-                    <input type="text" class="form-control" id="search" name="search" 
-                           value="{{ request('search') }}" placeholder="Rechercher un élève...">
+        <!-- Filtres compacts (comme la liste des élèves) -->
+        <form method="GET" action="{{ route('eleves.reinscription') }}" id="filterForm" class="mb-3">
+            <div class="row g-2">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <input type="text" class="form-control" id="search" name="search"
+                           value="{{ request('search') }}" placeholder="Rechercher par nom ou prénom...">
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="matricule" class="form-label">
-                        <i class="fas fa-id-card me-1"></i>Matricule
-                    </label>
-                    <input type="text" class="form-control" id="matricule" name="matricule" 
-                           value="{{ request('matricule') }}" placeholder="Numéro matricule...">
+                <div class="col-12 col-sm-6 col-md-2">
+                    <input type="text" class="form-control" id="matricule" name="matricule"
+                           value="{{ request('matricule') }}" placeholder="Matricule...">
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="filter_classe" class="form-label">
-                        <i class="fas fa-chalkboard me-1"></i>Ancienne classe
-                    </label>
-                    <select class="form-select" id="filter_classe" name="classe_id">
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select class="form-control" id="filter_classe" name="classe_id">
                         <option value="">Toutes les classes</option>
                         @foreach($classes as $classe)
                         <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
@@ -103,12 +94,8 @@ use Illuminate\Support\Facades\Storage;
                         @endforeach
                     </select>
                 </div>
-                
-                <div class="col-md-3">
-                    <label for="filter_annee" class="form-label">
-                        <i class="fas fa-calendar me-1"></i>Année scolaire
-                    </label>
-                    <select class="form-select" id="filter_annee" name="annee_scolaire_id">
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select class="form-control" id="filter_annee" name="annee_scolaire_id">
                         <option value="">Toutes les années</option>
                         @foreach($anneesPassees as $annee)
                         <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
@@ -117,53 +104,47 @@ use Illuminate\Support\Facades\Storage;
                         @endforeach
                     </select>
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="per_page" class="form-label">
-                        <i class="fas fa-list me-1"></i>Par page
-                    </label>
-                    <select class="form-select" id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit();">
-                        <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20 par page</option>
-                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 par page</option>
-                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 par page</option>
+                <div class="col-6 col-sm-4 col-md-1">
+                    <select class="form-control" id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit();" title="Par page">
+                        <option value="20" {{ request('per_page', '20') == '20' ? 'selected' : '' }}>20</option>
+                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
                     </select>
                 </div>
-            </div>
-            
-            <div class="row mt-3">
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>Rechercher
-                    </button>
-                    <a href="{{ route('eleves.reinscription') }}" class="btn btn-secondary">
-                        <i class="fas fa-times me-1"></i>Réinitialiser
-                    </a>
-                    @if(request()->anyFilled(['search', 'matricule', 'classe_id', 'annee_scolaire_id']))
-                    <span class="badge bg-info ms-2">Filtres actifs</span>
-                    @endif
+                <div class="col-6 col-sm-4 col-md-2">
+                    <div class="d-flex gap-1">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fas fa-search"></i>
+                            <span class="d-none d-sm-inline">Filtrer</span>
+                        </button>
+                        <a href="{{ route('eleves.reinscription') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
+            <div class="mt-2">
+                <small class="text-muted">
+                    @if(request()->anyFilled(['search', 'matricule', 'classe_id', 'annee_scolaire_id']))
+                        <i class="fas fa-filter me-1"></i>
+                        Filtres actifs - {{ $elevesPassees->total() }} résultat(s)
+                        <a href="{{ route('eleves.reinscription') }}" class="text-danger ms-2">
+                            <i class="fas fa-times"></i> Effacer
+                        </a>
+                    @else
+                        {{ $elevesPassees->total() }} élève(s) à réinscrire
+                    @endif
+                </small>
+            </div>
         </form>
-    </div>
-</div>
 
-<form method="POST" action="{{ route('eleves.reinscription.process') }}" id="reinscriptionForm">
-    @csrf
-    
-    <!-- Options de réinscription -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-cogs me-2"></i>Options de réinscription
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <label for="nouvelle_classe" class="form-label">
-                        <i class="fas fa-chalkboard me-1"></i>Nouvelle classe (optionnel)
-                    </label>
-                    <select class="form-select" id="nouvelle_classe" name="nouvelle_classe">
+        <form method="POST" action="{{ route('eleves.reinscription.process') }}" id="reinscriptionForm">
+            @csrf
+
+            <!-- Options compactes -->
+            <div class="row g-2 align-items-center mb-3">
+                <div class="col-12 col-md-4">
+                    <select class="form-control" id="nouvelle_classe" name="nouvelle_classe" title="Nouvelle classe (optionnel)">
                         <option value="">Garder la classe d'origine</option>
                         @foreach($classes as $classe)
                         <option value="{{ $classe->id }}">
@@ -171,74 +152,39 @@ use Illuminate\Support\Facades\Storage;
                         </option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Si aucune classe n'est sélectionnée, l'élève sera réinscrit dans sa classe d'origine.</small>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <div class="d-grid gap-2 d-md-flex">
-                        <button type="button" class="btn btn-outline-primary" onclick="selectAll()">
-                            <i class="fas fa-check-square me-1"></i>Tout sélectionner
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="deselectAll()">
-                            <i class="fas fa-square me-1"></i>Tout désélectionner
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Options de frais -->
-            <div class="row mt-3">
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        <h6 class="mb-2">
-                            <i class="fas fa-money-bill-wave me-2"></i>Options de frais de réinscription
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="gratuit_reinscription" value="0">
-                                    <input class="form-check-input" type="checkbox" name="gratuit_reinscription" value="1" 
-                                           id="gratuit_reinscription" {{ old('gratuit_reinscription') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="gratuit_reinscription">
-                                        <i class="fas fa-gift me-1"></i>
-                                        <strong>Réinscription gratuite</strong>
-                                        <small class="text-muted d-block">Rendre les frais de réinscription gratuits pour tous les élèves sélectionnés.</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="exempte_frais" value="0">
-                                    <input class="form-check-input" type="checkbox" name="exempte_frais" value="1" 
-                                           id="exempte_frais" {{ old('exempte_frais') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="exempte_frais">
-                                        <i class="fas fa-user-shield me-1"></i>
-                                        <strong>Exempter des frais de scolarité</strong>
-                                        <small class="text-muted d-block">Exempter tous les élèves sélectionnés des frais de scolarité.</small>
-                                    </label>
-                                </div>
-                            </div>
+                <div class="col-12 col-md-5">
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <div class="form-check mb-0">
+                            <input type="hidden" name="gratuit_reinscription" value="0">
+                            <input class="form-check-input" type="checkbox" name="gratuit_reinscription" value="1"
+                                   id="gratuit_reinscription" {{ old('gratuit_reinscription') ? 'checked' : '' }}>
+                            <label class="form-check-label" for="gratuit_reinscription" title="Frais de réinscription gratuits">
+                                <i class="fas fa-gift me-1"></i>Réinscription gratuite
+                            </label>
+                        </div>
+                        <div class="form-check mb-0">
+                            <input type="hidden" name="exempte_frais" value="0">
+                            <input class="form-check-input" type="checkbox" name="exempte_frais" value="1"
+                                   id="exempte_frais" {{ old('exempte_frais') ? 'checked' : '' }}>
+                            <label class="form-check-label" for="exempte_frais" title="Exempter des frais de scolarité">
+                                <i class="fas fa-user-shield me-1"></i>Exempté scolarité
+                            </label>
                         </div>
                     </div>
                 </div>
+                <div class="col-12 col-md-3">
+                    <div class="d-flex gap-1 justify-content-md-end">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAll()">
+                            <i class="fas fa-check-square me-1"></i>Tout
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAll()">
+                            <i class="fas fa-square me-1"></i>Aucun
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Liste des élèves à réinscrire -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-users me-2"></i>
-                Élèves des années passées 
-                <span class="badge bg-primary">{{ $elevesPassees->total() }}</span>
-                @if($elevesPassees->total() > 0)
-                <small class="text-muted ms-2">
-                    (Page {{ $elevesPassees->currentPage() }} sur {{ $elevesPassees->lastPage() }})
-                </small>
-                @endif
-            </h5>
-        </div>
-        <div class="card-body">
             @if($elevesPassees->count() > 0)
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
@@ -372,9 +318,9 @@ use Illuminate\Support\Facades\Storage;
                 <p>Tous les élèves des années passées sont déjà inscrits pour l'année scolaire active, ou il n'y a pas d'élèves dans les années précédentes.</p>
             </div>
             @endif
-        </div>
+        </form>
     </div>
-</form>
+</div>
 
 @endif
 

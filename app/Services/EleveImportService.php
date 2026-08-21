@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\AnneeScolaire;
 use App\Models\Classe;
 use App\Models\Eleve;
+use App\Models\ParentModel;
+use App\Models\Utilisateur;
 use App\Support\SimpleXlsx;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -28,6 +30,9 @@ class EleveImportService
         'paiement_annuel',
         'gratuit_inscription',
         'gratuit_reinscription',
+        'nom_parent',
+        'prenom_parent',
+        'telephone_parent',
     ];
 
     public const REQUIRED_HEADERS = [
@@ -100,7 +105,10 @@ class EleveImportService
             }
             $matriculesReserves[] = $data['numero_etudiant'];
 
-            $eleve = $this->inscriptionService->inscrire($data, $classe->id);
+            $parentData = $this->resolveParentData($data['parent'] ?? null);
+            unset($data['parent']);
+
+            $eleve = $this->inscriptionService->inscrire($data, $classe->id, $parentData);
             $imported[] = $eleve;
         }
 
@@ -137,6 +145,9 @@ class EleveImportService
             'non',
             'non',
             'non',
+            'DIALLO',
+            'Mamadou',
+            '620000002',
         ];
 
         $helpRows = [
@@ -150,6 +161,8 @@ class EleveImportService
             ['date_naissance', 'Optionnel — JJ/MM/AAAA ou AAAA-MM-JJ'],
             ['situation_matrimoniale', 'celibataire, marie, divorce, veuf (optionnel)'],
             ['exempte_frais, paiement_annuel, gratuit_inscription, gratuit_reinscription', 'oui / non'],
+            ['nom_parent, prenom_parent', 'Optionnels — si renseignés (les deux), le parent est créé ou lié'],
+            ['telephone_parent', 'Optionnel — si déjà utilisé par un parent, ce parent est réutilisé'],
             ['classe', 'Choisie dans l\'interface avant l\'import — pas de colonne dans le fichier'],
         ];
 
@@ -360,6 +373,36 @@ class EleveImportService
             $messages[] = 'Le téléphone ne doit pas dépasser 20 caractères.';
         }
 
+        $nomParent = trim((string) ($rawRow['nom_parent'] ?? ''));
+        $prenomParent = trim((string) ($rawRow['prenom_parent'] ?? ''));
+        $telephoneParent = trim((string) ($rawRow['telephone_parent'] ?? ''));
+
+        if (strlen($telephoneParent) > 20) {
+            $messages[] = 'Le téléphone parent ne doit pas dépasser 20 caractères.';
+        }
+
+        $hasNomParent = $nomParent !== '';
+        $hasPrenomParent = $prenomParent !== '';
+        $hasTelephoneParent = $telephoneParent !== '';
+        $parentData = null;
+        $parentDisplay = '—';
+
+        if ($hasNomParent || $hasPrenomParent || $hasTelephoneParent) {
+            if (!$hasNomParent || !$hasPrenomParent) {
+                $messages[] = 'Pour créer un parent, renseignez nom_parent et prenom_parent (téléphone_parent optionnel).';
+            } else {
+                $parentData = [
+                    'nom' => $nomParent,
+                    'prenom' => $prenomParent,
+                    'telephone' => $hasTelephoneParent ? $telephoneParent : null,
+                ];
+                $parentDisplay = trim($prenomParent . ' ' . $nomParent);
+                if ($hasTelephoneParent) {
+                    $parentDisplay .= ' (' . $telephoneParent . ')';
+                }
+            }
+        }
+
         $data = [
             'numero_etudiant' => $numeroEtudiant,
             'prenom' => $prenom,
@@ -378,6 +421,7 @@ class EleveImportService
             'paiement_annuel' => $this->parseBoolean($rawRow['paiement_annuel'] ?? null),
             'gratuit_inscription' => $this->parseBoolean($rawRow['gratuit_inscription'] ?? null),
             'gratuit_reinscription' => $this->parseBoolean($rawRow['gratuit_reinscription'] ?? null),
+            'parent' => $parentData,
         ];
 
         $status = !empty($messages) ? 'error' : (!empty($warnings) ? 'warning' : 'ok');
@@ -395,7 +439,52 @@ class EleveImportService
                 'date_inscription' => Carbon::parse($dateInscription)->format('d/m/Y') . ' (auto)',
                 'type_inscription' => $this->typeInscriptionLibelle($typeInscription),
                 'statut' => 'Actif (auto)',
+                'parent' => $parentDisplay,
             ],
+        ];
+    }
+
+    /**
+     * @param  array{nom: string, prenom: string, telephone: ?string}|null  $parent
+     * @return array<string, mixed>|null
+     */
+    private function resolveParentData(?array $parent): ?array
+    {
+        if ($parent === null) {
+            return null;
+        }
+
+        $telephone = $parent['telephone'] ?? null;
+
+        if ($telephone) {
+            $utilisateur = Utilisateur::where('role', 'parent')
+                ->where('telephone', $telephone)
+                ->first();
+
+            if ($utilisateur) {
+                $parentModel = ParentModel::where('utilisateur_id', $utilisateur->id)->first();
+                if ($parentModel) {
+                    return [
+                        'parent_type' => 'existing',
+                        'parent_id' => $parentModel->id,
+                        'lien_parente' => 'tuteur',
+                        'responsable_legal' => true,
+                        'contact_urgence' => true,
+                        'autorise_sortie' => true,
+                    ];
+                }
+            }
+        }
+
+        return [
+            'parent_type' => 'new',
+            'parent_nom' => $parent['nom'],
+            'parent_prenom' => $parent['prenom'],
+            'parent_telephone' => $telephone,
+            'lien_parente' => 'tuteur',
+            'responsable_legal' => true,
+            'contact_urgence' => true,
+            'autorise_sortie' => true,
         ];
     }
 

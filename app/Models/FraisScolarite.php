@@ -101,16 +101,27 @@ class FraisScolarite extends Model
     /**
      * Accessor pour le montant restant à payer
      */
-    public function getMontantRestantAttribute()
-    {
-        // Utiliser les relations déjà chargées si disponibles
-        if ($this->relationLoaded('paiements')) {
-            $montantPaye = $this->paiements->sum('montant_paye');
-        } else {
-            $montantPaye = $this->paiements()->sum('montant_paye');
-        }
-        return $this->montant - $montantPaye;
+    /**
+ * Accessor pour le montant restant à payer
+ * IMPORTANT : Prend en compte les remises accordées sur les factures
+ */
+public function getMontantRestantAttribute()
+{
+    // Montant total payé
+    if ($this->relationLoaded('paiements')) {
+        $montantPaye = $this->paiements->sum('montant_paye');
+    } else {
+        $montantPaye = $this->paiements()->sum('montant_paye');
     }
+
+    // Montant total des remises accordées sur les lignes de factures liées à ce frais
+    $montantRemises = \App\Models\FactureLigne::where('frais_scolarite_id', $this->id)
+        ->sum('montant_remise');
+
+    // Reste = Montant brut - Montant payé - Remises
+    return max(0, $this->montant - $montantPaye - $montantRemises);
+}
+
 
     /**
      * Créer les tranches de paiement

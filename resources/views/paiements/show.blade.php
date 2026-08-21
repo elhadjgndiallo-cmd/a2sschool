@@ -87,38 +87,59 @@
                             </div>
                         </div>
                         
-                        <div class="col-md-6">
+                                                <div class="col-md-6">
                             <div class="card">
                                 <div class="card-header">
                                     <h5 class="mb-0">Résumé des Paiements</h5>
                                 </div>
                                 <div class="card-body">
+                                    @php
+                                        // CORRECTION : Calcul du cash réellement payé (sans compter la remise)
+                                        $montantPayeCash = $frais->paiements->sum('montant_paye');
+
+                                        // Total des remises accordées sur ce frais
+                                        $montantRemises = \App\Models\FactureLigne::where('frais_scolarite_id', $frais->id)
+                                            ->sum('montant_remise');
+
+                                        // Montant net dû = Montant brut - Remises
+                                        $montantNetDu = $frais->montant - $montantRemises;
+
+                                        // Restant = Montant net dû - Cash payé
+                                        $restant = max(0, $montantNetDu - $montantPayeCash);
+                                    @endphp
+
                                     <div class="row text-center">
                                         <div class="col-6">
                                             <div class="border rounded p-3">
-                                                <h4 class="text-success">{{ number_format($frais->montant - $frais->montant_restant, 0, ',', ' ') }}</h4>
+                                                <h4 class="text-success">{{ number_format($montantPayeCash, 0, ',', ' ') }}</h4>
                                                 <small class="text-muted">GNF Payés</small>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="border rounded p-3">
-                                                <h4 class="text-danger">{{ number_format($frais->montant_restant, 0, ',', ' ') }}</h4>
+                                                <h4 class="text-danger">{{ number_format($restant, 0, ',', ' ') }}</h4>
                                                 <small class="text-muted">GNF Restants</small>
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="mt-3">
                                         <div class="progress" style="height: 25px;">
                                             @php
-                                                $pourcentage = $frais->montant > 0 ? 
-                                                    (($frais->montant - $frais->montant_restant) / $frais->montant) * 100 : 0;
+                                                // Progression par rapport au montant net (après remise)
+                                                $pourcentage = $montantNetDu > 0
+                                                    ? ($montantPayeCash / $montantNetDu) * 100
+                                                    : 100;
+
+                                                // Limiter à 100% maximum
+                                                $pourcentage = min(100, max(0, $pourcentage));
                                             @endphp
-                                            <div class="progress-bar 
-                                                @if($pourcentage == 100) bg-success
+
+                                            <div class="progress-bar
+                                                @if($pourcentage >= 99.9) bg-success
                                                 @elseif($pourcentage > 0) bg-warning
-                                                @else bg-secondary @endif" 
-                                                role="progressbar" 
+                                                @else bg-secondary @endif"
+                                                role="progressbar"
                                                 style="width: {{ $pourcentage }}%">
                                                 {{ number_format($pourcentage, 1) }}%
                                             </div>
@@ -127,7 +148,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
                     @if($frais->paiement_par_tranches && $frais->tranchesPaiement->count() > 0)
                         <!-- Paiements mensuels -->

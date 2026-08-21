@@ -57,7 +57,7 @@ class AbsenceController extends Controller
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
             }
         }, 'eleves.utilisateur'])->findOrFail($classeId);
-        $matieres = Matiere::actif()->get();
+        $matieres = Matiere::actif()->pourAnneeActive()->get();
         
         // Récupérer les absences du jour pour l'année active
         $absencesAujourdhui = Absence::whereHas('eleve', function($query) use ($classeId, $anneeScolaireActive) {

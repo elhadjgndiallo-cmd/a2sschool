@@ -23,17 +23,18 @@ class PaiementScolariteService
         int $encaissePar,
         bool $creerEntreeComptable = true,
         float $montantRemise = 0
-    ): Paiement {
+    ): ?Paiement {
         $tranche->refresh();
         $reste = (float) $tranche->montant_tranche - (float) $tranche->montant_paye;
         $montantRemise = max(0, round($montantRemise, 2));
+        $montantPaye = round($montantPaye, 2);
         $creditTranche = round($montantPaye + $montantRemise, 2);
 
-        if ($montantPaye <= 0) {
-            throw new \InvalidArgumentException('Le montant payé doit être supérieur à zéro.');
+        if ($montantPaye <= 0 && $montantRemise <= 0) {
+            throw new \InvalidArgumentException('Le montant payé ou la remise doit être supérieur à zéro.');
         }
 
-        if ($creditTranche - $reste > 0.00001) {
+        if ($creditTranche - $reste > 1) {
             throw new \InvalidArgumentException('Le montant dépasse le reste dû sur la tranche.');
         }
 
@@ -41,23 +42,28 @@ class PaiementScolariteService
             throw new \InvalidArgumentException('Cette tranche est déjà payée.');
         }
 
-        $paiement = Paiement::create([
-            'frais_scolarite_id' => $tranche->frais_scolarite_id,
-            'tranche_paiement_id' => $tranche->id,
-            'montant_paye' => $montantPaye,
-            'date_paiement' => $datePaiement,
-            'mode_paiement' => $modePaiement,
-            'reference_paiement' => $referencePaiement,
-            'observations' => $observations,
-            'encaisse_par' => $encaissePar,
-        ]);
+        $paiement = null;
+        if ($montantPaye > 0.01) {
+            $paiement = Paiement::create([
+                'frais_scolarite_id' => $tranche->frais_scolarite_id,
+                'tranche_paiement_id' => $tranche->id,
+                'montant_paye' => $montantPaye,
+                'date_paiement' => $datePaiement,
+                'mode_paiement' => $modePaiement,
+                'reference_paiement' => $referencePaiement,
+                'observations' => $observations,
+                'encaisse_par' => $encaissePar,
+            ]);
+        }
 
-        // La remise réduit l'obligation sur la tranche (le mois est soldé au net, pas au brut encaissé)
-        $nouveauMontantPaye = (float) $tranche->montant_paye + $creditTranche;
+        // Cash + remise soldent la tranche
+        $nouveauMontantPaye = (float) $tranche->montant_paye + $montantPaye;
+        $soldee = $nouveauMontantPaye + $montantRemise + 0.00001 >= (float) $tranche->montant_tranche;
+
         $tranche->update([
-            'montant_paye' => $nouveauMontantPaye,
+            'montant_paye' => $soldee ? (float) $tranche->montant_tranche : $nouveauMontantPaye,
             'date_paiement' => $datePaiement,
-            'statut' => $nouveauMontantPaye + 0.00001 >= (float) $tranche->montant_tranche ? 'paye' : 'en_attente',
+            'statut' => $soldee ? 'paye' : 'en_attente',
         ]);
 
         $frais = $tranche->fraisScolarite()->first();
@@ -65,7 +71,7 @@ class PaiementScolariteService
             $frais->update(['statut' => 'paye']);
         }
 
-        if ($creerEntreeComptable) {
+        if ($creerEntreeComptable && $paiement) {
             $this->creerEntreeComptable($paiement, $frais);
         }
 
@@ -183,7 +189,36 @@ class PaiementScolariteService
     {
         $eleve = $facture->eleve;
         $classe = $eleve->classe;
-        $libellesMois = $facture->lignes->pluck('libelle')->implode(', ');
+        
+        // Grouper les lignes par type de frais pour un libellé plus court
+        $lignesParType = $facture->lignes->groupBy('type_frais');
+        
+        $partiesLibelle = [];
+        foreach ($lignesParType as $typeFrais => $lignesType) {
+            if (in_array($typeFrais, ['inscription', 'reinscription', 'uniforme', 'livres', 'autre', 'autres'])) {
+                // Pour les frais uniques, juste mentionner le type
+                $partiesLibelle[] = ucfirst($typeFrais);
+            } else {
+                // Pour scolarité/cantine/transport, extraire juste les noms des mois (sans année)
+                $mois = $lignesType->map(function($ligne) {
+                    // Extraire uniquement le nom du mois (sans l'année)
+                    if (preg_match('/(Janvier|Février|Mars|Avril|Mai|Juin|Juillet|Août|Septembre|Octobre|Novembre|Décembre)/i', $ligne->libelle, $matches)) {
+                        return $matches[1];
+                    }
+                    return null;
+                })->filter()->unique()->implode(', ');
+                
+                if ($mois) {
+                    // Juste "Juin, Mai, Avril" au lieu de "Scolarités : Juin, Mai, Avril"
+                    $partiesLibelle[] = $mois;
+                } else {
+                    // Fallback si extraction échoue
+                    $partiesLibelle[] = ucfirst($typeFrais) . ' (' . $lignesType->count() . ' mois)';
+                }
+            }
+        }
+        
+        $libellesCourts = implode(' + ', $partiesLibelle);
 
         $eleveNom = trim(($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? ''));
         $matricule = $eleve->numero_etudiant ?? 'N/A';
@@ -194,7 +229,7 @@ class PaiementScolariteService
 
         $libelle = 'Facture ' . $facture->numero_facture . ' — '
             . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
-            . ($libellesMois ? ' — ' . $libellesMois : '');
+            . ($libellesCourts ? ' — ' . $libellesCourts : '');
 
         return [
             'libelle' => $libelle,

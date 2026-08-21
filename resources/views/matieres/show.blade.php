@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Détails Matière - ' . $matiere->nom)
 
@@ -7,6 +7,9 @@
     <h1 class="h2">
         <span class="badge me-2" style="background-color: {{ $matiere->couleur }}; color: white;">{{ $matiere->code }}</span>
         {{ $matiere->nom }}
+        @if(!empty($anneeScolaireActive))
+            <small class="text-muted fs-6">— année {{ $anneeScolaireActive->nom }}</small>
+        @endif
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{{ route('matieres.index') }}" class="btn btn-outline-secondary">
@@ -23,7 +26,7 @@
                 <div class="d-flex justify-content-between">
                     <div>
                         <h4>{{ $statistiques['total_enseignants'] }}</h4>
-                        <p class="mb-0">Enseignants</p>
+                        <p class="mb-0">Enseignants (EDT)</p>
                     </div>
                     <div class="align-self-center">
                         <i class="fas fa-chalkboard-teacher fa-2x"></i>
@@ -52,7 +55,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4>{{ round($statistiques['moyenne_generale'], 2) }}/20</h4>
+                        <h4>{{ $statistiques['moyenne_generale'] ? round($statistiques['moyenne_generale'], 2) : '—' }}{{ $statistiques['moyenne_generale'] ? '/20' : '' }}</h4>
                         <p class="mb-0">Moyenne</p>
                     </div>
                     <div class="align-self-center">
@@ -80,14 +83,13 @@
 </div>
 
 <div class="row">
-    <!-- Informations détaillées -->
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-md-5">
+        <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">Informations Détaillées</h5>
             </div>
             <div class="card-body">
-                <table class="table table-borderless">
+                <table class="table table-borderless mb-0">
                     <tr>
                         <td><strong>Code:</strong></td>
                         <td>{{ $matiere->code }}</td>
@@ -124,29 +126,35 @@
         </div>
     </div>
 
-    <!-- Enseignants assignés -->
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-md-7">
+        <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">Enseignants Assignés</h5>
+                <h5 class="mb-0">
+                    Enseignants assignés (emploi du temps)
+                    @if(!empty($anneeScolaireActive))
+                        <small class="text-muted">— {{ $anneeScolaireActive->nom }}</small>
+                    @endif
+                </h5>
             </div>
-            <div class="card-body">
-                @if($matiere->enseignants->count() > 0)
-                <div class="list-group list-group-flush">
-                    @foreach($matiere->enseignants as $enseignant)
-                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <strong>{{ $enseignant->utilisateur->name }}</strong>
-                            <br><small class="text-muted">{{ $enseignant->specialite }}</small>
-                        </div>
-                        <span class="badge bg-primary">{{ $enseignant->statut }}</span>
-                    </div>
+            <div class="card-body p-0">
+                @if(($enseignantsEdt ?? collect())->count() > 0)
+                <ul class="list-group list-group-flush">
+                    @foreach($enseignantsEdt as $enseignant)
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fas fa-user me-2 text-muted"></i>
+                            {{ $enseignant->nom_complet }}
+                        </span>
+                        @if($enseignant->numero_employe)
+                            <span class="badge bg-light text-dark">{{ $enseignant->numero_employe }}</span>
+                        @endif
+                    </li>
                     @endforeach
-                </div>
+                </ul>
                 @else
-                <div class="text-center py-3">
-                    <i class="fas fa-user-slash fa-2x text-muted mb-2"></i>
-                    <p class="text-muted">Aucun enseignant assigné</p>
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Aucun enseignant pour cette matière dans l'EDT de l'année active
                 </div>
                 @endif
             </div>
@@ -155,16 +163,21 @@
 </div>
 
 <!-- Classes où la matière est enseignée -->
-@if($matiere->emploisTemps->count() > 0)
-<div class="row mt-4">
+<div class="row mt-2">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Classes où cette matière est enseignée</h5>
+                <h5 class="mb-0">
+                    Classes où cette matière est enseignée
+                    @if(!empty($anneeScolaireActive))
+                        <small class="text-muted">— {{ $anneeScolaireActive->nom }}</small>
+                    @endif
+                </h5>
             </div>
             <div class="card-body">
+                @if(($emploisTemps ?? collect())->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-sm">
+                    <table class="table table-sm table-hover align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Classe</th>
@@ -175,25 +188,38 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($matiere->emploisTemps as $emploi)
+                            @foreach($emploisTemps as $emploi)
                             <tr>
-                                <td><strong>{{ $emploi->classe->nom }}</strong></td>
-                                <td>{{ $emploi->classe->niveau }}</td>
-                                <td>{{ $emploi->enseignant->utilisateur->name }}</td>
-                                <td>{{ ucfirst($emploi->jour) }}</td>
-                                <td>{{ $emploi->heure_debut }} - {{ $emploi->heure_fin }}</td>
+                                <td><strong>{{ $emploi->classe?->nom ?? '—' }}</strong></td>
+                                <td>{{ $emploi->classe?->niveau ?? '—' }}</td>
+                                <td>{{ $emploi->enseignant?->nom_complet ?: 'Non assigné' }}</td>
+                                <td>{{ $emploi->jour_semaine ? ucfirst($emploi->jour_semaine) : '—' }}</td>
+                                <td>
+                                    @php
+                                        $debut = $emploi->heure_debut;
+                                        $fin = $emploi->heure_fin;
+                                        $debutFmt = $debut instanceof \Carbon\Carbon ? $debut->format('H:i') : \Carbon\Carbon::parse($debut)->format('H:i');
+                                        $finFmt = $fin instanceof \Carbon\Carbon ? $fin->format('H:i') : \Carbon\Carbon::parse($fin)->format('H:i');
+                                    @endphp
+                                    {{ $debutFmt }} - {{ $finFmt }}
+                                </td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                @else
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-calendar-times me-1"></i>
+                    Aucun créneau d'emploi du temps pour l'année active
+                </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
-@endif
 
-<div class="card mb-4 no-print">
+<div class="card mb-4 no-print mt-4">
     <div class="card-header bg-dark text-white">
         <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
     </div>

@@ -35,7 +35,12 @@
     <div class="card-header bg-white">
         <div class="row align-items-center g-2">
             <div class="col-12 col-md-6">
-                <h5 class="mb-0">Liste des Classes</h5>
+                <h5 class="mb-0">
+                    Liste des Classes
+                    @if(!empty($anneeScolaireActive))
+                        <small class="text-muted fs-6">— année {{ $anneeScolaireActive->nom }}</small>
+                    @endif
+                </h5>
             </div>
             <div class="col-12 col-md-6">
                 <form action="{{ route('classes.index') }}" method="GET" class="d-flex">
@@ -56,7 +61,12 @@
                         <th scope="col">Nom</th>
                         <th scope="col">Niveau</th>
                         <th scope="col">Section</th>
-                        <th scope="col">Effectif</th>
+                        <th scope="col">
+                            Effectif
+                            @if(!empty($anneeScolaireActive))
+                                <small class="text-muted fw-normal">({{ $anneeScolaireActive->nom }})</small>
+                            @endif
+                        </th>
                         <th scope="col">Statut</th>
                     </tr>
                 </thead>
@@ -66,7 +76,7 @@
                         <td>{{ $classe->nom }}</td>
                         <td>{{ $classe->niveau }}</td>
                         <td>{{ $classe->section }}</td>
-                        <td>{{ $classe->effectif_actuel }} / {{ $classe->effectif_max }}</td>
+                        <td>{{ $classe->effectif_annee ?? 0 }} / {{ $classe->effectif_max }}</td>
                         <td>
                             <span class="badge bg-{{ $classe->actif ? 'success' : 'danger' }}">
                                 {{ $classe->actif ? 'Actif' : 'Inactif' }}

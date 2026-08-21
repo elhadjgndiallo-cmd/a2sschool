@@ -11,14 +11,38 @@ class ClasseController extends Controller
     /**
      * Afficher la liste des classes
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Vérifier les permissions
         if (!auth()->user()->hasPermission('classes.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
-        }        
-        $classes = Classe::orderBy('niveau')->orderBy('nom')->paginate(20);
-        return view('classes.index', compact('classes'));
+        }
+
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+
+        $classes = Classe::query()
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('nom', 'like', "%{$search}%")
+                        ->orWhere('niveau', 'like', "%{$search}%")
+                        ->orWhere('section', 'like', "%{$search}%");
+                });
+            })
+            ->withCount([
+                'eleves as effectif_annee' => function ($q) use ($anneeScolaireActive) {
+                    if ($anneeScolaireActive) {
+                        $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                },
+            ])
+            ->orderBy('niveau')
+            ->orderBy('nom')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('classes.index', compact('classes', 'anneeScolaireActive'));
     }
 
     /**
@@ -71,16 +95,64 @@ class ClasseController extends Controller
      */
     public function show(Classe $classe)
     {
-        $classe->load(['eleves.utilisateur', 'emploisTemps.matiere', 'emploisTemps.enseignant.utilisateur']);
-        
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+
+        $classe->load([
+            'eleves' => function ($q) use ($anneeScolaireActive) {
+                if ($anneeScolaireActive) {
+                    $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+                $q->with('utilisateur');
+            },
+            'emploisTemps' => function ($q) use ($anneeScolaireActive) {
+                $q->where('actif', true)
+                    ->when($anneeScolaireActive, fn ($qq) => $qq->where('annee_scolaire_id', $anneeScolaireActive->id))
+                    ->with(['matiere', 'enseignant.utilisateur'])
+                    ->orderBy('jour_semaine')
+                    ->orderBy('heure_debut');
+            },
+        ]);
+
+        $effectifAnnee = $classe->eleves->count();
+
+        $matieresEnseignants = $classe->emploisTemps
+            ->groupBy('matiere_id')
+            ->map(function ($cours) {
+                $premier = $cours->first();
+                $enseignants = $cours
+                    ->pluck('enseignant')
+                    ->filter()
+                    ->unique('id')
+                    ->map(fn ($ens) => $ens->nom_complet)
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                return [
+                    'nom' => $premier->matiere?->nom ?? '—',
+                    'enseignants' => $enseignants,
+                    'heures' => $cours->count(),
+                ];
+            })
+            ->sortBy('nom')
+            ->values();
+
         $statistiques = [
-            'total_eleves' => $classe->eleves->count(),
+            'total_eleves' => $effectifAnnee,
             'total_cours' => $classe->emploisTemps->count(),
-            'total_matieres' => $classe->emploisTemps->pluck('matiere_id')->unique()->count(),
+            'total_matieres' => $matieresEnseignants->count(),
             'total_enseignants' => $classe->emploisTemps->pluck('enseignant_id')->unique()->count(),
         ];
-        
-        return view('classes.show', compact('classe', 'statistiques'));
+
+        return view('classes.show', compact(
+            'classe',
+            'statistiques',
+            'anneeScolaireActive',
+            'effectifAnnee',
+            'matieresEnseignants'
+        ));
     }
 
     /**
@@ -96,11 +168,14 @@ class ClasseController extends Controller
      */
     public function update(Request $request, Classe $classe)
     {
+        $classe->updateEffectifActuel();
+        $classe->refresh();
+
         $validator = Validator::make($request->all(), [
             'nom' => 'required|string|max:50|unique:classes,nom,' . $classe->id,
             'niveau' => 'required|string|max:20',
             'section' => 'required|string|max:50',
-            'effectif_max' => 'required|integer|min:' . $classe->effectif_actuel,
+            'effectif_max' => 'required|integer|min:' . max(1, (int) $classe->effectif_actuel),
             'description' => 'nullable|string|max:255',
             'actif' => 'boolean',
         ]);

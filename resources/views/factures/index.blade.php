@@ -112,7 +112,19 @@
             </div>
         </div>
         @if($factures->hasPages())
-            <div class="card-footer">{{ $factures->links() }}</div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <small class="text-muted">
+                            Affichage de {{ $factures->firstItem() ?? 0 }} à {{ $factures->lastItem() ?? 0 }}
+                            sur {{ $factures->total() }} facture{{ $factures->total() > 1 ? 's' : '' }}
+                        </small>
+                    </div>
+                    <div>
+                        {{ $factures->appends(request()->query())->links('vendor.pagination.custom') }}
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
 </div>

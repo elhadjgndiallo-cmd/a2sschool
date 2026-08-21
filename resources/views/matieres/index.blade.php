@@ -7,6 +7,9 @@
     <h1 class="h2">
         <i class="fas fa-book me-2"></i>
         Gestion des Matières
+        @if(!empty($anneeScolaireActive))
+            <small class="text-muted fs-6">— année {{ $anneeScolaireActive->nom }}</small>
+        @endif
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
@@ -116,7 +119,6 @@
                         <th>Code</th>
                         <th>Nom</th>
                         <th>Coefficient</th>
-                        <th>Enseignants</th>
                         <th>Couleur</th>
                         <th>Statut</th>
                     </tr>
@@ -137,18 +139,6 @@
                         </td>
                         <td>
                             <span class="badge bg-secondary fs-6">{{ $matiere->coefficient }}</span>
-                        </td>
-                        <td>
-                            @if($matiere->enseignants->count() > 0)
-                                @foreach($matiere->enseignants->take(2) as $enseignant)
-                                <span class="badge bg-info me-1">{{ $enseignant->utilisateur->name }}</span>
-                                @endforeach
-                                @if($matiere->enseignants->count() > 2)
-                                <span class="badge bg-light text-dark">+{{ $matiere->enseignants->count() - 2 }}</span>
-                                @endif
-                            @else
-                                <span class="text-muted">Aucun enseignant</span>
-                            @endif
                         </td>
                         <td>
                             <div class="color-preview" style="width: 30px; height: 20px; background-color: {{ $matiere->couleur }}; border: 1px solid #ddd; border-radius: 3px;"></div>

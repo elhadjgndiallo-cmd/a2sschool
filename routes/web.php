@@ -399,10 +399,12 @@ Route::middleware('auth')->group(function () {
 
 // Route de test pour l'emploi du temps (sans middleware de permission)
 Route::get('/test-emploi-temps/{classe}', function(App\Models\Classe $classe) {
+    $annee = App\Models\AnneeScolaire::anneeActive();
     $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+        ->when($annee, fn ($q) => $q->pourAnneeScolaire($annee->id))
         ->with(['matiere', 'enseignant.utilisateur'])
         ->get();
-    return response()->json(['classe' => $classe, 'emplois' => $emplois]);
+    return response()->json(['classe' => $classe, 'emplois' => $emplois, 'annee_scolaire' => $annee]);
 })->middleware('auth');
 
 // Route alternative pour l'emploi du temps (solution de contournement)
@@ -437,18 +439,22 @@ Route::get('/api/emploi-temps/{classeId}', function($classeId) {
             return response()->json(['error' => 'Accès non autorisé'], 403);
         }
         
+        $annee = App\Models\AnneeScolaire::anneeActive();
         $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+            ->when($annee, fn ($q) => $q->pourAnneeScolaire($annee->id))
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get();
             
         return response()->json([
             'classe' => $classe,
             'emplois' => $emplois,
+            'annee_scolaire' => $annee,
             'debug' => [
                 'classe_id' => $classe->id,
                 'classe_nom' => $classe->nom,
                 'emplois_count' => $emplois->count(),
-                'route' => 'alternative'
+                'route' => 'alternative',
+                'annee_scolaire_id' => $annee?->id,
             ]
         ]);
     } catch (\Exception $e) {
@@ -507,13 +513,16 @@ Route::get('/test-emploi-temps-format/{classe}', function($classeId) {
         return response()->json(['error' => 'Classe non trouvée'], 404);
     }
     
+    $annee = App\Models\AnneeScolaire::anneeActive();
     $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
+        ->when($annee, fn ($q) => $q->pourAnneeScolaire($annee->id))
         ->with(['matiere', 'enseignant.utilisateur'])
         ->get();
         
     return response()->json([
         'classe' => $classe,
         'emplois' => $emplois,
+        'annee_scolaire' => $annee,
         'test' => 'Format de données correct'
     ]);
 })->middleware('auth');
@@ -570,17 +579,20 @@ Route::get('/get-emploi-temps', function() {
         
         $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
             ->actif()
+            ->pourAnneeScolaire($anneeScolaireActive->id)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->get();
             
         return response()->json([
             'classe' => $classe,
             'emplois' => $emplois,
+            'annee_scolaire' => $anneeScolaireActive,
             'debug' => [
                 'classe_id' => $classe->id,
                 'classe_nom' => $classe->nom,
                 'emplois_count' => $emplois->count(),
-                'route' => 'lws-simple'
+                'route' => 'lws-simple',
+                'annee_scolaire_id' => $anneeScolaireActive->id,
             ]
         ]);
     } catch (\Exception $e) {
@@ -673,8 +685,14 @@ Route::post('/add-emploi-temps', function() {
         $jourNormalized = strtolower($request->jour);
 
         // Vérifier les conflits d'horaires (sauf si on force)
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return response()->json(['success' => false, 'message' => 'Aucune année scolaire active.'], 422);
+        }
+
         if (!$request->has('force') || !$request->force) {
             $conflit = App\Models\EmploiTemps::where('classe_id', $request->classe_id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->where('jour_semaine', $jourNormalized)
                 ->where('matiere_id', '!=', $request->matiere_id)
                 ->where(function($query) use ($request) {
@@ -711,17 +729,19 @@ Route::post('/add-emploi-temps', function() {
             'classe_id' => $request->classe_id,
             'matiere_id' => $request->matiere_id,
             'enseignant_id' => $request->enseignant_id,
+            'annee_scolaire_id' => $anneeScolaireActive->id,
             'jour_semaine' => $jourNormalized,
             'heure_debut' => $request->heure_debut,
             'heure_fin' => $request->heure_fin,
             'salle' => $request->salle,
             'type_cours' => 'cours',
-            'date_debut' => now()->startOfYear(),
-            'date_fin' => now()->endOfYear(),
+            'date_debut' => $anneeScolaireActive->date_debut ?? now()->startOfYear(),
+            'date_fin' => $anneeScolaireActive->date_fin ?? now()->endOfYear(),
             'actif' => true
         ];
 
         $emploiTemps = App\Models\EmploiTemps::create($data);
+        $emploiTemps->enseignant?->synchroniserMatieresDepuisEmploiTemps();
 
         return response()->json([
             'success' => true, 
@@ -1036,17 +1056,20 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
             
             $emplois = App\Models\EmploiTemps::where('classe_id', $classe->id)
                 ->actif()
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->with(['matiere', 'enseignant.utilisateur'])
                 ->get();
                 
             return response()->json([
                 'classe' => $classe,
                 'emplois' => $emplois,
+                'annee_scolaire' => $anneeScolaireActive,
                 'debug' => [
                     'classe_id' => $classe->id,
                     'classe_nom' => $classe->nom,
                     'emplois_count' => $emplois->count(),
-                    'route' => 'original'
+                    'route' => 'original',
+                    'annee_scolaire_id' => $anneeScolaireActive->id,
                 ]
             ]);
         } catch (\Exception $e) {

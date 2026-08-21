@@ -90,37 +90,6 @@
         </div>
     </div>
 
-    <!-- Enseignants assignés -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Enseignants Assignés</h5>
-        </div>
-        <div class="card-body">
-            @if($enseignants->count() > 0)
-            <div class="row">
-                @foreach($enseignants as $enseignant)
-                <div class="col-md-4 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="enseignants[]" 
-                               value="{{ $enseignant->id }}" id="enseignant_{{ $enseignant->id }}"
-                               {{ in_array($enseignant->id, old('enseignants', [])) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="enseignant_{{ $enseignant->id }}">
-                            {{ $enseignant->utilisateur->name }}
-                            <br><small class="text-muted">{{ $enseignant->specialite }}</small>
-                        </label>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-            @else
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                Aucun enseignant disponible. Vous pourrez assigner des enseignants plus tard.
-            </div>
-            @endif
-        </div>
-    </div>
-
     <!-- Boutons d'action -->
     <div class="card">
         <div class="card-body">

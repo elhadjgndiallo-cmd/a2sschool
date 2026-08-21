@@ -60,6 +60,50 @@ class Classe extends Model
     }
 
     /**
+     * Classes ayant au moins un élève sur une année scolaire donnée.
+     */
+    public function scopePourAnneeScolaire($query, ?int $anneeScolaireId)
+    {
+        if (!$anneeScolaireId) {
+            return $query;
+        }
+
+        return $query->whereHas('eleves', function ($q) use ($anneeScolaireId) {
+            $q->where('annee_scolaire_id', $anneeScolaireId);
+        });
+    }
+
+    /**
+     * Classes de l'année scolaire active.
+     */
+    public function scopePourAnneeActive($query)
+    {
+        $annee = AnneeScolaire::anneeActive();
+
+        if (!$annee) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->pourAnneeScolaire($annee->id);
+    }
+
+    /**
+     * Liste triée pour les listes déroulantes (actives, année scolaire active).
+     */
+    public static function listeDeroulante(?int $anneeScolaireId = null): \Illuminate\Support\Collection
+    {
+        $query = static::query()->actif()->orderBy('niveau')->orderBy('nom');
+
+        if ($anneeScolaireId) {
+            $query->pourAnneeScolaire($anneeScolaireId);
+        } else {
+            $query->pourAnneeActive();
+        }
+
+        return $query->get();
+    }
+
+    /**
      * Accessor pour le nom complet de la classe
      */
     public function getNomCompletAttribute()

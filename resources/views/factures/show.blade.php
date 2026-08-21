@@ -164,6 +164,17 @@
                         </button>
                     </form>
                 @endif
+
+                @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'annulee')
+                    <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
+                          onsubmit="return confirm('Supprimer définitivement cette facture annulée ?\n\nCette action est irréversible.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
     </div>

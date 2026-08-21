@@ -169,6 +169,36 @@ class Enseignant extends Model
      */
     public function getNomCompletAttribute()
     {
-        return $this->utilisateur->name;
+        $user = $this->utilisateur;
+        if (!$user) {
+            return '';
+        }
+
+        $complet = trim(($user->prenom ?? '') . ' ' . ($user->nom ?? ''));
+
+        return $complet !== '' ? $complet : (string) ($user->name ?? '');
+    }
+
+    /**
+     * Aligne les matières assignées sur l'emploi du temps actif de l'enseignant
+     * (année scolaire de l'enseignant, ou année active).
+     */
+    public function synchroniserMatieresDepuisEmploiTemps(): void
+    {
+        $anneeId = $this->annee_scolaire_id ?? AnneeScolaire::anneeActive()?->id;
+
+        $query = $this->emploisTemps()->where('actif', true);
+        if ($anneeId) {
+            $query->where('annee_scolaire_id', $anneeId);
+        }
+
+        $matiereIds = $query
+            ->pluck('matiere_id')
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->matieres()->sync($matiereIds);
     }
 }

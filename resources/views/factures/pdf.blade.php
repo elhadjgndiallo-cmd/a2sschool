@@ -14,7 +14,7 @@
         body {
             font-family: Arial, sans-serif;
             color: #333;
-            font-size: 9px;
+            font-size: 14px;
             background: #f0f0f0;
         }
 
@@ -58,7 +58,7 @@
             position: absolute;
             top: 3mm;
             right: 5mm;
-            font-size: 7.5px;
+            font-size: 12px;
             font-weight: bold;
             color: #666;
             text-transform: uppercase;
@@ -80,8 +80,8 @@
         }
 
         .header-logo {
-            height: 32px;
-            max-width: 48px;
+            height: 42px;
+            max-width: 60px;
             object-fit: contain;
             flex-shrink: 0;
         }
@@ -89,30 +89,30 @@
         .header h1 {
             margin: 0;
             color: #28a745;
-            font-size: 10px;
+            font-size: 16px;
             line-height: 1.15;
         }
 
         .school-meta {
-            font-size: 7px;
+            font-size: 11px;
             line-height: 1.2;
             color: #555;
         }
 
         .facture-ref {
             text-align: center;
-            font-size: 8.5px;
+            font-size: 13px;
             line-height: 1.3;
         }
 
         .facture-title {
-            font-size: 10px;
+            font-size: 16px;
             font-weight: bold;
         }
 
         .meta {
             margin-bottom: 5px;
-            font-size: 8px;
+            font-size: 13px;
             line-height: 1.3;
             flex-shrink: 0;
         }
@@ -123,14 +123,14 @@
             width: 100%;
             border-collapse: collapse;
             margin: 3px 0;
-            font-size: 8px;
+            font-size: 14px;
             flex-shrink: 0;
         }
 
         .lignes-table th,
         .lignes-table td {
             border: 1px solid #dee2e6;
-            padding: 2px 3px;
+            padding: 4px 6px;
             text-align: left;
         }
 
@@ -140,18 +140,18 @@
 
         .totaux {
             width: 100%;
-            font-size: 8px;
+            font-size: 14px;
             margin-top: 2px;
             flex-shrink: 0;
         }
 
         .totaux td {
             border: none;
-            padding: 1px 2px;
+            padding: 2px 4px;
         }
 
         .total-row {
-            font-size: 8.5px;
+            font-size: 15px;
             font-weight: bold;
             color: #28a745;
             border-top: 1px solid #28a745 !important;
@@ -160,7 +160,7 @@
         .footer-info {
             margin-top: auto;
             padding-top: 3px;
-            font-size: 7px;
+            font-size: 11px;
             color: #444;
             line-height: 1.25;
             flex-shrink: 0;

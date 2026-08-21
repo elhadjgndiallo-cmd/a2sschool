@@ -117,8 +117,15 @@ class NoteController extends Controller
                 abort(403, 'Vous n\'avez pas accès à cette classe.');
             }
             
-            // Enseignant voit seulement ses matières assignées
-            $matieres = $enseignant->matieres()->actif()->get();
+            // Enseignant : matières de cette classe selon l'emploi du temps
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($enseignant, $classe) {
+                    $query->where('enseignant_id', $enseignant->id)
+                        ->where('classe_id', $classe->id)
+                        ->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
                 
             $enseignants = collect([$enseignant])->map(function($enseignant) {
                 $enseignant->nom_complet = $enseignant->utilisateur->nom . ' ' . $enseignant->utilisateur->prenom;
@@ -145,8 +152,13 @@ class NoteController extends Controller
                     return $enseignant;
                 });
             
-            // Récupérer toutes les matières actives pour le filtrage JavaScript
-            $matieres = Matiere::actif()->get();
+            // Matières de cette classe selon l'emploi du temps
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($classe) {
+                    $query->where('classe_id', $classe->id)->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
         } else {
             abort(403, 'Vous n\'avez pas accès à cette fonctionnalité.');
         }
@@ -1875,10 +1887,22 @@ class NoteController extends Controller
             }
             
             $enseignants = collect([$enseignant]);
-            $matieres = $enseignant->matieres()->actif()->get();
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($enseignant, $eleve) {
+                    $query->where('enseignant_id', $enseignant->id)
+                        ->where('classe_id', $eleve->classe_id)
+                        ->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
             $enseignants = Enseignant::listeDeroulante();
-            $matieres = Matiere::actif()->get();
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($eleve) {
+                    $query->where('classe_id', $eleve->classe_id)->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
         } else {
             abort(403, 'Vous n\'êtes pas autorisé.');
         }
@@ -2229,8 +2253,8 @@ class NoteController extends Controller
                 ->get();
         }
 
-        // Récupérer toutes les matières actives (pas seulement celles de la classe)
-        $matieres = \App\Models\Matiere::where('actif', true)->orderBy('nom')->get();
+        // Matières de l'année scolaire active
+        $matieres = \App\Models\Matiere::actif()->pourAnneeActive()->orderBy('nom')->get();
 
         // Récupérer les tests existants pour éviter les doublons
         $testsExistants = TestMensuel::parClasse($classe->id)
@@ -2386,10 +2410,22 @@ class NoteController extends Controller
             }
             
             $enseignants = collect([$enseignant]);
-            $matieres = $enseignant->matieres()->actif()->get();
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($enseignant, $eleve) {
+                    $query->where('enseignant_id', $enseignant->id)
+                        ->where('classe_id', $eleve->classe_id)
+                        ->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
         } elseif ($user->isAdmin() || $user->role === 'personnel_admin') {
             $enseignants = Enseignant::listeDeroulante();
-            $matieres = Matiere::actif()->get();
+            $matieres = Matiere::actif()
+                ->whereHas('emploisTemps', function ($query) use ($eleve) {
+                    $query->where('classe_id', $eleve->classe_id)->where('actif', true);
+                })
+                ->orderBy('nom')
+                ->get();
         } else {
             abort(403, 'Vous n\'êtes pas autorisé.');
         }
@@ -2968,7 +3004,7 @@ class NoteController extends Controller
             $enseignants = collect();
         }
         
-        $matieres = Matiere::actif()->orderBy('nom')->get();
+        $matieres = Matiere::actif()->pourAnneeActive()->orderBy('nom')->get();
         
         return view('notes.fiche-selection', compact('classes', 'enseignants', 'matieres', 'anneeScolaireActive'));
     }

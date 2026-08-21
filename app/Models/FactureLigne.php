@@ -65,26 +65,20 @@ class FactureLigne extends Model
     }
 
     /**
-     * Montant affiché sur la facture (net encaissé sur la ligne, pas le tarif mensuel complet).
+     * Montant affiché sur la facture (montant BRUT du mois, SANS la remise).
+     * La remise s'applique au niveau du total global, pas ligne par ligne.
      */
     public function montantAffiche(): float
     {
-        $net = (float) $this->montant_net;
-
-        if ($this->factureParent()?->estFactureComplement()) {
-            return $net;
-        }
-
+        // Toujours afficher le montant brut (tarif du mois complet)
+        // La remise est affichée séparément dans le total
+        
         if ($this->tranche_paiement_id) {
             $tranche = $this->relationLoaded('tranchePaiement')
                 ? $this->tranchePaiement
                 : $this->tranchePaiement()->first();
 
             if ($tranche) {
-                if ($net + 0.01 < (float) $tranche->montant_tranche) {
-                    return $net;
-                }
-
                 return (float) $tranche->montant_tranche;
             }
         }
@@ -94,15 +88,12 @@ class FactureLigne extends Model
                 ? $this->fraisScolarite
                 : $this->fraisScolarite()->first();
 
-            if ($frais && $net + 0.01 < (float) $frais->montant) {
-                return $net;
-            }
-
             if ($frais) {
                 return (float) $frais->montant;
             }
         }
 
+        // Toujours le montant brut, jamais le net
         return (float) $this->montant_brut;
     }
 

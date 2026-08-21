@@ -59,4 +59,57 @@ class Matiere extends Model
     {
         return $query->where('actif', true);
     }
+
+    /**
+     * Matières liées à l'année scolaire (EDT, notes ou enseignants de l'année).
+     */
+    public function scopePourAnneeScolaire($query, ?int $anneeScolaireId)
+    {
+        if (!$anneeScolaireId) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($anneeScolaireId) {
+            $q->whereHas('emploisTemps', function ($et) use ($anneeScolaireId) {
+                $et->where('actif', true)
+                    ->whereHas('classe.eleves', function ($e) use ($anneeScolaireId) {
+                        $e->where('annee_scolaire_id', $anneeScolaireId);
+                    });
+            })->orWhereHas('enseignants', function ($ens) use ($anneeScolaireId) {
+                $ens->where('annee_scolaire_id', $anneeScolaireId);
+            })->orWhereHas('notes.eleve', function ($e) use ($anneeScolaireId) {
+                $e->where('annee_scolaire_id', $anneeScolaireId);
+            });
+        });
+    }
+
+    /**
+     * Matières de l'année scolaire active.
+     */
+    public function scopePourAnneeActive($query)
+    {
+        $annee = AnneeScolaire::anneeActive();
+
+        if (!$annee) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->pourAnneeScolaire($annee->id);
+    }
+
+    /**
+     * Liste triée pour les listes déroulantes (actives, année scolaire active).
+     */
+    public static function listeDeroulante(?int $anneeScolaireId = null): \Illuminate\Support\Collection
+    {
+        $query = static::query()->actif()->orderBy('nom');
+
+        if ($anneeScolaireId) {
+            $query->pourAnneeScolaire($anneeScolaireId);
+        } else {
+            $query->pourAnneeActive();
+        }
+
+        return $query->get();
+    }
 }

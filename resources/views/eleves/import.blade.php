@@ -102,6 +102,8 @@
                             <li><code>situation_matrimoniale</code>, <code>ecole_origine</code></li>
                             <li><code>exempte_frais</code>, <code>paiement_annuel</code></li>
                             <li><code>gratuit_inscription</code>, <code>gratuit_reinscription</code></li>
+                            <li><code>nom_parent</code>, <code>prenom_parent</code> — si les deux sont remplis, le parent est créé (ou réutilisé)</li>
+                            <li><code>telephone_parent</code> — optionnel ; si déjà utilisé, le parent existant est lié</li>
                         </ul>
                     </div>
                 </div>
@@ -143,6 +145,7 @@
                                 <th>Sexe</th>
                                 <th>Type inscr.</th>
                                 <th>Statut</th>
+                                <th>Parent</th>
                                 <th>Messages</th>
                             </tr>
                         </thead>
@@ -165,6 +168,7 @@
                                     <td>{{ $row['display']['sexe'] ?? '—' }}</td>
                                     <td>{{ $row['display']['type_inscription'] ?? '—' }}</td>
                                     <td>{{ $row['display']['statut'] ?? '—' }}</td>
+                                    <td class="small">{{ $row['display']['parent'] ?? '—' }}</td>
                                     <td class="small">
                                         @if(!empty($row['messages']))
                                             {{ implode(' | ', $row['messages']) }}

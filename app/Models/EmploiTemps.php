@@ -15,6 +15,7 @@ class EmploiTemps extends Model
         'classe_id',
         'matiere_id',
         'enseignant_id',
+        'annee_scolaire_id',
         'jour_semaine',
         'heure_debut',
         'heure_fin',
@@ -57,6 +58,11 @@ class EmploiTemps extends Model
         return $this->belongsTo(Enseignant::class);
     }
 
+    public function anneeScolaire()
+    {
+        return $this->belongsTo(AnneeScolaire::class, 'annee_scolaire_id');
+    }
+
     /**
      * Scope pour les emplois du temps actifs
      */
@@ -66,11 +72,47 @@ class EmploiTemps extends Model
     }
 
     /**
+     * Filtrer par année scolaire.
+     */
+    public function scopePourAnneeScolaire($query, ?int $anneeScolaireId)
+    {
+        if (!$anneeScolaireId) {
+            return $query;
+        }
+
+        return $query->where('annee_scolaire_id', $anneeScolaireId);
+    }
+
+    /**
+     * Emplois du temps de l'année scolaire active.
+     */
+    public function scopePourAnneeActive($query)
+    {
+        $annee = AnneeScolaire::anneeActive();
+
+        if (!$annee) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->pourAnneeScolaire($annee->id);
+    }
+
+    /**
      * Scope pour filtrer par jour
      */
     public function scopeJour($query, $jour)
     {
         return $query->where('jour_semaine', $jour);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (EmploiTemps $emploi) {
+            if (!$emploi->annee_scolaire_id) {
+                $emploi->annee_scolaire_id = AnneeScolaire::anneeActive()?->id
+                    ?? Enseignant::find($emploi->enseignant_id)?->annee_scolaire_id;
+            }
+        });
     }
 
     /**

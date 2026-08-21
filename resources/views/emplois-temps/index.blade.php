@@ -7,6 +7,9 @@
     <h1 class="h2">
         <i class="fas fa-calendar-alt me-2"></i>
         Gestion des Emplois du Temps
+        @if(!empty($anneeScolaireActive))
+            <small class="text-muted fs-6">— année {{ $anneeScolaireActive->nom }}</small>
+        @endif
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">

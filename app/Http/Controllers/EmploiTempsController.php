@@ -29,14 +29,26 @@ class EmploiTempsController extends Controller
         }
         
         $classes = Classe::actif()
-            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
-                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            ->where(function ($q) use ($anneeScolaireActive) {
+                $q->whereHas('eleves', function ($query) use ($anneeScolaireActive) {
+                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+                })->orWhereHas('emploisTemps', function ($query) use ($anneeScolaireActive) {
+                    $query->where('actif', true)
+                        ->where('annee_scolaire_id', $anneeScolaireActive->id);
+                });
             })
-            ->with(['eleves' => function($query) use ($anneeScolaireActive) {
+            ->with(['eleves' => function ($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
             }])
+            ->withCount([
+                'emploisTemps as creneaux_annee' => function ($query) use ($anneeScolaireActive) {
+                    $query->where('actif', true)
+                        ->where('annee_scolaire_id', $anneeScolaireActive->id);
+                },
+            ])
             ->orderBy('nom')
             ->get();
+        // Catalogue complet pour pouvoir créer de nouveaux créneaux
         $matieres = Matiere::actif()->orderBy('nom')->get();
         $enseignants = Enseignant::listeDeroulante($anneeScolaireActive?->id);
         
@@ -60,17 +72,22 @@ class EmploiTempsController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
         
-        // Vérifier que la classe a des élèves de l'année active
+        // Vérifier que la classe a des élèves ou un EDT pour l'année active
         $hasElevesActiveYear = $classe->eleves()
             ->where('annee_scolaire_id', $anneeScolaireActive->id)
             ->exists();
-            
-        if (!$hasElevesActiveYear) {
-            return redirect()->back()->with('error', 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.');
+        $hasEdtActiveYear = EmploiTemps::where('classe_id', $classe->id)
+            ->actif()
+            ->pourAnneeScolaire($anneeScolaireActive->id)
+            ->exists();
+
+        if (!$hasElevesActiveYear && !$hasEdtActiveYear) {
+            return redirect()->back()->with('error', 'Cette classe n\'a pas d\'élèves ni d\'emploi du temps pour l\'année scolaire active.');
         }
-        
+
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->actif()
+            ->pourAnneeScolaire($anneeScolaireActive->id)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->orderBy('jour_semaine')
             ->orderBy('heure_debut')
@@ -216,10 +233,16 @@ class EmploiTempsController extends Controller
         \Log::info('Validation réussie');
         \Log::info('=== FIN DEBUG EMPLOI TEMPS ===');
 
-        // Vérifier les conflits d'horaires (sauf si on force)
+        // Vérifier les conflits d'horaires (sauf si on force) — uniquement sur l'année active
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return response()->json(['success' => false, 'message' => 'Aucune année scolaire active.'], 422);
+        }
+
         if (!$request->has('force') || !$request->force) {
             // D'abord, vérifier s'il y a un conflit avec la même matière (même horaire exact)
             $memeMatiereConflit = EmploiTemps::where('classe_id', $request->classe_id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', $request->matiere_id)
                 ->where('heure_debut', $request->heure_debut)
@@ -235,6 +258,7 @@ class EmploiTempsController extends Controller
             
             // Vérifier s'il y a un conflit d'horaire avec une matière différente
             $conflit = EmploiTemps::where('classe_id', $request->classe_id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
@@ -258,6 +282,7 @@ class EmploiTempsController extends Controller
             if ($conflit) {
             // Récupérer les créneaux en conflit pour donner plus d'informations
             $creneauxConflits = EmploiTemps::where('classe_id', $request->classe_id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
@@ -295,6 +320,7 @@ class EmploiTempsController extends Controller
         if (!$request->has('force') || !$request->force) {
             // Vérifier si l'enseignant a déjà un cours avec une matière différente pendant ce créneau
             $enseignantOccupe = EmploiTemps::where('enseignant_id', $request->enseignant_id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->where('jour_semaine', strtolower($request->jour))
                 ->where('matiere_id', '!=', $request->matiere_id) // Exclure la même matière
                 ->where(function($query) use ($request) {
@@ -329,17 +355,19 @@ class EmploiTempsController extends Controller
                 'classe_id' => $request->classe_id,
                 'matiere_id' => $request->matiere_id,
                 'enseignant_id' => $request->enseignant_id,
+                'annee_scolaire_id' => $anneeScolaireActive->id,
                 'jour_semaine' => strtolower($request->jour), // Convertir 'jour' en 'jour_semaine' en minuscules
                 'heure_debut' => $request->heure_debut,
                 'heure_fin' => $request->heure_fin,
                 'salle' => $request->salle,
                 'type_cours' => 'cours', // Valeur par défaut
-                'date_debut' => now()->startOfYear(), // Date de début de l'année
-                'date_fin' => now()->endOfYear(), // Date de fin de l'année
+                'date_debut' => $anneeScolaireActive->date_debut ?? now()->startOfYear(),
+                'date_fin' => $anneeScolaireActive->date_fin ?? now()->endOfYear(),
                 'actif' => true
             ];
 
             $emploiTemps = EmploiTemps::create($data);
+            $emploiTemps->enseignant?->synchroniserMatieresDepuisEmploiTemps();
 
             return response()->json([
                 'success' => true, 
@@ -365,7 +393,9 @@ class EmploiTempsController extends Controller
             return response()->json(['error' => 'Vous n\'êtes pas autorisé à supprimer des emplois du temps.'], 403);
         }
         
+        $enseignant = $emploiTemps->enseignant;
         $emploiTemps->delete();
+        $enseignant?->synchroniserMatieresDepuisEmploiTemps();
         
         return response()->json(['success' => true, 'message' => 'Créneau supprimé']);
     }
@@ -389,26 +419,44 @@ class EmploiTempsController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $sourceEmplois = EmploiTemps::where('classe_id', $request->source_classe_id)->get();
-        
-        // Supprimer l'emploi du temps existant de la classe cible
-        EmploiTemps::where('classe_id', $request->target_classe_id)->delete();
-        
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return response()->json(['success' => false, 'message' => 'Aucune année scolaire active.'], 422);
+        }
+
+        $sourceEmplois = EmploiTemps::where('classe_id', $request->source_classe_id)
+            ->pourAnneeScolaire($anneeScolaireActive->id)
+            ->get();
+
+        // Supprimer uniquement l'EDT de l'année active sur la classe cible
+        EmploiTemps::where('classe_id', $request->target_classe_id)
+            ->pourAnneeScolaire($anneeScolaireActive->id)
+            ->delete();
+
         // Dupliquer les créneaux
+        $enseignantsIds = [];
         foreach ($sourceEmplois as $emploi) {
             EmploiTemps::create([
                 'classe_id' => $request->target_classe_id,
                 'matiere_id' => $emploi->matiere_id,
                 'enseignant_id' => $emploi->enseignant_id,
+                'annee_scolaire_id' => $anneeScolaireActive->id,
                 'jour_semaine' => $emploi->jour_semaine,
                 'heure_debut' => $emploi->heure_debut,
                 'heure_fin' => $emploi->heure_fin,
                 'salle' => $emploi->salle,
                 'type_cours' => $emploi->type_cours ?? 'cours',
-                'date_debut' => $emploi->date_debut ?? now()->startOfYear(),
-                'date_fin' => $emploi->date_fin ?? now()->endOfYear(),
+                'date_debut' => $anneeScolaireActive->date_debut ?? $emploi->date_debut ?? now()->startOfYear(),
+                'date_fin' => $anneeScolaireActive->date_fin ?? $emploi->date_fin ?? now()->endOfYear(),
                 'actif' => $emploi->actif ?? true,
             ]);
+            if ($emploi->enseignant_id) {
+                $enseignantsIds[$emploi->enseignant_id] = true;
+            }
+        }
+
+        foreach (array_keys($enseignantsIds) as $enseignantId) {
+            \App\Models\Enseignant::find($enseignantId)?->synchroniserMatieresDepuisEmploiTemps();
         }
 
         return response()->json([
@@ -445,6 +493,7 @@ class EmploiTempsController extends Controller
         
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->actif()
+            ->pourAnneeScolaire($anneeScolaireActive->id)
             ->with(['matiere', 'enseignant.utilisateur'])
             ->orderBy('jour_semaine')
             ->orderBy('heure_debut')
@@ -508,19 +557,23 @@ class EmploiTempsController extends Controller
     }
 
     /**
-     * Effacer tout l'emploi du temps
+     * Effacer l'emploi du temps de l'année scolaire active uniquement
      */
     public function deleteAll()
     {
-        // Vérifier les permissions
         if (!auth()->user()->hasPermission('emplois-temps.delete')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à supprimer tous les emplois du temps.');
         }
-        
-        EmploiTemps::truncate();
-        
+
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $deleted = EmploiTemps::pourAnneeScolaire($anneeScolaireActive->id)->delete();
+
         return redirect()->route('emplois-temps.index')
-            ->with('success', 'Tous les emplois du temps ont été supprimés');
+            ->with('success', "{$deleted} créneau(x) de l'année {$anneeScolaireActive->nom} ont été supprimés");
     }
 
 }

@@ -64,7 +64,7 @@ class FacturationController extends Controller
         }
 
         $factures = $query->orderByDesc('date_facture')->orderByDesc('id')->paginate(20)->withQueryString();
-        $classes = Classe::orderBy('nom')->get();
+        $classes = Classe::listeDeroulante($anneeScolaire?->id);
         $anneesScolaires = AnneeScolaire::orderByDesc('date_debut')->get();
 
         return view('factures.index', compact('factures', 'classes', 'anneeScolaire', 'anneesScolaires'));
@@ -86,7 +86,7 @@ class FacturationController extends Controller
             $eleve = Eleve::with(['utilisateur', 'classe'])->find($request->eleve_id);
         }
 
-        $classes = Classe::orderBy('nom')->get();
+        $classes = Classe::listeDeroulante($anneeScolaire?->id);
 
         $lignesPreselectionnees = array_values(array_filter(
             (array) $request->input('lignes', []),
@@ -127,6 +127,16 @@ class FacturationController extends Controller
 
         $request->validate($rules);
 
+        \Log::info('=== STORE FACTURE (CREATE) DEBUG ===', [
+            'eleve_id' => $request->eleve_id,
+            'mode' => $mode,
+            'nombre_lignes' => count($request->lignes ?? []),
+            'lignes' => $request->lignes ?? [],
+            'montant_verse' => $request->montant_verse,
+            'remise_type' => $request->remise_type,
+            'remise_valeur' => $request->remise_valeur,
+        ]);
+
         try {
             $facture = $this->facturationService->emettreFacture([
                 'eleve_id' => $request->eleve_id,
@@ -143,9 +153,16 @@ class FacturationController extends Controller
                 'lignes' => $request->lignes ?? [],
             ]);
 
+            \Log::info('Facture créée avec succès', ['facture_id' => $facture->id]);
+
             return redirect()->route('factures.show', $facture)
                 ->with('success', 'Facture émise et paiement enregistré avec succès.');
         } catch (\Throwable $e) {
+            \Log::error('Erreur création facture', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return back()->withInput()->with('error', $e->getMessage());
         }
     }
@@ -439,7 +456,22 @@ class FacturationController extends Controller
             }
         }
 
+        // DEBUG: Log détaillé pour diagnostiquer les problèmes de 6+ lignes
+        \Log::info('=== PREVIEW TOTAUX DEBUG ===', [
+            'eleve_id' => $request->eleve_id,
+            'nombre_lignes_demandees' => count($request->lignes),
+            'nombre_lignes_trouvees' => count($selection),
+            'lignes_ids' => $request->lignes,
+            'remise_type' => $request->remise_type,
+            'remise_valeur' => $request->remise_valeur,
+            'montant_verse' => $request->montant_verse,
+        ]);
+
         if (empty($selection)) {
+            \Log::warning('Aucune ligne valide trouvée', [
+                'disponibles_ids' => $disponibles->keys()->toArray(),
+                'demandes_ids' => $request->lignes,
+            ]);
             return response()->json(['error' => 'Aucune ligne valide sélectionnée.'], 422);
         }
 
@@ -461,6 +493,12 @@ class FacturationController extends Controller
                 (float) ($request->remise_valeur ?? 0),
                 $montantVerse
             );
+
+            \Log::info('Calcul réussi', [
+                'sous_total' => $totaux['sous_total'],
+                'total_du' => $totaux['total_du'],
+                'montant_verse' => $totaux['montant_verse'],
+            ]);
 
             return response()->json([
                 'sous_total' => $totaux['sous_total'],
@@ -485,6 +523,12 @@ class FacturationController extends Controller
                 ], $totauxBase['lignes'] ?? $totaux['lignes']),
             ]);
         } catch (\Throwable $e) {
+            \Log::error('Erreur calcul totaux dans previewTotaux', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'nombre_lignes' => count($selection ?? []),
+            ]);
             return response()->json(['error' => $e->getMessage()], 422);
         }
     }

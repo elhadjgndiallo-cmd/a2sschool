@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AJAX 6 Lignes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
+        .error { background: #ffebee; border-color: #f44336; color: #c62828; }
+        .success { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+        pre { background: #263238; color: #aed581; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test AJAX - Facturation 6+ Lignes</h1>
+    
+    <div>
+        <label>ID Élève : <input type="number" id="eleve_id" value="1" placeholder="ID de l'élève"></label>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="test5Lignes()">Tester 5 Lignes</button>
+        <button onclick="test6Lignes()">Tester 6 Lignes</button>
+        <button onclick="test5Plus1()">Tester 5 Mois + 1 Inscription</button>
+        <button onclick="test9Plus2()">Tester 9 Mois + Inscription + Réinscription</button>
+    </div>
+    
+    <div id="result" class="result" style="display:none;"></div>
+    
+    <script>
+        const baseUrl = window.location.origin + '/a2sschool-main/public';
+        
+        function showResult(message, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result ' + (isError ? 'error' : 'success');
+            resultDiv.innerHTML = message;
+            resultDiv.style.display = 'block';
+        }
+        
+        function testFacturation(lignesIds, description) {
+            const eleveId = document.getElementById('eleve_id').value;
+            
+            showResult(`<strong>${description}</strong><br>Envoi de la requête...`);
+            
+            const startTime = Date.now();
+            
+            fetch(`${baseUrl}/factures/preview-totaux`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({
+                    eleve_id: eleveId,
+                    lignes: lignesIds,
+                    remise_type: 'montant',
+                    remise_valeur: 50000,
+                    montant_verse: null
+                })
+            })
+            .then(response => {
+                const duration = Date.now() - startTime;
+                return response.json().then(data => ({
+                    ok: response.ok,
+                    status: response.status,
+                    data: data,
+                    duration: duration
+                }));
+            })
+            .then(({ ok, status, data, duration }) => {
+                if (!ok || data.error) {
+                    showResult(
+                        `<strong>${description}</strong><br>
+                        <span style="color: red;">❌ ÉCHEC</span><br>
+                        <strong>Status HTTP:</strong> ${status}<br>
+                        <strong>Durée:</strong> ${duration}ms<br>
+                        <strong>Erreur:</strong> ${data.error || 'Inconnue'}<br>
+                        <strong>Réponse complète:</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>`,
+                        true
+                    );
+                } else {
+                    showResult(
+                        `<strong>${description}</strong><br>
+                        <span style="color: green;">✅ SUCCÈS</span><br>
+                        <strong>Durée:</strong> ${duration}ms<br>
+                        <strong>Nombre de lignes:</strong> ${lignesIds.length}<br>
+                        <strong>Sous-total:</strong> ${data.sous_total} GNF<br>
+                        <strong>Remise:</strong> ${data.montant_remise} GNF<br>
+                        <strong>Total dû:</strong> ${data.total_du} GNF<br>
+                        <strong>Détails:</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>`
+                    );
+                }
+            })
+            .catch(error => {
+                const duration = Date.now() - startTime;
+                showResult(
+                    `<strong>${description}</strong><br>
+                    <span style="color: red;">❌ ERREUR RÉSEAU</span><br>
+                    <strong>Durée:</strong> ${duration}ms<br>
+                    <strong>Message:</strong> ${error.message}<br>
+                    <strong>Détails:</strong> ${error.toString()}`,
+                    true
+                );
+                console.error('Erreur complète:', error);
+            });
+        }
+        
+        function test5Lignes() {
+            testFacturation(
+                ['scolarite_oct', 'scolarite_nov', 'scolarite_dec', 'scolarite_jan', 'scolarite_fev'],
+                'Test: 5 Mois de Scolarité'
+            );
+        }
+        
+        function test6Lignes() {
+            testFacturation(
+                ['scolarite_oct', 'scolarite_nov', 'scolarite_dec', 'scolarite_jan', 'scolarite_fev', 'scolarite_mars'],
+                'Test: 6 Mois de Scolarité'
+            );
+        }
+        
+        function test5Plus1() {
+            testFacturation(
+                ['scolarite_oct', 'scolarite_nov', 'scolarite_dec', 'scolarite_jan', 'scolarite_fev', 'inscription_2026'],
+                'Test: 5 Mois + Inscription'
+            );
+        }
+        
+        function test9Plus2() {
+            testFacturation(
+                ['scolarite_oct', 'scolarite_nov', 'scolarite_dec', 'scolarite_jan', 'scolarite_fev', 'scolarite_mars', 'scolarite_avr', 'scolarite_mai', 'scolarite_juin', 'inscription_2026', 'reinscription_2026'],
+                'Test: 9 Mois + Inscription + Réinscription (11 lignes)'
+            );
+        }
+    </script>
+    
+    <hr>
+    <h3>Instructions</h3>
+    <ol>
+        <li>Ouvrez la console du navigateur (F12)</li>
+        <li>Entrez l'ID d'un élève existant</li>
+        <li>Cliquez sur les boutons de test</li>
+        <li>Regardez les résultats affichés et la console</li>
+    </ol>
+    
+    <p><strong>Note:</strong> Les IDs de lignes utilisés ici sont des exemples. Si ça ne marche pas, allez sur la vraie page de facturation, ouvrez la console, et récupérez les vrais IDs de lignes.</p>
+</body>
+</html>

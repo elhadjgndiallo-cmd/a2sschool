@@ -86,10 +86,9 @@ class EnseignantController extends Controller
         if (!auth()->user()->hasPermission('enseignants.create')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
-        $matieres = Matiere::actif()->get();
         $prochainNumeroEmploye = Enseignant::generateNextNumeroEmploye();
 
-        return view('enseignants.create', compact('matieres', 'prochainNumeroEmploye'));
+        return view('enseignants.create', compact('prochainNumeroEmploye'));
     }
 
     /**
@@ -118,8 +117,6 @@ class EnseignantController extends Controller
             'specialite' => 'required|string|max:255',
             'date_embauche' => 'required|date',
             'statut' => 'required|in:titulaire,contractuel,vacataire',
-            'matieres' => 'array',
-            'matieres.*' => 'exists:matieres,id',
         ]);
 
         DB::transaction(function() use ($request, $anneeScolaireActive) {
@@ -163,11 +160,6 @@ class EnseignantController extends Controller
                 'statut' => $request->statut,
                 'actif' => true,
             ]);
-
-            // Associer les matières si sélectionnées
-            if ($request->has('matieres')) {
-                $enseignant->matieres()->attach($request->matieres);
-            }
         });
 
         return redirect()->route('enseignants.index')

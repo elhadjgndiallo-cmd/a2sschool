@@ -244,15 +244,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('foot_total').textContent = formatGnf(t.total_du ?? t.total ?? 0);
         document.getElementById('foot_paye').textContent = formatGnf(t.total || t.montant_verse || 0);
 
-        const reste = t.reste_a_payer || 0;
+        const reste = Number(t.reste_a_payer || 0);
         document.getElementById('foot_reste').textContent = formatGnf(reste);
-        document.getElementById('foot_reste_row').style.display = reste > 0 ? '' : 'none';
+        document.getElementById('foot_reste_row').style.display = reste > 0.01 ? '' : 'none';
 
         if (!montantVerseManuel && (t.total_du ?? t.total)) {
             montantVerse.value = Math.round(t.total_du ?? t.total ?? 0);
         }
 
-        if (t.lignes && t.lignes.length && reste > 0) {
+        if (t.lignes && t.lignes.length && reste > 0.01) {
             repartitionInfo.style.display = 'block';
             repartitionInfo.innerHTML = '<strong>Répartition du paiement :</strong><ul class="mb-0 ps-3 mt-1">' + t.lignes.filter(l => l.montant > 0 || l.reste > 0).map(l => {
                 const parts = [];

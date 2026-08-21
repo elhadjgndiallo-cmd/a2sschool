@@ -187,9 +187,12 @@ class EleveController extends Controller
             }
         }
 
-        // Données pour les filtres
+        // Données pour les filtres (classes de l'année active / filtrée)
         $anneesScolarires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
-        $classes = \App\Models\Classe::actif()->orderBy('nom')->get();
+        $anneeFiltre = request('annee_scolaire_id')
+            ? (int) request('annee_scolaire_id')
+            : \App\Models\AnneeScolaire::anneeActive()?->id;
+        $classes = \App\Models\Classe::listeDeroulante($anneeFiltre);
         $statutsEleves = ['inscrit', 'en_cours', 'diplome', 'abandonne'];
 
         return view('eleves.index', compact(

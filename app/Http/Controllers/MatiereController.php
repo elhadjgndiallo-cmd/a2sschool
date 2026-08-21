@@ -18,11 +18,13 @@ class MatiereController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les matières.');
         }
         
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         $matieres = Matiere::with(['enseignants.utilisateur'])
+            ->when($anneeScolaireActive, fn ($q) => $q->pourAnneeScolaire($anneeScolaireActive->id))
             ->orderBy('nom')
             ->paginate(20);
             
-        return view('matieres.index', compact('matieres'));
+        return view('matieres.index', compact('matieres', 'anneeScolaireActive'));
     }
 
     /**
@@ -95,16 +97,48 @@ class MatiereController extends Controller
      */
     public function show(Matiere $matiere)
     {
-        $matiere->load(['enseignants.utilisateur', 'notes', 'emploisTemps.classe']);
-        
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+
+        $emploisTemps = \App\Models\EmploiTemps::query()
+            ->with(['classe', 'enseignant.utilisateur'])
+            ->where('matiere_id', $matiere->id)
+            ->where('actif', true)
+            ->when($anneeScolaireActive, function ($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->orderBy('classe_id')
+            ->orderBy('jour_semaine')
+            ->orderBy('heure_debut')
+            ->get();
+
+        $enseignantsEdt = $emploisTemps
+            ->pluck('enseignant')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $notesQuery = $matiere->notes()->whereNotNull('note_finale');
+        if ($anneeScolaireActive) {
+            $notesQuery->whereHas('eleve', function ($e) use ($anneeScolaireActive) {
+                $e->where('annee_scolaire_id', $anneeScolaireActive->id);
+            });
+        }
+        $notes = $notesQuery->get(['note_finale']);
+
         $statistiques = [
-            'total_enseignants' => $matiere->enseignants->count(),
-            'total_notes' => $matiere->notes->count(),
-            'moyenne_generale' => $matiere->notes->whereNotNull('note_finale')->avg('note_finale'),
-            'classes_enseignees' => $matiere->emploisTemps->unique('classe_id')->count()
+            'total_enseignants' => $enseignantsEdt->count(),
+            'total_notes' => $notes->count(),
+            'moyenne_generale' => $notes->avg('note_finale'),
+            'classes_enseignees' => $emploisTemps->unique('classe_id')->count(),
         ];
-        
-        return view('matieres.show', compact('matiere', 'statistiques'));
+
+        return view('matieres.show', compact(
+            'matiere',
+            'statistiques',
+            'anneeScolaireActive',
+            'emploisTemps',
+            'enseignantsEdt'
+        ));
     }
 
     /**
@@ -112,11 +146,23 @@ class MatiereController extends Controller
      */
     public function edit(Matiere $matiere)
     {
-        $enseignants = Enseignant::listeDeroulante();
-            
-        $matiereEnseignants = $matiere->enseignants->pluck('id')->toArray();
-        
-        return view('matieres.edit', compact('matiere', 'enseignants', 'matiereEnseignants'));
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        $enseignants = Enseignant::listeDeroulante($anneeScolaireActive?->id);
+
+        // Préselection selon l'EDT de l'année active (source de vérité)
+        $matiereEnseignants = \App\Models\EmploiTemps::query()
+            ->where('matiere_id', $matiere->id)
+            ->where('actif', true)
+            ->when($anneeScolaireActive, function ($q) use ($anneeScolaireActive) {
+                $q->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })
+            ->pluck('enseignant_id')
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
+        return view('matieres.edit', compact('matiere', 'enseignants', 'matiereEnseignants', 'anneeScolaireActive'));
     }
 
     /**

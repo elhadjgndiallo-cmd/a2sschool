@@ -28,6 +28,9 @@
                     <h5 class="mb-0">
                         <i class="fas fa-calendar-alt me-2"></i>
                         Emploi du temps - {{ $classe->nom }}
+                        @if(!empty($anneeScolaireActive))
+                            <small class="text-muted">— {{ $anneeScolaireActive->nom }}</small>
+                        @endif
                     </h5>
                     <div>
                         <a href="{{ route('classes.index') }}" class="btn btn-secondary">

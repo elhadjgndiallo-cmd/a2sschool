@@ -39,7 +39,7 @@ use Illuminate\Support\Facades\Storage;
     @csrf
     
     <div class="row g-3">
-        <!-- Colonne de gauche : Photo + Informations enseignant -->
+        <!-- Colonne de gauche : Photo + Informations personnelles -->
         <div class="col-12 col-md-8">
             
             <!-- Section Photo de l'enseignant -->
@@ -169,8 +169,10 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Section Informations professionnelles -->
+        <!-- Colonne de droite : Informations professionnelles -->
+        <div class="col-12 col-md-4">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -178,101 +180,53 @@ use Illuminate\Support\Facades\Storage;
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="numero_employe" class="form-label">Numéro d'Employé</label>
-                                <input type="text" class="form-control bg-light @error('numero_employe') is-invalid @enderror" 
-                                       id="numero_employe" name="numero_employe"
-                                       value="{{ old('numero_employe', $prochainNumeroEmploye ?? '') }}"
-                                       readonly>
-                                <small class="text-muted">Généré automatiquement (ex. ENS00001)</small>
-                                @error('numero_employe')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="specialite" class="form-label">Spécialité *</label>
-                                <input type="text" class="form-control @error('specialite') is-invalid @enderror" 
-                                       id="specialite" name="specialite" value="{{ old('specialite') }}" required>
-                                @error('specialite')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="numero_employe" class="form-label">Numéro d'Employé</label>
+                        <input type="text" class="form-control bg-light @error('numero_employe') is-invalid @enderror" 
+                               id="numero_employe" name="numero_employe"
+                               value="{{ old('numero_employe', $prochainNumeroEmploye ?? '') }}"
+                               readonly>
+                        <small class="text-muted">Généré automatiquement (ex. ENS00001)</small>
+                        @error('numero_employe')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="date_embauche" class="form-label">Date d'Embauche *</label>
-                                <input type="date" class="form-control @error('date_embauche') is-invalid @enderror" 
-                                       id="date_embauche" name="date_embauche" value="{{ old('date_embauche') }}" required>
-                                @error('date_embauche')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="statut" class="form-label">Statut *</label>
-                                <select class="form-select @error('statut') is-invalid @enderror" id="statut" name="statut" required>
-                                    <option value="">Sélectionner</option>
-                                    <option value="titulaire" {{ old('statut') == 'titulaire' ? 'selected' : '' }}>Titulaire</option>
-                                    <option value="contractuel" {{ old('statut') == 'contractuel' ? 'selected' : '' }}>Contractuel</option>
-                                    <option value="vacataire" {{ old('statut') == 'vacataire' ? 'selected' : '' }}>Vacataire</option>
-                                </select>
-                                @error('statut')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                    
-                </div>
-            </div>
-        </div>
 
-        <!-- Colonne de droite : Matières enseignées -->
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-book me-2"></i>Matières Enseignées
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($matieres->count() > 0)
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="select_all_matieres">
-                                <label class="form-check-label fw-bold" for="select_all_matieres">
-                                    Sélectionner toutes les matières
-                                </label>
-                            </div>
-                        </div>
-                        <hr>
-                        @foreach($matieres as $matiere)
-                        <div class="form-check mb-2">
-                            <input class="form-check-input matiere-checkbox" type="checkbox" id="matiere_{{ $matiere->id }}" 
-                                   name="matieres[]" value="{{ $matiere->id }}"
-                                   {{ in_array($matiere->id, old('matieres', [])) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="matiere_{{ $matiere->id }}">
-                                <strong>{{ $matiere->nom }}</strong>
-                                <br>
-                                <small class="text-muted">Coefficient: {{ $matiere->coefficient }}</small>
-                            </label>
-                        </div>
-                        @endforeach
-                    @else
-                        <div class="text-center text-muted">
-                            <i class="fas fa-book fa-3x mb-3"></i>
-                            <p>Aucune matière disponible.</p>
-                            <p class="small">Veuillez d'abord créer des matières.</p>
-                        </div>
-                    @endif
+                    <div class="mb-3">
+                        <label for="specialite" class="form-label">Spécialité *</label>
+                        <input type="text" class="form-control @error('specialite') is-invalid @enderror" 
+                               id="specialite" name="specialite" value="{{ old('specialite') }}" required>
+                        @error('specialite')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="date_embauche" class="form-label">Date d'Embauche *</label>
+                        <input type="date" class="form-control @error('date_embauche') is-invalid @enderror" 
+                               id="date_embauche" name="date_embauche" value="{{ old('date_embauche') }}" required>
+                        @error('date_embauche')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="statut" class="form-label">Statut *</label>
+                        <select class="form-select @error('statut') is-invalid @enderror" id="statut" name="statut" required>
+                            <option value="">Sélectionner</option>
+                            <option value="titulaire" {{ old('statut') == 'titulaire' ? 'selected' : '' }}>Titulaire</option>
+                            <option value="contractuel" {{ old('statut') == 'contractuel' ? 'selected' : '' }}>Contractuel</option>
+                            <option value="vacataire" {{ old('statut') == 'vacataire' ? 'selected' : '' }}>Vacataire</option>
+                        </select>
+                        @error('statut')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="alert alert-light border small mb-0">
+                        <i class="fas fa-info-circle me-1 text-primary"></i>
+                        Les matières seront assignées automatiquement via l'<strong>emploi du temps</strong>.
+                    </div>
                 </div>
             </div>
         </div>
@@ -323,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (photoPreview.tagName === 'IMG') {
                         photoPreview.src = e.target.result;
                     } else {
-                        // Remplacer la div par une image
                         const img = document.createElement('img');
                         img.id = 'photoPreview';
                         img.src = e.target.result;
@@ -335,42 +288,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 reader.readAsDataURL(file);
             }
-        });
-    }
-    
-    // Sélection de toutes les matières
-    const selectAllCheckbox = document.getElementById('select_all_matieres');
-    const matiereCheckboxes = document.querySelectorAll('.matiere-checkbox');
-    
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            matiereCheckboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-            });
-        });
-        
-        // Vérifier si toutes les matières sont sélectionnées
-        function updateSelectAllState() {
-            const checkedCount = document.querySelectorAll('.matiere-checkbox:checked').length;
-            const totalCount = matiereCheckboxes.length;
-            
-            if (checkedCount === 0) {
-                selectAllCheckbox.indeterminate = false;
-                selectAllCheckbox.checked = false;
-            } else if (checkedCount === totalCount) {
-                selectAllCheckbox.indeterminate = false;
-                selectAllCheckbox.checked = true;
-            } else {
-                selectAllCheckbox.indeterminate = true;
-            }
-        }
-        
-        // Mettre à jour l'état initial
-        updateSelectAllState();
-        
-        // Écouter les changements sur les checkboxes individuelles
-        matiereCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateSelectAllState);
         });
     }
     

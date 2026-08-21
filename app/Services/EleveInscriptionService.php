@@ -104,7 +104,7 @@ class EleveInscriptionService
                     $parentData['parent_nom']
                 ),
                 'password' => Hash::make('parent123'),
-                'telephone' => $parentData['parent_telephone'],
+                'telephone' => $parentData['parent_telephone'] ?? null,
                 'adresse' => $parentData['parent_adresse'] ?? null,
                 'role' => 'parent',
                 'actif' => true,
