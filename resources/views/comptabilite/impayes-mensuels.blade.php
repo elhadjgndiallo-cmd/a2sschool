@@ -8,27 +8,6 @@
     $docInfo = \App\Helpers\SchoolHelper::getDocumentInfo();
 @endphp
 <div class="container-fluid impayes-mensuels-page">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-                <h2 class="mb-0 screen-only-title">
-                    <i class="fas fa-user-times text-danger me-2"></i>
-                    Impayés mensuels par classe
-                </h2>
-                <div class="btn-group w-100 w-md-auto no-print">
-                    <a href="{{ route('comptabilite.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour
-                    </a>
-                    @if($aRecherche)
-                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                            <i class="fas fa-print me-1"></i>Imprimer
-                        </button>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- En-tête visible uniquement à l'impression --}}
     <div class="print-only print-document-header mb-3">
         <div class="print-header-row">
@@ -64,18 +43,34 @@
         </h3>
     </div>
 
-    <div class="row mb-4 no-print">
+    <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filtres</h5>
+            <div class="card no-print">
+                <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <h3 class="card-title mb-0 screen-only-title">
+                        <i class="fas fa-user-times text-danger me-2"></i>
+                        <span class="d-none d-sm-inline">Impayés mensuels par classe</span>
+                        <span class="d-sm-none">Impayés mensuels</span>
+                    </h3>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('comptabilite.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            <span class="d-none d-sm-inline">Retour</span>
+                        </a>
+                        @if($aRecherche)
+                            <button type="button" class="btn btn-success" onclick="window.print()">
+                                <i class="fas fa-print me-1"></i>
+                                <span class="d-none d-sm-inline">Imprimer</span>
+                                <span class="d-sm-none">Print</span>
+                            </button>
+                        @endif
+                    </div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('comptabilite.impayes-mensuels') }}" id="form-impayes">
-                        <div class="row mb-3">
-                            <div class="col-md-4 mb-3">
-                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()">
+                    <form method="GET" action="{{ route('comptabilite.impayes-mensuels') }}" id="form-impayes" class="mb-0">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()" title="Année scolaire">
                                     @foreach($anneesScolaires as $annee)
                                         <option value="{{ $annee->id }}" {{ (int) $anneeScolaire->id === (int) $annee->id ? 'selected' : '' }}>
                                             {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
@@ -83,10 +78,9 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
-                                <select class="form-select @error('classe_id') is-invalid @enderror" id="classe_id" name="classe_id" required>
-                                    <option value="">— Sélectionner une classe —</option>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control @error('classe_id') is-invalid @enderror" id="classe_id" name="classe_id" required title="Classe">
+                                    <option value="">Sélectionner une classe…</option>
                                     @foreach($classes as $classe)
                                         <option value="{{ $classe->id }}" {{ (int) ($classeId ?? 0) === (int) $classe->id ? 'selected' : '' }}>
                                             {{ $classe->nom }}
@@ -95,9 +89,8 @@
                                 </select>
                                 @error('classe_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="type_frais" class="form-label">Type de frais</label>
-                                <select class="form-select" id="type_frais" name="type_frais">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control" id="type_frais" name="type_frais" title="Type de frais">
                                     @foreach($typesFrais as $value => $label)
                                         <option value="{{ $value }}" {{ ($typeFrais ?? 'scolarite') === $value ? 'selected' : '' }}>
                                             {{ $label }}
@@ -105,18 +98,37 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" name="filtrer" value="1" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('comptabilite.impayes-mensuels') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label d-block">Mois à vérifier <span class="text-danger">*</span></label>
-                            <div class="d-flex flex-wrap gap-2 mb-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-tout">Tout cocher</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-rien">Tout décocher</button>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleMoisFilters()">
+                                <i class="fas fa-calendar-alt"></i> Mois à vérifier
+                                @if(!empty($moisSelectionnes))
+                                    <span class="badge bg-info text-dark">{{ count($moisSelectionnes) }}</span>
+                                @endif
+                            </button>
+                        </div>
+
+                        <div class="mt-2" id="moisFilters" style="{{ !empty($moisSelectionnes) || $errors->has('mois') ? '' : 'display: none;' }}">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-tout">Tout</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-rien">Rien</button>
                                 <button type="button" class="btn btn-sm btn-outline-info" data-mois-count="1">1 mois</button>
                                 <button type="button" class="btn btn-sm btn-outline-info" data-mois-count="2">2 mois</button>
                                 <button type="button" class="btn btn-sm btn-outline-info" data-mois-count="3">3 mois</button>
                             </div>
-                            <div class="row g-2">
+                            <div class="row g-1">
                                 @foreach($moisOptions as $mois)
                                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                                         <div class="form-check">
@@ -127,7 +139,7 @@
                                                    id="mois_{{ $mois['value'] }}"
                                                    data-mois-index="{{ $loop->index }}"
                                                    {{ in_array($mois['value'], $moisSelectionnes ?? [], true) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="mois_{{ $mois['value'] }}">
+                                            <label class="form-check-label small" for="mois_{{ $mois['value'] }}">
                                                 {{ $mois['label'] }}
                                             </label>
                                         </div>
@@ -136,35 +148,35 @@
                             </div>
                             @error('mois')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" name="filtrer" value="1" class="btn btn-primary">
-                                <i class="fas fa-search me-1"></i>Rechercher les impayés
-                            </button>
-                            <a href="{{ route('comptabilite.impayes-mensuels') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-refresh me-1"></i>Réinitialiser
-                            </a>
-                        </div>
                     </form>
+
+                    @if($aRecherche)
+                        <div class="mt-3 mb-0 d-flex flex-wrap gap-3 align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i>
+                                <strong class="text-danger">{{ $resultats->count() }}</strong> élève(s) concerné(s)
+                                @if($classeSelectionnee)
+                                    — {{ $classeSelectionnee->nom }}
+                                @endif
+                            </small>
+                            @if($resultats->count() > 0)
+                                <small class="text-muted">
+                                    <i class="fas fa-coins text-danger me-1"></i>
+                                    Total dû :
+                                    <strong class="text-danger">{{ number_format($resultats->sum('total_du'), 0, ',', ' ') }} GNF</strong>
+                                </small>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
     @if($aRecherche)
-        <div class="row print-results">
+        <div class="row print-results mt-3">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 no-print">
-                        <h5 class="mb-0">
-                            <i class="fas fa-list me-2"></i>
-                            Résultats
-                            @if($classeId)
-                                — {{ $classeSelectionnee?->nom }}
-                            @endif
-                        </h5>
-                        <span class="badge bg-danger fs-6">{{ $resultats->count() }} élève(s) concerné(s)</span>
-                    </div>
                     <div class="card-body p-0">
                         @if($resultats->count() > 0)
                             <div class="table-responsive">
@@ -245,8 +257,21 @@
 
 @push('scripts')
 <script>
+function toggleMoisFilters() {
+    const el = document.getElementById('moisFilters');
+    if (!el) return;
+    const isHidden = el.style.display === 'none' || window.getComputedStyle(el).display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const checkboxes = Array.from(document.querySelectorAll('.mois-checkbox'));
+    const moisFilters = document.getElementById('moisFilters');
+
+    // Afficher les mois si déjà sélectionnés ou en cas d'erreur
+    if (moisFilters && (checkboxes.some(cb => cb.checked) || {{ $errors->has('mois') ? 'true' : 'false' }})) {
+        moisFilters.style.display = 'block';
+    }
 
     document.getElementById('btn-tout')?.addEventListener('click', function () {
         checkboxes.forEach(cb => cb.checked = true);
@@ -268,8 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .filter(cb => cb.value <= currentYm)
                 .sort((a, b) => a.value.localeCompare(b.value));
 
-            const aCocher = eligibles.slice(-count);
-            aCocher.forEach(cb => cb.checked = true);
+            eligibles.slice(-count).forEach(cb => cb.checked = true);
         });
     });
 });

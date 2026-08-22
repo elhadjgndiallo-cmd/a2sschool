@@ -108,25 +108,29 @@
                     </thead>
                     <tbody>
                         @php
-                            $heures = [];
-                            foreach($emploisTemps as $emploi) {
-                                $heure = $emploi->heure_debut->format('H:i');
-                                if (!in_array($heure, $heures)) {
-                                    $heures[] = $heure;
+                            $plages = [];
+                            foreach ($emploisTemps as $emploi) {
+                                $key = $emploi->heure_debut->format('H:i') . '|' . $emploi->heure_fin->format('H:i');
+                                if (!isset($plages[$key])) {
+                                    $plages[$key] = [
+                                        'debut' => $emploi->heure_debut->format('H:i'),
+                                        'fin' => $emploi->heure_fin->format('H:i'),
+                                    ];
                                 }
                             }
-                            sort($heures);
+                            uasort($plages, fn ($a, $b) => strcmp($a['debut'], $b['debut']));
                         @endphp
                         
-                        @foreach($heures as $heure)
+                        @foreach($plages as $plage)
                         <tr>
-                            <td class="fw-bold">{{ $heure }}</td>
+                            <td class="fw-bold">{{ $plage['debut'] }} – {{ $plage['fin'] }}</td>
                             @foreach($jours as $jour)
                             <td class="text-center">
                                 @php
                                     $emploisDuJour = $emploisParJour->get($jour, collect())
-                                        ->filter(function($emploi) use ($heure) {
-                                            return $emploi->heure_debut->format('H:i') === $heure;
+                                        ->filter(function ($emploi) use ($plage) {
+                                            return $emploi->heure_debut->format('H:i') === $plage['debut']
+                                                && $emploi->heure_fin->format('H:i') === $plage['fin'];
                                         });
                                 @endphp
                                 

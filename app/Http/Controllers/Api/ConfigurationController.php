@@ -297,7 +297,7 @@ class ConfigurationController extends Controller
             'delai_paiement' => 10, // jours de délai pour les paiements
             'frais_retard_paiement' => 5, // pourcentage de frais pour retard de paiement
             'maintenance_mode' => false,
-            'version' => '1.0.0',
+            'version' => '2.0.0',
         ];
     }
 }

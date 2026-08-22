@@ -118,20 +118,29 @@ class Classe extends Model
      */
     public function isPrimaire()
     {
-        $nomClasse = strtolower($this->nom);
-        $niveauLower = strtolower($this->niveau);
-        
-        // Vérifier par le nom de la classe
+        $nomClasse = strtolower($this->nom ?? '');
+        $niveauLower = strtolower(trim($this->niveau ?? ''));
+
+        if (in_array($niveauLower, ['primaire', 'préscolaire', 'prescolaire'], true)) {
+            return true;
+        }
+
+        // CI, CP, CE, CM (classique)
         $classesPrimaires = ['ci', 'cp', 'ce1', 'ce2', 'cm1', 'cm2', '6eme', '6ème', 'sixieme', 'sixième'];
-        
         foreach ($classesPrimaires as $classe) {
             if (stripos($nomClasse, $classe) !== false) {
                 return true;
             }
         }
-        
-        // Vérifier par le niveau
-        return in_array($niveauLower, ['primaire', 'préscolaire', 'prescolaire']);
+
+        // Système guinéen : 1ère–6ème année = primaire (ex. "4 éme Année A")
+        if (preg_match('/\b([1-6])\s*(ère|ere|er|eme|ème)\b.*\bann[ée]e\b/u', $nomClasse)
+            || preg_match('/\bann[ée]e\b.*\b([1-6])\s*(ère|ere|er|eme|ème)\b/u', $nomClasse)
+            || preg_match('/\b([1-6])\s*(ème|eme|ere|ère)\s+ann/u', $nomClasse)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

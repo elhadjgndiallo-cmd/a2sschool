@@ -4,21 +4,37 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-                <h2 class="mb-0 mb-md-0">
-                    <i class="fas fa-calculator text-primary me-2"></i>
-                    Comptabilité
-                </h2>
-                <div class="btn-group w-100 w-md-auto flex-wrap">
-                    <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-outline-info">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-2">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-calculator text-primary me-2"></i>
+                        Comptabilité
+                    </h2>
+                    <form method="GET" action="{{ route('comptabilite.index') }}" class="d-flex flex-wrap align-items-center gap-2">
+                        <select class="form-control form-control-sm" name="annee_scolaire_id" style="width: auto; min-width: 160px;" onchange="this.form.submit()" title="Année scolaire">
+                            @foreach($anneesScolaires ?? collect([$anneeScolaireActive]) as $annee)
+                                <option value="{{ $annee->id }}" {{ (string) $anneeScolaireActive->id === (string) $annee->id ? 'selected' : '' }}>
+                                    {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">
+                            {{ $anneeScolaireActive->date_debut?->format('d/m/Y') ?? 'N/A' }}
+                            –
+                            {{ $anneeScolaireActive->date_fin?->format('d/m/Y') ?? 'N/A' }}
+                        </small>
+                    </form>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-outline-info btn-sm">
                         <i class="fas fa-calendar-day me-1"></i><span class="d-none d-sm-inline">Rapport Journalier</span><span class="d-sm-none">Journalier</span>
                     </a>
-                    <a href="{{ route('comptabilite.entrees') }}" class="btn btn-outline-success">
+                    <a href="{{ route('comptabilite.entrees', ['annee_scolaire_id' => $anneeScolaireActive->id]) }}" class="btn btn-outline-success btn-sm">
                         <i class="fas fa-arrow-up me-1"></i>Entrées
                     </a>
-                    <a href="{{ route('comptabilite.sorties') }}" class="btn btn-outline-danger">
+                    <a href="{{ route('comptabilite.sorties', ['annee_scolaire_id' => $anneeScolaireActive->id]) }}" class="btn btn-outline-danger btn-sm">
                         <i class="fas fa-arrow-down me-1"></i>Sorties
                     </a>
                 </div>
@@ -26,88 +42,37 @@
         </div>
     </div>
 
-    <!-- Statistiques générales -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Total Revenus</h6>
-                            <h3 class="mb-0">{{ number_format($totalRevenus, 0, ',', ' ') }} GNF</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-arrow-up fa-2x"></i>
-                        </div>
-                    </div>
+    <!-- Statistiques générales (compactes) -->
+    <div class="row g-2 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body py-3">
+                    <small class="d-block opacity-75">Total Revenus</small>
+                    <strong class="fs-5">{{ number_format($totalRevenus, 0, ',', ' ') }} GNF</strong>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-3 mb-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Total Sorties</h6>
-                            <h3 class="mb-0">{{ number_format($totalSorties, 0, ',', ' ') }} GNF</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-arrow-down fa-2x"></i>
-                        </div>
-                    </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-danger text-white h-100">
+                <div class="card-body py-3">
+                    <small class="d-block opacity-75">Total Sorties</small>
+                    <strong class="fs-5">{{ number_format($totalSorties, 0, ',', ' ') }} GNF</strong>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-3 mb-3">
-            <div class="card {{ $beneficeTotal >= 0 ? 'bg-primary' : 'bg-warning' }} text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Bénéfice Total</h6>
-                            <h3 class="mb-0">{{ number_format($beneficeTotal, 0, ',', ' ') }} GNF</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-chart-line fa-2x"></i>
-                        </div>
-                    </div>
+        <div class="col-6 col-md-3">
+            <div class="card {{ $beneficeTotal >= 0 ? 'bg-primary' : 'bg-warning' }} text-white h-100">
+                <div class="card-body py-3">
+                    <small class="d-block opacity-75">Bénéfice Total</small>
+                    <strong class="fs-5">{{ number_format($beneficeTotal, 0, ',', ' ') }} GNF</strong>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-3 mb-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Élèves en attente</h6>
-                            <h3 class="mb-0">{{ $stats['eleves_en_attente'] }}</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Année Scolaire -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Année Scolaire
-                    </h5>
-                </div>
-                <div class="card-body text-center">
-                    <h4 class="mb-0">{{ $anneeScolaireActive->nom ?? 'N/A' }}</h4>
-                    <small class="text-muted">
-                        Du {{ $anneeScolaireActive->date_debut->format('d/m/Y') ?? 'N/A' }} 
-                        au {{ $anneeScolaireActive->date_fin->format('d/m/Y') ?? 'N/A' }}
-                    </small>
+        <div class="col-6 col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body py-3">
+                    <small class="d-block opacity-75">Élèves en attente</small>
+                    <strong class="fs-5">{{ $stats['eleves_en_attente'] }}</strong>
                 </div>
             </div>
         </div>
@@ -294,43 +259,24 @@
     </div>
 
     <!-- Actions rapides -->
-    <div class="row">
+    <div class="row mb-2">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-bolt me-2"></i>Actions Rapides
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('entrees.create') }}" class="btn btn-success w-100">
-                                <i class="fas fa-plus me-2"></i>Nouvelle Entrée
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('depenses.create') }}" class="btn btn-danger w-100">
-                                <i class="fas fa-plus me-2"></i>Nouvelle Dépense
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-info w-100">
-                                <i class="fas fa-calendar-day me-2"></i>Rapport Journalier
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('comptabilite.impayes-mensuels') }}" class="btn btn-warning w-100">
-                                <i class="fas fa-user-times me-2"></i>Impayés mensuels
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('paiements.index') }}" class="btn btn-primary w-100">
-                                <i class="fas fa-credit-card me-2"></i>Gérer Paiements
-                            </a>
-                        </div>
-                    </div>
-                </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('entrees.create') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus me-1"></i>Nouvelle Entrée
+                </a>
+                <a href="{{ route('depenses.create') }}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-plus me-1"></i>Nouvelle Dépense
+                </a>
+                <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-info btn-sm">
+                    <i class="fas fa-calendar-day me-1"></i>Rapport Journalier
+                </a>
+                <a href="{{ route('comptabilite.impayes-mensuels') }}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-user-times me-1"></i>Impayés mensuels
+                </a>
+                <a href="{{ route('paiements.index') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-credit-card me-1"></i>Gérer Paiements
+                </a>
             </div>
         </div>
     </div>

@@ -66,7 +66,7 @@
 
                     <div class="mt-4 text-center">
                         <small class="text-muted">
-                            Système de gestion scolaire - Version 1.0
+                            Système de gestion scolaire - Version 2.0
                         </small>
                     </div>
                 </div>

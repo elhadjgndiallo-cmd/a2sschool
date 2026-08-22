@@ -584,7 +584,12 @@ Route::get('/get-emploi-temps', function() {
             ->get();
             
         return response()->json([
-            'classe' => $classe,
+            'classe' => [
+                'id' => $classe->id,
+                'nom' => $classe->nom,
+                'niveau' => $classe->niveau,
+                'is_primaire' => $classe->isPrimaire(),
+            ],
             'emplois' => $emplois,
             'annee_scolaire' => $anneeScolaireActive,
             'debug' => [
@@ -593,6 +598,7 @@ Route::get('/get-emploi-temps', function() {
                 'emplois_count' => $emplois->count(),
                 'route' => 'lws-simple',
                 'annee_scolaire_id' => $anneeScolaireActive->id,
+                'is_primaire' => $classe->isPrimaire(),
             ]
         ]);
     } catch (\Exception $e) {
@@ -665,8 +671,23 @@ Route::post('/add-emploi-temps', function() {
             return response()->json(['error' => 'Accès non autorisé'], 403);
         }
         
-        // Validation des données
+        // Validation des données — accepter H:i ou H:i:s puis normaliser
         $request = request();
+        $heureDebutRaw = (string) $request->input('heure_debut', '');
+        $heureFinRaw = (string) $request->input('heure_fin', '');
+        $norm = function ($t) {
+            $parts = explode(':', $t);
+            if (count($parts) < 2) {
+                return $t;
+            }
+            return sprintf('%02d:%02d', (int) $parts[0], (int) $parts[1]);
+        };
+        $request->merge([
+            'heure_debut' => $norm($heureDebutRaw),
+            'heure_fin' => $norm($heureFinRaw),
+            'jour' => strtolower((string) $request->input('jour')),
+        ]);
+
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'classe_id' => 'required|exists:classes,id',
             'matiere_id' => 'required|exists:matieres,id',
@@ -678,7 +699,11 @@ Route::post('/add-emploi-temps', function() {
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => collect($validator->errors()->all())->implode(' '),
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         // Normaliser le jour en minuscule

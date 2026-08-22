@@ -197,45 +197,9 @@
     }
 </style>
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-                <h2 class="mb-0 mb-md-0">
-                    <i class="fas fa-calendar-day text-primary me-2"></i>
-                    <span class="d-none d-sm-inline">Rapport Journalier</span>
-                    <span class="d-sm-none">Rapport</span>
-                </h2>
-                <div class="btn-group w-100 w-md-auto" role="group">
-                    <a href="{{ route('comptabilite.rapport-journalier', array_merge(request()->all(), ['format' => 'pdf'])) }}" 
-                       class="btn btn-outline-danger" 
-                       title="Télécharger le rapport en format PDF">
-                        <i class="fas fa-file-pdf me-1"></i>
-                        <span class="d-none d-sm-inline">Télécharger PDF</span>
-                        <span class="d-sm-none">PDF</span>
-                    </a>
-                    <button onclick="imprimerRapport()" 
-                            class="btn btn-outline-primary" 
-                            title="Imprimer le rapport journalier (Ctrl+P ou Cmd+P)"
-                            id="btnImprimer">
-                        <i class="fas fa-print me-1"></i>
-                        <span class="d-none d-sm-inline">Imprimer</span>
-                        <span class="d-sm-none">Impr.</span>
-                    </button>
-                    <a href="{{ route('comptabilite.index') }}" 
-                       class="btn btn-outline-secondary"
-                       title="Retour à la page de comptabilité">
-                        <i class="fas fa-arrow-left me-1"></i>
-                        <span class="d-none d-sm-inline">Retour</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- En-tête pour l'impression -->
     <div class="header print-only">
         <div class="header-content">
-            <!-- Logo et nom de l'école -->
             <div class="school-info">
                 @php
                     $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
@@ -255,8 +219,7 @@
                     @endif
                 </div>
             </div>
-            
-            <!-- Titre du document -->
+
             <div class="document-title">
                 <h2>
                     @php
@@ -271,18 +234,14 @@
                     @endif
                 </h2>
             </div>
-            
-            <!-- Informations de génération -->
+
             <div class="document-info">
                 <p class="generation-info">
-                    Généré le {{ now()->format('d/m/Y à H:i') }} | 
-                    @php
-                        $reportType = $type ?? request('type', 'jour');
-                    @endphp
+                    Généré le {{ now()->format('d/m/Y à H:i') }} |
                     @if($reportType == 'mois')
                         Période: {{ \Carbon\Carbon::parse(request('month', now()->format('Y-m')))->format('F Y') }}
                     @elseif($reportType == 'annee')
-                        Année: {{ request('year', now()->year) }}
+                        Année: {{ optional($anneeScolaire)->nom ?? request('year', now()->year) }}
                     @else
                         Date: {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
                     @endif
@@ -291,43 +250,66 @@
         </div>
     </div>
 
-    <!-- Filtres de date -->
-    <div class="row mb-4 no-print">
-        <div class="col-md-8">
-            <div class="card">
+    <div class="row no-print">
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-calendar-day text-primary me-2"></i>
+                        <span class="d-none d-sm-inline">Rapport Journalier</span>
+                        <span class="d-sm-none">Rapport</span>
+                    </h3>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ route('comptabilite.rapport-journalier', array_merge(request()->all(), ['format' => 'pdf'])) }}"
+                           class="btn btn-outline-danger"
+                           title="Télécharger le rapport en format PDF">
+                            <i class="fas fa-file-pdf me-1"></i>
+                            <span class="d-none d-sm-inline">PDF</span>
+                        </a>
+                        <button type="button" onclick="imprimerRapport()"
+                                class="btn btn-success"
+                                title="Imprimer le rapport"
+                                id="btnImprimer">
+                            <i class="fas fa-print me-1"></i>
+                            <span class="d-none d-sm-inline">Imprimer</span>
+                            <span class="d-sm-none">Print</span>
+                        </button>
+                        <a href="{{ route('comptabilite.index') }}"
+                           class="btn btn-outline-secondary"
+                           title="Retour à la comptabilité">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            <span class="d-none d-sm-inline">Retour</span>
+                        </a>
+                    </div>
+                </div>
                 <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="fas fa-filter me-2"></i>Filtrer par période
-                    </h6>
-                    <form method="GET" action="{{ route('comptabilite.rapport-journalier') }}" id="filterForm">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <label class="form-label">Type de rapport</label>
-                                <select name="type" id="reportType" class="form-select" onchange="toggleDateInputs()">
+                    <form method="GET" action="{{ route('comptabilite.rapport-journalier') }}" id="filterForm" class="mb-3">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select name="type" id="reportType" class="form-control" onchange="toggleDateInputs()" title="Type de rapport">
                                     <option value="jour" {{ request('type', 'jour') == 'jour' ? 'selected' : '' }}>Journalier</option>
                                     <option value="mois" {{ request('type') == 'mois' ? 'selected' : '' }}>Mensuel</option>
                                     <option value="annee" {{ request('type') == 'annee' ? 'selected' : '' }}>Année scolaire</option>
                                 </select>
                             </div>
-                            <div class="col-md-2" id="dateInput">
-                                <label class="form-label">Date</label>
-                                <input type="date" 
-                                       name="date" 
-                                       value="{{ $date }}" 
+                            <div class="col-6 col-sm-6 col-md-2" id="dateInput">
+                                <input type="date"
+                                       name="date"
+                                       value="{{ $date }}"
                                        class="form-control"
-                                       max="{{ now()->format('Y-m-d') }}">
+                                       max="{{ now()->format('Y-m-d') }}"
+                                       title="Date">
                             </div>
-                            <div class="col-md-2" id="monthInput" style="display: none;">
-                                <label class="form-label">Mois</label>
-                                <input type="month" 
-                                       name="month" 
-                                       value="{{ request('month', now()->format('Y-m')) }}" 
+                            <div class="col-6 col-sm-6 col-md-2" id="monthInput" style="display: none;">
+                                <input type="month"
+                                       name="month"
+                                       value="{{ request('month', now()->format('Y-m')) }}"
                                        class="form-control"
-                                       max="{{ now()->format('Y-m') }}">
+                                       max="{{ now()->format('Y-m') }}"
+                                       title="Mois">
                             </div>
-                            <div class="col-md-3" id="anneeScolaireInput">
-                                <label class="form-label">Année scolaire</label>
-                                <select name="annee_scolaire_id" class="form-select">
+                            <div class="col-12 col-sm-6 col-md-3" id="anneeScolaireInput">
+                                <select name="annee_scolaire_id" class="form-control" title="Année scolaire">
                                     @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
                                         <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id', optional($anneeScolaire)->id ?? \App\Models\AnneeScolaire::anneeActive()?->id) === (string) $annee->id ? 'selected' : '' }}>
                                             {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
@@ -335,62 +317,37 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">&nbsp;</label>
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-1"></i>Générer
-                                </button>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Générer</span>
+                                    </button>
+                                    <a href="{{ route('comptabilite.rapport-journalier') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="fas fa-info-circle me-2"></i>Informations
-                    </h6>
-                    <div class="small text-muted">
-                        <p class="mb-1"><strong>Journalier:</strong> Solde = entrées − sorties du jour (dans l'année scolaire)</p>
-                        <p class="mb-1"><strong>Mensuel:</strong> Solde = entrées − sorties du mois, limité aux dates de l'année scolaire</p>
-                        <p class="mb-1"><strong>Année scolaire:</strong> Période complète du {{ optional($anneeScolaire)->date_debut?->format('d/m/Y') ?? '…' }} au {{ optional($anneeScolaire)->date_fin?->format('d/m/Y') ?? '…' }}</p>
-                        <p class="mb-0"><strong>Dates :</strong> entrées et sorties selon la date saisie dans le formulaire (pas la date d'enregistrement système).</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Résumé de la période -->
-    <div class="row mb-4 no-print">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="fas fa-info-circle me-2"></i>{{ $resumeLabel ?? 'Résumé de la période' }}
-                    </h6>
-                    <p class="small text-muted mb-2">{{ $periodeLabel ?? '' }}</p>
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <div class="text-success">
-                                <strong>{{ number_format($totalEntrees, 0, ',', ' ') }} GNF</strong>
-                                <br><small>Entrées</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="text-danger">
-                                <strong>{{ number_format($totalSorties, 0, ',', ' ') }} GNF</strong>
-                                <br><small>Sorties</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="text-primary">
-                                <strong>{{ number_format($soldeFinal, 0, ',', ' ') }} GNF</strong>
-                                <br><small>{{ $soldeLabel ?? 'Solde' }}</small>
-                            </div>
-                        </div>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>{{ $periodeLabel ?? '' }}
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-arrow-up text-success me-1"></i>
+                            Entrées : <strong class="text-success">{{ number_format($totalEntrees, 0, ',', ' ') }} GNF</strong>
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-arrow-down text-danger me-1"></i>
+                            Sorties : <strong class="text-danger">{{ number_format($totalSorties, 0, ',', ' ') }} GNF</strong>
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-balance-scale text-primary me-1"></i>
+                            {{ $soldeLabel ?? 'Solde' }} :
+                            <strong class="{{ $soldeFinal >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($soldeFinal, 0, ',', ' ') }} GNF</strong>
+                        </small>
                     </div>
                 </div>
             </div>
@@ -467,7 +424,7 @@
                                         </td>
                                     </tr>
                                     @endforeach
-                                    
+
                                     <!-- Totaux -->
                                     <tr class="table-dark">
                                         <td colspan="2" class="fw-bold">TOTAUX</td>
@@ -518,7 +475,7 @@
                         Tél: {{ $schoolPhone }}
                     @endif
                     @if($schoolPhone && $schoolEmail)
-                         | 
+                         |
                     @endif
                     @if($schoolEmail)
                         Email: {{ $schoolEmail }}

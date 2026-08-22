@@ -28,23 +28,30 @@ class ComptabiliteController extends Controller
     /**
      * Afficher le tableau de bord de la comptabilité
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            // Récupérer l'année scolaire active pour filtrer les données
-            $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
-            
+            $anneeScolaireId = $request->filled('annee_scolaire_id')
+                ? $request->annee_scolaire_id
+                : (\App\Models\AnneeScolaire::anneeActive()?->id);
+
+            $anneeScolaireActive = $anneeScolaireId
+                ? \App\Models\AnneeScolaire::find($anneeScolaireId)
+                : \App\Models\AnneeScolaire::anneeActive();
+
             if (!$anneeScolaireActive) {
-                return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
+                return redirect()->back()->with('error', 'Aucune année scolaire trouvée. Veuillez sélectionner ou activer une année scolaire.');
             }
-            
-            // Statistiques générales pour l'année active (avec cache)
+
+            $anneesScolaires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
+
+            // Statistiques générales pour l'année sélectionnée (avec cache)
             $stats = Cache::remember(
-                'comptabilite_stats_' . $anneeScolaireActive->id, 
-                self::CACHE_DURATION, 
+                'comptabilite_stats_' . $anneeScolaireActive->id,
+                self::CACHE_DURATION,
                 fn() => $this->getComptabiliteStats($anneeScolaireActive)
             );
-        
+
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
         $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
 
@@ -53,25 +60,26 @@ class ComptabiliteController extends Controller
 
         $toutesLesEntrees = $allEntrees->take(10);
         $toutesLesSorties = $allSorties->take(10);
-        
+
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
         $totalRevenus = $stats['revenus_total'];
         $totalSorties = $stats['depenses_total'];
         $beneficeTotal = $stats['benefice_total'];
-        
+
         $diagrammesData = $this->getDiagrammesData($allEntrees, $allSorties, $totalRevenus, $totalSorties);
-        
+
         return view('comptabilite.index', compact(
             'stats',
             'toutesLesEntrees',
             'toutesLesSorties',
             'anneeScolaireActive',
+            'anneesScolaires',
             'totalRevenus',
             'totalSorties',
             'beneficeTotal',
             'diagrammesData'
         ));
-        
+
         } catch (\Exception $e) {
             \Log::error('Erreur dans comptabilite.index: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());

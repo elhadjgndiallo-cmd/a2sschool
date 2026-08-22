@@ -48,7 +48,7 @@
         <div class="row">
             @foreach($classes as $classe)
             <div class="col-md-3 mb-3">
-                <div class="card classe-card" data-classe-id="{{ $classe->id }}" onclick="loadEmploiTemps({{ $classe->id }}, this)" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor='white'">
+                <div class="card classe-card" data-classe-id="{{ $classe->id }}" data-is-primaire="{{ $classe->isPrimaire() ? '1' : '0' }}" onclick="loadEmploiTemps({{ $classe->id }}, this)" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor='white'">
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ $classe->nom }}</h5>
                         <p class="card-text">{{ $classe->niveau }}</p>
@@ -71,7 +71,7 @@
             <table class="table table-bordered emploi-temps-table">
                 <thead>
                     <tr>
-                        <th width="100">Heure</th>
+                        <th width="120">Heure</th>
                         <th>Lundi</th>
                         <th>Mardi</th>
                         <th>Mercredi</th>
@@ -86,9 +86,15 @@
             </table>
         </div>
         
-        <div class="mt-3">
-            <button type="button" class="btn btn-success" onclick="exportEmploiTemps()">
-                <i class="fas fa-download me-2"></i>Exporter CSV
+        <div class="mt-3 d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary" id="btn-ajouter-creneau-classe" onclick="showAddModal()" style="display:none;">
+                <i class="fas fa-plus me-1"></i>Ajouter un créneau
+            </button>
+            <button type="button" class="btn btn-danger" onclick="exportEmploiTemps('pdf')" title="Télécharger le PDF">
+                <i class="fas fa-file-pdf me-1"></i>Télécharger PDF
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="exportEmploiTemps('csv')" title="Exporter CSV">
+                <i class="fas fa-file-csv me-1"></i>CSV
             </button>
         </div>
     </div>
@@ -112,7 +118,7 @@
                                 <select class="form-select" id="modal_classe_id" name="classe_id" required>
                                     <option value="">Sélectionner une classe</option>
                                     @foreach($classes as $classe)
-                                    <option value="{{ $classe->id }}">{{ $classe->nom }} - {{ $classe->niveau }}</option>
+                                    <option value="{{ $classe->id }}" data-is-primaire="{{ $classe->isPrimaire() ? '1' : '0' }}">{{ $classe->nom }} - {{ $classe->niveau }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -159,19 +165,43 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label for="modal_heure_debut" class="form-label">Heure Début *</label>
                                 <input type="time" class="form-control" id="modal_heure_debut" name="heure_debut" required>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3" id="modal_duree_wrap" style="display:none;">
                             <div class="mb-3">
-                                <label for="modal_heure_fin" class="form-label">Heure Fin *</label>
-                                <input type="time" class="form-control" id="modal_heure_fin" name="heure_fin" required>
+                                <label for="modal_duree" class="form-label">Durée du cours *</label>
+                                <select class="form-select" id="modal_duree">
+                                    @php
+                                        $dureesPrimaireModal = config('emploi_temps.primaire.durees_autorisees');
+                                        if (!is_array($dureesPrimaireModal) || count($dureesPrimaireModal) === 0) {
+                                            $dureesPrimaireModal = [30, 45, 60];
+                                        }
+                                        $dureeDefautModal = (int) (config('emploi_temps.primaire.duree_defaut') ?? 45);
+                                    @endphp
+                                    @foreach($dureesPrimaireModal as $d)
+                                        <option value="{{ $d }}" @selected((int)$d === $dureeDefautModal)>
+                                            @if((int)$d === 60)
+                                                1 h (60 min)
+                                            @else
+                                                {{ $d }} min
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="modal_heure_fin_affiche" class="form-label">Heure Fin *</label>
+                                <input type="time" class="form-control" id="modal_heure_fin_affiche" readonly tabindex="-1" style="background:#e9ecef;">
+                                <input type="hidden" id="modal_heure_fin" name="heure_fin" value="">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label for="modal_salle" class="form-label">Salle</label>
                                 <input type="text" class="form-control" id="modal_salle" name="salle" placeholder="Ex: A101">
@@ -259,31 +289,155 @@ console.log('Classes disponibles:', @json($classes));
 console.log('================================');
 
 let currentClasseId = null;
+let currentIsPrimaire = false;
+let currentEmplois = [];
+const DUREE_SECONDAIRE = {{ (int) (config('emploi_temps.secondaire.duree_defaut_minutes') ?? 120) }};
+const DUREE_PRIMAIRE_DEFAUT = {{ (int) (config('emploi_temps.primaire.duree_defaut') ?? 45) }};
+@php
+    $heuresSecondaireJs = config('emploi_temps.secondaire.heures_debut');
+    if (!is_array($heuresSecondaireJs) || count($heuresSecondaireJs) === 0) {
+        $heuresSecondaireJs = ['08:00', '10:10', '12:10', '14:30'];
+    }
+@endphp
+const HEURES_SECONDAIRE = {!! json_encode($heuresSecondaireJs) !!};
+
+function isClassePrimaire(classeId) {
+    const card = document.querySelector('.classe-card[data-classe-id="' + classeId + '"]');
+    if (card && card.getAttribute('data-is-primaire') === '1') return true;
+    const opt = document.querySelector('#modal_classe_id option[value="' + classeId + '"]');
+    return opt && opt.getAttribute('data-is-primaire') === '1';
+}
+
+function minutesToTime(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60) % 24;
+    const m = totalMinutes % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function parseTimeToMinutes(timeStr) {
+    const parts = (timeStr || '').split(':');
+    if (parts.length < 2) return null;
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function syncModalDureeUi() {
+    const classeId = document.getElementById('modal_classe_id').value;
+    const wrap = document.getElementById('modal_duree_wrap');
+    const finAffiche = document.getElementById('modal_heure_fin_affiche');
+    if (!wrap) return;
+
+    // Primaire : choix 30/45/60 — Secondaire : 2 h fixe (toujours fin auto)
+    if (isClassePrimaire(classeId) || currentIsPrimaire) {
+        wrap.style.display = '';
+    } else {
+        wrap.style.display = 'none';
+    }
+    if (finAffiche) {
+        finAffiche.readOnly = true;
+        finAffiche.style.background = '#e9ecef';
+    }
+    recalculerFinModal();
+}
+
+function recalculerFinModal() {
+    const debutEl = document.getElementById('modal_heure_debut');
+    const finHidden = document.getElementById('modal_heure_fin');
+    const finAffiche = document.getElementById('modal_heure_fin_affiche');
+    const debut = debutEl ? debutEl.value : '';
+    const start = parseTimeToMinutes(debut);
+    if (start === null) {
+        if (finHidden) finHidden.value = '';
+        if (finAffiche) finAffiche.value = '';
+        return;
+    }
+
+    const classeId = document.getElementById('modal_classe_id').value;
+    let duree = DUREE_SECONDAIRE;
+    if (isClassePrimaire(classeId) || currentIsPrimaire) {
+        const dureeEl = document.getElementById('modal_duree');
+        duree = parseInt(dureeEl && dureeEl.value ? dureeEl.value : DUREE_PRIMAIRE_DEFAUT, 10) || DUREE_PRIMAIRE_DEFAUT;
+    }
+
+    const fin = minutesToTime(start + duree);
+    if (finHidden) finHidden.value = fin;
+    if (finAffiche) finAffiche.value = fin;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const classeSelect = document.getElementById('modal_classe_id');
+    const debutEl = document.getElementById('modal_heure_debut');
+    const dureeEl = document.getElementById('modal_duree');
+    const finAffiche = document.getElementById('modal_heure_fin_affiche');
+
+    if (classeSelect) {
+        classeSelect.addEventListener('change', function () {
+            currentIsPrimaire = isClassePrimaire(this.value);
+            syncModalDureeUi();
+        });
+    }
+    if (debutEl) {
+        debutEl.addEventListener('change', recalculerFinModal);
+        debutEl.addEventListener('input', recalculerFinModal);
+    }
+    if (dureeEl) {
+        dureeEl.addEventListener('change', function () {
+            recalculerFinModal();
+            // Si primaire et jour choisi : repositionner au prochain créneau libre pour cette durée
+            const jour = document.getElementById('modal_jour').value;
+            if ((currentIsPrimaire || isClassePrimaire(document.getElementById('modal_classe_id').value)) && jour) {
+                const slot = getProchaineHeureLibre(jour, getDureeModalActuelle());
+                const debutActuel = normalizeTimeHHmm(document.getElementById('modal_heure_debut').value);
+                const finActuel = normalizeTimeHHmm(document.getElementById('modal_heure_fin').value);
+                const occupe = (currentEmplois || []).some(e => {
+                    if (String(e.jour_semaine).toLowerCase() !== String(jour).toLowerCase()) return false;
+                    const d = normalizeTimeHHmm(e.heure_debut);
+                    const f = normalizeTimeHHmm(e.heure_fin);
+                    return debutActuel < f && finActuel > d;
+                });
+                if (occupe) {
+                    document.getElementById('modal_heure_debut').value = slot.debut;
+                    recalculerFinModal();
+                }
+            }
+        });
+        dureeEl.addEventListener('input', recalculerFinModal);
+    }
+    const jourEl = document.getElementById('modal_jour');
+    if (jourEl) {
+        jourEl.addEventListener('change', function () {
+            if (!(currentIsPrimaire || isClassePrimaire(document.getElementById('modal_classe_id').value))) return;
+            const slot = getProchaineHeureLibre(this.value, getDureeModalActuelle());
+            document.getElementById('modal_heure_debut').value = slot.debut;
+            recalculerFinModal();
+        });
+    }
+    if (finAffiche) {
+        finAffiche.addEventListener('change', function () {
+            const classeId = document.getElementById('modal_classe_id').value;
+            if (!(isClassePrimaire(classeId) || currentIsPrimaire)) {
+                document.getElementById('modal_heure_fin').value = this.value;
+            }
+        });
+    }
+});
 
 function loadEmploiTemps(classeId, element) {
-    console.log('=== DÉBUT loadEmploiTemps ===');
-    console.log('Classe ID:', classeId);
-    console.log('Élément:', element);
-    
-    // Vérification basique
     if (!classeId) {
         alert('Erreur: ID de classe manquant');
         return;
     }
     
     currentClasseId = classeId;
+    currentIsPrimaire = isClassePrimaire(classeId);
     
-    // Mettre en surbrillance la classe sélectionnée
     document.querySelectorAll('.classe-card').forEach(card => {
         card.classList.remove('border-primary');
     });
     
-    // Mettre en surbrillance la carte cliquée
     if (element) {
         element.classList.add('border-primary');
     }
     
-    // Afficher immédiatement le conteneur avec un message de chargement
     const container = document.getElementById('emploi-temps-container');
     const classeName = document.getElementById('classe-name');
     const tbody = document.getElementById('emploi-temps-body');
@@ -294,12 +448,7 @@ function loadEmploiTemps(classeId, element) {
         container.style.display = 'block';
     }
     
-    // Charger l'emploi du temps avec une approche simplifiée
-    console.log('Tentative de chargement de l\'emploi du temps pour la classe:', classeId);
-    
-    // Utiliser une seule URL simple
     const url = `/get-emploi-temps?classe_id=${classeId}`;
-    console.log(`URL utilisée: ${url}`);
     
     fetch(url, {
         method: 'GET',
@@ -311,8 +460,6 @@ function loadEmploiTemps(classeId, element) {
         }
     })
     .then(response => {
-        console.log('Réponse reçue:', response.status, response.statusText);
-        
         if (!response.ok) {
             if (response.status === 401) {
                 throw new Error('Vous n\'êtes pas connecté. Veuillez vous reconnecter.');
@@ -322,84 +469,138 @@ function loadEmploiTemps(classeId, element) {
                 throw new Error(`Erreur serveur: ${response.status} ${response.statusText}`);
             }
         }
-        
         return response.json();
     })
     .then(data => {
-        console.log('Données reçues:', data);
-        
         if (!data || !data.classe) {
             throw new Error('Données invalides reçues du serveur');
         }
         
-        // Mettre à jour l'affichage
         if (classeName) {
             classeName.textContent = data.classe.nom;
         }
+
+        if (typeof data.classe.is_primaire !== 'undefined') {
+            currentIsPrimaire = !!data.classe.is_primaire;
+        } else if (data.classe.niveau) {
+            const n = String(data.classe.niveau).toLowerCase();
+            currentIsPrimaire = n === 'primaire' || n === 'préscolaire' || n === 'prescolaire';
+        }
+
+        const btnAdd = document.getElementById('btn-ajouter-creneau-classe');
+        if (btnAdd) {
+            btnAdd.style.display = '';
+        }
+
+        currentEmplois = data.emplois || [];
         
-        // Générer le tableau
-        generateEmploiTempsTable(data.emplois || []);
-        
-        console.log('Emploi du temps chargé avec succès');
+        generateEmploiTempsTable(currentEmplois);
     })
     .catch(error => {
         console.error('Erreur:', error);
-        
-        // Afficher l'erreur dans le tableau
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Erreur: ${error.message}</td></tr>`;
         }
-        
         alert('Erreur lors du chargement de l\'emploi du temps:\n' + error.message);
     });
 }
 
 function generateEmploiTempsTable(emplois) {
-    console.log('Génération du tableau avec', emplois.length, 'créneaux');
-    
     const tbody = document.getElementById('emploi-temps-body');
     if (!tbody) {
-        console.error('Élément tbody non trouvé');
         return;
     }
     
     const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    const heures = ['08:00', '10:10', '12:10', '14:30'];
-    
+
+    // Grille dynamique (primaire ET secondaire) : une ligne par plage déjà ajoutée
+    const seen = {};
+    let plages = [];
+    (emplois || []).forEach(e => {
+        const debut = e.heure_debut ? String(e.heure_debut).substring(0, 5) : '';
+        const fin = e.heure_fin ? String(e.heure_fin).substring(0, 5) : '';
+        if (!debut) return;
+        const key = currentIsPrimaire ? (debut + '-' + (fin || '')) : debut;
+        if (seen[key]) return;
+        seen[key] = true;
+        if (currentIsPrimaire && fin) {
+            plages.push({ debut, fin, label: debut + ' – ' + fin });
+        } else {
+            const startMin = parseTimeToMinutes(debut);
+            const finCalc = (startMin !== null)
+                ? minutesToTime(startMin + DUREE_SECONDAIRE)
+                : (fin || '');
+            plages.push({
+                debut,
+                fin: fin || finCalc,
+                label: debut + (finCalc ? ' – ' + finCalc : '')
+            });
+        }
+    });
+    plages.sort((a, b) => a.debut.localeCompare(b.debut));
+
     tbody.innerHTML = '';
+
+    if (plages.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = jours.length + 1;
+        cell.className = 'text-center text-muted py-4';
+        cell.innerHTML = 'Aucun créneau pour le moment.<br>Cliquez sur <strong>« Ajouter un créneau »</strong> : la grille s’agrandira automatiquement.';
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+    }
     
-    heures.forEach(heure => {
+    plages.forEach(plage => {
         const row = document.createElement('tr');
         
-        // Colonne heure
         const heureCell = document.createElement('td');
-        heureCell.innerHTML = `<strong>${heure}</strong>`;
+        const dureeLabel = currentIsPrimaire
+            ? ''
+            : `<div class="small text-muted">${Math.round(DUREE_SECONDAIRE / 60)} h</div>`;
+        heureCell.innerHTML = `<strong>${plage.label}</strong>${dureeLabel}`;
         heureCell.className = 'table-secondary';
+        heureCell.style.minWidth = '110px';
         row.appendChild(heureCell);
         
-        // Colonnes jours
         jours.forEach(jour => {
             const cell = document.createElement('td');
             cell.className = 'creneau-cell';
-            cell.style.minHeight = '60px';
+            cell.style.minHeight = '90px';
+            cell.style.height = '90px';
             cell.style.cursor = 'pointer';
-            cell.onclick = () => addCreneau(jour, heure);
+            cell.style.verticalAlign = 'middle';
+            cell.onclick = () => addCreneau(jour, plage.debut, plage.fin);
             
-            // Chercher un emploi pour ce créneau
-            const emploi = emplois.find(e => {
-                const heureDebut = e.heure_debut ? e.heure_debut.substring(0, 5) : '';
-                const heureFin = e.heure_fin ? e.heure_fin.substring(0, 5) : '';
-                
-                return e.jour_semaine === jour && 
-                       heureDebut <= heure && 
-                       heureFin > heure;
-            });
+            let emploi = null;
+            if (currentIsPrimaire) {
+                emploi = (emplois || []).find(e => {
+                    const heureDebut = e.heure_debut ? String(e.heure_debut).substring(0, 5) : '';
+                    const heureFin = e.heure_fin ? String(e.heure_fin).substring(0, 5) : '';
+                    return e.jour_semaine === jour && heureDebut === plage.debut && heureFin === plage.fin;
+                });
+                if (!emploi) {
+                    emploi = (emplois || []).find(e => {
+                        const heureDebut = e.heure_debut ? String(e.heure_debut).substring(0, 5) : '';
+                        return e.jour_semaine === jour && heureDebut === plage.debut;
+                    });
+                }
+            } else {
+                emploi = (emplois || []).find(e => {
+                    const heureDebut = e.heure_debut ? String(e.heure_debut).substring(0, 5) : '';
+                    return e.jour_semaine === jour && heureDebut === plage.debut;
+                });
+            }
             
             if (emploi && emploi.matiere && emploi.enseignant) {
+                const debutAff = emploi.heure_debut ? String(emploi.heure_debut).substring(0, 5) : '';
+                const finAff = emploi.heure_fin ? String(emploi.heure_fin).substring(0, 5) : '';
                 cell.innerHTML = `
-                    <div class="creneau" style="background-color: ${emploi.matiere.couleur || '#007bff'}; color: white; padding: 5px; border-radius: 3px; position: relative;">
+                    <div class="creneau" style="background-color: ${emploi.matiere.couleur || '#007bff'}; color: white; padding: 8px; border-radius: 3px; position: relative; min-height: 70px;">
+                        <small>${debutAff} – ${finAff}</small><br>
                         <strong>${emploi.matiere.nom}</strong><br>
-                        <small>${emploi.enseignant.utilisateur ? emploi.enseignant.utilisateur.name : 'Enseignant'}</small>
+                        <small>${emploi.enseignant.utilisateur ? (emploi.enseignant.utilisateur.nom || '') + ' ' + (emploi.enseignant.utilisateur.prenom || '') : 'Enseignant'}</small>
                         <button type="button" class="btn btn-sm btn-outline-light position-absolute top-0 end-0" 
                                 onclick="event.stopPropagation(); deleteCreneau(${emploi.id})" 
                                 style="padding: 2px 6px; font-size: 10px;">
@@ -408,7 +609,7 @@ function generateEmploiTempsTable(emplois) {
                     </div>
                 `;
             } else {
-                cell.innerHTML = '<div class="text-center text-muted" style="padding: 20px;">+</div>';
+                cell.innerHTML = '<div class="text-center text-muted" style="padding: 20px; font-size: 1.25rem;">+</div>';
             }
             
             row.appendChild(cell);
@@ -416,18 +617,68 @@ function generateEmploiTempsTable(emplois) {
         
         tbody.appendChild(row);
     });
-    
-    console.log('Tableau généré avec succès');
+}
+
+function getDureeModalActuelle() {
+    if (currentIsPrimaire || isClassePrimaire(document.getElementById('modal_classe_id').value)) {
+        const el = document.getElementById('modal_duree');
+        return parseInt(el && el.value ? el.value : DUREE_PRIMAIRE_DEFAUT, 10) || DUREE_PRIMAIRE_DEFAUT;
+    }
+    return DUREE_SECONDAIRE;
+}
+
+/** Prochaine heure de début libre pour un jour (évite le chevauchement). */
+function getProchaineHeureLibre(jour, dureeMinutes) {
+    const duree = dureeMinutes || getDureeModalActuelle();
+    const creneaux = (currentEmplois || [])
+        .filter(e => String(e.jour_semaine).toLowerCase() === String(jour).toLowerCase())
+        .map(e => ({
+            debut: normalizeTimeHHmm(e.heure_debut),
+            fin: normalizeTimeHHmm(e.heure_fin),
+            matiere: (e.matiere && e.matiere.nom) ? e.matiere.nom : 'Cours'
+        }))
+        .filter(c => c.debut && c.fin)
+        .sort((a, b) => a.debut.localeCompare(b.debut));
+
+    let candidat = '08:00';
+    for (let i = 0; i < 20; i++) {
+        const startMin = parseTimeToMinutes(candidat);
+        if (startMin === null) break;
+        const finCandidat = minutesToTime(startMin + duree);
+        const chevauche = creneaux.find(c => candidat < c.fin && finCandidat > c.debut);
+        if (!chevauche) {
+            return { debut: candidat, fin: finCandidat, suggestion: null };
+        }
+        candidat = chevauche.fin;
+    }
+    return { debut: candidat, fin: minutesToTime(parseTimeToMinutes(candidat) + duree), suggestion: null };
 }
 
 function showAddModal() {
     if (currentClasseId) {
         document.getElementById('modal_classe_id').value = currentClasseId;
+        currentIsPrimaire = isClassePrimaire(currentClasseId);
     }
+    const jourEl = document.getElementById('modal_jour');
+    if (jourEl && !jourEl.value) {
+        jourEl.value = 'lundi';
+    }
+    syncModalDureeUi();
+    const jour = jourEl ? jourEl.value : 'lundi';
+    if (currentIsPrimaire && jour) {
+        const slot = getProchaineHeureLibre(jour, getDureeModalActuelle());
+        document.getElementById('modal_heure_debut').value = slot.debut;
+    } else {
+        const debutEl = document.getElementById('modal_heure_debut');
+        if (debutEl && !debutEl.value) {
+            debutEl.value = '08:00';
+        }
+    }
+    recalculerFinModal();
     new bootstrap.Modal(document.getElementById('addCreneauModal')).show();
 }
 
-function addCreneau(jour, heure) {
+function addCreneau(jour, heure, heureFin = null) {
     if (!currentClasseId) {
         alert('Veuillez d\'abord sélectionner une classe');
         return;
@@ -435,143 +686,127 @@ function addCreneau(jour, heure) {
     
     document.getElementById('modal_classe_id').value = currentClasseId;
     document.getElementById('modal_jour').value = jour;
-    document.getElementById('modal_heure_debut').value = heure;
-    // Calculer heure de fin (2h plus tard)
-    const [heures, minutes] = heure.split(':');
-    const heureFin = String(parseInt(heures) + 2).padStart(2, '0') + ':' + minutes;
-    document.getElementById('modal_heure_fin').value = heureFin;
-    
+    currentIsPrimaire = isClassePrimaire(currentClasseId);
+    syncModalDureeUi();
+
+    // Ne pas reprendre une heure déjà occupée : proposer la prochaine libre
+    if (currentIsPrimaire) {
+        const duree = getDureeModalActuelle();
+        let debutPropose = heure || '08:00';
+        const finPropose = minutesToTime(parseTimeToMinutes(debutPropose) + duree);
+        const occupe = (currentEmplois || []).some(e => {
+            if (String(e.jour_semaine).toLowerCase() !== String(jour).toLowerCase()) return false;
+            const d = normalizeTimeHHmm(e.heure_debut);
+            const f = normalizeTimeHHmm(e.heure_fin);
+            return debutPropose < f && finPropose > d;
+        });
+        if (occupe || !heure) {
+            const slot = getProchaineHeureLibre(jour, duree);
+            debutPropose = slot.debut;
+        }
+        document.getElementById('modal_heure_debut').value = debutPropose;
+    } else {
+        document.getElementById('modal_heure_debut').value = heure || '08:00';
+    }
+
+    recalculerFinModal();
     new bootstrap.Modal(document.getElementById('addCreneauModal')).show();
+}
+
+function normalizeTimeHHmm(val) {
+    if (!val) return '';
+    const parts = String(val).trim().split(':');
+    if (parts.length < 2) return '';
+    const h = String(parseInt(parts[0], 10)).padStart(2, '0');
+    const m = String(parseInt(parts[1], 10)).padStart(2, '0');
+    return h + ':' + m;
 }
 
 function saveCreneauModal() {
     const form = document.getElementById('addCreneauForm');
+    recalculerFinModal();
+
+    const debut = normalizeTimeHHmm(document.getElementById('modal_heure_debut').value);
+    const fin = normalizeTimeHHmm(document.getElementById('modal_heure_fin').value);
+
+    if (!debut) {
+        alert('Heure de début obligatoire.');
+        return;
+    }
+    if (!fin) {
+        alert('Heure de fin manquante. Choisissez une heure de début et une durée (30 / 45 / 60 min).');
+        return;
+    }
+
+    // Remettre les valeurs normalisées dans le formulaire
+    document.getElementById('modal_heure_debut').value = debut;
+    document.getElementById('modal_heure_fin').value = fin;
+    const finAffiche = document.getElementById('modal_heure_fin_affiche');
+    if (finAffiche) finAffiche.value = fin;
+
     const formData = new FormData(form);
+    formData.set('heure_debut', debut);
+    formData.set('heure_fin', fin);
+    formData.set('jour', (document.getElementById('modal_jour').value || '').toLowerCase());
     
-    // Vérifier le token CSRF
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
     if (!csrfToken) {
         alert('Erreur: Token CSRF manquant. Veuillez recharger la page.');
         return;
     }
     
-    // Afficher un indicateur de chargement
     const saveButton = document.querySelector('#addCreneauModal .btn-primary');
     const originalText = saveButton.innerHTML;
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
     saveButton.disabled = true;
     
-    // Adapter l'URL pour LWS
-    const baseUrl = window.location.origin + window.location.pathname.replace('/emplois-temps', '');
-    const urls = [
-        `${baseUrl}/add-emploi-temps`,
-        `${baseUrl}/emplois-temps`,
-        `${baseUrl}/test-add-emploi-temps`
-    ];
+    // Route principale Laravel (évite l’ancienne /add-emploi-temps trop stricte)
+    const url = '{{ route("emplois-temps.store") }}';
     
-    let currentUrlIndex = 0;
-    
-    function trySaveCreneau() {
-        if (currentUrlIndex >= urls.length) {
-            throw new Error('Toutes les routes d\'ajout ont échoué');
-        }
-        
-        const url = urls[currentUrlIndex];
-        console.log(`Tentative d'ajout avec l'URL: ${url}`);
-        
-        return fetch(url, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin', // Inclure les cookies de session
-            headers: {
-                'X-CSRF-TOKEN': csrfToken.content,
-                'Accept': 'application/json'
-            }
-        })
-    .then(response => {
-        console.log('Réponse reçue:', response.status, response.statusText);
-        
-        // Vérifier si la réponse est OK
-        if (!response.ok) {
-            // Si c'est une erreur 404 et qu'il y a d'autres URLs à essayer
-            if (response.status === 404 && currentUrlIndex < urls.length - 1) {
-                console.log('Route d\'ajout non trouvée, essai de la route suivante...');
-                currentUrlIndex++;
-                return trySaveCreneau();
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        // Vérifier le type de contenu
-        const contentType = response.headers.get('content-type');
-        console.log('Type de contenu:', contentType);
-        
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
-        } else {
-            return response.text().then(text => {
-                console.log('Réponse non-JSON:', text);
-                throw new Error('Réponse non-JSON reçue: ' + text.substring(0, 100));
-            });
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken.content,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
+    .then(async response => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            let msg = 'Erreur HTTP ' + response.status;
+            if (data) {
+                if (data.message) msg = data.message;
+                else if (data.errors) {
+                    msg = Object.values(data.errors).flat().join('\n');
+                } else if (data.error) {
+                    msg = data.error;
+                }
+            }
+            throw new Error(msg);
+        }
+        return data;
+    })
     .then(data => {
-        console.log('Données reçues:', data);
-        console.log('Type de données:', typeof data);
-        console.log('Contenu brut:', JSON.stringify(data));
-        
-        // Vérifier que les données sont valides
-        if (!data) {
-            throw new Error('Aucune donnée reçue du serveur');
+        if (!data || data.success !== true) {
+            throw new Error((data && data.message) ? data.message : 'Échec de l\'enregistrement');
         }
-        
-        if (typeof data !== 'object') {
-            console.error('Type de données incorrect:', typeof data, data);
-            throw new Error('Format de données incorrect - JSON attendu, reçu: ' + typeof data);
-        }
-        
-        if (data.success === true) {
-            console.log('Créneau ajouté avec succès');
-            bootstrap.Modal.getInstance(document.getElementById('addCreneauModal')).hide();
-            
-            // Recharger l'emploi du temps avec un délai pour s'assurer que les données sont sauvegardées
-            setTimeout(() => {
-                console.log('Rechargement de l\'emploi du temps pour la classe:', currentClasseId);
-                loadEmploiTemps(currentClasseId);
-                
-                // Si le rechargement ne fonctionne pas, forcer un rechargement complet de la page
-                setTimeout(() => {
-                    console.log('Vérification si l\'emploi du temps s\'est rechargé...');
-                    const emploiContainer = document.getElementById('emploi-temps-container');
-                    if (emploiContainer && emploiContainer.style.display === 'none') {
-                        console.log('Rechargement de la page pour forcer l\'affichage...');
-                        location.reload();
-                    }
-                }, 1000);
-            }, 500);
-            
-            showToast(data.message || 'Créneau ajouté avec succès', 'success');
-        } else if (data.success === false) {
-            console.error('Erreur signalée par le serveur:', data.message);
-            alert(data.message || 'Erreur lors de l\'ajout');
-        } else {
-            console.error('Propriété "success" manquante dans la réponse:', data);
-            throw new Error('Réponse du serveur invalide - propriété "success" manquante');
+        bootstrap.Modal.getInstance(document.getElementById('addCreneauModal')).hide();
+        showToast(data.message || 'Créneau ajouté avec succès', 'success');
+        if (currentClasseId) {
+            loadEmploiTemps(currentClasseId, document.querySelector('.classe-card.border-primary'));
         }
     })
     .catch(error => {
-        console.error('Erreur détaillée:', error);
-        alert('Erreur lors de l\'ajout du créneau: ' + error.message);
+        console.error(error);
+        alert('Erreur lors de l\'ajout du créneau:\n' + error.message);
     })
     .finally(() => {
-        // Restaurer le bouton
         saveButton.innerHTML = originalText;
         saveButton.disabled = false;
     });
-    }
-    
-    // Commencer avec la première URL
-    trySaveCreneau();
 }
 
 function deleteCreneau(emploiId) {
@@ -717,13 +952,13 @@ function saveDuplicate() {
     });
 }
 
-function exportEmploiTemps() {
+function exportEmploiTemps(format) {
     if (!currentClasseId) {
         alert('Veuillez sélectionner une classe');
         return;
     }
-    
-    window.open(`/emplois-temps/classe/${currentClasseId}/export`, '_blank');
+    const fmt = format === 'csv' ? 'csv' : 'pdf';
+    window.open(`/emplois-temps/classe/${currentClasseId}/export?format=${fmt}`, '_blank');
 }
 
 function confirmDeleteAll() {

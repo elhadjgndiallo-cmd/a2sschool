@@ -6,41 +6,32 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-                <h2 class="mb-0 mb-md-0">
-                    <i class="fas fa-arrow-down text-danger me-2"></i>
-                    <span class="d-none d-sm-inline">Sorties (Dépenses)</span>
-                    <span class="d-sm-none">Sorties</span>
-                </h2>
-                <div class="btn-group w-100 w-md-auto">
-                    <a href="{{ route('depenses.create') }}" class="btn btn-danger">
-                        <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Nouvelle Dépense</span><span class="d-sm-none">Nouveau</span>
-                    </a>
-                    <button class="btn btn-outline-primary" onclick="window.print()">
-                        <i class="fas fa-print me-1"></i><span class="d-none d-sm-inline">Imprimer</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filtres -->
-    <div class="row mb-4">
-        <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-filter me-2"></i>Filtres
-                    </h5>
+                <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-arrow-down text-danger me-2"></i>
+                        <span class="d-none d-sm-inline">Sorties (Dépenses)</span>
+                        <span class="d-sm-none">Sorties</span>
+                    </h3>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>
+                            <span class="d-none d-sm-inline">Imprimer</span>
+                            <span class="d-sm-none">Print</span>
+                        </button>
+                        <a href="{{ route('depenses.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>
+                            <span class="d-none d-sm-inline">Nouvelle Dépense</span>
+                            <span class="d-sm-none">Nouveau</span>
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('comptabilite.sorties') }}">
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="annee_scolaire_id" class="form-label">
-                                    <i class="fas fa-calendar-alt me-1"></i>Année scolaire
-                                </label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()">
+                    <!-- Filtres compacts (comme liste élèves / entrées) -->
+                    <form method="GET" action="{{ route('comptabilite.sorties') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select class="form-control" name="annee_scolaire_id" onchange="this.form.submit()">
                                     @foreach($anneesScolaires ?? \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get() as $annee)
                                         <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id', $anneeScolaire->id) === (string) $annee->id ? 'selected' : '' }}>
                                             {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
@@ -48,19 +39,24 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="date_debut" class="form-label">Date de début</label>
-                                <input type="date" class="form-control" id="date_debut" name="date_debut" 
-                                       value="{{ request('date_debut') }}">
+                            <div class="col-6 col-sm-6 col-md-2">
+                                <input type="date"
+                                       class="form-control"
+                                       name="date_debut"
+                                       value="{{ request('date_debut') }}"
+                                       title="Date de début"
+                                       placeholder="Date début">
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="date_fin" class="form-label">Date de fin</label>
-                                <input type="date" class="form-control" id="date_fin" name="date_fin" 
-                                       value="{{ request('date_fin') }}">
+                            <div class="col-6 col-sm-6 col-md-2">
+                                <input type="date"
+                                       class="form-control"
+                                       name="date_fin"
+                                       value="{{ request('date_fin') }}"
+                                       title="Date de fin"
+                                       placeholder="Date fin">
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="type_depense" class="form-label">Type de dépense</label>
-                                <select class="form-select" id="type_depense" name="type_depense">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-control" name="type_depense">
                                     <option value="">Tous les types</option>
                                     @foreach($typesDepense as $type)
                                         <option value="{{ $type }}" {{ request('type_depense') == $type ? 'selected' : '' }}>
@@ -69,67 +65,39 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-search me-1"></i>Filtrer
-                                </button>
-                                <a href="{{ route('comptabilite.sorties') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-refresh me-1"></i>Réinitialiser
-                                </a>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('comptabilite.sorties') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ number_format($statsSorties['total'], 0, ',', ' ') }}</h3>
-                    <small>Total sorties (GNF)</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-dark">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ number_format($statsSorties['total_depenses'], 0, ',', ' ') }}</h3>
-                    <small>Dépenses (GNF)</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ number_format($statsSorties['total_salaires'], 0, ',', ' ') }}</h3>
-                    <small>Salaires enseignants (GNF)</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ $statsSorties['nombre'] }}</h3>
-                    <small>Nombre de sorties</small>
-                </div>
-            </div>
-        </div>
-    </div>
+                    <!-- Stats compactes -->
+                    <div class="mb-3 d-flex flex-wrap gap-3 align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-coins text-danger me-1"></i>
+                            Total : <strong class="text-danger">{{ number_format($statsSorties['total'], 0, ',', ' ') }} GNF</strong>
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-list me-1"></i>
+                            {{ $statsSorties['nombre'] }} sortie(s)
+                        </small>
+                        @if(request()->hasAny(['date_debut', 'date_fin', 'type_depense']))
+                            <small>
+                                <a href="{{ route('comptabilite.sorties', request()->only('annee_scolaire_id')) }}" class="text-danger">
+                                    <i class="fas fa-times"></i> Effacer les filtres
+                                </a>
+                            </small>
+                        @endif
+                    </div>
 
-    <!-- Liste des sorties -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list me-2"></i>Liste des Dépenses
-                    </h5>
-                </div>
-                <div class="card-body">
                     @if($sorties->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
@@ -183,11 +151,11 @@
                                                         $photoProfil = $personne && isset($personne->photo_profil) ? $personne->photo_profil : null;
                                                     @endphp
                                                     @if($photoProfil)
-                                                        <img src="{{ asset('storage/' . $photoProfil) }}" 
-                                                             alt="Photo" class="rounded-circle me-2" 
+                                                        <img src="{{ asset('storage/' . $photoProfil) }}"
+                                                             alt="Photo" class="rounded-circle me-2"
                                                              style="width: 30px; height: 30px; object-fit: cover;">
                                                     @else
-                                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2"
                                                              style="width: 30px; height: 30px;">
                                                             <i class="fas fa-user text-white" style="font-size: 12px;"></i>
                                                         </div>
@@ -209,18 +177,16 @@
                             </table>
                         </div>
 
-                        <!-- Pagination Simple -->
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <div>
                                 <small class="text-muted">
-                                    Affichage de {{ $sorties->firstItem() }} à {{ $sorties->lastItem() }} 
+                                    Affichage de {{ $sorties->firstItem() }} à {{ $sorties->lastItem() }}
                                     sur {{ $sorties->total() }} sorties
                                 </small>
                             </div>
                             <div>
                                 <nav aria-label="Pagination">
-                                    <ul class="pagination pagination-simple">
-                                        <!-- Bouton Précédent -->
+                                    <ul class="pagination pagination-simple mb-0">
                                         @if($sorties->currentPage() > 1)
                                             <li class="page-item">
                                                 <a class="page-link" href="{{ $sorties->previousPageUrl() }}" aria-label="Précédent">
@@ -235,7 +201,6 @@
                                             </li>
                                         @endif
 
-                                        <!-- Numéros de pages -->
                                         @php
                                             $currentPage = $sorties->currentPage();
                                             $lastPage = $sorties->lastPage();
@@ -251,7 +216,6 @@
                                             @endfor
                                         @endif
 
-                                        <!-- Bouton Suivant -->
                                         @if($sorties->hasMorePages())
                                             <li class="page-item">
                                                 <a class="page-link" href="{{ $sorties->nextPageUrl() }}" aria-label="Suivant">
@@ -274,7 +238,7 @@
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">Aucune dépense trouvée</h5>
                             <p class="text-muted">Commencez par ajouter une nouvelle dépense.</p>
-                            <a href="{{ route('depenses.create') }}" class="btn btn-danger">
+                            <a href="{{ route('depenses.create') }}" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i>Ajouter une dépense
                             </a>
                         </div>
@@ -285,4 +249,3 @@
     </div>
 </div>
 @endsection
-

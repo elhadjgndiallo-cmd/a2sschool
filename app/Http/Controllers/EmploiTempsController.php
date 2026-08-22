@@ -8,6 +8,7 @@ use App\Models\Matiere;
 use App\Models\Enseignant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class EmploiTempsController extends Controller
 {
@@ -81,112 +82,91 @@ class EmploiTempsController extends Controller
             ->orderBy('heure_debut')
             ->get();
             
-        // Pour le primaire, inclure samedi, sinon seulement lundi-vendredi
+        // Pour le primaire, inclure samedi
         $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
         
-        // Vérifier si la classe est primaire (vérification robuste)
-        $niveauClasse = strtolower(trim($classe->niveau ?? ''));
-        $nomClasse = strtolower(trim($classe->nom ?? ''));
-        
-        // Détection améliorée pour primaire - LOGIQUE STRICTE
-        $isPrimaire = false;
-        
-        // PRIORITÉ 1: Vérifier par niveau (le plus fiable) - EXACTEMENT "primaire"
-        if ($niveauClasse === 'primaire') {
-            $isPrimaire = true;
-        }
-        
-        // PRIORITÉ 2: Vérifier par méthode isPrimaire() seulement si niveau n'est pas défini
-        if (!$isPrimaire && $classe->isPrimaire()) {
-            $isPrimaire = true;
-        }
-        
-        // PRIORITÉ 3: Vérifier par nom de classe - DÉTECTION FORTE pour CP, CE, CM
-        // Si le nom est exactement "CP", "CE", ou "CM" (ou avec variations), c'est primaire
-        if (!$isPrimaire) {
-            // Vérifier d'abord les classes primaires classiques (CP, CE, CM) - correspondance exacte ou au début
-            if (preg_match('/^(cp|ce|cm)(\s|$)/i', $nomClasse) || 
-                $nomClasse === 'cp' || $nomClasse === 'ce' || $nomClasse === 'cm') {
-                $isPrimaire = true;
-            }
-        }
-        
-        // PRIORITÉ 4: Vérifier par nom de classe UNIQUEMENT si niveau n'est pas "lycée" ou "college" ou "secondaire"
-        // ET si le niveau est vide ou contient "primaire"
-        if (!$isPrimaire && 
-            !in_array($niveauClasse, ['lycée', 'college', 'college', 'secondaire', 'lycee', 'lycee']) &&
-            ($niveauClasse === '' || str_contains($niveauClasse, 'primaire'))) {
-            
-            // Patterns spécifiques pour primaire (éviter les faux positifs)
-            $patternsPrimaire = [
-                '2 eme', '2eme', '2ème', '2ème',
-                'cp', 'ce', 'cm', 
-                '1ère', '1ere', '1er', 
-                'premiere', 'première', 
-                'deuxieme', 'deuxième',
-                'troisieme', 'troisième',
-                'quatrieme', 'quatrième',
-                'cinquieme', 'cinquième',
-                'sixieme', 'sixième'
-            ];
-            
-            foreach ($patternsPrimaire as $pattern) {
-                if (str_contains($nomClasse, $pattern)) {
-                    $isPrimaire = true;
-                    break;
-                }
-            }
-            
-            // Détection par regex pour "2 eme", "3eme", etc. (avec ou sans espace)
-            if (!$isPrimaire && preg_match('/\d+\s*(eme|ème)(\s|$)/i', $nomClasse)) {
-                $isPrimaire = true;
-            }
-        }
-        
-        // FORCER la détection si le niveau est "Primaire" (même avec majuscule)
-        if (!$isPrimaire && strtolower(trim($classe->niveau ?? '')) === 'primaire') {
-            $isPrimaire = true;
-        }
-        
-        // Log pour debug
-        \Log::info('Détection primaire - Nom: "' . $classe->nom . '", Niveau: "' . $classe->niveau . '", isPrimaire: ' . ($isPrimaire ? 'Oui' : 'Non'));
+        $isPrimaire = $classe->isPrimaire();
         
         // Organiser les emplois par jour
         $emploisParJour = [];
         foreach ($jours as $jour) {
-            $emploisParJour[$jour] = $emploisTemps->filter(function($emploi) use ($jour) {
+            $emploisParJour[$jour] = $emploisTemps->filter(function ($emploi) use ($jour) {
                 return $emploi->jour_semaine === $jour;
             })->sortBy('heure_debut')->values();
         }
         
         $enseignants = Enseignant::listeDeroulante($anneeScolaireActive?->id);
 
-        // Si c'est une classe primaire, utiliser la vue spéciale pour primaire
         if ($isPrimaire) {
-            // Heures spéciales pour le primaire
-            $heures = [
-                '08:00',  // 8h - 8h30
-                '08:30',  // 8h30 - 9h00
-                '09:00',  // 9h00 - 9h30
-                '09:30',  // 9h30 - 10h00
-                '10:00',  // 10h00-10h15 (récréation)
-                '10:15',  // 10h15-10h45
-                '10:45',  // 10h45-11h15
-                '11:15',  // 11h15-11h45
-                '11:45',  // 11h45-12h15
-                '12:30',  // 12h30-13h00
-                '13:00',  // 13h00-13h30
-                '13:30',  // 13h30-14h00
-                '15:00'   // 15h00-16h00
-            ];
-            
-            return view('emplois-temps.show-primaire', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive', 'enseignants'));
+            $cfgPrimaire = config('emploi_temps.primaire');
+            $dureesAutorisees = $cfgPrimaire['durees_autorisees'] ?? [30, 45, 60];
+            $dureeDefaut = $cfgPrimaire['duree_defaut'] ?? 45;
+            $recre = $cfgPrimaire['recre'] ?? null;
+            $journee = $cfgPrimaire['journee'] ?? ['debut' => '08:00', 'fin' => '15:00'];
+
+            // Grille dynamique : uniquement les plages des créneaux déjà ajoutés
+            $plagesHoraires = $emploisTemps
+                ->map(function ($emploi) {
+                    return [
+                        'debut' => \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i'),
+                        'fin' => \Carbon\Carbon::parse($emploi->heure_fin)->format('H:i'),
+                        'recre' => false,
+                    ];
+                })
+                ->unique(fn ($p) => $p['debut'] . '-' . $p['fin'])
+                ->sortBy('debut')
+                ->values()
+                ->all();
+
+            // Afficher la récré seulement s'il y a déjà des cours
+            if ($recre && count($plagesHoraires) > 0) {
+                $plagesHoraires[] = [
+                    'debut' => $recre['debut'],
+                    'fin' => $recre['fin'],
+                    'recre' => true,
+                    'label' => $recre['label'] ?? 'RÉCRÉATION',
+                ];
+                usort($plagesHoraires, fn ($a, $b) => strcmp($a['debut'], $b['debut']));
+            }
+
+            $maxCreneauxParJour = $cfgPrimaire['max_creneaux_par_jour'] ?? 12;
+
+            return view('emplois-temps.show-primaire', compact(
+                'classe',
+                'emploisTemps',
+                'jours',
+                'plagesHoraires',
+                'emploisParJour',
+                'anneeScolaireActive',
+                'enseignants',
+                'dureesAutorisees',
+                'dureeDefaut',
+                'recre',
+                'journee',
+                'maxCreneauxParJour'
+            ));
         }
-        
-        // Pour le secondaire, utiliser la vue standard
-        $heures = ['08:00', '10:00', '10:10', '12:10', '14:00', '14:30', '16:00', '16:30'];
-        
-        return view('emplois-temps.show', compact('classe', 'emploisTemps', 'jours', 'heures', 'emploisParJour', 'anneeScolaireActive', 'enseignants'));
+
+        $dureeDefautSecondaire = (int) config('emploi_temps.secondaire.duree_defaut_minutes', 120);
+
+        // Grille dynamique secondaire : grandit avec les créneaux ajoutés (durée 2 h)
+        $heures = $emploisTemps
+            ->map(fn ($emploi) => \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i'))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return view('emplois-temps.show', compact(
+            'classe',
+            'emploisTemps',
+            'jours',
+            'heures',
+            'emploisParJour',
+            'anneeScolaireActive',
+            'enseignants',
+            'dureeDefautSecondaire'
+        ));
     }
 
     /**
@@ -203,8 +183,8 @@ class EmploiTempsController extends Controller
             'matiere_id' => 'required|exists:matieres,id',
             'enseignant_id' => 'required|exists:enseignants,id',
             'jour' => 'required|in:Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi,lundi,mardi,mercredi,jeudi,vendredi,samedi',
-            'heure_debut' => 'required|date_format:H:i',
-            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+            'heure_debut' => ['required', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+            'heure_fin' => ['required', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
             'salle' => 'nullable|string|max:50'
         ]);
 
@@ -215,18 +195,74 @@ class EmploiTempsController extends Controller
         if ($validator->fails()) {
             \Log::error('Erreurs de validation:', $validator->errors()->toArray());
             \Log::error('=== FIN DEBUG EMPLOI TEMPS ===');
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => collect($validator->errors()->all())->implode(' '),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Normaliser HH:MM(:SS) → HH:MM
+        $heureDebut = substr(str_pad($request->heure_debut, 5, '0', STR_PAD_LEFT), 0, 5);
+        $heureFin = substr(str_pad($request->heure_fin, 5, '0', STR_PAD_LEFT), 0, 5);
+        if (strlen($request->heure_debut) >= 5) {
+            $heureDebut = substr($request->heure_debut, 0, 5);
+        }
+        if (strlen($request->heure_fin) >= 5) {
+            $heureFin = substr($request->heure_fin, 0, 5);
+        }
+        // Forcer format 08:30 (pas 8:30)
+        $partsD = explode(':', $heureDebut);
+        $partsF = explode(':', $heureFin);
+        $heureDebut = sprintf('%02d:%02d', (int) $partsD[0], (int) ($partsD[1] ?? 0));
+        $heureFin = sprintf('%02d:%02d', (int) $partsF[0], (int) ($partsF[1] ?? 0));
+        $request->merge(['heure_debut' => $heureDebut, 'heure_fin' => $heureFin]);
+
+        if ($heureFin <= $heureDebut) {
+            return response()->json([
+                'success' => false,
+                'message' => 'L\'heure de fin doit être après l\'heure de début.',
+            ], 422);
         }
         
-        \Log::info('Validation réussie');
+        \Log::info('Validation réussie', ['heure_debut' => $heureDebut, 'heure_fin' => $heureFin]);
         \Log::info('=== FIN DEBUG EMPLOI TEMPS ===');
 
-        // Vérifier les conflits d'horaires (sauf si on force) — uniquement sur l'année active
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         if (!$anneeScolaireActive) {
             return response()->json(['success' => false, 'message' => 'Aucune année scolaire active.'], 422);
         }
 
+        $classe = Classe::findOrFail($request->classe_id);
+        if ($classe->isPrimaire()) {
+            $debut = \Carbon\Carbon::createFromFormat('H:i', $heureDebut);
+            $fin = \Carbon\Carbon::createFromFormat('H:i', $heureFin);
+            $dureeMinutes = (int) round(($fin->getTimestamp() - $debut->getTimestamp()) / 60);
+            $dureesAutorisees = config('emploi_temps.primaire.durees_autorisees', [30, 45, 60]);
+
+            if (!in_array($dureeMinutes, array_map('intval', $dureesAutorisees), true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Au primaire, la durée du cours doit être de '
+                        . implode(', ', $dureesAutorisees) . ' minutes (durée saisie : ' . $dureeMinutes . ' min).',
+                ], 422);
+            }
+
+            $maxParJour = (int) config('emploi_temps.primaire.max_creneaux_par_jour', 12);
+            $nbJour = EmploiTemps::where('classe_id', $classe->id)
+                ->pourAnneeScolaire($anneeScolaireActive->id)
+                ->where('jour_semaine', strtolower($request->jour))
+                ->actif()
+                ->count();
+            if ($nbJour >= $maxParJour) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Maximum {$maxParJour} créneaux par jour atteint pour cette classe.",
+                ], 422);
+            }
+        }
+
+        // Vérifier les conflits d'horaires (sauf si on force) — uniquement sur l'année active
         if (!$request->has('force') || !$request->force) {
             // D'abord, vérifier s'il y a un conflit avec la même matière (même horaire exact)
             $memeMatiereConflit = EmploiTemps::where('classe_id', $request->classe_id)
@@ -288,13 +324,22 @@ class EmploiTempsController extends Controller
                 ->with(['matiere', 'enseignant.utilisateur'])
                 ->get();
             
-            $message = 'Conflit d\'horaire détecté pour cette classe. ';
+            $message = 'Conflit d\'horaire : ce créneau chevauche un cours déjà planifié. ';
             if ($creneauxConflits->count() > 0) {
-                $message .= 'Créneaux existants: ';
+                $details = [];
+                $suggestion = null;
                 foreach ($creneauxConflits as $creneau) {
-                    $message .= $creneau->matiere->nom . ' (' . $creneau->heure_debut . '-' . $creneau->heure_fin . '), ';
+                    $d = \Carbon\Carbon::parse($creneau->heure_debut)->format('H:i');
+                    $f = \Carbon\Carbon::parse($creneau->heure_fin)->format('H:i');
+                    $details[] = ($creneau->matiere->nom ?? 'Cours') . " ({$d}-{$f})";
+                    if ($suggestion === null || $f > $suggestion) {
+                        $suggestion = $f;
+                    }
                 }
-                $message = rtrim($message, ', ');
+                $message .= 'Occupé par : ' . implode(', ', $details) . '.';
+                if ($suggestion) {
+                    $message .= " Choisissez une heure de début à partir de {$suggestion} (ou cochez « Forcer » uniquement si nécessaire).";
+                }
             }
             
                 return response()->json([
@@ -454,31 +499,20 @@ class EmploiTempsController extends Controller
     }
 
     /**
-     * Exporter l'emploi du temps d'une classe
+     * Exporter / télécharger l'emploi du temps d'une classe (PDF ou CSV)
      */
     public function export(Classe $classe)
     {
-        // Vérifier les permissions
         if (!auth()->user()->hasPermission('emplois-temps.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à exporter les emplois du temps.');
         }
-        
-        // Récupérer l'année scolaire active
+
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
-        
+
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
-        
-        // Vérifier que la classe a des élèves de l'année active
-        $hasElevesActiveYear = $classe->eleves()
-            ->where('annee_scolaire_id', $anneeScolaireActive->id)
-            ->exists();
-            
-        if (!$hasElevesActiveYear) {
-            return redirect()->back()->with('error', 'Cette classe n\'a pas d\'élèves pour l\'année scolaire active.');
-        }
-        
+
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->actif()
             ->pourAnneeScolaire($anneeScolaireActive->id)
@@ -487,22 +521,117 @@ class EmploiTempsController extends Controller
             ->orderBy('heure_debut')
             ->get();
 
-        $filename = 'emploi_temps_' . str_replace(' ', '_', $classe->nom) . '_' . date('Y-m-d') . '.csv';
-        
+        $format = strtolower((string) request('format', 'pdf'));
+        $safeNom = preg_replace('/[^A-Za-z0-9_\-]/', '_', $classe->nom) ?: 'classe';
+        $filenameBase = 'emploi_temps_' . $safeNom . '_' . date('Y-m-d');
+
+        if ($format === 'csv') {
+            return $this->exportCsv($classe, $emploisTemps, $filenameBase . '.csv');
+        }
+
+        return $this->exportPdf($classe, $emploisTemps, $anneeScolaireActive, $filenameBase . '.pdf');
+    }
+
+    /**
+     * Export PDF (grille emploi du temps)
+     */
+    private function exportPdf(Classe $classe, $emploisTemps, $anneeScolaireActive, string $filename)
+    {
+        $isPrimaire = $classe->isPrimaire();
+        $dureeDefautSecondaire = (int) config('emploi_temps.secondaire.duree_defaut_minutes', 120);
+        $plages = [];
+
+        if ($isPrimaire) {
+            $plages = $emploisTemps
+                ->map(function ($emploi) {
+                    return [
+                        'debut' => \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i'),
+                        'fin' => \Carbon\Carbon::parse($emploi->heure_fin)->format('H:i'),
+                        'recre' => false,
+                    ];
+                })
+                ->unique(fn ($p) => $p['debut'] . '-' . $p['fin'])
+                ->sortBy('debut')
+                ->values()
+                ->all();
+
+            $recre = config('emploi_temps.primaire.recre');
+            if ($recre && count($plages) > 0) {
+                $plages[] = [
+                    'debut' => $recre['debut'],
+                    'fin' => $recre['fin'],
+                    'recre' => true,
+                    'label' => $recre['label'] ?? 'RÉCRÉATION',
+                ];
+                usort($plages, fn ($a, $b) => strcmp($a['debut'], $b['debut']));
+            }
+        } else {
+            $plages = $emploisTemps
+                ->map(function ($emploi) use ($dureeDefautSecondaire) {
+                    $debut = \Carbon\Carbon::parse($emploi->heure_debut)->format('H:i');
+                    $fin = \Carbon\Carbon::parse($emploi->heure_fin)->format('H:i');
+                    if (!$fin) {
+                        $parts = explode(':', $debut);
+                        $startMin = ((int) $parts[0]) * 60 + ((int) ($parts[1] ?? 0));
+                        $endMin = $startMin + $dureeDefautSecondaire;
+                        $fin = sprintf('%02d:%02d', intdiv($endMin, 60) % 24, $endMin % 60);
+                    }
+                    return [
+                        'debut' => $debut,
+                        'fin' => $fin,
+                        'recre' => false,
+                    ];
+                })
+                ->unique(fn ($p) => $p['debut'])
+                ->sortBy('debut')
+                ->values()
+                ->all();
+        }
+
+        $schoolInfo = \App\Helpers\SchoolHelper::getSchoolInfo();
+        $logoDataUri = null;
+        if ($schoolInfo && !empty($schoolInfo->logo)) {
+            $logoPath = storage_path('app/public/' . $schoolInfo->logo);
+            if (is_file($logoPath)) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $logoPath) ?: 'image/png';
+                finfo_close($finfo);
+                $logoDataUri = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+        }
+
+        $pdf = Pdf::loadView('emplois-temps.export-pdf', compact(
+            'classe',
+            'emploisTemps',
+            'plages',
+            'anneeScolaireActive',
+            'dureeDefautSecondaire',
+            'logoDataUri'
+        ));
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', false);
+        $pdf->setOption('defaultFont', 'DejaVu Sans');
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Export CSV
+     */
+    private function exportCsv(Classe $classe, $emploisTemps, string $filename)
+    {
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Cache-Control' => 'no-cache, must-revalidate',
-            'Expires' => 'Sat, 26 Jul 1997 05:00:00 GMT'
         ];
-        
-        $callback = function() use ($emploisTemps, $classe) {
+
+        $callback = function () use ($emploisTemps, $classe) {
             $file = fopen('php://output', 'w');
-            
-            // Ajouter le BOM UTF-8 pour Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // En-têtes CSV avec point-virgule pour Excel français
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
             fputcsv($file, [
                 'Classe',
                 'Jour',
@@ -511,36 +640,33 @@ class EmploiTempsController extends Controller
                 'Matière',
                 'Code Matière',
                 'Enseignant',
-                'Salle'
+                'Salle',
             ], ';');
-            
-            // Données
+
             foreach ($emploisTemps as $emploi) {
-                // Formater les heures (HH:MM seulement)
                 $heureDebut = date('H:i', strtotime($emploi->heure_debut));
                 $heureFin = date('H:i', strtotime($emploi->heure_fin));
-                
-                // Nom de l'enseignant
+
                 $enseignantNom = '';
                 if ($emploi->enseignant && $emploi->enseignant->utilisateur) {
                     $enseignantNom = $emploi->enseignant->utilisateur->nom . ' ' . $emploi->enseignant->utilisateur->prenom;
                 }
-                
+
                 fputcsv($file, [
                     $classe->nom,
                     ucfirst($emploi->jour_semaine),
                     $heureDebut,
                     $heureFin,
-                    $emploi->matiere->nom,
-                    $emploi->matiere->code,
+                    $emploi->matiere->nom ?? '',
+                    $emploi->matiere->code ?? '',
                     $enseignantNom,
-                    $emploi->salle
+                    $emploi->salle ?? '',
                 ], ';');
             }
-            
+
             fclose($file);
         };
-        
+
         return response()->stream($callback, 200, $headers);
     }
 
