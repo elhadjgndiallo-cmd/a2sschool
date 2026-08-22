@@ -81,9 +81,9 @@ const allMatieres = @json($matieres);
                 <div class="col-md-3">
                     <label for="periode" class="form-label">Période</label>
                     <select class="form-select" id="periode" name="periode">
-                        <option value="trimestre1">Trimestre 1</option>
-                        <option value="trimestre2">Trimestre 2</option>
-                        <option value="trimestre3">Trimestre 3</option>
+                        @foreach(\App\Helpers\PeriodeHelper::options($classe ?? null) as $code => $libelle)
+                            <option value="{{ $code }}">{{ $libelle }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-3">

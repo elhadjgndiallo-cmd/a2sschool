@@ -157,7 +157,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nom" class="form-label">Nom de la période</label>
-                        <input type="text" class="form-control" id="nom" name="nom" placeholder="Ex. Trimestre 1" required>
+                        <input type="text" class="form-control" id="nom" name="nom" placeholder="Ex. Trimestre 1 / Semestre 1" required>
                     </div>
                     <div class="mb-3">
                         <label for="date_debut" class="form-label">Date de début</label>

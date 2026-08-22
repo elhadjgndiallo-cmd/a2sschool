@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\AnneeScolaire;
 use App\Models\Classe;
 use App\Models\Eleve;
 use App\Models\Matiere;
@@ -13,6 +14,48 @@ use Illuminate\Support\Facades\DB;
 
 class TeacherController extends Controller
 {
+    /**
+     * Classes assignées via l'emploi du temps de l'année active.
+     */
+    private function classesDepuisEmploiTemps($enseignant)
+    {
+        $anneeId = AnneeScolaire::anneeActive()?->id;
+
+        return Classe::actif()
+            ->whereHas('emploisTemps', function ($query) use ($enseignant, $anneeId) {
+                $query->where('enseignant_id', $enseignant->id)
+                    ->where('actif', true)
+                    ->when($anneeId, fn ($q) => $q->where('annee_scolaire_id', $anneeId));
+            })
+            ->with(['eleves' => function ($q) use ($anneeId) {
+                $q->when($anneeId, fn ($qq) => $qq->where('annee_scolaire_id', $anneeId))
+                    ->with('utilisateur');
+            }])
+            ->get();
+    }
+
+    private function enseignantAAccesClasse($enseignant, Classe $classe): bool
+    {
+        return $classe->emploisTemps()
+            ->where('enseignant_id', $enseignant->id)
+            ->actif()
+            ->pourAnneeActive()
+            ->exists();
+    }
+
+    private function matieresDepuisEmploiTemps($enseignant, Classe $classe)
+    {
+        return Matiere::actif()
+            ->whereHas('emploisTemps', function ($query) use ($enseignant, $classe) {
+                $query->where('enseignant_id', $enseignant->id)
+                    ->where('classe_id', $classe->id)
+                    ->actif()
+                    ->pourAnneeActive();
+            })
+            ->orderBy('nom')
+            ->get();
+    }
+
     /**
      * Afficher la liste des élèves de l'enseignant
      */
@@ -25,21 +68,13 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        // Récupérer les classes où l'enseignant enseigne
-        $classes = Classe::actif()
-            ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                $query->where('enseignant_id', $enseignant->id);
-            })
-            ->with(['eleves.utilisateur'])
-            ->get();
+        $classes = $this->classesDepuisEmploiTemps($enseignant);
 
-        // Récupérer tous les élèves de ces classes
         $eleves = collect();
         foreach ($classes as $classe) {
             $eleves = $eleves->merge($classe->eleves);
         }
 
-        // Supprimer les doublons
         $eleves = $eleves->unique('id');
 
         return view('teacher.mes-eleves', compact('eleves', 'classes'));
@@ -57,13 +92,7 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        // Récupérer les classes où l'enseignant enseigne
-        $classes = Classe::actif()
-            ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                $query->where('enseignant_id', $enseignant->id);
-            })
-            ->with(['eleves.utilisateur'])
-            ->get();
+        $classes = $this->classesDepuisEmploiTemps($enseignant);
 
         return view('teacher.classes', compact('classes'));
     }
@@ -80,14 +109,13 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        $anneeId = AnneeScolaire::anneeActive()?->id;
+        $classe = Classe::with(['eleves' => function ($q) use ($anneeId) {
+            $q->when($anneeId, fn ($qq) => $qq->where('annee_scolaire_id', $anneeId))
+                ->with('utilisateur');
+        }])->findOrFail($classeId);
         
-        // Vérifier que l'enseignant enseigne dans cette classe
-        $hasAccess = $classe->emploisTemps()
-            ->where('enseignant_id', $enseignant->id)
-            ->exists();
-            
-        if (!$hasAccess) {
+        if (!$this->enseignantAAccesClasse($enseignant, $classe)) {
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
 
@@ -117,21 +145,13 @@ class TeacherController extends Controller
                     ->with('error', 'Aucune année scolaire active trouvée.');
             }
 
-            // Récupérer l'emploi du temps de l'enseignant pour les classes ayant des élèves de l'année scolaire active
             $emploisTemps = $enseignant->emploisTemps()
-                ->whereHas('classe.eleves', function($query) use ($anneeScolaireActive) {
-                    $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-                })
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->with(['classe', 'matiere'])
                 ->actif()
                 ->orderBy('jour_semaine')
                 ->orderBy('heure_debut')
                 ->get();
-
-            \Log::info('Emploi du temps enseignant chargé', [
-                'enseignant_id' => $enseignant->id,
-                'emplois_count' => $emploisTemps->count()
-            ]);
 
             return view('teacher.emploi-temps', compact('emploisTemps', 'anneeScolaireActive'));
             
@@ -159,13 +179,7 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        // Récupérer les classes où l'enseignant enseigne
-        $classes = Classe::actif()
-            ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                $query->where('enseignant_id', $enseignant->id);
-            })
-            ->with(['eleves.utilisateur'])
-            ->get();
+        $classes = $this->classesDepuisEmploiTemps($enseignant);
 
         return view('teacher.saisir-absences', compact('classes'));
     }
@@ -182,14 +196,13 @@ class TeacherController extends Controller
             abort(403, 'Profil enseignant non trouvé');
         }
 
-        $classe = Classe::with(['eleves.utilisateur'])->findOrFail($classeId);
+        $anneeId = AnneeScolaire::anneeActive()?->id;
+        $classe = Classe::with(['eleves' => function ($q) use ($anneeId) {
+            $q->when($anneeId, fn ($qq) => $qq->where('annee_scolaire_id', $anneeId))
+                ->with('utilisateur');
+        }])->findOrFail($classeId);
         
-        // Vérifier que l'enseignant enseigne dans cette classe
-        $hasAccess = $classe->emploisTemps()
-            ->where('enseignant_id', $enseignant->id)
-            ->exists();
-            
-        if (!$hasAccess) {
+        if (!$this->enseignantAAccesClasse($enseignant, $classe)) {
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
 
@@ -269,18 +282,13 @@ class TeacherController extends Controller
 
         $classe = Classe::findOrFail($classeId);
         
-        // Vérifier que l'enseignant enseigne dans cette classe
-        $hasAccess = $classe->emploisTemps()
-            ->where('enseignant_id', $enseignant->id)
-            ->exists();
-            
-        if (!$hasAccess) {
+        if (!$this->enseignantAAccesClasse($enseignant, $classe)) {
             abort(403, 'Vous n\'avez pas accès à cette classe.');
         }
         
         // Même périmètre que l'admin : élèves de l'année scolaire active uniquement
-        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
-        $elevesQuery = \App\Models\Eleve::where('eleves.classe_id', $classe->id)
+        $anneeScolaireActive = AnneeScolaire::anneeActive();
+        $elevesQuery = Eleve::where('eleves.classe_id', $classe->id)
             ->where('eleves.actif', true);
         if ($anneeScolaireActive) {
             $elevesQuery->where('eleves.annee_scolaire_id', $anneeScolaireActive->id);
@@ -292,25 +300,10 @@ class TeacherController extends Controller
             ->with('utilisateur')
             ->get();
         
-        // Assigner les élèves triés à la classe
         $classe->setRelation('eleves', $eleves);
         
-        // Récupérer uniquement les matières que l'enseignant enseigne dans cette classe selon l'emploi du temps
-        $matieres = \App\Models\Matiere::actif()
-            ->whereHas('emploisTemps', function($query) use ($enseignant, $classe) {
-                $query->where('enseignant_id', $enseignant->id)
-                      ->where('classe_id', $classe->id)
-                      ->where('actif', true);
-            })
-            ->get();
+        $matieres = $this->matieresDepuisEmploiTemps($enseignant, $classe);
         
-        // Debug: vérifier les matières
-        \Log::info('Matières disponibles pour enseignant ID: ' . $enseignant->id . ' dans la classe ' . $classe->nom, [
-            'matieres_count' => $matieres->count(),
-            'matieres' => $matieres->pluck('nom', 'id')->toArray()
-        ]);
-        
-        // Si l'enseignant n'a aucune matière assignée dans cette classe
         if ($matieres->isEmpty()) {
             return redirect()->route('teacher.classes')
                 ->with('error', 'Vous n\'avez aucune matière assignée dans cette classe selon votre emploi du temps.');
@@ -348,6 +341,11 @@ class TeacherController extends Controller
         }
 
         $classe = Classe::findOrFail($request->classe_id);
+
+        if (!$this->enseignantAAccesClasse($enseignant, $classe)) {
+            abort(403, 'Vous n\'avez pas accès à cette classe.');
+        }
+
         $isPrimaire = $classe->isPrimaire();
         $noteMax = $isPrimaire ? 10 : 20;
         $niveauTexte = $isPrimaire ? 'primaire/préscolaire' : 'collège/lycée';
@@ -455,10 +453,12 @@ class TeacherController extends Controller
         $eleve = Eleve::with(['utilisateur', 'classe', 'notes.matiere', 'absences'])
             ->findOrFail($eleveId);
 
-        // Vérifier que l'enseignant a accès à cet élève
-        $hasAccess = Classe::whereHas('emploisTemps', function($query) use ($enseignant) {
-            $query->where('enseignant_id', $enseignant->id);
-        })->whereHas('eleves', function($query) use ($eleveId) {
+        // Vérifier que l'enseignant a accès à cet élève (EDT année active)
+        $hasAccess = Classe::whereHas('emploisTemps', function ($query) use ($enseignant) {
+            $query->where('enseignant_id', $enseignant->id)
+                ->actif()
+                ->pourAnneeActive();
+        })->whereHas('eleves', function ($query) use ($eleveId) {
             $query->where('id', $eleveId);
         })->exists();
 

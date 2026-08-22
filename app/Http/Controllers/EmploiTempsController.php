@@ -72,19 +72,7 @@ class EmploiTempsController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
         
-        // Vérifier que la classe a des élèves ou un EDT pour l'année active
-        $hasElevesActiveYear = $classe->eleves()
-            ->where('annee_scolaire_id', $anneeScolaireActive->id)
-            ->exists();
-        $hasEdtActiveYear = EmploiTemps::where('classe_id', $classe->id)
-            ->actif()
-            ->pourAnneeScolaire($anneeScolaireActive->id)
-            ->exists();
-
-        if (!$hasElevesActiveYear && !$hasEdtActiveYear) {
-            return redirect()->back()->with('error', 'Cette classe n\'a pas d\'élèves ni d\'emploi du temps pour l\'année scolaire active.');
-        }
-
+        // Toujours afficher la grille de la classe (même vide) pour pouvoir créer l'EDT
         $emploisTemps = EmploiTemps::where('classe_id', $classe->id)
             ->actif()
             ->pourAnneeScolaire($anneeScolaireActive->id)

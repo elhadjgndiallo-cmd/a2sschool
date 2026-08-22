@@ -300,9 +300,9 @@ class ComptabiliteEntreesStatsService
 
     public function mapEntryToJournalLine(object $entry): array
     {
-        $libelle = $entry->description;
+        $libelle = trim($entry->description);
         if (!empty($entry->detail)) {
-            $libelle .= ' — ' . $entry->detail;
+            $libelle .= ' ' . trim($entry->detail);
         }
 
         $createdAt = $entry->data->created_at ?? $entry->date;
@@ -382,7 +382,7 @@ class ComptabiliteEntreesStatsService
                 'eleve.classe:id,nom',
                 'eleve:id,utilisateur_id,classe_id,numero_etudiant',
                 'generePar:id,nom,prenom',
-                'lignes:id,facture_id,libelle',
+                'lignes:id,facture_id,libelle,type_frais',
             ]);
 
         if ($request->filled('montant_min')) {
@@ -455,12 +455,15 @@ class ComptabiliteEntreesStatsService
             return null;
         }
 
+        $description = $entree->description ?: $entree->libelle;
+        $detail = $entree->libelle && $entree->description ? $entree->libelle : null;
+
         return (object) [
             'id' => 'entree_' . $entree->id,
             'type' => 'entree',
             'date' => $entree->date_entree,
-            'description' => $entree->description ?: $entree->libelle,
-            'detail' => $entree->libelle && $entree->description ? $entree->libelle : null,
+            'description' => $this->nettoyerLibelleEntreeAffichage((string) $description),
+            'detail' => $detail ? $this->nettoyerLibelleEntreeAffichage((string) $detail) : null,
             'montant' => (float) $entree->montant,
             'source' => $entree->source,
             'enregistre_par' => $entree->enregistrePar,
@@ -479,22 +482,131 @@ class ComptabiliteEntreesStatsService
             return null;
         }
 
-        $libellesMois = $facture->lignes->pluck('libelle')->implode(', ');
+        $resumeLignes = $this->resumeLignesFactureCourt($facture);
+        $detail = 'Facture ' . $facture->numero_facture
+            . ($resumeLignes !== '' ? ' ' . $resumeLignes : '');
 
         return (object) [
             'id' => 'facture_' . $facture->id,
             'type' => 'facture',
             'date' => $this->dateComptableFacture($facture),
             'description' => 'Paiement frais scolarité - ' . $this->factureEleveResume($facture),
-            'detail' => 'Facture ' . $facture->numero_facture . ' — '
-                . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
-                . ($libellesMois ? ' — ' . $libellesMois : ''),
+            'detail' => $detail,
             'montant' => (float) $facture->total,
             'source' => $source,
             'enregistre_par' => $facture->generePar,
             'data' => $facture,
             'reference' => $facture->numero_facture,
         ];
+    }
+
+    /**
+     * Résumé court des lignes : types uniques (réinscription…) + mois (janvier, février…).
+     */
+    public function resumeLignesFactureCourt(Facture $facture): string
+    {
+        $types = [];
+        $mois = [];
+
+        foreach ($facture->lignes as $ligne) {
+            $typeFrais = (string) ($ligne->type_frais ?? '');
+
+            if (in_array($typeFrais, ['inscription', 'reinscription', 'uniforme', 'livres', 'autre', 'autres'], true)) {
+                $label = match ($typeFrais) {
+                    'reinscription' => 'réinscription',
+                    'inscription' => 'inscription',
+                    'uniforme' => 'uniforme',
+                    'livres' => 'livres',
+                    default => 'autres',
+                };
+                if (!in_array($label, $types, true)) {
+                    $types[] = $label;
+                }
+                continue;
+            }
+
+            $moisExtrait = $this->extraireNomMois((string) ($ligne->libelle ?? ''));
+            if ($moisExtrait && !in_array($moisExtrait, $mois, true)) {
+                $mois[] = $moisExtrait;
+            }
+        }
+
+        $mois = $this->ordonnerMoisAnneeScolaire($mois);
+
+        return implode(', ', array_merge($types, $mois));
+    }
+
+    private function extraireNomMois(string $libelle): ?string
+    {
+        if (!preg_match(
+            '/(Janvier|Février|Fevrier|Mars|Avril|Mai|Juin|Juillet|Août|Aout|Septembre|Octobre|Novembre|Décembre|Decembre)/iu',
+            $libelle,
+            $matches
+        )) {
+            return null;
+        }
+
+        return mb_strtolower($this->normaliserNomMois($matches[1]));
+    }
+
+    private function normaliserNomMois(string $mois): string
+    {
+        $map = [
+            'fevrier' => 'février',
+            'aout' => 'août',
+            'decembre' => 'décembre',
+        ];
+
+        $key = mb_strtolower($mois);
+
+        return $map[$key] ?? $key;
+    }
+
+    /**
+     * @param  array<int, string>  $mois
+     * @return array<int, string>
+     */
+    private function ordonnerMoisAnneeScolaire(array $mois): array
+    {
+        $ordre = [
+            'octobre' => 1,
+            'novembre' => 2,
+            'décembre' => 3,
+            'janvier' => 4,
+            'février' => 5,
+            'mars' => 6,
+            'avril' => 7,
+            'mai' => 8,
+            'juin' => 9,
+            'juillet' => 10,
+            'août' => 11,
+            'septembre' => 12,
+        ];
+
+        usort($mois, function (string $a, string $b) use ($ordre) {
+            return ($ordre[$a] ?? 99) <=> ($ordre[$b] ?? 99);
+        });
+
+        return $mois;
+    }
+
+    /**
+     * Nettoie les anciens libellés trop longs (Scolarité — Mois, montants, tirets longs).
+     */
+    public function nettoyerLibelleEntreeAffichage(string $texte): string
+    {
+        $texte = str_replace(['—', '–'], ' ', $texte);
+        $texte = preg_replace('/\s*\d[\d\s]*\s*GNF/iu', '', $texte) ?? $texte;
+        $texte = preg_replace(
+            '/(?:Frais\s+de\s+)?[Ss]colarit[ée]\s*[-:]?\s*/u',
+            '',
+            $texte
+        ) ?? $texte;
+        $texte = preg_replace('/\s{2,}/', ' ', $texte) ?? $texte;
+        $texte = preg_replace('/\s+,/', ',', $texte) ?? $texte;
+        $texte = preg_replace('/,\s*,+/', ',', $texte) ?? $texte;
+
+        return trim($texte, " \t\n\r\0\x0B,");
     }
 
     /**

@@ -84,15 +84,7 @@
                         <div class="col-md-6 text-end" style="padding-left: 5px; padding-right: 0;">
                             <h4 style="font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1.2;">Année Scolaire {{ $anneeScolaireActive ? $anneeScolaireActive->nom : (date('Y') . '-' . (date('Y')+1)) }}</h4>
                             <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.95; line-height: 1.2;">
-                                @if($periode == 'trimestre1')
-                                    Trimestre 1
-                                @elseif($periode == 'trimestre2')
-                                    Trimestre 2
-                                @elseif($periode == 'trimestre3')
-                                    Trimestre 3
-                                @else
-                                    {{ ucfirst($periode) }}
-                                @endif
+                                {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                             </div>
                         </div>
                     </div>
@@ -263,7 +255,7 @@
                         <p><strong>Classe :</strong> {{ $eleve->classe->nom }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Période :</strong> {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</p>
+                        <p><strong>Période :</strong> {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}</p>
                         <p><strong>Année scolaire :</strong> {{ date('Y') }}-{{ date('Y') + 1 }}</p>
                         <p><strong>Rang :</strong> {{ $rang }}ème sur {{ $eleve->classe->eleves->count() }} élèves</p>
                     </div>

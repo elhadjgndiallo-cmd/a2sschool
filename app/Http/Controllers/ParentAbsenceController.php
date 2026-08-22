@@ -21,7 +21,7 @@ class ParentAbsenceController extends Controller
             abort(403, 'Profil parent non trouvé');
         }
         
-        $enfants = $parent->eleves()->with(['classe'])->get();
+        $enfants = $parent->elevesAnneeActive()->with(['classe'])->get();
         
         if ($enfants->isEmpty()) {
             return view('parent.absences.index', compact('enfants'))
@@ -70,7 +70,7 @@ class ParentAbsenceController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->elevesAnneeActive()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
@@ -109,7 +109,7 @@ class ParentAbsenceController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('eleves.id', $absence->eleve_id)->exists()) {
+        if (!$parent || !$parent->elevesAnneeActive()->where('eleves.id', $absence->eleve_id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
@@ -143,7 +143,7 @@ class ParentAbsenceController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->elevesAnneeActive()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
@@ -183,7 +183,7 @@ class ParentAbsenceController extends Controller
         $parent = $user->parent;
         
         // Vérifier que le parent a accès à cet élève
-        if (!$parent || !$parent->eleves()->where('eleves.id', $eleve->id)->exists()) {
+        if (!$parent || !$parent->elevesAnneeActive()->where('eleves.id', $eleve->id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 

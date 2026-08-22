@@ -203,13 +203,14 @@ class DashboardController extends Controller
         }
 
         $emploisDuJour = $enseignant->emploisTemps()
+            ->pourAnneeActive()
             ->where('jour_semaine', strtolower(now()->locale('fr')->dayName))
             ->actif()
             ->orderBy('heure_debut')
             ->get();
 
         // Récupérer les événements pour l'enseignant
-        $classeIds = $enseignant->emploisTemps()->pluck('classe_id')->unique()->filter();
+        $classeIds = $enseignant->emploisTemps()->pourAnneeActive()->pluck('classe_id')->unique()->filter();
         $evenements = Evenement::where(function($q) use ($classeIds) {
             // Événements publics
             $q->where('public', true);
@@ -236,12 +237,13 @@ class DashboardController extends Controller
         $eleve = $user->eleve;
         
         if (!$eleve) {
-            abort(403, 'Profil élève non trouvé');
+            abort(403, 'Profil élève non trouvé pour l\'année scolaire active.');
         }
 
         $emploisDuJour = [];
         if ($eleve->classe) {
             $emploisDuJour = $eleve->classe->emploisTemps()
+                ->pourAnneeActive()
                 ->where('jour_semaine', strtolower(now()->locale('fr')->dayName))
                 ->actif()
                 ->orderBy('heure_debut')
@@ -284,7 +286,7 @@ class DashboardController extends Controller
             abort(403, 'Profil parent non trouvé');
         }
 
-        $enfants = $parent->eleves()->with(['classe', 'notes', 'absences'])->get();
+        $enfants = $parent->elevesAnneeActive()->with(['classe', 'notes', 'absences'])->get();
 
         // Statistiques pour les parents
         $stats = [

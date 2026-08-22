@@ -71,15 +71,7 @@
                     <div class="col-md-6 text-end" style="padding-left: 5px; padding-right: 0;">
                         <h4 style="font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1.2;">Année Scolaire {{ $anneeScolaireActive ? $anneeScolaireActive->nom : (date('Y') . '-' . (date('Y')+1)) }}</h4>
                         <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.95; line-height: 1.2;">
-                            @if($periode == 'trimestre1')
-                                Trimestre 1
-                            @elseif($periode == 'trimestre2')
-                                Trimestre 2
-                            @elseif($periode == 'trimestre3')
-                                Trimestre 3
-                            @else
-                                {{ ucfirst($periode) }}
-                            @endif
+                            {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                         </div>
                     </div>
                 </div>
@@ -175,7 +167,7 @@
                     <div class="col-md-6">
                         <div class="card" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 1px solid #dee2e6;">
                             <div class="card-body p-3">
-                                <h6 class="card-title" style="font-weight: 700; color: #495057; font-size: 0.9rem;">Résumé du {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</h6>
+                                <h6 class="card-title" style="font-weight: 700; color: #495057; font-size: 0.9rem;">Résumé du {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}</h6>
                                 <p class="mb-1" style="font-size: 0.85rem; margin-bottom: 2px;"><strong>Total Coefficients:</strong> {{ $totalCoeff }}</p>
                                 <p class="mb-1" style="font-size: 0.85rem; margin-bottom: 2px;"><strong>Total Points:</strong> {{ number_format($totalPoints, 2) }}</p>
                                 <p class="mb-0" style="font-size: 0.85rem;"><strong>Moyenne Générale:</strong> <span style="font-size: 1rem; font-weight: 700; color: #007bff;">{{ number_format($moyennesParPeriode[$periode], 2) }}/{{ $eleve->classe->note_max }}</span></p>

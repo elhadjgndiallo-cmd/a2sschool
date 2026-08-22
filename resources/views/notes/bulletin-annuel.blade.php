@@ -49,7 +49,7 @@
                             <th rowspan="2" class="align-middle">Matières</th>
                             @foreach($periodes as $periode)
                             <th colspan="2" class="text-center">
-                                {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}
+                                {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                             </th>
                             @endforeach
                             <th rowspan="2" class="align-middle text-center">Moyenne Annuelle</th>

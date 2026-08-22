@@ -122,19 +122,51 @@ class Utilisateur extends Authenticatable
     }
 
     /**
-     * Relation avec le profil élève
+     * Relation avec le profil élève (inscription de l'année scolaire active).
      */
     public function eleve()
     {
-        return $this->hasOne(Eleve::class);
+        $anneeId = \App\Models\AnneeScolaire::anneeActive()?->id;
+
+        $relation = $this->hasOne(Eleve::class);
+
+        if ($anneeId) {
+            return $relation->where('annee_scolaire_id', $anneeId);
+        }
+
+        return $relation->latestOfMany();
     }
 
     /**
-     * Relation avec le profil enseignant
+     * Toutes les inscriptions élève (toutes années).
+     */
+    public function eleves()
+    {
+        return $this->hasMany(Eleve::class);
+    }
+
+    /**
+     * Relation avec le profil enseignant (année scolaire active).
      */
     public function enseignant()
     {
-        return $this->hasOne(Enseignant::class);
+        $anneeId = \App\Models\AnneeScolaire::anneeActive()?->id;
+
+        $relation = $this->hasOne(Enseignant::class);
+
+        if ($anneeId) {
+            return $relation->where('annee_scolaire_id', $anneeId);
+        }
+
+        return $relation->latestOfMany();
+    }
+
+    /**
+     * Tous les profils enseignant (toutes années).
+     */
+    public function enseignants()
+    {
+        return $this->hasMany(Enseignant::class);
     }
 
     /**

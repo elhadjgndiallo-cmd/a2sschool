@@ -239,6 +239,32 @@ class Classe extends Model
     }
 
     /**
+     * Codes de périodes disponibles (3 trimestres primaire, 2 semestres secondaire).
+     *
+     * @return array<int, string>
+     */
+    public function periodesDisponibles(): array
+    {
+        return \App\Helpers\PeriodeHelper::periodesDisponibles($this);
+    }
+
+    /**
+     * Libellé d'affichage d'une période (Trimestre / Semestre).
+     */
+    public function libellePeriode(string $periode): string
+    {
+        return \App\Helpers\PeriodeHelper::libelle($periode, $this);
+    }
+
+    /**
+     * Type de période : Trimestre ou Semestre.
+     */
+    public function libelleTypePeriode(): string
+    {
+        return \App\Helpers\PeriodeHelper::type($this);
+    }
+
+    /**
      * Mettre à jour l'effectif actuel de la classe
      */
     public function updateEffectifActuel()

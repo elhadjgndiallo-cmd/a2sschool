@@ -80,9 +80,9 @@
                     <div class="col-12 col-sm-6">
                         <label for="periode" class="form-label">Choisir la période</label>
                         <select id="periode" name="periode" class="form-select" onchange="this.form.submit()">
-                            <option value="trimestre1" {{ ($periode ?? 'trimestre1') == 'trimestre1' ? 'selected' : '' }}>Trimestre 1</option>
-                            <option value="trimestre2" {{ ($periode ?? 'trimestre1') == 'trimestre2' ? 'selected' : '' }}>Trimestre 2</option>
-                            <option value="trimestre3" {{ ($periode ?? 'trimestre1') == 'trimestre3' ? 'selected' : '' }}>Trimestre 3</option>
+                            @foreach(\App\Helpers\PeriodeHelper::options($classe ?? $eleve->classe ?? null) as $code => $label)
+                                <option value="{{ $code }}" {{ ($periode ?? 'trimestre1') == $code ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-12 col-sm-6">

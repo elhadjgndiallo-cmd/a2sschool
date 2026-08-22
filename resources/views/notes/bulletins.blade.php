@@ -27,9 +27,9 @@
                                 <div class="col-12 col-md-6">
                                     <label for="periode-global" class="form-label">Période</label>
                                     <select id="periode-global" class="form-select">
-                                        <option value="trimestre1">Trimestre 1</option>
-                                        <option value="trimestre2">Trimestre 2</option>
-                                        <option value="trimestre3">Trimestre 3</option>
+                                        @foreach(\App\Helpers\PeriodeHelper::options(null) as $code => $libelle)
+                                            <option value="{{ $code }}">{{ $libelle }}</option>
+                                        @endforeach
                                     </select>
                                     <small class="text-muted">Ce choix sera appliqué à tous les boutons "Générer les bulletins".</small>
                                 </div>
@@ -55,9 +55,9 @@
                                                     <div class="mb-2">
                                                         <label class="form-label small mb-1">Période</label>
                                                         <select class="form-select form-select-sm periode-select" style="max-width: 220px; margin: 0 auto;">
-                                                            <option value="trimestre1">Trimestre 1</option>
-                                                            <option value="trimestre2">Trimestre 2</option>
-                                                            <option value="trimestre3">Trimestre 3</option>
+                                                            @foreach(\App\Helpers\PeriodeHelper::options($classe) as $code => $libelle)
+                                                                <option value="{{ $code }}">{{ $libelle }}</option>
+                                                            @endforeach
                                                         </select>
                                                     </div>
                                                     <a href="{{ route('notes.bulletins.classe', $classe->id) }}" 

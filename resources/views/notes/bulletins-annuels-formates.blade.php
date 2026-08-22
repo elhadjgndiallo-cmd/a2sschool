@@ -52,7 +52,7 @@
                         <p class="card-text">
                             <small class="text-info">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Format : {{ $classe->isPrimaire() ? '3 Trimestres' : '2 Trimestres' }}
+                                Format : {{ ($classe->isPrimaire() ? 3 : 2) }} {{ $classe->libelleTypePeriode() }}s
                             </small>
                         </p>
                         <div class="mb-2">

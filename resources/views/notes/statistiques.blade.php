@@ -63,9 +63,9 @@
                                 </select>
                             </div>
                             <div class="col-md-5">
-                                <label for="periode_id" class="form-label">Trimestre</label>
+                                <label for="periode_id" class="form-label">Période</label>
                                 <select name="periode_id" id="periode_id" class="form-select">
-                                    <option value="">-- Sélectionner un trimestre --</option>
+                                    <option value="">-- Sélectionner une période --</option>
                                     @foreach($periodes as $p)
                                     <option value="{{ $p->id }}" {{ $periodeId == $p->id ? 'selected' : '' }}>
                                         {{ $p->nom }} ({{ $p->date_debut->format('d/m/Y') }} - {{ $p->date_fin->format('d/m/Y') }})
@@ -151,7 +151,7 @@
                     @elseif($periodeId)
                     <div class="alert alert-info mt-3">
                         <i class="fas fa-info-circle me-2"></i>
-                        Aucune donnée disponible pour cette classe et ce trimestre.
+                        Aucune donnée disponible pour cette classe et cette période.
                     </div>
                     @endif
                 </div>

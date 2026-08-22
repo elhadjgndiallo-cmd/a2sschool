@@ -121,9 +121,9 @@
                     <div class="col-md-3 mb-3">
                         <label for="periode" class="form-label">Période <span class="text-danger">*</span></label>
                         <select class="form-select @error('periode') is-invalid @enderror" id="periode" name="periode" required>
-                            <option value="trimestre1" {{ old('periode') == 'trimestre1' ? 'selected' : '' }}>Trimestre 1</option>
-                            <option value="trimestre2" {{ old('periode') == 'trimestre2' ? 'selected' : '' }}>Trimestre 2</option>
-                            <option value="trimestre3" {{ old('periode') == 'trimestre3' ? 'selected' : '' }}>Trimestre 3</option>
+                            @foreach(\App\Helpers\PeriodeHelper::options($eleve->classe ?? null) as $code => $libelle)
+                                <option value="{{ $code }}" {{ old('periode') == $code ? 'selected' : '' }}>{{ $libelle }}</option>
+                            @endforeach
                         </select>
                         @error('periode')
                             <div class="invalid-feedback">{{ $message }}</div>

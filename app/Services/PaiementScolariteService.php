@@ -196,29 +196,43 @@ class PaiementScolariteService
         $partiesLibelle = [];
         foreach ($lignesParType as $typeFrais => $lignesType) {
             if (in_array($typeFrais, ['inscription', 'reinscription', 'uniforme', 'livres', 'autre', 'autres'])) {
-                // Pour les frais uniques, juste mentionner le type
-                $partiesLibelle[] = ucfirst($typeFrais);
+                $partiesLibelle[] = match ($typeFrais) {
+                    'reinscription' => 'réinscription',
+                    'inscription' => 'inscription',
+                    'uniforme' => 'uniforme',
+                    'livres' => 'livres',
+                    default => 'autres',
+                };
             } else {
-                // Pour scolarité/cantine/transport, extraire juste les noms des mois (sans année)
-                $mois = $lignesType->map(function($ligne) {
-                    // Extraire uniquement le nom du mois (sans l'année)
-                    if (preg_match('/(Janvier|Février|Mars|Avril|Mai|Juin|Juillet|Août|Septembre|Octobre|Novembre|Décembre)/i', $ligne->libelle, $matches)) {
-                        return $matches[1];
+                $mois = $lignesType->map(function ($ligne) {
+                    if (preg_match('/(Janvier|Février|Fevrier|Mars|Avril|Mai|Juin|Juillet|Août|Aout|Septembre|Octobre|Novembre|Décembre|Decembre)/iu', $ligne->libelle, $matches)) {
+                        $nom = mb_strtolower($matches[1]);
+                        return match ($nom) {
+                            'fevrier' => 'février',
+                            'aout' => 'août',
+                            'decembre' => 'décembre',
+                            default => $nom,
+                        };
                     }
                     return null;
-                })->filter()->unique()->implode(', ');
-                
+                })->filter()->unique()->values()->all();
+
+                $ordre = [
+                    'octobre' => 1, 'novembre' => 2, 'décembre' => 3, 'janvier' => 4,
+                    'février' => 5, 'mars' => 6, 'avril' => 7, 'mai' => 8, 'juin' => 9,
+                    'juillet' => 10, 'août' => 11, 'septembre' => 12,
+                ];
+                usort($mois, fn ($a, $b) => ($ordre[$a] ?? 99) <=> ($ordre[$b] ?? 99));
+
                 if ($mois) {
-                    // Juste "Juin, Mai, Avril" au lieu de "Scolarités : Juin, Mai, Avril"
-                    $partiesLibelle[] = $mois;
+                    $partiesLibelle[] = implode(', ', $mois);
                 } else {
-                    // Fallback si extraction échoue
-                    $partiesLibelle[] = ucfirst($typeFrais) . ' (' . $lignesType->count() . ' mois)';
+                    $partiesLibelle[] = $lignesType->count() . ' mois';
                 }
             }
         }
         
-        $libellesCourts = implode(' + ', $partiesLibelle);
+        $libellesCourts = implode(', ', $partiesLibelle);
 
         $eleveNom = trim(($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? ''));
         $matricule = $eleve->numero_etudiant ?? 'N/A';
@@ -227,9 +241,8 @@ class PaiementScolariteService
         $description = 'Paiement frais scolarité - ' . $eleveNom
             . ' (Mat: ' . $matricule . ', Classe: ' . $nomClasse . ')';
 
-        $libelle = 'Facture ' . $facture->numero_facture . ' — '
-            . number_format((float) $facture->total, 0, ',', ' ') . ' GNF'
-            . ($libellesCourts ? ' — ' . $libellesCourts : '');
+        $libelle = 'Facture ' . $facture->numero_facture
+            . ($libellesCourts ? ' ' . mb_strtolower($libellesCourts) : '');
 
         return [
             'libelle' => $libelle,

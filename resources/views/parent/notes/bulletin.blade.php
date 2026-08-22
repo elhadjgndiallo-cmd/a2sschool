@@ -49,7 +49,7 @@
                     </h1>
                     <p class="text-muted mb-0">
                         {{ $eleve->classe->nom ?? 'Classe non assignée' }} - 
-                        {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}
+                        {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                     </p>
                 </div>
                 <div class="btn-toolbar mb-2 mb-md-0">
@@ -78,7 +78,7 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="text-muted mb-1">Période</h6>
-                                <p class="mb-3">{{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</p>
+                                <p class="mb-3">{{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}</p>
                                 
                                 <h6 class="text-muted mb-1">Année scolaire</h6>
                                 <p class="mb-3">{{ $eleve->anneeScolaire->nom ?? 'Non définie' }}</p>

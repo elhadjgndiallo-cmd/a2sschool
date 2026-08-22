@@ -145,7 +145,7 @@
                 <i class="fas fa-chart-bar me-2"></i>
                 CLASSEMENT DES ÉLÈVES
             </h3>
-            <h4 class="mb-0">{{ $classe->nom }} - {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</h4>
+            <h4 class="mb-0">{{ $classe->nom }} - {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? null) }}</h4>
         </div>
 
         <!-- Statistiques générales -->

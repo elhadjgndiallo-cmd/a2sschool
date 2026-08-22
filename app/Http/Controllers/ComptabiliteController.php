@@ -46,29 +46,90 @@ class ComptabiliteController extends Controller
             );
         
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
-
-        $toutesLesEntrees = $entreesStats->buildListEntries(new Request(), $anneeScolaireActive)
-            ->take(10);
-
         $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
-        $toutesLesSorties = $sortiesStatsService->buildListEntries(new Request(), $anneeScolaireActive)
-            ->take(10);
+
+        $allEntrees = $entreesStats->buildListEntries(new Request(), $anneeScolaireActive);
+        $allSorties = $sortiesStatsService->buildListEntries(new Request(), $anneeScolaireActive);
+
+        $toutesLesEntrees = $allEntrees->take(10);
+        $toutesLesSorties = $allSorties->take(10);
         
         // Calculer les totaux RÉELS (pas seulement les 10 derniers) pour les statistiques
         $totalRevenus = $stats['revenus_total'];
         $totalSorties = $stats['depenses_total'];
         $beneficeTotal = $stats['benefice_total'];
         
-        // Générer les données pour le graphique d'évolution (6 derniers mois)
-        $evolutionData = $this->getEvolutionData($anneeScolaireActive);
+        $diagrammesData = $this->getDiagrammesData($allEntrees, $allSorties, $totalRevenus, $totalSorties);
         
-        return view('comptabilite.index', compact('stats', 'toutesLesEntrees', 'toutesLesSorties', 'anneeScolaireActive', 'totalRevenus', 'totalSorties', 'beneficeTotal', 'evolutionData'));
+        return view('comptabilite.index', compact(
+            'stats',
+            'toutesLesEntrees',
+            'toutesLesSorties',
+            'anneeScolaireActive',
+            'totalRevenus',
+            'totalSorties',
+            'beneficeTotal',
+            'diagrammesData'
+        ));
         
         } catch (\Exception $e) {
             \Log::error('Erreur dans comptabilite.index: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
             return redirect()->back()->with('error', 'Erreur lors du chargement de la comptabilité: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Données des 3 diagrammes du tableau de bord (secteur + 2 histogrammes).
+     *
+     * @param  \Illuminate\Support\Collection  $allEntrees
+     * @param  \Illuminate\Support\Collection  $allSorties
+     * @return array{comparaison: array, entreesParSource: array, sortiesParSource: array}
+     */
+    private function getDiagrammesData($allEntrees, $allSorties, float $totalRevenus, float $totalSorties): array
+    {
+        $entreesParSource = $allEntrees
+            ->groupBy(fn ($e) => $e->source ?: 'Non spécifié')
+            ->map(fn ($group) => round((float) $group->sum('montant'), 0))
+            ->sortDesc();
+
+        $sortiesParSource = $allSorties
+            ->groupBy(fn ($s) => $s->type_depense ?: 'autre')
+            ->map(fn ($group) => round((float) $group->sum('montant'), 0))
+            ->sortDesc();
+
+        return [
+            'comparaison' => [
+                'labels' => ['Entrées', 'Sorties'],
+                'data' => [round($totalRevenus, 0), round($totalSorties, 0)],
+            ],
+            'entreesParSource' => [
+                'labels' => $entreesParSource->keys()->values()->all(),
+                'data' => $entreesParSource->values()->all(),
+            ],
+            'sortiesParSource' => [
+                'labels' => $sortiesParSource->keys()->map(fn ($type) => $this->libelleTypeDepense($type))->values()->all(),
+                'data' => $sortiesParSource->values()->all(),
+            ],
+        ];
+    }
+
+    private function libelleTypeDepense(string $type): string
+    {
+        $libelles = [
+            'salaire_enseignant' => 'Salaire enseignant',
+            'salaire_personnel' => 'Salaire personnel',
+            'achat_materiel' => 'Achat matériel',
+            'maintenance' => 'Maintenance',
+            'electricite' => 'Électricité',
+            'eau' => 'Eau',
+            'internet' => 'Internet',
+            'transport' => 'Transport',
+            'fournitures' => 'Fournitures',
+            'autre' => 'Autre',
+        ];
+
+        return $libelles[$type] ?? ucfirst(str_replace('_', ' ', $type));
     }
     
     /**

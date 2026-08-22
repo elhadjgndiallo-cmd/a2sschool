@@ -94,14 +94,14 @@
                                         <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; font-size: 0.7rem; padding: 4px 2px; width: {{ $nombreTrimestres == 3 ? '24%' : '28%' }}; min-width: 110px;">Matière</th>
                                         <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 6%; min-width: 25px;">Coef.</th>
                                         @if($isPrimaire)
-                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">Trimestre 2</th>
-                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">Trimestre 3</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">{{ $classe->libellePeriode('trimestre1') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">{{ $classe->libellePeriode('trimestre2') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">{{ $classe->libellePeriode('trimestre3') }}</th>
                                             <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 15%; min-width: 60px;">Moy. Annuelle</th>
                                             <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 16%; min-width: 60px;">Mention</th>
                                         @else
-                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">Trimestre 2</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">{{ $classe->libellePeriode('trimestre1') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">{{ $classe->libellePeriode('trimestre2') }}</th>
                                             <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">Moy. Annuelle</th>
                                             <th style="font-weight: 700; border: 1px solid {{ $couleurs['bulletin']['bulletin_table_border'] ?? '#2c3e50' }}; text-align: center; font-size: 0.75rem; padding: 4px 2px; width: 20%; min-width: 70px;">Mention</th>
                                         @endif
@@ -271,20 +271,20 @@
                         <!-- Tableau des rangs par trimestre -->
                         <div class="mt-1">
                             <h5 style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 6px 10px; border-radius: 5px; margin-bottom: 6px; font-weight: 700; text-align: center; font-size: 1rem;">
-                                RANGS PAR TRIMESTRE
+                                RANGS PAR {{ strtoupper($classe->libelleTypePeriode()) }}
                             </h5>
                             <table class="table table-bordered" style="margin-bottom: 4px; font-size: 1rem;">
                                 <thead style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white;">
                                     <tr>
                                         @if($isPrimaire)
-                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">Trimestre 2</th>
-                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">Trimestre 3</th>
+                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">{{ $classe->libellePeriode('trimestre1') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">{{ $classe->libellePeriode('trimestre2') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">{{ $classe->libellePeriode('trimestre3') }}</th>
                                             <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">Rang Annuel</th>
                                             <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 20%;">Mention Annuelle</th>
                                         @else
-                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">Trimestre 1</th>
-                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">Trimestre 2</th>
+                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">{{ $classe->libellePeriode('trimestre1') }}</th>
+                                            <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">{{ $classe->libellePeriode('trimestre2') }}</th>
                                             <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">Rang Annuel</th>
                                             <th style="font-weight: 700; border: 1px solid #495057; text-align: center; font-size: 1rem; padding: 6px 4px; width: 25%;">Mention Annuelle</th>
                                         @endif

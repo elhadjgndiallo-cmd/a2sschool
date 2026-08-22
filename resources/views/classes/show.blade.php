@@ -128,11 +128,8 @@
         
         <!-- Matières et enseignants (issus de l'emploi du temps) -->
         <div class="card">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white">
                 <h5 class="mb-0">Matières et enseignants</h5>
-                <a href="{{ route('emplois-temps.show', $classe->id) }}" class="btn btn-sm btn-outline-info">
-                    <i class="fas fa-calendar-alt me-1"></i> Voir l'emploi du temps
-                </a>
             </div>
             <div class="card-body p-0">
                 @if(($matieresEnseignants ?? collect())->count() > 0)
@@ -183,9 +180,6 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('classes.edit', $classe->id) }}" class="btn btn-warning">
                 <i class="fas fa-edit me-1"></i> Modifier
-            </a>
-            <a href="{{ route('emplois-temps.show', $classe->id) }}" class="btn btn-info">
-                <i class="fas fa-calendar-alt me-1"></i> Emploi du temps
             </a>
             @if($classe->actif)
                 <form method="POST" action="{{ route('classes.deactivate', $classe) }}" class="d-inline"

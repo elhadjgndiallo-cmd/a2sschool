@@ -225,15 +225,11 @@
                                             name="periode" 
                                             required>
                                         <option value="">Sélectionner...</option>
-                                        <option value="trimestre1" {{ old('periode', $note->periode) == 'trimestre1' ? 'selected' : '' }}>
-                                            Trimestre 1
-                                        </option>
-                                        <option value="trimestre2" {{ old('periode', $note->periode) == 'trimestre2' ? 'selected' : '' }}>
-                                            Trimestre 2
-                                        </option>
-                                        <option value="trimestre3" {{ old('periode', $note->periode) == 'trimestre3' ? 'selected' : '' }}>
-                                            Trimestre 3
-                                        </option>
+                                        @foreach(\App\Helpers\PeriodeHelper::options($note->eleve->classe ?? null) as $code => $libelle)
+                                            <option value="{{ $code }}" {{ old('periode', $note->periode) == $code ? 'selected' : '' }}>
+                                                {{ $libelle }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                     @error('periode')
                                         <div class="invalid-feedback">{{ $error }}</div>

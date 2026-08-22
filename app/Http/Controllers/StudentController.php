@@ -47,17 +47,12 @@ class StudentController extends Controller
 
             // Récupérer l'emploi du temps de la classe de l'élève
             $emploisTemps = $eleve->classe->emploisTemps()
+                ->pourAnneeScolaire($anneeScolaireActive->id)
                 ->with(['matiere', 'enseignant.utilisateur'])
                 ->actif()
                 ->orderBy('jour_semaine')
                 ->orderBy('heure_debut')
                 ->get();
-
-            \Log::info('Emploi du temps chargé', [
-                'eleve_id' => $eleve->id,
-                'classe_id' => $eleve->classe->id,
-                'emplois_count' => $emploisTemps->count()
-            ]);
 
             return view('student.emploi-temps', compact('eleve', 'emploisTemps', 'anneeScolaireActive'));
             
@@ -82,7 +77,12 @@ class StudentController extends Controller
         $eleve = $user->eleve;
         
         if (!$eleve) {
-            abort(403, 'Profil élève non trouvé');
+            abort(403, 'Profil élève non trouvé pour l\'année scolaire active.');
+        }
+
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        if ($anneeScolaireActive && $eleve->annee_scolaire_id != $anneeScolaireActive->id) {
+            abort(403, 'Vous n\'appartenez pas à l\'année scolaire active.');
         }
 
         // Récupérer toutes les notes de l'élève
@@ -111,7 +111,7 @@ class StudentController extends Controller
         $eleve = $user->eleve;
         
         if (!$eleve) {
-            abort(403, 'Profil élève non trouvé');
+            abort(403, 'Profil élève non trouvé pour l\'année scolaire active.');
         }
 
         // Récupérer toutes les absences de l'élève
@@ -143,7 +143,7 @@ class StudentController extends Controller
         $eleve = $user->eleve;
         
         if (!$eleve) {
-            abort(403, 'Profil élève non trouvé');
+            abort(403, 'Profil élève non trouvé pour l\'année scolaire active.');
         }
 
         // Charger la relation utilisateur pour accéder à la date de naissance

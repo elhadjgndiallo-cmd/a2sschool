@@ -159,9 +159,9 @@
                         <label for="periode_export" class="form-label">Période (optionnel)</label>
                         <select class="form-select" id="periode_export">
                             <option value="">Toutes les périodes</option>
-                            <option value="trimestre1">Trimestre 1</option>
-                            <option value="trimestre2">Trimestre 2</option>
-                            <option value="trimestre3">Trimestre 3</option>
+                            @foreach(\App\Helpers\PeriodeHelper::options(null) as $code => $libelle)
+                                <option value="{{ $code }}">{{ $libelle }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </form>

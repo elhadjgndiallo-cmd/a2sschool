@@ -175,13 +175,15 @@ class EnseignantController extends Controller
             $enseignant = Enseignant::with([
                 'utilisateur', 
                 'matieres' => function($query) {
-                    $query->where('actif', true);
+                    $query->where('actif', true)->pourAnneeActive();
                 },
                 'notes' => function($query) {
                     $query->with(['eleve.utilisateur', 'matiere']);
                 },
                 'emploisTemps' => function($query) {
-                    $query->with(['matiere', 'classe']);
+                    $query->pourAnneeActive()
+                        ->actif()
+                        ->with(['matiere', 'classe']);
                 }
             ])->findOrFail($id);
             

@@ -22,11 +22,11 @@ class ParentPaiementController extends Controller
         }
         
         // Récupérer les enfants du parent connecté
-        $enfants = $parent->eleves()->with(['classe', 'fraisScolarite.tranchesPaiement', 'fraisScolarite.paiements'])->get();
+        $enfants = $parent->elevesAnneeActive()->with(['classe', 'fraisScolarite.tranchesPaiement', 'fraisScolarite.paiements'])->get();
         
         if ($enfants->isEmpty()) {
             return view('parent.paiements.index', compact('enfants'))
-                ->with('message', 'Aucun enfant trouvé pour ce compte parent.');
+                ->with('message', 'Aucun enfant trouvé pour l\'année scolaire active.');
         }
 
         // Récupérer tous les frais de scolarité des enfants
@@ -72,7 +72,7 @@ class ParentPaiementController extends Controller
         $user = auth()->user();
         $parent = $user->parent;
         
-        if (!$parent || !$parent->eleves()->where('eleves.id', $frais->eleve_id)->exists()) {
+        if (!$parent || !$parent->elevesAnneeActive()->where('eleves.id', $frais->eleve_id)->exists()) {
             abort(403, 'Accès non autorisé.');
         }
 
@@ -93,7 +93,7 @@ class ParentPaiementController extends Controller
             abort(403, 'Profil parent non trouvé');
         }
         
-        $enfants = $parent->eleves()->pluck('eleves.id');
+        $enfants = $parent->elevesAnneeActive()->pluck('eleves.id');
 
         $query = Paiement::whereHas('fraisScolarite', function($q) use ($enfants) {
             $q->whereIn('eleve_id', $enfants);
@@ -112,7 +112,7 @@ class ParentPaiementController extends Controller
 
         $paiements = $query->orderBy('date_paiement', 'desc')->paginate(20);
 
-        $enfantsList = $parent->eleves()->with('utilisateur')->get()->sortBy('utilisateur.nom');
+        $enfantsList = $parent->elevesAnneeActive()->with('utilisateur')->get()->sortBy('utilisateur.nom');
 
         return view('parent.paiements.historique', compact('paiements', 'enfantsList'));
     }
@@ -129,7 +129,7 @@ class ParentPaiementController extends Controller
             abort(403, 'Profil parent non trouvé');
         }
         
-        $enfants = $parent->eleves()->pluck('eleves.id');
+        $enfants = $parent->elevesAnneeActive()->pluck('eleves.id');
 
         // Récupérer les tranches en attente
         $echeances = TranchePaiement::whereHas('fraisScolarite', function($q) use ($enfants) {
@@ -161,17 +161,16 @@ class ParentPaiementController extends Controller
             abort(403, 'Profil parent non trouvé');
         }
         
-        $enfants = $parent->eleves()->with('classe')->get();
+        $enfants = $parent->elevesAnneeActive()->with('classe')->get();
 
-        $anneeScolaire = $request->get('annee_scolaire', now()->year . '-' . (now()->year + 1));
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
+        $anneeScolaire = $request->get('annee_scolaire', $anneeScolaireActive?->nom);
 
         $recapitulatif = [];
 
         foreach ($enfants as $enfant) {
+            // Enfants déjà filtrés année active ; frais liés à ces inscriptions
             $frais = FraisScolarite::where('eleve_id', $enfant->id)
-                ->whereHas('eleve.anneeScolaire', function($q) use ($anneeScolaire) {
-                    $q->where('libelle', $anneeScolaire);
-                })
                 ->with(['paiements', 'tranchesPaiement'])
                 ->get();
 

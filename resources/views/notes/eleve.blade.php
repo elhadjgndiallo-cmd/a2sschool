@@ -63,15 +63,7 @@
                         <div class="col-md-3">
                             <p class="mb-1"><strong>Classe:</strong> {{ $eleve->classe->nom }}</p>
                             <p class="mb-1"><strong>Période:</strong> 
-                                @if($periode == 'trimestre1')
-                                    Trimestre 1
-                                @elseif($periode == 'trimestre2')
-                                    Trimestre 2
-                                @elseif($periode == 'trimestre3')
-                                    Trimestre 3
-                                @else
-                                    {{ ucfirst($periode) }}
-                                @endif
+                                {{ \App\Helpers\PeriodeHelper::libelle($periode, $eleve->classe ?? null) }}
                             </p>
                         </div>
                         <div class="col-md-3">
@@ -100,9 +92,9 @@
                 <div class="col-md-4">
                     <label for="periode" class="form-label">Période</label>
                     <select class="form-select" id="periode" name="periode" onchange="this.form.submit()">
-                        <option value="trimestre1" {{ $periode == 'trimestre1' ? 'selected' : '' }}>Trimestre 1</option>
-                        <option value="trimestre2" {{ $periode == 'trimestre2' ? 'selected' : '' }}>Trimestre 2</option>
-                        <option value="trimestre3" {{ $periode == 'trimestre3' ? 'selected' : '' }}>Trimestre 3</option>
+                        @foreach(\App\Helpers\PeriodeHelper::options($eleve->classe ?? null) as $code => $libelle)
+                            <option value="{{ $code }}" {{ $periode == $code ? 'selected' : '' }}>{{ $libelle }}</option>
+                        @endforeach
                     </select>
                 </div>
             </form>

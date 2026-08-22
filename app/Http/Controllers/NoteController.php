@@ -49,7 +49,7 @@ class NoteController extends Controller
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                    $query->where('enseignant_id', $enseignant->id);
+                    $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     if ($anneeScolaireActive) {
@@ -109,9 +109,7 @@ class NoteController extends Controller
             $enseignant = $user->enseignant;
             
             // Vérifier que l'enseignant enseigne dans cette classe
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 abort(403, 'Vous n\'avez pas accès à cette classe.');
@@ -122,7 +120,7 @@ class NoteController extends Controller
                 ->whereHas('emploisTemps', function ($query) use ($enseignant, $classe) {
                     $query->where('enseignant_id', $enseignant->id)
                         ->where('classe_id', $classe->id)
-                        ->where('actif', true);
+                        ->actif()->pourAnneeActive();
                 })
                 ->orderBy('nom')
                 ->get();
@@ -206,9 +204,7 @@ class NoteController extends Controller
         
         // Vérifier que l'enseignant enseigne dans cette classe
         $enseignant = $user->enseignant;
-        $hasAccess = $classe->emploisTemps()
-            ->where('enseignant_id', $enseignant->id)
-            ->exists();
+        $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
             
         if (!$hasAccess) {
             abort(403, 'Vous n\'avez pas accès à cette classe.');
@@ -217,7 +213,7 @@ class NoteController extends Controller
         // Enseignant voit seulement ses matières assignées dans son emploi du temps pour cette classe
         $emploisTempsQuery = \App\Models\EmploiTemps::where('enseignant_id', $enseignant->id)
             ->where('classe_id', $classe->id)
-            ->where('actif', true);
+            ->where('actif', true)->pourAnneeActive();
             
         // Debug de la requête
         \Log::error('Requête emplois du temps: ' . $emploisTempsQuery->toSql());
@@ -1012,7 +1008,7 @@ class NoteController extends Controller
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                    $query->where('enseignant_id', $enseignant->id);
+                    $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);
@@ -1536,7 +1532,7 @@ class NoteController extends Controller
         $periodeId = $request->get('periode_id');
         
         if (!$classeId || !$periodeId) {
-            return redirect()->route('notes.statistiques')->with('error', 'Veuillez sélectionner une classe et un trimestre.');
+            return redirect()->route('notes.statistiques')->with('error', 'Veuillez sélectionner une classe et une période.');
         }
         
         $classe = Classe::findOrFail($classeId);
@@ -1878,9 +1874,7 @@ class NoteController extends Controller
         // Vérifier les permissions
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $eleve->classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $eleve->classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 abort(403, 'Vous n\'avez pas accès à cet élève.');
@@ -1891,7 +1885,7 @@ class NoteController extends Controller
                 ->whereHas('emploisTemps', function ($query) use ($enseignant, $eleve) {
                     $query->where('enseignant_id', $enseignant->id)
                         ->where('classe_id', $eleve->classe_id)
-                        ->where('actif', true);
+                        ->actif()->pourAnneeActive();
                 })
                 ->orderBy('nom')
                 ->get();
@@ -1950,9 +1944,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 abort(403, 'Vous n\'avez pas accès à cet élève.');
@@ -2103,7 +2095,7 @@ class NoteController extends Controller
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                    $query->where('enseignant_id', $enseignant->id);
+                    $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id)
@@ -2146,9 +2138,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2203,9 +2193,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2401,9 +2389,7 @@ class NoteController extends Controller
         // Vérifier les permissions
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $eleve->classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $eleve->classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 abort(403, 'Vous n\'avez pas accès à cet élève.');
@@ -2414,7 +2400,7 @@ class NoteController extends Controller
                 ->whereHas('emploisTemps', function ($query) use ($enseignant, $eleve) {
                     $query->where('enseignant_id', $enseignant->id)
                         ->where('classe_id', $eleve->classe_id)
-                        ->where('actif', true);
+                        ->actif()->pourAnneeActive();
                 })
                 ->orderBy('nom')
                 ->get();
@@ -2464,9 +2450,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $eleve->classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $eleve->classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 abort(403, 'Vous n\'avez pas accès à cet élève.');
@@ -2534,9 +2518,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $eleve->classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $eleve->classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cet élève.');
@@ -2571,9 +2553,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2647,9 +2627,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2800,9 +2778,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2847,9 +2823,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -2992,7 +2966,7 @@ class NoteController extends Controller
             $enseignant = $user->enseignant;
             $classes = Classe::actif()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                    $query->where('enseignant_id', $enseignant->id);
+                    $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);
@@ -3855,7 +3829,7 @@ class NoteController extends Controller
             // Pour les enseignants, uniquement les classes qu'ils enseignent
             $enseignant = $user->enseignant;
             $classes = Classe::whereHas('emploisTemps', function($query) use ($enseignant) {
-                $query->where('enseignant_id', $enseignant->id);
+                $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
             })
             ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
@@ -3894,9 +3868,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -4018,9 +3990,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -4112,9 +4082,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -4235,9 +4203,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');
@@ -4335,9 +4301,7 @@ class NoteController extends Controller
         $user = auth()->user();
         if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $hasAccess = $classe->emploisTemps()
-                ->where('enseignant_id', $enseignant->id)
-                ->exists();
+            $hasAccess = $classe->emploisTemps()->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive()->exists();
                 
             if (!$hasAccess) {
                 return redirect()->back()->with('error', 'Vous n\'avez pas accès à cette classe.');

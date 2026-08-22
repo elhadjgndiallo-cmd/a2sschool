@@ -32,9 +32,9 @@
             <div class="col-md-4">
                 <label for="periode" class="form-label">Période</label>
                 <select class="form-select" id="periode" name="periode" onchange="this.form.submit()">
-                    <option value="trimestre1" {{ $periode == 'trimestre1' ? 'selected' : '' }}>Trimestre 1</option>
-                    <option value="trimestre2" {{ $periode == 'trimestre2' ? 'selected' : '' }}>Trimestre 2</option>
-                    <option value="trimestre3" {{ $periode == 'trimestre3' ? 'selected' : '' }}>Trimestre 3</option>
+                    @foreach(\App\Helpers\PeriodeHelper::options($classe ?? null) as $code => $libelle)
+                        <option value="{{ $code }}" {{ $periode == $code ? 'selected' : '' }}>{{ $libelle }}</option>
+                    @endforeach
                 </select>
             </div>
         </form>
@@ -92,7 +92,7 @@
     <div class="card-header">
         <h5 class="mb-0">
             <i class="fas fa-list-ol me-2"></i>
-            Classement des élèves - {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}
+            Classement des élèves - {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? null) }}
         </h5>
     </div>
     <div class="card-body">

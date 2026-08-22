@@ -72,9 +72,7 @@ class Matiere extends Model
         return $query->where(function ($q) use ($anneeScolaireId) {
             $q->whereHas('emploisTemps', function ($et) use ($anneeScolaireId) {
                 $et->where('actif', true)
-                    ->whereHas('classe.eleves', function ($e) use ($anneeScolaireId) {
-                        $e->where('annee_scolaire_id', $anneeScolaireId);
-                    });
+                    ->where('annee_scolaire_id', $anneeScolaireId);
             })->orWhereHas('enseignants', function ($ens) use ($anneeScolaireId) {
                 $ens->where('annee_scolaire_id', $anneeScolaireId);
             })->orWhereHas('notes.eleve', function ($e) use ($anneeScolaireId) {

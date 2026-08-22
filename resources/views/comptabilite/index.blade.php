@@ -113,17 +113,41 @@
         </div>
     </div>
 
-    <!-- Graphique d'évolution -->
+    <!-- Trois diagrammes : comparaison + entrées/sorties par source -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
+        <div class="col-12 col-lg-4 mb-3">
+            <div class="card h-100">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-chart-line text-primary me-2"></i>Évolution Revenus vs Dépenses
+                        <i class="fas fa-chart-pie text-primary me-2"></i>Entrées vs Sorties
+                    </h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <canvas id="comparaisonChart" style="max-height: 280px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar text-success me-2"></i>Entrées par source
                     </h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="evolutionChart" style="max-height: 400px;"></canvas>
+                    <canvas id="entreesSourceChart" style="max-height: 280px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar text-danger me-2"></i>Sorties par source
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="sortiesSourceChart" style="max-height: 280px;"></canvas>
                 </div>
             </div>
         </div>
@@ -319,115 +343,132 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Données pour le graphique d'évolution
-    const evolutionData = @json($evolutionData);
-    
-    const ctx = document.getElementById('evolutionChart');
-    
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'line',
+    const diagrammes = @json($diagrammesData);
+
+    const formatGnf = (value) => new Intl.NumberFormat('fr-FR', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value) + ' GNF';
+
+    const formatCompact = (value) => new Intl.NumberFormat('fr-FR', {
+        notation: 'compact',
+        compactDisplay: 'short'
+    }).format(value) + ' GNF';
+
+    const palette = [
+        '#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0',
+        '#6f42c1', '#fd7e14', '#20c997', '#6610f2', '#d63384'
+    ];
+
+    const moneyTooltip = {
+        callbacks: {
+            label: function(context) {
+                const label = context.label || context.dataset.label || '';
+                const value = context.parsed.y ?? context.parsed ?? 0;
+                return (label ? label + ': ' : '') + formatGnf(value);
+            }
+        }
+    };
+
+    // 1. Secteur : Entrées vs Sorties
+    const comparaisonCtx = document.getElementById('comparaisonChart');
+    if (comparaisonCtx) {
+        new Chart(comparaisonCtx, {
+            type: 'pie',
             data: {
-                labels: evolutionData.labels,
-                datasets: [
-                    {
-                        label: 'Revenus (GNF)',
-                        data: evolutionData.revenus,
-                        borderColor: 'rgb(40, 167, 69)',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 3,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    },
-                    {
-                        label: 'Dépenses (GNF)',
-                        data: evolutionData.depenses,
-                        borderColor: 'rgb(220, 53, 69)',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 3,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }
-                ]
+                labels: diagrammes.comparaison.labels,
+                datasets: [{
+                    data: diagrammes.comparaison.data,
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            padding: 20,
-                            usePointStyle: true
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        titleFont: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('fr-FR', {
-                                        style: 'decimal',
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 0
-                                    }).format(context.parsed.y) + ' GNF';
-                                }
-                                return label;
-                            }
-                        }
-                    }
+                    legend: { position: 'bottom' },
+                    tooltip: moneyTooltip
+                }
+            }
+        });
+    }
+
+    // 2. Histogramme : Entrées par source
+    const entreesCtx = document.getElementById('entreesSourceChart');
+    if (entreesCtx) {
+        const labels = diagrammes.entreesParSource.labels || [];
+        const data = diagrammes.entreesParSource.data || [];
+        new Chart(entreesCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Entrées (GNF)',
+                    data: data,
+                    backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: moneyTooltip
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return new Intl.NumberFormat('fr-FR', {
-                                    notation: 'compact',
-                                    compactDisplay: 'short'
-                                }).format(value) + ' GNF';
-                            },
-                            font: {
-                                size: 12
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
+                        ticks: { callback: (v) => formatCompact(v) }
                     },
                     x: {
                         ticks: {
-                            font: {
-                                size: 12
-                            }
-                        },
-                        grid: {
-                            display: false
+                            maxRotation: 45,
+                            minRotation: 0,
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Histogramme : Sorties par source
+    const sortiesCtx = document.getElementById('sortiesSourceChart');
+    if (sortiesCtx) {
+        const labels = diagrammes.sortiesParSource.labels || [];
+        const data = diagrammes.sortiesParSource.data || [];
+        new Chart(sortiesCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Sorties (GNF)',
+                    data: data,
+                    backgroundColor: labels.map((_, i) => palette[(i + 2) % palette.length]),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: moneyTooltip
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (v) => formatCompact(v) }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0,
+                            font: { size: 10 }
                         }
                     }
                 }

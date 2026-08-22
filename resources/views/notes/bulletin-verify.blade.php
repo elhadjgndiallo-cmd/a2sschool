@@ -37,15 +37,7 @@
                                     <tr>
                                         <th>Période:</th>
                                         <td>
-                                            @if($periode == 'trimestre1')
-                                                Trimestre 1
-                                            @elseif($periode == 'trimestre2')
-                                                Trimestre 2
-                                            @elseif($periode == 'trimestre3')
-                                                Trimestre 3
-                                            @else
-                                                {{ ucfirst($periode) }}
-                                            @endif
+                                            {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                                         </td>
                                     </tr>
                                     @if(isset($anneeScolaire))
@@ -124,15 +116,7 @@
                                     <tr>
                                         <th>Période:</th>
                                         <td>
-                                            @if($periode == 'trimestre1')
-                                                Trimestre 1
-                                            @elseif($periode == 'trimestre2')
-                                                Trimestre 2
-                                            @elseif($periode == 'trimestre3')
-                                                Trimestre 3
-                                            @else
-                                                {{ ucfirst($periode) }}
-                                            @endif
+                                            {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                                         </td>
                                     </tr>
                                     @endif

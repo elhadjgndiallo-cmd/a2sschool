@@ -88,8 +88,8 @@
                         <ul class="list-unstyled">
                             <li><i class="fas fa-arrow-right text-primary me-2"></i>Matricule de l'élève</li>
                             <li><i class="fas fa-arrow-right text-primary me-2"></i>Nom et prénom complets</li>
-                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Rang Trimestre 1</li>
-                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Rang Trimestre 2</li>
+                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Rang {{ \App\Helpers\PeriodeHelper::libelle('trimestre1') }}</li>
+                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Rang {{ \App\Helpers\PeriodeHelper::libelle('trimestre2') }}</li>
                             <li><i class="fas fa-arrow-right text-primary me-2"></i>Rang Annuel</li>
                         </ul>
                     </div>

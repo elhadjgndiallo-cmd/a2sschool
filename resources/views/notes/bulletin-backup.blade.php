@@ -33,7 +33,7 @@
         </div>
         <div class="col-6 text-end">
             <h1>Année Scolaire {{ date('Y') }}-{{ date('Y') + 1 }}</h1>
-            <h2>{{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</h2>
+            <h2>{{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}</h2>
         </div>
     </div>
 </div>
@@ -51,7 +51,7 @@
                 <p><strong>Classe :</strong> {{ $eleve->classe->nom }}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>Période :</strong> {{ ucfirst(str_replace('trimestre', 'Trimestre ', $periode)) }}</p>
+                <p><strong>Période :</strong> {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}</p>
                 <p><strong>Année scolaire :</strong> {{ date('Y') }}-{{ date('Y') + 1 }}</p>
                 <p><strong>Rang :</strong> {{ $rang }}ème sur {{ $eleve->classe->eleves->count() }} élèves</p>
             </div>

@@ -45,6 +45,23 @@ class ParentModel extends Model
     }
 
     /**
+     * Enfants inscrits pour l'année scolaire active uniquement.
+     */
+    public function elevesAnneeActive()
+    {
+        $anneeId = AnneeScolaire::anneeActive()?->id;
+        $query = $this->eleves();
+
+        if ($anneeId) {
+            $query->where('eleves.annee_scolaire_id', $anneeId);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query;
+    }
+
+    /**
      * Scope pour les parents actifs
      */
     public function scopeActif($query)

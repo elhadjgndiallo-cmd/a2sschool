@@ -69,11 +69,7 @@
             <div style="float: right; text-align: right;">
                 <div style="font-size: 1rem; font-weight: 700;">Année Scolaire {{ $anneeScolaireActive ? $anneeScolaireActive->nom : (date('Y').'-'.(date('Y')+1)) }}</div>
                 <div style="font-size: 0.9rem;">
-                    @if($periode == 'trimestre1') Trimestre 1
-                    @elseif($periode == 'trimestre2') Trimestre 2
-                    @elseif($periode == 'trimestre3') Trimestre 3
-                    @else {{ ucfirst($periode) }}
-                    @endif
+                    {{ \App\Helpers\PeriodeHelper::libelle($periode, $classe ?? $eleve->classe ?? null) }}
                 </div>
             </div>
             <div style="clear: both;"></div>
