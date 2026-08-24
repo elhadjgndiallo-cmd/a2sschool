@@ -47,62 +47,50 @@
                     @endif
 
                     <!-- Filtres -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-filter me-2"></i>Filtres de recherche
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <form method="GET" action="{{ route('paiements.index') }}" class="row g-3">
-                                        <div class="col-md-3">
-                                            <label for="classe_id" class="form-label">Classe</label>
-                                            <select class="form-select" id="classe_id" name="classe_id">
-                                                <option value="">Toutes les classes</option>
-                                                @foreach(\App\Models\Classe::orderBy('nom')->get() as $classe)
-                                                    <option value="{{ $classe->id }}" 
-                                                        {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                                        {{ $classe->nom }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label for="matricule" class="form-label">Matricule</label>
-                                            <input type="text" class="form-control" id="matricule" name="matricule" 
-                                                   value="{{ request('matricule') }}" 
-                                                   placeholder="Rechercher par matricule">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label for="nom" class="form-label">Nom de l'élève</label>
-                                            <input type="text" class="form-control" id="nom" name="nom" 
-                                                   value="{{ request('nom') }}" 
-                                                   placeholder="Rechercher par nom">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label for="statut" class="form-label">Statut</label>
-                                            <select class="form-select" id="statut" name="statut">
-                                                <option value="">Tous les statuts</option>
-                                                <option value="paye" {{ request('statut') == 'paye' ? 'selected' : '' }}>Payé</option>
-                                                <option value="en_attente" {{ request('statut') == 'en_attente' ? 'selected' : '' }}>En attente</option>
-                                                <option value="en_retard" {{ request('statut') == 'en_retard' ? 'selected' : '' }}>En retard</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-12">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-search me-1"></i>Filtrer
-                                            </button>
-                                            <a href="{{ route('paiements.index') }}" class="btn btn-secondary">
-                                                <i class="fas fa-times me-1"></i>Effacer
-                                            </a>
-                                        </div>
-                                    </form>
+                    <form method="GET" action="{{ route('paiements.index') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-select" id="classe_id" name="classe_id" title="Classe">
+                                    <option value="">Toutes les classes</option>
+                                    @foreach(\App\Models\Classe::orderBy('nom')->get() as $classe)
+                                        <option value="{{ $classe->id }}"
+                                            {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                            {{ $classe->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <input type="text" class="form-control" id="matricule" name="matricule"
+                                       value="{{ request('matricule') }}"
+                                       placeholder="Matricule...">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <input type="text" class="form-control" id="nom" name="nom"
+                                       value="{{ request('nom') }}"
+                                       placeholder="Nom de l'élève...">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select class="form-select" id="statut" name="statut" title="Statut">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="paye" {{ request('statut') == 'paye' ? 'selected' : '' }}>Payé</option>
+                                    <option value="en_attente" {{ request('statut') == 'en_attente' ? 'selected' : '' }}>En attente</option>
+                                    <option value="en_retard" {{ request('statut') == 'en_retard' ? 'selected' : '' }}>En retard</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('paiements.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </form>
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">

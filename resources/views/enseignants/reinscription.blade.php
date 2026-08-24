@@ -41,68 +41,46 @@
 </div>
 
 <!-- Filtres de recherche -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>Filtrer les enseignants
-        </h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('enseignants.reinscription') }}" id="filterForm">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="search" class="form-label">
-                        <i class="fas fa-search me-1"></i>Nom / Prénom
-                    </label>
-                    <input type="text" class="form-control" id="search" name="search" 
-                           value="{{ request('search') }}" placeholder="Rechercher un enseignant...">
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="numero_employe" class="form-label">
-                        <i class="fas fa-id-card me-1"></i>Numéro Employé
-                    </label>
-                    <input type="text" class="form-control" id="numero_employe" name="numero_employe" 
-                           value="{{ request('numero_employe') }}" placeholder="Numéro...">
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="filter_annee" class="form-label">
-                        <i class="fas fa-calendar me-1"></i>Année scolaire
-                    </label>
-                    <select class="form-select" id="filter_annee" name="annee_scolaire_id">
-                        <option value="">Toutes les années</option>
-                        @foreach($anneesPassees as $annee)
-                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
-                            {{ $annee->nom }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="per_page" class="form-label">
-                        <i class="fas fa-list me-1"></i>Par page
-                    </label>
-                    <select class="form-select" id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit();">
-                        <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20 par page</option>
-                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 par page</option>
-                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 par page</option>
-                    </select>
-                </div>
-                
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-search me-1"></i>Rechercher
-                    </button>
-                    <a href="{{ route('enseignants.reinscription') }}" class="btn btn-secondary">
-                        <i class="fas fa-times me-1"></i>Réinitialiser
-                    </a>
-                </div>
+<form method="GET" action="{{ route('enseignants.reinscription') }}" id="filterForm" class="mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-3">
+            <input type="text" class="form-control" id="search" name="search"
+                   value="{{ request('search') }}" placeholder="Rechercher un enseignant...">
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+            <input type="text" class="form-control" id="numero_employe" name="numero_employe"
+                   value="{{ request('numero_employe') }}" placeholder="Numéro employé...">
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <select class="form-select" id="filter_annee" name="annee_scolaire_id" title="Année scolaire">
+                <option value="">Toutes les années</option>
+                @foreach($anneesPassees as $annee)
+                <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
+                    {{ $annee->nom }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-6 col-sm-4 col-md-1">
+            <select class="form-select" id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit();" title="Par page">
+                <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20</option>
+                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
+            </select>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+            <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="fas fa-search"></i>
+                    <span class="d-none d-sm-inline">Filtrer</span>
+                </button>
+                <a href="{{ route('enseignants.reinscription') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                    <i class="fas fa-times"></i>
+                </a>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 
 <form method="POST" action="{{ route('enseignants.reinscription.process') }}" id="reinscriptionForm">
     @csrf

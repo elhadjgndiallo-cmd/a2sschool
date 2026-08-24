@@ -51,70 +51,54 @@
                     @endif
 
                     <!-- Filtres -->
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <form method="GET" action="{{ route('depenses.index') }}">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="search">Recherche</label>
-                                            <input type="text" name="search" id="search" class="form-control" 
-                                                   value="{{ request('search') }}" placeholder="Libellé, bénéficiaire...">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="type_depense">Type</label>
-                                            <select name="type_depense" id="type_depense" class="form-control">
-                                                <option value="">Tous les types</option>
-                                                <option value="salaire_enseignant" {{ request('type_depense') == 'salaire_enseignant' ? 'selected' : '' }}>Salaire Enseignant</option>
-                                                <option value="salaire_personnel" {{ request('type_depense') == 'salaire_personnel' ? 'selected' : '' }}>Salaire Personnel</option>
-                                                <option value="achat_materiel" {{ request('type_depense') == 'achat_materiel' ? 'selected' : '' }}>Achat Matériel</option>
-                                                <option value="maintenance" {{ request('type_depense') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                                                <option value="electricite" {{ request('type_depense') == 'electricite' ? 'selected' : '' }}>Électricité</option>
-                                                <option value="eau" {{ request('type_depense') == 'eau' ? 'selected' : '' }}>Eau</option>
-                                                <option value="autre" {{ request('type_depense') == 'autre' ? 'selected' : '' }}>Autre</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="statut">Statut</label>
-                                            <select name="statut" id="statut" class="form-control">
-                                                <option value="">Tous les statuts</option>
-                                                <option value="en_attente" {{ request('statut') == 'en_attente' ? 'selected' : '' }}>En Attente</option>
-                                                <option value="approuve" {{ request('statut') == 'approuve' ? 'selected' : '' }}>Approuvé</option>
-                                                <option value="paye" {{ request('statut') == 'paye' ? 'selected' : '' }}>Payé</option>
-                                                <option value="annule" {{ request('statut') == 'annule' ? 'selected' : '' }}>Annulé</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="date_debut">Date Début</label>
-                                            <input type="date" name="date_debut" id="date_debut" class="form-control" 
-                                                   value="{{ request('date_debut') }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="date_fin">Date Fin</label>
-                                            <input type="date" name="date_fin" id="date_fin" class="form-control" 
-                                                   value="{{ request('date_fin') }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-1">
-                                        <div class="form-group">
-                                            <label>&nbsp;</label>
-                                            <button type="submit" class="btn btn-primary btn-block">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                    <form method="GET" action="{{ route('depenses.index') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <input type="text" name="search" id="search" class="form-control"
+                                       value="{{ request('search') }}" placeholder="Libellé, bénéficiaire...">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select name="type_depense" id="type_depense" class="form-control" title="Type">
+                                    <option value="">Tous les types</option>
+                                    <option value="salaire_enseignant" {{ request('type_depense') == 'salaire_enseignant' ? 'selected' : '' }}>Salaire Enseignant</option>
+                                    <option value="salaire_personnel" {{ request('type_depense') == 'salaire_personnel' ? 'selected' : '' }}>Salaire Personnel</option>
+                                    <option value="achat_materiel" {{ request('type_depense') == 'achat_materiel' ? 'selected' : '' }}>Achat Matériel</option>
+                                    <option value="maintenance" {{ request('type_depense') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
+                                    <option value="electricite" {{ request('type_depense') == 'electricite' ? 'selected' : '' }}>Électricité</option>
+                                    <option value="eau" {{ request('type_depense') == 'eau' ? 'selected' : '' }}>Eau</option>
+                                    <option value="autre" {{ request('type_depense') == 'autre' ? 'selected' : '' }}>Autre</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select name="statut" id="statut" class="form-control" title="Statut">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="en_attente" {{ request('statut') == 'en_attente' ? 'selected' : '' }}>En Attente</option>
+                                    <option value="approuve" {{ request('statut') == 'approuve' ? 'selected' : '' }}>Approuvé</option>
+                                    <option value="paye" {{ request('statut') == 'paye' ? 'selected' : '' }}>Payé</option>
+                                    <option value="annule" {{ request('statut') == 'annule' ? 'selected' : '' }}>Annulé</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-sm-6 col-md-2">
+                                <input type="date" name="date_debut" id="date_debut" class="form-control"
+                                       value="{{ request('date_debut') }}" title="Date début" placeholder="Date début">
+                            </div>
+                            <div class="col-6 col-sm-6 col-md-1">
+                                <input type="date" name="date_fin" id="date_fin" class="form-control"
+                                       value="{{ request('date_fin') }}" title="Date fin" placeholder="Date fin">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('depenses.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
                                 </div>
-                            </form>
+                            </div>
                         </div>
-                    </div>
+                    </form>
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">

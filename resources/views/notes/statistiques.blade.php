@@ -49,11 +49,10 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('notes.statistiques') }}">
-                        <div class="row mb-3">
-                            <div class="col-md-5">
-                                <label for="classe_id" class="form-label">Classe</label>
-                                <select name="classe_id" id="classe_id" class="form-select">
+                    <form method="GET" action="{{ route('notes.statistiques') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-5">
+                                <select name="classe_id" id="classe_id" class="form-select" title="Classe">
                                     <option value="">-- Sélectionner une classe --</option>
                                     @foreach($classes as $c)
                                     <option value="{{ $c->id }}" {{ $classeId == $c->id ? 'selected' : '' }}>
@@ -62,9 +61,8 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-5">
-                                <label for="periode_id" class="form-label">Période</label>
-                                <select name="periode_id" id="periode_id" class="form-select">
+                            <div class="col-12 col-sm-6 col-md-5">
+                                <select name="periode_id" id="periode_id" class="form-select" title="Période">
                                     <option value="">-- Sélectionner une période --</option>
                                     @foreach($periodes as $p)
                                     <option value="{{ $p->id }}" {{ $periodeId == $p->id ? 'selected' : '' }}>
@@ -73,11 +71,16 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-1"></i>
-                                    Filtrer
-                                </button>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('notes.statistiques') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </form>

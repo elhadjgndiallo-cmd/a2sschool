@@ -51,16 +51,12 @@
     @csrf
     <input type="hidden" name="classe_id" value="{{ $classe->id }}">
     
-    <!-- Paramètres généraux -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Paramètres de l'évaluation</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <label for="type_evaluation" class="form-label">Type d'évaluation</label>
-                    <select class="form-select" id="type_evaluation" name="type_evaluation">
+    <!-- Paramètres + application rapide (compacts) -->
+    <div class="card mb-3">
+        <div class="card-body py-3">
+            <div class="row g-2 mb-2">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <select class="form-select" id="type_evaluation" name="type_evaluation" title="Type d'évaluation">
                         <option value="devoir">Devoir</option>
                         <option value="controle">Contrôle</option>
                         <option value="examen">Examen</option>
@@ -68,43 +64,27 @@
                         <option value="tp">TP</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="periode" class="form-label">Période</label>
-                    <select class="form-select" id="periode" name="periode">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <select class="form-select" id="periode" name="periode" title="Période">
                         @foreach(\App\Helpers\PeriodeHelper::options($classe ?? null) as $code => $libelle)
                             <option value="{{ $code }}">{{ $libelle }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="date_evaluation" class="form-label">Date d'évaluation</label>
-                    <input type="date" class="form-control" id="date_evaluation" name="date_evaluation" value="{{ date('Y-m-d') }}">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <input type="date" class="form-control" id="date_evaluation" name="date_evaluation" value="{{ date('Y-m-d') }}" title="Date d'évaluation">
                 </div>
-                <div class="col-md-3">
-                    <label for="enseignant_id" class="form-label">Enseignant</label>
-                    <select class="form-select" id="enseignant_id" name="enseignant_id">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <select class="form-select" id="enseignant_id" name="enseignant_id" title="Enseignant">
                         @foreach($enseignants as $enseignant)
                         <option value="{{ $enseignant->id }}" selected>{{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Sélection globale de matière -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-magic me-2"></i>
-                Application rapide
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row align-items-end">
-                <div class="col-md-4">
-                    <label for="matiere_globale" class="form-label">Matière pour tous les élèves</label>
-                    <select class="form-select" id="matiere_globale">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-sm-6 col-md-4">
+                    <select class="form-select" id="matiere_globale" title="Matière pour tous">
                         <option value="">Choisir une matière</option>
                         @foreach($matieres as $matiere)
                         <option value="{{ $matiere->id }}" data-coefficient="{{ $matiere->coefficient }}">
@@ -113,20 +93,17 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label for="coefficient_global" class="form-label">Coefficient</label>
-                    <input type="number" class="form-control" id="coefficient_global" min="1" max="10" step="1" placeholder="Coeff.">
+                <div class="col-6 col-sm-3 col-md-2">
+                    <input type="number" class="form-control" id="coefficient_global" min="1" max="10" step="1" placeholder="Coeff." title="Coefficient">
                 </div>
-                <div class="col-md-3">
-                    <button type="button" class="btn btn-primary" id="appliquer-matiere-tous">
-                        <i class="fas fa-magic me-2"></i>
-                        Appliquer à tous
+                <div class="col-6 col-sm-3 col-md-3">
+                    <button type="button" class="btn btn-primary w-100" id="appliquer-matiere-tous">
+                        <i class="fas fa-magic me-1"></i>Appliquer à tous
                     </button>
                 </div>
-                <div class="col-md-3">
-                    <button type="button" class="btn btn-outline-secondary" id="vider-tous">
-                        <i class="fas fa-eraser me-2"></i>
-                        Vider tous
+                <div class="col-12 col-sm-6 col-md-3">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="vider-tous">
+                        <i class="fas fa-eraser me-1"></i>Vider tous
                     </button>
                 </div>
             </div>

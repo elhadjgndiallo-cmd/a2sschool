@@ -111,54 +111,45 @@
     </div>
 
     <!-- Filtres -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="card-title mb-0">Filtres</h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" action="{{ route('notifications.index') }}" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="lue" class="form-label">Statut</label>
-                            <select class="form-select" id="lue" name="lue">
-                                <option value="">Toutes</option>
-                                <option value="0" {{ request('lue') === '0' ? 'selected' : '' }}>Non lues</option>
-                                <option value="1" {{ request('lue') === '1' ? 'selected' : '' }}>Lues</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="type" class="form-label">Type</label>
-                            <select class="form-select" id="type" name="type">
-                                <option value="">Tous les types</option>
-                                <option value="info" {{ request('type') === 'info' ? 'selected' : '' }}>Information</option>
-                                <option value="success" {{ request('type') === 'success' ? 'selected' : '' }}>Succès</option>
-                                <option value="warning" {{ request('type') === 'warning' ? 'selected' : '' }}>Avertissement</option>
-                                <option value="danger" {{ request('type') === 'danger' ? 'selected' : '' }}>Erreur</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="per_page" class="form-label">Par page</label>
-                            <select class="form-select" id="per_page" name="per_page">
-                                <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
-                                <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20</option>
-                                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
-                                <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary me-2">
-                                <i class="fas fa-filter me-1"></i> Filtrer
-                            </button>
-                            <a href="{{ route('notifications.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-times me-1"></i> Effacer
-                            </a>
-                        </div>
-                    </form>
+    <form method="GET" action="{{ route('notifications.index') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="lue" name="lue" title="Statut">
+                    <option value="">Toutes</option>
+                    <option value="0" {{ request('lue') === '0' ? 'selected' : '' }}>Non lues</option>
+                    <option value="1" {{ request('lue') === '1' ? 'selected' : '' }}>Lues</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="type" name="type" title="Type">
+                    <option value="">Tous les types</option>
+                    <option value="info" {{ request('type') === 'info' ? 'selected' : '' }}>Information</option>
+                    <option value="success" {{ request('type') === 'success' ? 'selected' : '' }}>Succès</option>
+                    <option value="warning" {{ request('type') === 'warning' ? 'selected' : '' }}>Avertissement</option>
+                    <option value="danger" {{ request('type') === 'danger' ? 'selected' : '' }}>Erreur</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="per_page" name="per_page" title="Par page">
+                    <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
+                    <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>20</option>
+                    <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                    <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-filter"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
+                    </button>
+                    <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary" title="Effacer">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 
     <!-- Liste des notifications -->
     <div class="row">

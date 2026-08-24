@@ -32,46 +32,34 @@
 @endif
 
 <!-- Filtres -->
-<div class="card mb-4">
-    <div class="card-header bg-white">
-        <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>
-            Période
-        </h5>
+<form method="GET" action="{{ route('notes.mensuel.modifier', $classe->id) }}" class="mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-4">
+            <select name="mois" id="mois" class="form-select" title="Mois">
+                @foreach($moisListe as $num => $nom)
+                <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
+                    {{ $nom }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <select name="annee" id="annee" class="form-select" title="Année">
+                @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
+                <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
+                    {{ $i }}
+                </option>
+                @endfor
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search"></i>
+                <span class="d-none d-sm-inline">Changer</span>
+            </button>
+        </div>
     </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('notes.mensuel.modifier', $classe->id) }}">
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="mois" class="form-label">Mois</label>
-                    <select name="mois" id="mois" class="form-select">
-                        @foreach($moisListe as $num => $nom)
-                        <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
-                            {{ $nom }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="annee" class="form-label">Année</label>
-                    <select name="annee" id="annee" class="form-select">
-                        @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
-                        <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
-                            {{ $i }}
-                        </option>
-                        @endfor
-                    </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>
-                        Changer
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+</form>
 
 <!-- Tests à modifier -->
 <div class="card">

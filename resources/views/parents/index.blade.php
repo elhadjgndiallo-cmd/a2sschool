@@ -128,59 +128,53 @@
     </div>
 
     <!-- Filtres -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-filter me-2"></i>
-                Filtres de recherche
-            </h5>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="{{ route('parents.index') }}" class="row g-3">
-                <div class="col-md-4">
-                    <label for="search" class="form-label">Recherche</label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="search" 
-                           name="search" 
-                           value="{{ request('search') }}"
-                           placeholder="Nom, prénom, téléphone ou email...">
-                </div>
-                <div class="col-md-3">
-                    <label for="profession" class="form-label">Profession</label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="profession" 
-                           name="profession" 
-                           value="{{ request('profession') }}"
-                           placeholder="Profession...">
-                </div>
-                <div class="col-md-2">
-                    <label for="lien_parente" class="form-label">Lien de parenté</label>
-                    <select class="form-select" id="lien_parente" name="lien_parente">
-                        <option value="">Tous</option>
-                        <option value="pere" {{ request('lien_parente') == 'pere' ? 'selected' : '' }}>Père</option>
-                        <option value="mere" {{ request('lien_parente') == 'mere' ? 'selected' : '' }}>Mère</option>
-                        <option value="tuteur" {{ request('lien_parente') == 'tuteur' ? 'selected' : '' }}>Tuteur</option>
-                        <option value="autre" {{ request('lien_parente') == 'autre' ? 'selected' : '' }}>Autre</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="actif" class="form-label">Statut</label>
-                    <select class="form-select" id="actif" name="actif">
-                        <option value="">Tous</option>
-                        <option value="1" {{ request('actif') == '1' ? 'selected' : '' }}>Actifs</option>
-                        <option value="0" {{ request('actif') == '0' ? 'selected' : '' }}>Inactifs</option>
-                    </select>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
+    <form method="GET" action="{{ route('parents.index') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <input type="text"
+                       class="form-control"
+                       id="search"
+                       name="search"
+                       value="{{ request('search') }}"
+                       placeholder="Nom, prénom, téléphone ou email...">
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <input type="text"
+                       class="form-control"
+                       id="profession"
+                       name="profession"
+                       value="{{ request('profession') }}"
+                       placeholder="Profession...">
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" id="lien_parente" name="lien_parente" title="Lien de parenté">
+                    <option value="">Tous les liens</option>
+                    <option value="pere" {{ request('lien_parente') == 'pere' ? 'selected' : '' }}>Père</option>
+                    <option value="mere" {{ request('lien_parente') == 'mere' ? 'selected' : '' }}>Mère</option>
+                    <option value="tuteur" {{ request('lien_parente') == 'tuteur' ? 'selected' : '' }}>Tuteur</option>
+                    <option value="autre" {{ request('lien_parente') == 'autre' ? 'selected' : '' }}>Autre</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" id="actif" name="actif" title="Statut">
+                    <option value="">Tous les statuts</option>
+                    <option value="1" {{ request('actif') == '1' ? 'selected' : '' }}>Actifs</option>
+                    <option value="0" {{ request('actif') == '0' ? 'selected' : '' }}>Inactifs</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
                         <i class="fas fa-search"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
                     </button>
+                    <a href="{{ route('parents.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     <!-- Liste des parents -->
     <div class="card">

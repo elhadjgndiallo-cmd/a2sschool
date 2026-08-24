@@ -18,63 +18,48 @@
     </div>
 
     <!-- Filtres -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-filter me-2"></i>Filtres
-            </h5>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="{{ route('tarifs.index') }}">
-                <div class="row g-3">
-                    <!-- Filtre par classe -->
-                    <div class="col-md-4">
-                        <label for="classe_id" class="form-label">Classe</label>
-                        <select class="form-select" id="classe_id" name="classe_id">
-                            <option value="">Toutes les classes</option>
-                            @foreach($classes as $classe)
-                            <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                {{ $classe->nom }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Filtre par année scolaire -->
-                    <div class="col-md-4">
-                        <label for="annee_scolaire" class="form-label">Année Scolaire</label>
-                        <select class="form-select" id="annee_scolaire" name="annee_scolaire">
-                            <option value="">Toutes les années</option>
-                            @foreach($anneesScolaires as $annee)
-                            <option value="{{ $annee }}" {{ request('annee_scolaire') == $annee ? 'selected' : '' }}>
-                                {{ $annee }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Filtre par statut -->
-                    <div class="col-md-4">
-                        <label for="actif" class="form-label">Statut</label>
-                        <select class="form-select" id="actif" name="actif">
-                            <option value="">Tous les statuts</option>
-                            <option value="1" {{ request('actif') === '1' ? 'selected' : '' }}>Actif</option>
-                            <option value="0" {{ request('actif') === '0' ? 'selected' : '' }}>Inactif</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="fas fa-search me-2"></i>Filtrer
+    <form method="GET" action="{{ route('tarifs.index') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="classe_id" name="classe_id" title="Classe">
+                    <option value="">Toutes les classes</option>
+                    @foreach($classes as $classe)
+                    <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                        {{ $classe->nom }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="annee_scolaire" name="annee_scolaire" title="Année Scolaire">
+                    <option value="">Toutes les années</option>
+                    @foreach($anneesScolaires as $annee)
+                    <option value="{{ $annee }}" {{ request('annee_scolaire') == $annee ? 'selected' : '' }}>
+                        {{ $annee }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="actif" name="actif" title="Statut">
+                    <option value="">Tous les statuts</option>
+                    <option value="1" {{ request('actif') === '1' ? 'selected' : '' }}>Actif</option>
+                    <option value="0" {{ request('actif') === '0' ? 'selected' : '' }}>Inactif</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-search"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
                     </button>
-                    <a href="{{ route('tarifs.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-times me-2"></i>Réinitialiser
+                    <a href="{{ route('tarifs.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="fas fa-times"></i>
                     </a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     <!-- Liste des tarifs -->
     <div class="card">

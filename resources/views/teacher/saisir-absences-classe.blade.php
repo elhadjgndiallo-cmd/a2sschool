@@ -51,22 +51,15 @@
     <input type="hidden" name="classe_id" value="{{ $classe->id }}">
     
     <!-- Paramètres généraux -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Paramètres de l'appel</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <label for="date_absence" class="form-label">Date de l'appel</label>
-                    <input type="date" class="form-control" id="date_absence" name="date_absence" 
-                           value="{{ old('date_absence', date('Y-m-d')) }}" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="heure_appel" class="form-label">Heure de l'appel</label>
-                    <input type="time" class="form-control" id="heure_appel" name="heure_appel" 
-                           value="{{ old('heure_appel', date('H:i')) }}">
-                </div>
+    <div class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6">
+                <input type="date" class="form-control" id="date_absence" name="date_absence"
+                       value="{{ old('date_absence', date('Y-m-d')) }}" required title="Date de l'appel">
+            </div>
+            <div class="col-12 col-sm-6">
+                <input type="time" class="form-control" id="heure_appel" name="heure_appel"
+                       value="{{ old('heure_appel', date('H:i')) }}" title="Heure de l'appel">
             </div>
         </div>
     </div>

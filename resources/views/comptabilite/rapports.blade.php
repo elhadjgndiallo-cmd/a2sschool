@@ -24,52 +24,41 @@
     </div>
 
     <!-- Filtres -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-filter me-2"></i>Filtres
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" action="{{ route('comptabilite.rapports') }}">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="annee_scolaire_id" class="form-label">Année scolaire</label>
-                                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" onchange="updateDatesFromAnneeScolaire()">
-                                    @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
-                                    @foreach($annees as $annee)
-                                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }} data-start="{{ $annee->date_debut->format('Y-m-d') }}" data-end="{{ $annee->date_fin->format('Y-m-d') }}">
-                                            {{ $annee->nom }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="date_debut" class="form-label">Date de début</label>
-                                <input type="date" class="form-control" id="date_debut" name="date_debut" 
-                                       value="{{ request('date_debut', $dateDebut->format('Y-m-d')) }}">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="date_fin" class="form-label">Date de fin</label>
-                                <input type="date" class="form-control" id="date_fin" name="date_fin" 
-                                       value="{{ request('date_fin', $dateFin->format('Y-m-d')) }}">
-                            </div>
-                            <div class="col-md-4 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-search me-1"></i>Filtrer
-                                </button>
-                                <a href="{{ route('comptabilite.rapports') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-refresh me-1"></i>Réinitialiser
-                                </a>
-                            </div>
-                        </div>
-                    </form>
+    <form method="GET" action="{{ route('comptabilite.rapports') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="annee_scolaire_id" name="annee_scolaire_id" title="Année scolaire" onchange="updateDatesFromAnneeScolaire()">
+                    @php($annees = \App\Models\AnneeScolaire::orderBy('date_debut','desc')->get())
+                    @foreach($annees as $annee)
+                        <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : ($annee->active && !request('annee_scolaire_id') ? 'selected' : '') }} data-start="{{ $annee->date_debut->format('Y-m-d') }}" data-end="{{ $annee->date_fin->format('Y-m-d') }}">
+                            {{ $annee->nom }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <input type="date" class="form-control" id="date_debut" name="date_debut"
+                       value="{{ request('date_debut', $dateDebut->format('Y-m-d')) }}"
+                       title="Date de début">
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <input type="date" class="form-control" id="date_fin" name="date_fin"
+                       value="{{ request('date_fin', $dateFin->format('Y-m-d')) }}"
+                       title="Date de fin">
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-search"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
+                    </button>
+                    <a href="{{ route('comptabilite.rapports') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 
     <!-- Résumé financier -->
     <div class="row mb-4">

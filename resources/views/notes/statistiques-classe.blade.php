@@ -17,29 +17,22 @@
 </div>
 
 <!-- Sélection de la période -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">Filtres</h5>
+<form method="GET" action="{{ route('notes.statistiques.classe', $classe->id) }}" class="mb-3">
+    <div class="row g-2">
+        @if(isset($anneeScolaireActive))
+        <div class="col-12 col-sm-6 col-md-4">
+            <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly title="Année scolaire">
+        </div>
+        @endif
+        <div class="col-12 col-sm-6 col-md-4">
+            <select class="form-select" id="periode" name="periode" onchange="this.form.submit()" title="Période">
+                @foreach(\App\Helpers\PeriodeHelper::options($classe ?? null) as $code => $libelle)
+                    <option value="{{ $code }}" {{ $periode == $code ? 'selected' : '' }}>{{ $libelle }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('notes.statistiques.classe', $classe->id) }}" class="row g-3">
-            @if(isset($anneeScolaireActive))
-            <div class="col-md-4">
-                <label class="form-label">Année scolaire</label>
-                <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
-            </div>
-            @endif
-            <div class="col-md-4">
-                <label for="periode" class="form-label">Période</label>
-                <select class="form-select" id="periode" name="periode" onchange="this.form.submit()">
-                    @foreach(\App\Helpers\PeriodeHelper::options($classe ?? null) as $code => $libelle)
-                        <option value="{{ $code }}" {{ $periode == $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </form>
-    </div>
-</div>
+</form>
 
 <!-- Statistiques générales -->
 <div class="row mb-4">

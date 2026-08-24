@@ -22,50 +22,42 @@
     </div>
 
     <!-- Filtres de période -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-filter me-2"></i>
-                Filtres de période
-            </h5>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="{{ route('paiements.rapports') }}" class="row g-3">
-                <div class="col-md-4">
-                    <label for="date_debut" class="form-label">Date de début</label>
-                    <input type="date" class="form-control" id="date_debut" name="date_debut" 
-                           value="{{ request('date_debut', now()->subMonths(6)->format('Y-m-01')) }}">
-                </div>
-                <div class="col-md-4">
-                    <label for="date_fin" class="form-label">Date de fin</label>
-                    <input type="date" class="form-control" id="date_fin" name="date_fin" 
-                           value="{{ request('date_fin', now()->format('Y-m-t')) }}">
-                </div>
-                <div class="col-md-4">
-                    <label for="classe_id" class="form-label">Classe</label>
-                    <select class="form-select" id="classe_id" name="classe_id">
-                        <option value="">Toutes les classes</option>
-                        @foreach(\App\Models\Classe::orderBy('nom')->get() as $classe)
-                            <option value="{{ $classe->id }}" 
-                                {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                {{ $classe->nom }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>
-                        Filtrer
+    <form method="GET" action="{{ route('paiements.rapports') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <input type="date" class="form-control" id="date_debut" name="date_debut"
+                       value="{{ request('date_debut', now()->subMonths(6)->format('Y-m-01')) }}"
+                       title="Date de début">
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <input type="date" class="form-control" id="date_fin" name="date_fin"
+                       value="{{ request('date_fin', now()->format('Y-m-t')) }}"
+                       title="Date de fin">
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <select class="form-select" id="classe_id" name="classe_id" title="Classe">
+                    <option value="">Toutes les classes</option>
+                    @foreach(\App\Models\Classe::orderBy('nom')->get() as $classe)
+                        <option value="{{ $classe->id }}"
+                            {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                            {{ $classe->nom }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-search"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
                     </button>
-                    <a href="{{ route('paiements.rapports') }}" class="btn btn-secondary">
-                        <i class="fas fa-times me-1"></i>
-                        Réinitialiser
+                    <a href="{{ route('paiements.rapports') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="fas fa-times"></i>
                     </a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     <!-- Statistiques générales -->
     <div class="row mb-4">

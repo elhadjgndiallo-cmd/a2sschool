@@ -42,51 +42,37 @@
     </div>
 
     <!-- Filtres -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Filtres</h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" action="{{ route('entrees.index') }}">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <label for="source" class="form-label">Source</label>
-                                <select name="source" id="source" class="form-select">
-                                    <option value="">Toutes les sources</option>
-                                    @foreach($sources as $source)
-                                        <option value="{{ $source }}" {{ request('source') == $source ? 'selected' : '' }}>
-                                            {{ $source }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="date_debut" class="form-label">Date début</label>
-                                <input type="date" name="date_debut" id="date_debut" class="form-control" value="{{ request('date_debut') }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="date_fin" class="form-label">Date fin</label>
-                                <input type="date" name="date_fin" id="date_fin" class="form-control" value="{{ request('date_fin') }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-search me-1"></i>Filtrer
-                                    </button>
-                                    <a href="{{ route('entrees.index') }}" class="btn btn-secondary">
-                                        <i class="fas fa-times me-1"></i>Effacer
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+    <form method="GET" action="{{ route('entrees.index') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <select name="source" id="source" class="form-select" title="Source">
+                    <option value="">Toutes les sources</option>
+                    @foreach($sources as $source)
+                        <option value="{{ $source }}" {{ request('source') == $source ? 'selected' : '' }}>
+                            {{ $source }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-6 col-sm-6 col-md-3">
+                <input type="date" name="date_debut" id="date_debut" class="form-control" value="{{ request('date_debut') }}" title="Date début" placeholder="Date début">
+            </div>
+            <div class="col-6 col-sm-6 col-md-3">
+                <input type="date" name="date_fin" id="date_fin" class="form-control" value="{{ request('date_fin') }}" title="Date fin" placeholder="Date fin">
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-search"></i>
+                        <span class="d-none d-sm-inline">Filtrer</span>
+                    </button>
+                    <a href="{{ route('entrees.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 
     <!-- Actions -->
     <div class="row mb-4">

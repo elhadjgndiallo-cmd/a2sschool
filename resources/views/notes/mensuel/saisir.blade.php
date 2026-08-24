@@ -33,46 +33,39 @@
 @endif
 
 <!-- Filtres -->
-<div class="card mb-4">
-    <div class="card-header bg-white">
-        <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>
-            Période
-        </h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('notes.mensuel.saisir', $classe->id) }}">
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="mois" class="form-label">Mois</label>
-                    <select name="mois" id="mois" class="form-select">
-                        @foreach($moisListe as $num => $nom)
-                        <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
-                            {{ $nom }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="annee" class="form-label">Année</label>
-                    <select name="annee" id="annee" class="form-select">
-                        @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
-                        <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
-                            {{ $i }}
-                        </option>
-                        @endfor
-                    </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>
-                        Changer
-                    </button>
-                </div>
+<form method="GET" action="{{ route('notes.mensuel.saisir', $classe->id) }}" class="mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-4">
+            <select name="mois" id="mois" class="form-select" title="Mois">
+                @foreach($moisListe as $num => $nom)
+                <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
+                    {{ $nom }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <select name="annee" id="annee" class="form-select" title="Année">
+                @for($i = date('Y') - 2; $i <= date('Y') + 2; $i++)
+                <option value="{{ $i }}" {{ $annee == $i ? 'selected' : '' }}>
+                    {{ $i }}
+                </option>
+                @endfor
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="fas fa-search"></i>
+                    <span class="d-none d-sm-inline">Changer</span>
+                </button>
+                <a href="{{ route('notes.mensuel.saisir', $classe->id) }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                    <i class="fas fa-times"></i>
+                </a>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 
 <!-- Formulaire de saisie -->
 <div class="card">
@@ -91,10 +84,9 @@
             <input type="hidden" name="annee" value="{{ $annee }}">
             
             <!-- Sélection de l'enseignant et de la matière -->
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label for="enseignant_id" class="form-label">Enseignant</label>
-                    <select name="enseignant_id" id="enseignant_id" class="form-select" required {{ auth()->user()->isTeacher() ? 'disabled' : '' }}>
+            <div class="row g-2 mb-3">
+                <div class="col-12 col-sm-6 col-md-4">
+                    <select name="enseignant_id" id="enseignant_id" class="form-select" required {{ auth()->user()->isTeacher() ? 'disabled' : '' }} title="Enseignant">
                         <option value="">Sélectionner un enseignant</option>
                         @foreach($enseignants as $enseignant)
                         <option value="{{ $enseignant->id }}" 
@@ -108,9 +100,8 @@
                         <input type="hidden" name="enseignant_id" value="{{ auth()->user()->enseignant->id }}">
                     @endif
                 </div>
-                <div class="col-md-4">
-                    <label for="matiere_id" class="form-label">Matière</label>
-                    <select name="matiere_id" id="matiere_id" class="form-select" required disabled>
+                <div class="col-12 col-sm-6 col-md-4">
+                    <select name="matiere_id" id="matiere_id" class="form-select" required disabled title="Matière">
                         <option value="">Sélectionner d'abord un enseignant</option>
                         @foreach($matieres as $matiere)
                         <option value="{{ $matiere->id }}" data-coefficient="{{ $matiere->coefficient }}">
@@ -119,15 +110,15 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="coefficient_global" class="form-label">Coefficient</label>
+                <div class="col-12 col-sm-6 col-md-4">
                     <input type="number" 
                            id="coefficient_global" 
                            class="form-control" 
                            min="1" 
                            max="10" 
                            value="1"
-                           placeholder="1">
+                           placeholder="Coeff."
+                           title="Coefficient">
                 </div>
             </div>
             

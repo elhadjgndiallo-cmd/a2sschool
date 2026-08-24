@@ -59,22 +59,19 @@
                     </div>
 
                     <!-- Filtres -->
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label for="justification_filter" class="form-label">Filtrer par justification</label>
-                            <select id="justification_filter" class="form-select">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <select id="justification_filter" class="form-select" title="Filtrer par justification">
                                 <option value="">Toutes</option>
                                 <option value="justifiee">Justifiées</option>
                                 <option value="non_justifiee">Non justifiées</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="date_filter" class="form-label">Filtrer par date</label>
-                            <input type="date" id="date_filter" class="form-control">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <input type="date" id="date_filter" class="form-control" title="Filtrer par date" placeholder="Date">
                         </div>
-                        <div class="col-md-4">
-                            <label for="eleve_filter" class="form-label">Filtrer par élève</label>
-                            <select id="eleve_filter" class="form-select">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <select id="eleve_filter" class="form-select" title="Filtrer par élève">
                                 <option value="">Tous les élèves</option>
                                 @foreach($absences->groupBy('eleve_id') as $eleveId => $eleveAbsences)
                                     <option value="{{ $eleveId }}">

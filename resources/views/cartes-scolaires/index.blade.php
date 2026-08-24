@@ -21,76 +21,56 @@
                 </div>
                 <div class="card-body">
                     <!-- Filtres -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title">
-                                <i class="fas fa-filter me-2"></i>Filtres
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="GET" action="{{ route('cartes-scolaires.index') }}">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="mb-3">
-                                            <label for="statut" class="form-label">Statut</label>
-                                            <select class="form-select" id="statut" name="statut">
-                                                <option value="">Tous les statuts</option>
-                                                <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Active</option>
-                                                <option value="expiree" {{ request('statut') == 'expiree' ? 'selected' : '' }}>Expirée</option>
-                                                <option value="suspendue" {{ request('statut') == 'suspendue' ? 'selected' : '' }}>Suspendue</option>
-                                                <option value="annulee" {{ request('statut') == 'annulee' ? 'selected' : '' }}>Annulée</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="mb-3">
-                                            <label for="type_carte" class="form-label">Type de carte</label>
-                                            <select class="form-select" id="type_carte" name="type_carte">
-                                                <option value="">Tous les types</option>
-                                                <option value="standard" {{ request('type_carte') == 'standard' ? 'selected' : '' }}>Standard</option>
-                                                <option value="temporaire" {{ request('type_carte') == 'temporaire' ? 'selected' : '' }}>Temporaire</option>
-                                                <option value="remplacement" {{ request('type_carte') == 'remplacement' ? 'selected' : '' }}>Remplacement</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="mb-3">
-                                            <label for="eleve_id" class="form-label">Élève</label>
-                                            <select class="form-select" id="eleve_id" name="eleve_id">
-                                                <option value="">Tous les élèves</option>
-                                                @foreach($eleves as $eleve)
-                                                    <option value="{{ $eleve->id }}" {{ request('eleve_id') == $eleve->id ? 'selected' : '' }}>
-                                                        {{ $eleve->utilisateur->nom }} {{ $eleve->utilisateur->prenom }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="mb-3">
-                                            <label for="numero_carte" class="form-label">Numéro de carte</label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   id="numero_carte" 
-                                                   name="numero_carte" 
-                                                   value="{{ request('numero_carte') }}"
-                                                   placeholder="Rechercher par numéro">
-                                        </div>
-                                    </div>
+                    <form method="GET" action="{{ route('cartes-scolaires.index') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select class="form-select" id="statut" name="statut" title="Statut">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Active</option>
+                                    <option value="expiree" {{ request('statut') == 'expiree' ? 'selected' : '' }}>Expirée</option>
+                                    <option value="suspendue" {{ request('statut') == 'suspendue' ? 'selected' : '' }}>Suspendue</option>
+                                    <option value="annulee" {{ request('statut') == 'annulee' ? 'selected' : '' }}>Annulée</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select class="form-select" id="type_carte" name="type_carte" title="Type de carte">
+                                    <option value="">Tous les types</option>
+                                    <option value="standard" {{ request('type_carte') == 'standard' ? 'selected' : '' }}>Standard</option>
+                                    <option value="temporaire" {{ request('type_carte') == 'temporaire' ? 'selected' : '' }}>Temporaire</option>
+                                    <option value="remplacement" {{ request('type_carte') == 'remplacement' ? 'selected' : '' }}>Remplacement</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select class="form-select" id="eleve_id" name="eleve_id" title="Élève">
+                                    <option value="">Tous les élèves</option>
+                                    @foreach($eleves as $eleve)
+                                        <option value="{{ $eleve->id }}" {{ request('eleve_id') == $eleve->id ? 'selected' : '' }}>
+                                            {{ $eleve->utilisateur->nom }} {{ $eleve->utilisateur->prenom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <input type="text"
+                                       class="form-control"
+                                       id="numero_carte"
+                                       name="numero_carte"
+                                       value="{{ request('numero_carte') }}"
+                                       placeholder="Rechercher par numéro">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('cartes-scolaires.index') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                                        <i class="fas fa-times"></i>
+                                    </a>
                                 </div>
-                                <div class="row">
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary me-2">
-                                            <i class="fas fa-search me-2"></i>Filtrer
-                                        </button>
-                                        <a href="{{ route('cartes-scolaires.index') }}" class="btn btn-secondary">
-                                            <i class="fas fa-times me-2"></i>Réinitialiser
-                                        </a>
-                                    </div>
-                                </div>
-                            </form>
+                            </div>
                         </div>
-                    </div>
+                    </form>
 
                     <!-- Tableau des cartes -->
                     <div class="table-responsive">

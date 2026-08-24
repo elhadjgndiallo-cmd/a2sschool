@@ -27,34 +27,24 @@ $schoolInfo = SchoolHelper::getDocumentInfo();
 </div>
 
 <!-- Filtres de date -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>
-            Filtres de Période
-        </h5>
+<form method="GET" action="{{ route('absences.rapport', $classe->id) }}" class="mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-4">
+            <input type="date" class="form-control" id="date_debut" name="date_debut"
+                   value="{{ $dateDebut }}" required title="Date de début">
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <input type="date" class="form-control" id="date_fin" name="date_fin"
+                   value="{{ $dateFin }}" required title="Date de fin">
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search"></i>
+                <span class="d-none d-sm-inline">Filtrer</span>
+            </button>
+        </div>
     </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('absences.rapport', $classe->id) }}" class="row g-3">
-            <div class="col-md-4">
-                <label for="date_debut" class="form-label">Date de début</label>
-                <input type="date" class="form-control" id="date_debut" name="date_debut" 
-                       value="{{ $dateDebut }}" required>
-            </div>
-            <div class="col-md-4">
-                <label for="date_fin" class="form-label">Date de fin</label>
-                <input type="date" class="form-control" id="date_fin" name="date_fin" 
-                       value="{{ $dateFin }}" required>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search me-1"></i>
-                    Filtrer
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+</form>
 
 <!-- Statistiques générales -->
 <div class="row mb-4">

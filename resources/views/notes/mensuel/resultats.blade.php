@@ -18,52 +18,44 @@
 </div>
 
 <!-- Filtres -->
-<div class="card mb-4">
-    <div class="card-header bg-white">
-        <h5 class="mb-0">
-            <i class="fas fa-filter me-2"></i>
-            Filtres
-        </h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" action="{{ route('notes.mensuel.resultats', $classe->id) }}">
-            <div class="row">
-                @if(isset($anneeScolaireActive))
-                <div class="col-md-4">
-                    <label class="form-label">Année scolaire</label>
-                    <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly>
-                </div>
-                @endif
-                <div class="col-md-3">
-                    <label for="mois" class="form-label">Mois</label>
-                    <select name="mois" id="mois" class="form-select">
-                        @foreach($moisListe as $num => $nom)
-                        <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
-                            {{ $nom }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="annee" class="form-label">Année</label>
-                    <select name="annee" id="annee" class="form-select">
-                        @foreach(($anneesDisponibles ?? [date('Y')]) as $anneeOption)
-                        <option value="{{ $anneeOption }}" {{ $annee == $anneeOption ? 'selected' : '' }}>
-                            {{ $anneeOption }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>
-                        Filtrer
-                    </button>
-                </div>
+<form method="GET" action="{{ route('notes.mensuel.resultats', $classe->id) }}" class="mb-3">
+    <div class="row g-2">
+        @if(isset($anneeScolaireActive))
+        <div class="col-12 col-sm-6 col-md-3">
+            <input type="text" class="form-control" value="{{ $anneeScolaireActive->nom }}" readonly title="Année scolaire">
+        </div>
+        @endif
+        <div class="col-12 col-sm-6 col-md-3">
+            <select name="mois" id="mois" class="form-select" title="Mois">
+                @foreach($moisListe as $num => $nom)
+                <option value="{{ $num }}" {{ $mois == $num ? 'selected' : '' }}>
+                    {{ $nom }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <select name="annee" id="annee" class="form-select" title="Année">
+                @foreach(($anneesDisponibles ?? [date('Y')]) as $anneeOption)
+                <option value="{{ $anneeOption }}" {{ $annee == $anneeOption ? 'selected' : '' }}>
+                    {{ $anneeOption }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="fas fa-search"></i>
+                    <span class="d-none d-sm-inline">Filtrer</span>
+                </button>
+                <a href="{{ route('notes.mensuel.resultats', $classe->id) }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                    <i class="fas fa-times"></i>
+                </a>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 
 @if(isset($stats))
 <!-- Tableau statistique -->

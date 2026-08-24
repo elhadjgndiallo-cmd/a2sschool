@@ -23,10 +23,9 @@
                 </div>
                 <div class="card-body">
                     <!-- Filtres -->
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label for="matiere_filter" class="form-label">Filtrer par matière</label>
-                            <select id="matiere_filter" class="form-select">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <select id="matiere_filter" class="form-select" title="Filtrer par matière">
                                 <option value="">Toutes les matières</option>
                                 @foreach($matieres as $mat)
                                     <option value="{{ $mat->id }}" {{ $matiere && $matiere->id == $mat->id ? 'selected' : '' }}>
@@ -35,9 +34,8 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="type_filter" class="form-label">Filtrer par type</label>
-                            <select id="type_filter" class="form-select">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <select id="type_filter" class="form-select" title="Filtrer par type">
                                 <option value="">Tous les types</option>
                                 <option value="devoir">Devoir</option>
                                 <option value="composition">Composition</option>
@@ -45,9 +43,8 @@
                                 <option value="oral">Oral</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="date_filter" class="form-label">Filtrer par date</label>
-                            <input type="date" id="date_filter" class="form-control">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <input type="date" id="date_filter" class="form-control" title="Filtrer par date" placeholder="Date">
                         </div>
                     </div>
 

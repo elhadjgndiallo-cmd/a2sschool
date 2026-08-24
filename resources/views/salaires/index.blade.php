@@ -41,69 +41,49 @@
                 </div>
                 <div class="card-body">
                     <!-- Filtres -->
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <form method="GET" action="{{ route('salaires.index') }}">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="enseignant_id">Enseignant</label>
-                                            <select name="enseignant_id" id="enseignant_id" class="form-control">
-                                                <option value="">Tous les enseignants</option>
-                                                @foreach($enseignants as $enseignant)
-                                                    <option value="{{ $enseignant->id }}" 
-                                                            {{ request('enseignant_id') == $enseignant->id ? 'selected' : '' }}>
-                                                        {{ $enseignant->utilisateur->nom }} {{ $enseignant->utilisateur->prenom }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="statut">Statut</label>
-                                            <select name="statut" id="statut" class="form-control">
-                                                <option value="">Tous les statuts</option>
-                                                <option value="calculé" {{ request('statut') == 'calculé' ? 'selected' : '' }}>Calculé</option>
-                                                <option value="validé" {{ request('statut') == 'validé' ? 'selected' : '' }}>Validé</option>
-                                                <option value="payé" {{ request('statut') == 'payé' ? 'selected' : '' }}>Payé</option>
-                                                <option value="annulé" {{ request('statut') == 'annulé' ? 'selected' : '' }}>Annulé</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="periode_debut">Période Début</label>
-                                            <input type="date" name="periode_debut" id="periode_debut" class="form-control" 
-                                                   value="{{ request('periode_debut') }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group">
-                                            <label for="periode_fin">Période Fin</label>
-                                            <input type="date" name="periode_fin" id="periode_fin" class="form-control" 
-                                                   value="{{ request('periode_fin') }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label>&nbsp;</label>
-                                            <div>
-                                                <button type="submit" class="btn btn-primary">
-                                                    <i class="fas fa-search mr-1"></i>
-                                                    Filtrer
-                                                </button>
-                                                <a href="{{ route('salaires.index') }}" class="btn btn-secondary ml-2">
-                                                    <i class="fas fa-times mr-1"></i>
-                                                    Effacer
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
+                    <form method="GET" action="{{ route('salaires.index') }}" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <select name="enseignant_id" id="enseignant_id" class="form-control" title="Enseignant">
+                                    <option value="">Tous les enseignants</option>
+                                    @foreach($enseignants as $enseignant)
+                                        <option value="{{ $enseignant->id }}"
+                                                {{ request('enseignant_id') == $enseignant->id ? 'selected' : '' }}>
+                                            {{ $enseignant->utilisateur->nom }} {{ $enseignant->utilisateur->prenom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select name="statut" id="statut" class="form-control" title="Statut">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="calculé" {{ request('statut') == 'calculé' ? 'selected' : '' }}>Calculé</option>
+                                    <option value="validé" {{ request('statut') == 'validé' ? 'selected' : '' }}>Validé</option>
+                                    <option value="payé" {{ request('statut') == 'payé' ? 'selected' : '' }}>Payé</option>
+                                    <option value="annulé" {{ request('statut') == 'annulé' ? 'selected' : '' }}>Annulé</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <input type="date" name="periode_debut" id="periode_debut" class="form-control"
+                                       value="{{ request('periode_debut') }}" title="Période Début">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <input type="date" name="periode_fin" id="periode_fin" class="form-control"
+                                       value="{{ request('periode_fin') }}" title="Période Fin">
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search"></i>
+                                        <span class="d-none d-sm-inline">Filtrer</span>
+                                    </button>
+                                    <a href="{{ route('salaires.index') }}" class="btn btn-outline-secondary" title="Effacer">
+                                        <i class="fas fa-times"></i>
+                                    </a>
                                 </div>
-                            </form>
+                            </div>
                         </div>
-                    </div>
+                    </form>
 
                     <!-- Liste des salaires -->
                     @if($salaires->count() > 0)
