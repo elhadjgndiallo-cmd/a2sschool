@@ -20,7 +20,7 @@
 
             <div class="row">
                 {{-- Matricule (automatique) --}}
-                <div class="col-md-6 mb-3">
+                <div class="col-12 mb-3">
                     <label for="numero_etudiant" class="form-label">
                         <i class="fas fa-id-card me-1"></i>Matricule *
                     </label>
@@ -38,9 +38,11 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+            </div>
 
+            <div class="row row-mobile-2">
                 {{-- Prénom --}}
-                <div class="col-md-6 mb-3">
+                <div class="col-6 mb-3">
                     <label for="prenom" class="form-label">
                         <i class="fas fa-user me-1"></i>Prénom *
                     </label>
@@ -50,11 +52,9 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-            </div>
 
-            <div class="row">
                 {{-- Nom --}}
-                <div class="col-md-6 mb-3">
+                <div class="col-6 mb-3">
                     <label for="nom" class="form-label">
                         <i class="fas fa-user me-1"></i>Nom *
                     </label>
@@ -64,9 +64,10 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+            </div>
 
-                {{-- Sexe --}}
-                <div class="col-md-6 mb-3">
+            <div class="row row-mobile-2">
+                <div class="col-6 mb-3">
                     <label for="sexe" class="form-label">
                         <i class="fas fa-venus-mars me-1"></i>Sexe *
                     </label>
@@ -79,11 +80,9 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-            </div>
 
-            <div class="row">
                 {{-- Date de naissance --}}
-                <div class="col-md-6 mb-3">
+                <div class="col-6 mb-3">
                     <label for="date_naissance" class="form-label">
                         <i class="fas fa-calendar me-1"></i>Date de Naissance *
                     </label>
@@ -94,8 +93,9 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+            </div>
 
-                {{-- Lieu de naissance --}}
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="lieu_naissance" class="form-label">
                         <i class="fas fa-map-marker-alt me-1"></i>Lieu de Naissance *
@@ -156,12 +156,12 @@
 
             <hr>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between form-actions-sticky">
                 <button type="button" class="btn btn-secondary" onclick="previousStep()">
-                    <i class="fas fa-arrow-left me-2"></i>Étape Précédente
+                    <i class="fas fa-arrow-left me-1"></i>Précédent
                 </button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-arrow-right me-2"></i>Étape Suivante
+                    <i class="fas fa-arrow-right me-1"></i>Suivant
                 </button>
             </div>
         </form>

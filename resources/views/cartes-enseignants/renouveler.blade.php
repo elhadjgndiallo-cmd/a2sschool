@@ -2,6 +2,10 @@
 
 @section('title', 'Renouveler la Carte Enseignant')
 
+@push('styles')
+    @include('cartes-enseignants._carte-styles')
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -158,33 +162,12 @@
                     <!-- Aperçu de la nouvelle carte -->
                     <div class="card mt-3">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-eye me-2"></i>Aperçu Nouvelle Carte</h5>
+                            <h5 class="mb-0"><i class="fas fa-eye me-2"></i>Aperçu de la carte actuelle</h5>
                         </div>
                         <div class="card-body">
-                            <div class="card border" style="width: 100%; height: 120px;">
-                                <div class="card-body p-2">
-                                    <div class="d-flex justify-content-between align-items-start mb-1">
-                                        <div>
-                                            <h6 class="card-title mb-0 text-primary fw-bold" style="font-size: 0.7rem;">CARTE ENSEIGNANT</h6>
-                                            <small class="text-muted" style="font-size: 0.6rem;">Nouveau numéro</small>
-                                        </div>
-                                        <div class="text-end">
-                                            <small class="text-muted" style="font-size: 0.6rem;" id="preview-expiration">Nouvelle date</small>
-                                        </div>
-                                    </div>
-                                    <hr class="my-1">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 20px; height: 20px; font-size: 0.6rem;">
-                                            {{ substr($cartes_enseignant->enseignant->utilisateur->nom, 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <div class="fw-bold" style="font-size: 0.7rem;">{{ $cartes_enseignant->enseignant->utilisateur->nom }}</div>
-                                            <div class="fw-bold" style="font-size: 0.7rem;">{{ $cartes_enseignant->enseignant->utilisateur->prenom }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="mb-1">
-                                        <small class="text-muted" style="font-size: 0.6rem;">N° Employé: {{ $cartes_enseignant->enseignant->numero_employe }}</small>
-                                    </div>
+                            <div class="carte-preview-wrap">
+                                <div class="carte-preview-stage">
+                                    @include('cartes-enseignants._carte', ['carte' => $cartes_enseignant])
                                 </div>
                             </div>
                         </div>
@@ -194,27 +177,6 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const dateExpiration = document.getElementById('date_expiration');
-    const previewExpiration = document.getElementById('preview-expiration');
-    
-    function updatePreview() {
-        if (dateExpiration.value) {
-            const date = new Date(dateExpiration.value);
-            const formattedDate = date.toLocaleDateString('fr-FR', { 
-                month: '2-digit', 
-                year: 'numeric' 
-            });
-            previewExpiration.textContent = formattedDate;
-        }
-    }
-    
-    dateExpiration.addEventListener('change', updatePreview);
-    updatePreview(); // Initial update
-});
-</script>
 @endsection
 
 

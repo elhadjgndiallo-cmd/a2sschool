@@ -112,19 +112,19 @@
                 <table class="table table-bordered table-hover" id="absencesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th width="8%">Photo</th>
-                            <th width="12%">Matricule</th>
-                            <th width="15%">Nom</th>
+                            <th width="8%" class="hide-mobile">Photo</th>
+                            <th width="12%" class="hide-mobile">Matricule</th>
+                            <th width="15%" class="col-sticky">Nom</th>
                             <th width="15%">Prénom</th>
                             <th width="10%">Présent</th>
-                            <th width="10%">Justifié</th>
-                            <th width="30%">Motif d'absence</th>
+                            <th width="10%" class="hide-sm">Justifié</th>
+                            <th width="30%" class="hide-mobile">Motif d'absence</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($classe->eleves as $index => $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
-                            <td class="text-center">
+                            <td class="text-center hide-mobile">
                                 @if($eleve->utilisateur->photo_profil)
                                     <img src="{{ Storage::url($eleve->utilisateur->photo_profil) }}" 
                                          alt="Photo de {{ $eleve->utilisateur->prenom }} {{ $eleve->utilisateur->nom }}" 
@@ -138,10 +138,10 @@
                                 @endif
                                 <input type="hidden" name="absences[{{ $index }}][eleve_id]" value="{{ $eleve->id }}">
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 <strong>{{ $eleve->numero_etudiant }}</strong>
                             </td>
-                            <td>
+                            <td class="col-sticky">
                                 <strong>{{ $eleve->utilisateur->nom }}</strong>
                             </td>
                             <td>
@@ -156,7 +156,7 @@
                                     <option value="0">Absent</option>
                                 </select>
                             </td>
-                            <td class="text-center">
+                            <td class="text-center hide-sm">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input justifie-checkbox" 
                                            type="checkbox" 
@@ -170,7 +170,8 @@
                                     </label>
                                 </div>
                             </td>
-                            <td>
+                            </td>
+                            <td class="hide-mobile">
                                 <textarea class="form-control motif-textarea" 
                                           name="absences[{{ $index }}][motif]" 
                                           rows="2" 

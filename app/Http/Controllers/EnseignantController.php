@@ -33,48 +33,83 @@ class EnseignantController extends Controller
     /**
      * Afficher la liste des enseignants
      */
-    public function index()
+    public function index(Request $request)
     {
         // Vérifier les permissions
         if (!auth()->user()->hasPermission('enseignants.view')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
-        
-        // Vider tous les caches pour forcer le rechargement des données
-        \DB::flushQueryLog();
-        \Cache::flush();
-        
-        // Récupérer l'année scolaire active
+
         $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
-        
-        $query = Enseignant::with('utilisateur')
-            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id');
-        
-        // Filtrer uniquement les enseignants de l'année scolaire active
-        if ($anneeScolaireActive) {
+
+        $query = Enseignant::with('utilisateur');
+
+        if ($request->filled('annee_scolaire_id')) {
+            $query->where('enseignants.annee_scolaire_id', $request->annee_scolaire_id);
+        } elseif ($anneeScolaireActive) {
             $query->where('enseignants.annee_scolaire_id', $anneeScolaireActive->id);
         }
-        
-        $enseignants = $query->orderBy('utilisateurs.prenom', 'asc')
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('numero_employe', 'like', "%{$search}%")
+                    ->orWhere('specialite', 'like', "%{$search}%")
+                    ->orWhereHas('utilisateur', function ($userQuery) use ($search) {
+                        $userQuery->where('nom', 'like', "%{$search}%")
+                            ->orWhere('prenom', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('telephone', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('specialite')) {
+            $query->where('specialite', $request->specialite);
+        }
+
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->statut);
+        }
+
+        if ($request->filled('actif')) {
+            $query->where('actif', $request->actif === '1');
+        }
+
+        if ($request->filled('sexe')) {
+            $query->whereHas('utilisateur', function ($q) use ($request) {
+                $q->where('sexe', $request->sexe);
+            });
+        }
+
+        $enseignants = $query
+            ->join('utilisateurs', 'enseignants.utilisateur_id', '=', 'utilisateurs.id')
+            ->orderBy('utilisateurs.prenom', 'asc')
             ->orderBy('utilisateurs.nom', 'asc')
             ->select('enseignants.*')
             ->distinct()
-            ->paginate(20);
-        
-        // S'assurer que les relations sont bien chargées et fraîches
-        foreach ($enseignants as $enseignant) {
-            // Forcer le rechargement de l'enseignant et de ses relations
-            $enseignant->refresh();
-            
-            if (!$enseignant->relationLoaded('utilisateur')) {
-                $enseignant->load('utilisateur');
-            } else {
-                // Recharger l'utilisateur même si la relation est chargée
-                $enseignant->utilisateur->refresh();
-            }
+            ->paginate(20)
+            ->withQueryString();
+
+        $specialitesQuery = Enseignant::query()
+            ->whereNotNull('specialite')
+            ->where('specialite', '!=', '');
+
+        if ($request->filled('annee_scolaire_id')) {
+            $specialitesQuery->where('annee_scolaire_id', $request->annee_scolaire_id);
+        } elseif ($anneeScolaireActive) {
+            $specialitesQuery->where('annee_scolaire_id', $anneeScolaireActive->id);
         }
-        
-        return view('enseignants.index', compact('enseignants'));
+
+        $specialites = $specialitesQuery
+            ->distinct()
+            ->orderBy('specialite')
+            ->pluck('specialite');
+
+        $anneesScolaires = \App\Models\AnneeScolaire::orderByDesc('date_debut')->get();
+
+        return view('enseignants.index', compact('enseignants', 'specialites', 'anneesScolaires', 'anneeScolaireActive'));
     }
 
     /**

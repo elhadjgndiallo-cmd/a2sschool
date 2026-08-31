@@ -33,12 +33,11 @@
         }
         
         .phone-link {
-            padding: 8px 12px;
+            padding: 4px 8px;
             background-color: #e7f3ff;
-            border-radius: 8px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            min-height: 44px; /* Taille minimale pour faciliter le clic sur mobile */
         }
         
         .phone-link i {
@@ -61,9 +60,9 @@
         }
         
         .phone-link {
-            padding: 10px 14px;
-            width: 100%;
-            justify-content: center;
+            padding: 6px 10px;
+            width: auto;
+            justify-content: flex-start;
         }
     }
 </style>
@@ -190,20 +189,20 @@
                 <table class="table table-hover table-striped align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Nom</th>
+                            <th scope="col" class="col-sticky">Nom</th>
                             <th scope="col">Prénom</th>
                             <th scope="col">Téléphone</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Profession</th>
-                            <th scope="col">Lien</th>
-                            <th scope="col" class="text-center">Enfants</th>
+                            <th scope="col" class="hide-mobile">Email</th>
+                            <th scope="col" class="hide-mobile">Profession</th>
+                            <th scope="col" class="hide-sm">Lien</th>
+                            <th scope="col" class="text-center hide-sm">Enfants</th>
                             <th scope="col" class="text-center">Statut</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($parents as $parent)
                         <tr class="table-row-clickable" data-href="{{ route('parents.show', $parent->id) }}" role="button" tabindex="0">
-                            <td><strong>{{ $parent->utilisateur->nom }}</strong></td>
+                            <td class="col-sticky"><strong>{{ $parent->utilisateur->nom }}</strong></td>
                             <td>{{ $parent->utilisateur->prenom }}</td>
                             <td>
                                 @if($parent->utilisateur->telephone)
@@ -215,7 +214,7 @@
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 @if($parent->utilisateur->email)
                                     <a href="mailto:{{ $parent->utilisateur->email }}" class="text-decoration-none" onclick="event.stopPropagation()">
                                         <i class="fas fa-envelope me-1"></i>{{ $parent->utilisateur->email }}
@@ -224,8 +223,8 @@
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
-                            <td>{{ $parent->profession ?? '-' }}</td>
-                            <td>
+                            <td class="hide-mobile">{{ $parent->profession ?? '-' }}</td>
+                            <td class="hide-sm">
                                 @if($parent->lien_parente == 'pere')
                                     <span class="badge bg-primary">Père</span>
                                 @elseif($parent->lien_parente == 'mere')
@@ -236,8 +235,7 @@
                                     <span class="badge bg-secondary">Autre</span>
                                 @endif
                             </td>
-                            <td class="text-center">
-                                <span class="badge bg-success">{{ $parent->eleves->count() }}</span>
+                            <td class="text-center hide-sm">
                             </td>
                             <td class="text-center">
                                 @if($parent->actif)

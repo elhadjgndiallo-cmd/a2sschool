@@ -8,34 +8,13 @@ use Illuminate\Support\Facades\Storage;
 
 @section('content')
 <style>
-    /* Styles spécifiques pour le tableau des élèves */
     @media (max-width: 768px) {
-        /* Masquer certaines colonnes sur mobile */
-        .table th:nth-child(2),
-        .table td:nth-child(2) {
-            display: none;
-        }
-        
-        .table th:nth-child(6),
-        .table td:nth-child(6) {
-            display: none;
-        }
-        
-        /* Ajuster les avatars */
         .avatar-sm img,
         .avatar-sm div {
             width: 30px !important;
             height: 30px !important;
             font-size: 12px !important;
             object-fit: cover !important;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        /* Masquer plus de colonnes sur très petit écran */
-        .table th:nth-child(7),
-        .table td:nth-child(7) {
-            display: none;
         }
     }
 </style>
@@ -199,44 +178,44 @@ use Illuminate\Support\Facades\Storage;
                         <table class="table table-striped" id="elevesTable">
                             <thead class="thead-dark">
                     <tr>
-                                    <th>Profil</th>
-                        <th>Matricule</th>
+                                    <th class="hide-sm">Profil</th>
+                        <th class="hide-mobile">Matricule</th>
                                     <th>Prénom</th>
-                                    <th>Nom</th>
+                                    <th class="col-sticky">Nom</th>
                         <th>Classe</th>
-                        <th>Statut</th>
-                        <th>Frais</th>
+                        <th class="hide-sm">Statut</th>
+                        <th class="hide-mobile">Frais</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($eleves as $eleve)
                                     <tr class="table-row-clickable" data-href="{{ route('eleves.show', $eleve) }}" role="button" tabindex="0">
-                        <td>
+                        <td class="hide-sm">
                             <x-profile-image 
                                 :photo-path="$eleve->utilisateur->photo_profil ?? null"
                                 :name="($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? '')"
                                 size="sm" />
                         </td>
-                        <td>
+                        <td class="hide-mobile">
                                             <span class="badge bg-info">{{ $eleve->numero_etudiant ?? 'N/A' }}</span>
                                         </td>
                                         <td>
                                             <strong>{{ $eleve->utilisateur->prenom ?? 'N/A' }}</strong>
                         </td>
-                        <td>
+                        <td class="col-sticky">
                                             <strong>{{ $eleve->utilisateur->nom ?? 'N/A' }}</strong>
                         </td>
                         <td>
                                             <strong>{{ $eleve->classe->nom ?? 'N/A' }}</strong>
                         </td>
-                        <td>
+                        <td class="hide-sm">
                                             @if($eleve->actif)
                                                 <span class="badge bg-success">Actif</span>
                                     @else
                                                 <span class="badge bg-secondary">Inactif</span>
                             @endif
                         </td>
-                        <td>
+                        <td class="hide-mobile">
                             @if($eleve->exempte_frais)
                                 <span class="badge bg-danger">NON</span>
                             @else

@@ -37,12 +37,11 @@ use Illuminate\Support\Facades\Storage;
         }
         
         .phone-link {
-            padding: 8px 12px;
+            padding: 4px 8px;
             background-color: #e7f3ff;
-            border-radius: 8px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            min-height: 44px; /* Taille minimale pour faciliter le clic sur mobile */
         }
         
         .phone-link i {
@@ -56,41 +55,18 @@ use Illuminate\Support\Facades\Storage;
             transform: scale(0.98);
         }
         
-        /* Styles responsive pour le tableau des enseignants */
-        /* Masquer certaines colonnes sur mobile */
-        .table th:nth-child(1),
-        .table td:nth-child(1) {
-            display: none;
-        }
-        
-        .table th:nth-child(4),
-        .table td:nth-child(4) {
-            display: none;
-        }
-        
-        .table th:nth-child(5),
-        .table td:nth-child(5) {
-            display: none;
-        }
-        
     }
     
     @media (max-width: 576px) {
-        /* Masquer plus de colonnes sur très petit écran */
-        .table th:nth-child(6),
-        .table td:nth-child(6) {
-            display: none;
-        }
-        
         .phone-number {
             font-size: 18px !important;
             font-weight: 700 !important;
         }
         
         .phone-link {
-            padding: 10px 14px;
-            width: 100%;
-            justify-content: center;
+            padding: 6px 10px;
+            width: auto;
+            justify-content: flex-start;
         }
     }
 </style>
@@ -128,25 +104,109 @@ use Illuminate\Support\Facades\Storage;
         <h5 class="mb-0">Liste des Enseignants</h5>
     </div>
     <div class="card-body">
+        <form method="GET" action="{{ route('enseignants.index') }}" class="mb-3">
+            <div class="row g-2">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <input type="text"
+                           class="form-control"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Nom, prénom, email, tél., n° employé...">
+                </div>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select class="form-select" name="specialite" title="Spécialité">
+                        <option value="">Toutes les spécialités</option>
+                        @foreach($specialites as $specialite)
+                            <option value="{{ $specialite }}" {{ request('specialite') == $specialite ? 'selected' : '' }}>
+                                {{ $specialite }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select class="form-select" name="statut" title="Statut">
+                        <option value="">Tous les contrats</option>
+                        <option value="titulaire" {{ request('statut') == 'titulaire' ? 'selected' : '' }}>Titulaire</option>
+                        <option value="contractuel" {{ request('statut') == 'contractuel' ? 'selected' : '' }}>Contractuel</option>
+                        <option value="vacataire" {{ request('statut') == 'vacataire' ? 'selected' : '' }}>Vacataire</option>
+                    </select>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                    <select class="form-select" name="actif" title="Actif">
+                        <option value="">Actifs / Inactifs</option>
+                        <option value="1" {{ request('actif') === '1' ? 'selected' : '' }}>Actifs</option>
+                        <option value="0" {{ request('actif') === '0' ? 'selected' : '' }}>Inactifs</option>
+                    </select>
+                </div>
+                <div class="col-6 col-sm-4 col-md-1">
+                    <select class="form-select" name="sexe" title="Sexe">
+                        <option value="">Sexe</option>
+                        <option value="M" {{ request('sexe') == 'M' ? 'selected' : '' }}>M</option>
+                        <option value="F" {{ request('sexe') == 'F' ? 'selected' : '' }}>F</option>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-8 col-md-2">
+                    <div class="d-flex gap-1">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fas fa-search"></i>
+                            <span class="d-none d-sm-inline">Filtrer</span>
+                        </button>
+                        <a href="{{ route('enseignants.index') }}" class="btn btn-outline-secondary" title="Effacer">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <select class="form-select" name="annee_scolaire_id" title="Année scolaire">
+                        <option value="">Année scolaire active</option>
+                        @foreach($anneesScolaires as $annee)
+                            <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id') === (string) $annee->id ? 'selected' : '' }}>
+                                {{ $annee->nom }}{{ $annee->active ? ' (active)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <div class="mb-2">
+            <small class="text-muted">
+                @if(request()->hasAny(['search', 'specialite', 'statut', 'actif', 'sexe', 'annee_scolaire_id']))
+                    <i class="fas fa-filter me-1"></i>
+                    Filtres actifs — {{ $enseignants->total() }} résultat(s)
+                    <a href="{{ route('enseignants.index') }}" class="text-danger ms-2">
+                        <i class="fas fa-times"></i> Effacer
+                    </a>
+                @else
+                    {{ $enseignants->total() }} enseignant(s)
+                    @if($anneeScolaireActive)
+                        — {{ $anneeScolaireActive->nom }}
+                    @endif
+                @endif
+            </small>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-striped table-hover">
                 <thead class="table-dark">
                     <tr>
-                        <th>#</th>
-                        <th>Photo</th>
-                        <th>Nom Complet</th>
-                        <th>Email</th>
+                        <th class="hide-mobile">#</th>
+                        <th class="hide-sm">Photo</th>
+                        <th class="col-sticky">Nom Complet</th>
+                        <th class="hide-mobile">Email</th>
                         <th>Téléphone</th>
                         <th>Spécialité</th>
-                        <th>Statut</th>
-                        <th>Date Embauche</th>
+                        <th class="hide-sm">Statut</th>
+                        <th class="hide-mobile">Date Embauche</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($enseignants as $enseignant)
                     <tr class="table-row-clickable" data-href="{{ route('enseignants.show', $enseignant) }}" role="button" tabindex="0">
-                        <td>{{ $loop->iteration }}</td>
-                        <td>
+                        <td class="hide-mobile">{{ $loop->iteration }}</td>
+                        <td class="hide-sm">
                             <div class="avatar-sm">
                                 @if($enseignant->utilisateur && $enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil))
                                     <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" 
@@ -160,12 +220,12 @@ use Illuminate\Support\Facades\Storage;
                                 @endif
                             </div>
                         </td>
-                        <td>
+                        <td class="col-sticky">
                             <strong>{{ $enseignant->utilisateur->prenom }} {{ $enseignant->utilisateur->nom }}</strong>
                             <br>
                             <small class="text-muted">{{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}</small>
                         </td>
-                        <td>{{ $enseignant->utilisateur->email }}</td>
+                        <td class="hide-mobile">{{ $enseignant->utilisateur->email }}</td>
                         <td>
                             @if($enseignant->utilisateur->telephone)
                                 <a href="tel:{{ $enseignant->utilisateur->telephone }}" class="phone-link text-decoration-none" onclick="event.stopPropagation()">
@@ -177,20 +237,20 @@ use Illuminate\Support\Facades\Storage;
                             @endif
                         </td>
                         <td>{{ $enseignant->specialite }}</td>
-                        <td>
+                        <td class="hide-sm">
                             <span class="badge bg-{{ $enseignant->actif ? 'success' : 'danger' }}">
                                 {{ $enseignant->actif ? 'Actif' : 'Inactif' }}
                             </span>
                             <br>
                             <small class="badge bg-info">{{ ucfirst($enseignant->statut) }}</small>
                         </td>
-                        <td>{{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}</td>
+                        <td class="hide-mobile">{{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}</td>
                     </tr>
                     @empty
                     <tr>
                         <td colspan="8" class="text-center text-muted">
                             <i class="fas fa-info-circle fa-2x mb-3"></i>
-                            <p>Aucun enseignant trouvé.</p>
+                            <p>Aucun enseignant ne correspond aux critères.</p>
                         </td>
                     </tr>
                     @endforelse

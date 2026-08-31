@@ -153,11 +153,17 @@ class CarteScolaireController extends Controller
      */
     public function update(Request $request, CarteScolaire $cartes_scolaire)
     {
-        $request->validate([
+        $rules = [
             'statut' => 'required|in:active,expiree,suspendue,annulee',
-            'date_expiration' => 'required|date|after:date_emission',
-            'observations' => 'nullable|string|max:500'
-        ]);
+            'date_expiration' => 'required|date',
+            'observations' => 'nullable|string|max:500',
+        ];
+
+        if ($cartes_scolaire->date_emission) {
+            $rules['date_expiration'] .= '|after:' . $cartes_scolaire->date_emission->format('Y-m-d');
+        }
+
+        $request->validate($rules);
 
         try {
             $cartes_scolaire->update([

@@ -25,7 +25,7 @@
             <div class="card-body">
                 <div class="row">
                     @foreach($classes as $classe)
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 col-sm-6 col-md-4 mb-3">
                         <div class="card border-warning">
                             <div class="card-body text-center">
                                 <i class="fas fa-users fa-2x text-warning mb-3"></i>

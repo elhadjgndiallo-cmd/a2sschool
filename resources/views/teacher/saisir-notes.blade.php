@@ -120,11 +120,11 @@
                 <table class="table table-bordered table-hover" id="notesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th width="10%">MATRICULE</th>
-                            <th width="15%">PRENOMS</th>
+                            <th width="10%" class="hide-mobile">MATRICULE</th>
+                            <th width="15%" class="col-sticky">PRENOMS</th>
                             <th width="15%">NOM</th>
                             <th width="15%">MATIERES</th>
-                            <th width="8%">COEFFICIENT</th>
+                            <th width="8%" class="hide-mobile">COEFFICIENT</th>
                             @if(!$classe->isPrimaire())
                             <th width="12%">NOTE COURS</th>
                             @endif
@@ -135,11 +135,11 @@
                     <tbody>
                         @foreach($classe->eleves as $index => $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
-                            <td>
+                            <td class="hide-mobile">
                                 <strong>{{ $eleve->numero_etudiant }}</strong>
                                 <input type="hidden" name="notes[{{ $index }}][eleve_id]" value="{{ $eleve->id }}">
                             </td>
-                            <td>
+                            <td class="col-sticky">
                                 <strong>{{ $eleve->utilisateur->prenom }}</strong>
                             </td>
                             <td>
@@ -155,7 +155,7 @@
                                     @endforeach
                                 </select>
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 <input type="number" 
                                        class="form-control coefficient-input" 
                                        name="notes[{{ $index }}][coefficient]" 
@@ -243,7 +243,7 @@
 
     <!-- Boutons d'action -->
     <div class="card mt-4">
-        <div class="card-body">
+        <div class="card-body form-actions-sticky">
             <div class="row">
                 <div class="col-md-6">
                     <button type="button" class="btn btn-info" id="calculer-tout">

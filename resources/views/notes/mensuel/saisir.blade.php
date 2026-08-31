@@ -126,22 +126,22 @@
                 <table class="table table-bordered table-striped">
                     <thead class="table-dark">
                         <tr>
-                            <th class="text-center">MATRICULE</th>
-                            <th class="text-center">PRENOMS</th>
+                            <th class="text-center hide-mobile">MATRICULE</th>
+                            <th class="text-center col-sticky">PRENOMS</th>
                             <th class="text-center">NOM</th>
                             <th class="text-center">MATIERE</th>
-                            <th class="text-center">COEFFICIENT</th>
+                            <th class="text-center hide-mobile">COEFFICIENT</th>
                             <th class="text-center">NOTE</th>
                         </tr>
                     </thead>
                     <tbody id="eleves-table">
                         @foreach($eleves as $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
-                            <td class="fw-bold text-center">{{ $eleve->matricule }}</td>
-                            <td>{{ $eleve->prenom }}</td>
+                            <td class="fw-bold text-center hide-mobile">{{ $eleve->matricule }}</td>
+                            <td class="col-sticky">{{ $eleve->prenom }}</td>
                             <td>{{ $eleve->nom }}</td>
                             <td class="matiere-nom">-</td>
-                            <td>
+                            <td class="hide-mobile">
                                 <input type="number" 
                                        name="notes[{{ $eleve->id }}][coefficient]" 
                                        class="form-control form-control-sm text-center coefficient-input" 
@@ -170,7 +170,7 @@
                 </table>
             </div>
             
-            <div class="d-flex justify-content-between mt-4">
+            <div class="d-flex justify-content-between flex-wrap gap-2 mt-4 form-actions-sticky">
                 <div class="alert alert-info mb-0">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>Note :</strong> Une seule note par matière par mois. Les notes existantes seront mises à jour.

@@ -17,6 +17,21 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    @if($errors->any())
+                        <div class="alert alert-danger">
+                            <strong>La modification n'a pas pu être enregistrée :</strong>
+                            <ul class="mb-0 mt-2">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+
                     <form action="{{ route('cartes-scolaires.update', $cartes_scolaire) }}" method="POST">
                         @csrf
                         @method('PUT')
@@ -32,15 +47,16 @@
                                             <label class="form-label">Élève</label>
                                             <div class="form-control-plaintext">
                                                 <div class="d-flex align-items-center">
-                                                    @if($cartes_scolaire->eleve->utilisateur->photo_profil)
-                                                        @php
-                                                            $imageName = basename($cartes_scolaire->eleve->utilisateur->photo_profil);
-                                                            $imagePath = 'storage/' . $carte->eleve->utilisateur->photo_profil;
-                                                        @endphp
-                                                        <img src="{{ asset($imagePath) }}" 
+                                                    @php
+                                                        $photoRel = $cartes_scolaire->eleve->utilisateur->photo_profil ?? null;
+                                                        $photoUrl = $photoRel ? asset('storage/' . ltrim($photoRel, '/')) : null;
+                                                    @endphp
+                                                    @if($photoUrl)
+                                                        <img src="{{ $photoUrl }}" 
                                                              class="rounded-circle me-2" 
                                                              width="40" height="40" 
-                                                             alt="Photo">
+                                                             alt="Photo"
+                                                             style="object-fit: cover;">
                                                     @else
                                                         <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
                                                              style="width: 40px; height: 40px;">
@@ -73,7 +89,7 @@
                                         <div class="mb-3">
                                             <label class="form-label">Date d'émission</label>
                                             <div class="form-control-plaintext">
-                                                {{ $cartes_scolaire->date_emission->format('d/m/Y') }}
+                                                {{ $cartes_scolaire->date_emission?->format('d/m/Y') ?? 'Non définie' }}
                                             </div>
                                         </div>
                                     </div>
@@ -108,7 +124,7 @@
                                                    class="form-control @error('date_expiration') is-invalid @enderror" 
                                                    id="date_expiration" 
                                                    name="date_expiration" 
-                                                   value="{{ old('date_expiration', $cartes_scolaire->date_expiration->format('Y-m-d')) }}" 
+                                                   value="{{ old('date_expiration', $cartes_scolaire->date_expiration?->format('Y-m-d')) }}" 
                                                    required>
                                             @error('date_expiration')
                                                 <div class="invalid-feedback">{{ $message }}</div>

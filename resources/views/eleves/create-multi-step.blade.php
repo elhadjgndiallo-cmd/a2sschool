@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
+    <div class="row d-none d-md-block">
         <div class="col-12">
             <div class="page-title-box">
                 <div class="page-title-right">
@@ -22,12 +22,16 @@
         </div>
     </div>
 
+    <h5 class="d-md-none mb-2">
+        <i class="fas fa-user-plus me-1"></i>Inscription · {{ $currentStep }}/4
+    </h5>
+
     {{-- Indicateur de progression --}}
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
             <div class="card">
-                <div class="card-body">
-                    <div class="progress mb-3" style="height: 8px;">
+                <div class="card-body py-2 py-md-3">
+                    <div class="progress mb-2 mb-md-3" style="height: 6px;">
                         <div class="progress-bar bg-primary" role="progressbar" 
                              style="width: {{ ($currentStep / 4) * 100 }}%" 
                              aria-valuenow="{{ $currentStep }}" 
@@ -99,7 +103,7 @@
 
 <style>
 .step-indicator {
-    padding: 10px;
+    padding: 6px 4px;
     border-radius: 8px;
     transition: all 0.3s ease;
 }
@@ -110,12 +114,12 @@
 }
 
 .step-indicator i {
-    font-size: 24px;
-    margin-bottom: 8px;
+    font-size: 18px;
+    margin-bottom: 4px;
 }
 
 .step-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #6c757d;
 }
@@ -132,6 +136,19 @@
 .progress-bar {
     border-radius: 4px;
     transition: width 0.6s ease;
+}
+
+@media (max-width: 576px) {
+    .step-indicator {
+        padding: 4px 2px;
+    }
+    .step-indicator i {
+        font-size: 14px;
+        margin-bottom: 2px;
+    }
+    .step-label {
+        font-size: 10px;
+    }
 }
 </style>
 @endsection

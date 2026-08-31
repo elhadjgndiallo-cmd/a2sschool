@@ -53,8 +53,8 @@
 
             {{-- Nouveau parent --}}
             <div id="new-parent-section">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
+                <div class="row row-mobile-2">
+                    <div class="col-6 mb-3">
                         <label for="parent_prenom" class="form-label">
                             <i class="fas fa-user me-1"></i>Prénom du Parent *
                         </label>
@@ -66,7 +66,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div class="col-6 mb-3">
                         <label for="parent_nom" class="form-label">
                             <i class="fas fa-user me-1"></i>Nom du Parent *
                         </label>
@@ -193,12 +193,12 @@
 
             <hr>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between form-actions-sticky">
                 <button type="button" class="btn btn-secondary" onclick="previousStep()">
-                    <i class="fas fa-arrow-left me-2"></i>Étape Précédente
+                    <i class="fas fa-arrow-left me-1"></i>Précédent
                 </button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-arrow-right me-2"></i>Étape Suivante
+                    <i class="fas fa-arrow-right me-1"></i>Suivant
                 </button>
             </div>
         </form>

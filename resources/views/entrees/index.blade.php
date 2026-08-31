@@ -100,8 +100,8 @@
                                         <th>Libellé</th>
                                         <th>Source</th>
                                         <th class="text-end" style="width: 150px;">Montant</th>
-                                        <th>Mode de Paiement</th>
-                                        <th>Enregistré par</th>
+                                        <th class="hide-mobile">Mode de Paiement</th>
+                                        <th class="hide-mobile">Enregistré par</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -119,10 +119,10 @@
                                                 <span class="badge bg-{{ $entry->type == 'entree' ? 'info' : 'primary' }}">{{ $entry->source }}</span>
                                             </td>
                                             <td class="text-end text-success fw-bold" style="width: 150px;">{{ number_format($entry->montant, 0, ',', ' ') }} GNF</td>
-                                            <td>
+                                            <td class="hide-mobile">
                                                 <span class="badge bg-secondary">{{ $entry->type == 'entree' ? ucfirst($entry->data->mode_paiement) : 'Automatique' }}</span>
                                             </td>
-                                            <td>{{ $entry->enregistre_par->nom ?? 'N/A' }}</td>
+                                            <td class="hide-mobile">{{ $entry->enregistre_par->nom ?? 'N/A' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

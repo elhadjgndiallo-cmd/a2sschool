@@ -99,19 +99,19 @@
                 <table class="table table-bordered table-hover" id="absencesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th width="5%">#</th>
-                            <th width="25%">Élève</th>
+                            <th width="5%" class="hide-mobile">#</th>
+                            <th width="25%" class="col-sticky">Élève</th>
                             <th width="15%">Statut</th>
-                            <th width="15%">Type d'absence</th>
-                            <th width="20%">Motif</th>
-                            <th width="20%">Actions</th>
+                            <th width="15%" class="hide-sm">Type d'absence</th>
+                            <th width="20%" class="hide-mobile">Motif</th>
+                            <th width="20%" class="col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($classe->eleves as $index => $eleve)
                         <tr data-eleve-id="{{ $eleve->id }}">
-                            <td class="text-center">{{ $index + 1 }}</td>
-                            <td>
+                            <td class="text-center hide-mobile">{{ $index + 1 }}</td>
+                            <td class="col-sticky">
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-sm me-2">
                                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
@@ -145,7 +145,7 @@
                                     </label>
                                 </div>
                             </td>
-                            <td>
+                            <td class="hide-sm">
                                 <select class="form-select form-select-sm type-absence" 
                                         name="absences[{{ $index }}][type]" 
                                         data-index="{{ $index }}" 
@@ -155,7 +155,7 @@
                                     <option value="sortie_anticipee">Sortie anticipée</option>
                                 </select>
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 <input type="text" 
                                        class="form-control form-control-sm motif-input" 
                                        name="absences[{{ $index }}][motif]" 
@@ -163,8 +163,7 @@
                                        data-index="{{ $index }}"
                                        disabled>
                             </td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm">
+                            <td class="text-center col-actions">
                                     <button type="button" 
                                             class="btn btn-outline-info btn-sm historique-btn" 
                                             data-eleve-id="{{ $eleve->id }}"

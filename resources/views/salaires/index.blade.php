@@ -93,9 +93,9 @@
                                     <tr>
                                         <th>Enseignant</th>
                                         <th>Période</th>
-                                        <th>Heures</th>
-                                        <th>Taux Horaire</th>
-                                        <th>Salaire Brut</th>
+                                        <th class="hide-mobile">Heures</th>
+                                        <th class="hide-mobile">Taux Horaire</th>
+                                        <th class="hide-sm">Salaire Brut</th>
                                         <th>Salaire Net</th>
                                         <th>Statut</th>
                                     </tr>
@@ -111,13 +111,13 @@
                                             <td>
                                                 {{ $salaire->periode_debut->format('d/m/Y') }} - {{ $salaire->periode_fin->format('d/m/Y') }}
                                             </td>
-                                            <td class="text-center">
+                                            <td class="text-center hide-mobile">
                                                 <span class="badge badge-info">{{ $salaire->nombre_heures }}h</span>
                                             </td>
-                                            <td class="text-right">
+                                            <td class="text-right hide-mobile">
                                                 <strong>{{ number_format($salaire->taux_horaire, 0, ',', ' ') }} GNF/h</strong>
                                             </td>
-                                            <td class="text-right">
+                                            <td class="text-right hide-sm">
                                                 <strong class="text-primary">
                                                     {{ number_format($salaire->salaire_brut, 0, ',', ' ') }} GNF
                                                 </strong>

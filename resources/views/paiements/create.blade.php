@@ -199,15 +199,15 @@
                             </div>
                         </div>
 
-                        <div class="form-group mt-4">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save mr-1"></i>
-                                Enregistrer
-                            </button>
-                            <a href="{{ route('paiements.index') }}" class="btn btn-secondary ml-2">
-                                <i class="fas fa-arrow-left mr-1"></i>
+                        <div class="form-group mt-4 form-actions-sticky">
+                            <a href="{{ route('paiements.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>
                                 Retour
                             </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Enregistrer
+                            </button>
                         </div>
                     </form>
                 </div>

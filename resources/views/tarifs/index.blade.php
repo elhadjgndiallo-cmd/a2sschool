@@ -80,12 +80,12 @@
                 <table class="table table-striped table-hover">
                     <thead class="table-dark">
                         <tr>
-                            <th>Classe</th>
-                            <th>Année Scolaire</th>
+                            <th class="col-sticky">Classe</th>
+                            <th class="hide-mobile">Année Scolaire</th>
                             <th>Inscription</th>
-                            <th>Réinscription</th>
+                            <th class="hide-mobile">Réinscription</th>
                             <th>Mensuel</th>
-                            <th>Total Annuel</th>
+                            <th class="hide-sm">Total Annuel</th>
                             <th>Statut</th>
                         </tr>
                     </thead>
@@ -104,8 +104,7 @@
                             // Frais de réinscription configurés ou 50% de l'inscription si non défini
                             $fraisReinscription = $tarif->frais_reinscription > 0 ? $tarif->frais_reinscription : ($tarif->frais_inscription * 0.5);
                         @endphp
-                        <tr class="table-row-clickable" data-href="{{ route('tarifs.show', $tarif) }}" role="button" tabindex="0">
-                            <td>
+                            <td class="col-sticky">
                                 @if($tarif->classe)
                                     <strong class="text-primary">{{ $tarif->classe->nom }}</strong>
                                     @if($tarif->classe->niveau)
@@ -119,7 +118,7 @@
                                     </span>
                                 @endif
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 <span class="badge bg-info fs-6">{{ $tarif->annee_scolaire }}</span>
                             </td>
                             <td>
@@ -127,7 +126,7 @@
                                 <br>
                                 <small class="text-muted">GNF</small>
                             </td>
-                            <td>
+                            <td class="hide-mobile">
                                 <strong class="text-warning">{{ number_format($fraisReinscription, 0, ',', ' ') }}</strong>
                                 <br>
                                 <small class="text-muted">GNF</small>
@@ -148,7 +147,7 @@
                                 </small>
                                 @endif
                             </td>
-                            <td>
+                            <td class="hide-sm">
                                 <strong class="text-danger fs-5">{{ number_format($totalAnnuel, 0, ',', ' ') }}</strong>
                                 <br>
                                 <small class="text-muted">GNF (9 mois)</small>

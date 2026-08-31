@@ -106,8 +106,8 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Libellé</th>
-                                    <th>Type</th>
-                                    <th>Bénéficiaire</th>
+                                    <th class="hide-mobile">Type</th>
+                                    <th class="hide-mobile">Bénéficiaire</th>
                                     <th>Montant</th>
                                     <th>Statut</th>
                                 </tr>
@@ -123,12 +123,12 @@
                                                 <small class="text-muted">Ref: {{ $depense->reference_facture }}</small>
                                             @endif
                                         </td>
-                                        <td>
+                                        <td class="hide-mobile">
                                             <span class="badge badge-info">
                                                 {{ $depense->type_depense_libelle }}
                                             </span>
                                         </td>
-                                        <td>{{ $depense->beneficiaire ?? '-' }}</td>
+                                        <td class="hide-mobile">{{ $depense->beneficiaire ?? '-' }}</td>
                                         <td>
                                             <strong class="text-danger">
                                                 {{ number_format($depense->montant, 0, ',', ' ') }} GNF

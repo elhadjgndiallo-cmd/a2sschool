@@ -56,12 +56,12 @@
 
             <hr>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between form-actions-sticky">
                 <a href="{{ route('eleves.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-times me-2"></i>Annuler
+                    <i class="fas fa-times me-1"></i>Annuler
                 </a>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-arrow-right me-2"></i>Étape Suivante
+                    <i class="fas fa-arrow-right me-1"></i>Suivant
                 </button>
             </div>
         </form>
@@ -101,6 +101,13 @@
     height: 100%;
     object-fit: cover;
     border-radius: 8px;
+}
+
+@media (max-width: 576px) {
+    .photo-preview {
+        width: 140px;
+        height: 140px;
+    }
 }
 </style>
 

@@ -77,25 +77,25 @@
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th width="40">
+                                        <th width="40" class="hide-sm">
                                             <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
                                         </th>
-                                        <th>Numéro</th>
+                                        <th class="hide-mobile">Numéro</th>
                                         <th>Élève</th>
-                                        <th>Classe</th>
-                                        <th>Type</th>
-                                        <th>Date d'émission</th>
-                                        <th>Date d'expiration</th>
+                                        <th class="hide-sm">Classe</th>
+                                        <th class="hide-mobile">Type</th>
+                                        <th class="hide-mobile">Date d'émission</th>
+                                        <th class="hide-mobile">Date d'expiration</th>
                                         <th>Statut</th>
                                     </tr>
                                 </thead>
                             <tbody>
                                 @forelse($cartes as $carte)
                                     <tr class="table-row-clickable" data-href="{{ route('cartes-scolaires.show', $carte) }}" role="button" tabindex="0">
-                                        <td>
+                                        <td class="hide-sm">
                                             <input type="checkbox" name="cartes[]" value="{{ $carte->id }}" class="carte-checkbox" onchange="updateImprimerButton()" onclick="event.stopPropagation()">
                                         </td>
-                                        <td>
+                                        <td class="hide-mobile">
                                             <span class="badge bg-info">{{ $carte->numero_carte }}</span>
                                         </td>
                                         <td>
@@ -118,16 +118,16 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="hide-sm">
                                             <span class="badge bg-secondary">
                                                 {{ $carte->eleve->classe->nom ?? 'Non assigné' }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td class="hide-mobile">
                                             <span class="badge bg-primary">{{ $carte->type_carte_libelle }}</span>
                                         </td>
-                                        <td>{{ $carte->date_emission->format('d/m/Y') }}</td>
-                                        <td>
+                                        <td class="hide-mobile">{{ $carte->date_emission->format('d/m/Y') }}</td>
+                                        <td class="hide-mobile">
                                             <span class="{{ $carte->date_expiration < now() ? 'text-danger' : 'text-success' }}">
                                                 {{ $carte->date_expiration->format('d/m/Y') }}
                                             </span>

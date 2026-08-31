@@ -7,23 +7,23 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-credit-card mr-2"></i>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-credit-card me-2"></i>
                         Gestion des Paiements
                     </h3>
-                    <div>
-                        <a href="{{ route('paiements.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus mr-1"></i>
-                            Nouveau Frais
+                    <div class="d-flex flex-wrap gap-1">
+                        <a href="{{ route('paiements.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i>
+                            <span class="d-none d-sm-inline">Nouveau Frais</span>
                         </a>
-                        <a href="{{ route('paiements.rapports') }}" class="btn btn-info">
-                            <i class="fas fa-chart-bar mr-1"></i>
-                            Rapports
+                        <a href="{{ route('paiements.rapports') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-chart-bar"></i>
+                            <span class="d-none d-sm-inline">Rapports</span>
                         </a>
-                        <a href="{{ route('recus-rappel.create') }}" class="btn btn-danger">
-                            <i class="fas fa-bell mr-1"></i>
-                            Créer Reçu de Rappel
+                        <a href="{{ route('recus-rappel.create') }}" class="btn btn-danger btn-sm">
+                            <i class="fas fa-bell"></i>
+                            <span class="d-none d-sm-inline">Créer Reçu de Rappel</span>
                         </a>
                     </div>
                 </div>
@@ -96,24 +96,24 @@
                         <table class="table table-bordered table-striped">
                             <thead class="thead-dark">
                                 <tr>
-                                    <th>Élève</th>
-                                    <th>Matricule</th>
-                                    <th>Classe</th>
+                                    <th class="col-sticky">Élève</th>
+                                    <th class="hide-mobile">Matricule</th>
+                                    <th class="hide-mobile">Classe</th>
                                     <th>Libellé</th>
-                                    <th>Type</th>
+                                    <th class="hide-mobile">Type</th>
                                     <th>Montant</th>
-                                    <th>Échéance</th>
+                                    <th class="hide-mobile">Échéance</th>
                                     <th>Statut</th>
-                                    <th>Paiement</th>
+                                    <th class="hide-sm">Paiement</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($fraisScolarite as $frais)
                                     <tr class="table-row-clickable" data-href="{{ route('paiements.show', $frais) }}" role="button" tabindex="0">
-                                        <td>
+                                        <td class="col-sticky">
                                             <strong>{{ $frais->eleve->utilisateur->nom ?? 'N/A' }} {{ $frais->eleve->utilisateur->prenom ?? 'N/A' }}</strong>
                                         </td>
-                                        <td>
+                                        <td class="hide-mobile">
                                             @if($frais->eleve && $frais->eleve->id)
                                                 <a href="{{ route('eleves.show', $frais->eleve->id) }}" 
                                                    class="text-primary text-decoration-none" 
@@ -126,9 +126,9 @@
                                                 N/A
                                             @endif
                                         </td>
-                                        <td>{{ $frais->eleve->classe->nom ?? 'N/A' }}</td>
+                                        <td class="hide-mobile">{{ $frais->eleve->classe->nom ?? 'N/A' }}</td>
                                         <td>{{ $frais->libelle }}</td>
-                                        <td>
+                                        <td class="hide-mobile">
                                             <span class="badge bg-info text-white">
                                                 {{ ucfirst($frais->type_frais) }}
                                             </span>
@@ -143,7 +143,7 @@
                                                 </small>
                                             @endif
                                         </td>
-                                        <td>{{ $frais->date_echeance->format('d/m/Y') }}</td>
+                                        <td class="hide-mobile">{{ $frais->date_echeance->format('d/m/Y') }}</td>
                                         <td>
                                             @switch($frais->statut)
                                                 @case('paye')
@@ -159,7 +159,7 @@
                                                     <span class="badge bg-secondary text-white">{{ $frais->statut }}</span>
                                             @endswitch
                                         </td>
-                                        <td>
+                                        <td class="hide-sm">
                                             <div class="progress" style="height: 20px;">
                                                 @php
                                                     $pourcentage = $frais->montant > 0 ? 

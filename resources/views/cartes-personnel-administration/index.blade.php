@@ -91,18 +91,18 @@ use Illuminate\Support\Facades\Storage;
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>Numéro</th>
+                                        <th class="hide-mobile">Numéro</th>
                                         <th>Personnel</th>
-                                        <th>Type</th>
-                                        <th>Date d'émission</th>
-                                        <th>Date d'expiration</th>
+                                        <th class="hide-mobile">Type</th>
+                                        <th class="hide-mobile">Date d'émission</th>
+                                        <th class="hide-mobile">Date d'expiration</th>
                                         <th>Statut</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($cartes as $carte)
                                         <tr class="table-row-clickable" data-href="{{ route('cartes-personnel-administration.show', $carte) }}" role="button" tabindex="0">
-                                            <td>
+                                            <td class="hide-mobile">
                                                 <strong>{{ $carte->numero_carte }}</strong>
                                             </td>
                                             <td>
@@ -123,11 +123,11 @@ use Illuminate\Support\Facades\Storage;
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td>
+                                            <td class="hide-mobile">
                                                 <span class="badge bg-info">{{ $carte->type_carte_libelle }}</span>
                                             </td>
-                                            <td>{{ $carte->date_emission->format('d/m/Y') }}</td>
-                                            <td>
+                                            <td class="hide-mobile">{{ $carte->date_emission->format('d/m/Y') }}</td>
+                                            <td class="hide-mobile">
                                                 <span class="{{ $carte->date_expiration < now() ? 'text-danger' : '' }}">
                                                     {{ $carte->date_expiration->format('d/m/Y') }}
                                                 </span>

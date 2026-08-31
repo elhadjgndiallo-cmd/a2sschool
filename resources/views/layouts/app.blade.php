@@ -183,19 +183,22 @@
         
         .sidebar .nav-link {
             color: #495057 !important;
-            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.1rem;
             border-radius: 10px;
-            margin: 5px 15px;
-            transition: all 0.3s ease;
+            margin: 4px 12px;
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
             border-left: 4px solid transparent;
             font-weight: 500;
             position: relative;
+            line-height: 1.3;
         }
         
         .sidebar .nav-link:hover {
             background: linear-gradient(135deg, {{ $couleurs['general']['header_bg'] ?? '#667eea' }} 0%, {{ $couleurs['general']['primary_color'] ?? '#764ba2' }} 100%); /* couleur de fond du menu latéral */
             color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;
-            transform: translateX(10px);
             border-left: 4px solid {{ $couleurs['general']['header_text'] ?? '#ffffff' }};
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
@@ -208,8 +211,18 @@
         }
         
         .sidebar .nav-link i {
-            margin-right: 10px;
-            font-size: 1.1em;
+            width: 1.35rem;
+            min-width: 1.35rem;
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1;
+            text-align: center;
+            flex-shrink: 0;
+            transform: none !important;
+        }
+
+        .sidebar .nav-link:hover i {
+            transform: none !important;
         }
         
         /* Contenu principal */
@@ -379,124 +392,134 @@
             transform: scale(1.1);
         }
         
-        /* Responsive */
-        @media (max-width: 768px) {
+        /* Un seul menu hamburger sous le breakpoint lg (992px) */
+        @media (max-width: 991.98px) {
             .top-navbar {
-                min-height: 60px;
-            }
-            
-            .top-navbar .nav-link {
-                padding: 0.4rem 0.5rem;
-                font-size: 0.8rem;
-                margin: 0 1px;
+                min-height: 56px;
+                padding-top: env(safe-area-inset-top);
             }
             
             .top-navbar .navbar-brand {
                 font-size: 1rem;
             }
+
+            #topNavbar {
+                display: none !important;
+            }
+
+            #sidebarToggle {
+                padding: 0.35rem 0.55rem;
+                font-size: 1rem;
+                line-height: 1.2;
+                min-width: 44px;
+                min-height: 44px;
+            }
             
-            /* Ajuster le padding-top pour la navbar sur mobile */
             .main-content {
                 margin-left: 0 !important;
-                padding-top: 80px !important; /* Plus d'espace pour la navbar dépliée */
-                padding: 80px 10px 10px 10px;
+                padding: 68px 8px 8px 8px !important;
             }
             
             .main-content .container-fluid {
-                padding: 10px;
+                padding: 8px;
             }
             
             .sidebar {
-                position: fixed;
-                top: 60px;
-                left: 0;
-                width: 280px;
-                z-index: 99;
+                position: fixed !important;
+                top: 56px;
+                top: calc(56px + env(safe-area-inset-top));
+                left: 0 !important;
+                right: auto !important;
+                width: min(85vw, 320px) !important;
+                max-width: min(85vw, 320px) !important;
+                flex: 0 0 auto !important;
+                height: calc(100vh - 56px);
+                height: calc(100dvh - 56px - env(safe-area-inset-top));
+                z-index: 1040;
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+                transition: transform 0.25s ease;
+                box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 12px 0 20px !important;
+                margin: 0 !important;
             }
             
             .sidebar.show {
                 transform: translateX(0);
             }
+
+            .sidebar .nav {
+                width: 100%;
+                padding: 0 8px;
+            }
+
+            .sidebar .nav-link {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.7rem 0.9rem;
+                margin: 3px 0;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                min-height: 44px;
+                line-height: 1.25;
+                border-left: none;
+                transform: none !important;
+            }
+
+            .sidebar .nav-link:hover,
+            .sidebar .nav-link.active {
+                transform: none !important;
+            }
+
+            .sidebar .nav-link i {
+                width: 1.35rem;
+                min-width: 1.35rem;
+                margin: 0 !important;
+                font-size: 0.95rem;
+                line-height: 1;
+                text-align: center;
+                flex-shrink: 0;
+                transform: none !important;
+            }
             
-            /* Overlay pour fermer le sidebar */
             .sidebar-overlay {
                 position: fixed;
-                top: 60px;
+                top: 56px;
+                top: calc(56px + env(safe-area-inset-top));
                 left: 0;
                 width: 100%;
-                height: calc(100vh - 60px);
+                height: calc(100vh - 56px);
+                height: calc(100dvh - 56px - env(safe-area-inset-top));
                 background: rgba(0, 0, 0, 0.5);
-                z-index: 98;
+                z-index: 1035;
                 display: none;
             }
             
             .sidebar-overlay.show {
                 display: block;
             }
-            
-            /* Quand la navbar est dépliée, augmenter le padding */
-            .navbar-collapse.show ~ * .main-content,
-            .navbar-collapse.collapsing ~ * .main-content {
-                padding-top: 120px !important;
+
+            body.sidebar-open {
+                overflow: hidden;
             }
-        }
-        
-        @media (max-width: 576px) {
-            .top-navbar {
-                min-height: 56px;
+
+            #profileDropdownToggle .user-fullname,
+            #profileDropdownToggle .badge {
+                display: none;
             }
-            
-            .top-navbar .nav-link {
-                padding: 0.3rem 0.4rem;
-                font-size: 0.75rem;
+
+            #profileDropdownToggle {
+                padding: 4px 8px !important;
             }
-            
-            .top-navbar .navbar-brand {
-                font-size: 0.9rem;
+
+            #profileDropdownToggle img {
+                width: 28px !important;
+                height: 28px !important;
+                margin-right: 0 !important;
             }
-            
-            /* Encore plus d'espace sur très petit écran pour la navbar dépliée */
-            .main-content {
-                padding-top: 120px !important; /* Espace pour navbar + menu déplié */
-                padding: 120px 5px 5px 5px;
-            }
-            
-            .main-content .container-fluid {
-                padding: 5px;
-            }
-            
-            .sidebar {
-                width: 100%;
-                top: 56px;
-            }
-            
-            /* Quand la navbar est dépliée sur très petit écran */
-            .navbar-collapse.show ~ * .main-content,
-            .navbar-collapse.collapsing ~ * .main-content {
-                padding-top: 200px !important;
-            }
-        }
-            
-            /* Améliorer les dropdowns sur mobile */
-            .dropdown-menu {
-                position: static !important;
-                transform: none !important;
-                width: 100%;
-                border: none;
-                box-shadow: none;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
-            }
-            
-            .dropdown-item {
-                padding: 0.75rem 1rem;
-                font-size: 0.9rem;
-            }
-            
-            /* Style spécifique pour le dropdown du profil sur mobile */
+
             #profileDropdownMenu {
                 position: absolute !important;
                 right: 0 !important;
@@ -504,8 +527,25 @@
                 min-width: 200px !important;
                 max-width: 90vw !important;
                 margin-top: 0.5rem !important;
-                border: 2px solid #667eea !important;
-                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+            }
+
+            #profileDropdownMenu .dropdown-item {
+                padding: 8px 14px !important;
+                font-size: 0.875rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .top-navbar .navbar-brand {
+                font-size: 0.9rem;
+            }
+
+            .main-content {
+                padding: 64px 6px 6px 6px !important;
+            }
+            
+            .main-content .container-fluid {
+                padding: 4px;
             }
         }
     </style>
@@ -517,21 +557,12 @@
     <!-- Menu horizontal en haut -->
     <nav class="navbar navbar-expand-lg top-navbar fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" style="color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;" href="{{ route('dashboard') }}">
+            <a class="navbar-brand me-auto me-lg-3" style="color: {{ $couleurs['general']['header_text'] ?? '#ffffff' }} !important;" href="{{ route('dashboard') }}">
                 <i class="fas fa-graduation-cap me-2"></i>
                 A2School
             </a>
-            
-            <!-- Bouton pour le menu mobile -->
-            <button class="btn btn-outline-light d-md-none me-2" type="button" id="sidebarToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar" id="navbarToggler">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="topNavbar">
+
+            <div class="collapse navbar-collapse d-none d-lg-flex" id="topNavbar">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('dashboard') }}" data-menu="dashboard">
@@ -646,11 +677,12 @@
                         </li>
                     @endif
                 </ul>
-                
-                <ul class="navbar-nav">
+            </div>
+
+            <ul class="navbar-nav flex-row align-items-center ms-auto">
                     <!-- Notifications -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link text-white position-relative" href="{{ route('notifications.index') }}" title="Notifications">
+                    <li class="nav-item">
+                        <a class="nav-link text-white position-relative px-2" href="{{ route('notifications.index') }}" title="Notifications">
                             <i class="fas fa-bell"></i>
                             <span class="notification-counter badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill" style="display: none;">0</span>
                         </a>
@@ -667,7 +699,7 @@
                             @else
                                 <i class="fas fa-user me-1"></i>
                             @endif
-                            {{ auth()->user()->nom }} {{ auth()->user()->prenom }}
+                            <span class="user-fullname">{{ auth()->user()->nom }} {{ auth()->user()->prenom }}</span>
                             <span class="badge bg-light text-dark ms-2">{{ ucfirst(auth()->user()->role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" id="profileDropdownMenu">
@@ -686,8 +718,11 @@
                             </li>
                         </ul>
                     </li>
-                </ul>
-            </div>
+            </ul>
+
+            <button class="btn btn-outline-light d-lg-none ms-2" type="button" id="sidebarToggle" aria-label="Ouvrir le menu">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </nav>
 
@@ -698,8 +733,11 @@
         <div class="row">
             <!-- Menu latéral pour sous-menus -->
             <nav class="col-md-3 col-lg-2 sidebar" id="sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
+                <div class="position-sticky pt-2">
+                    <div class="d-lg-none px-3 mb-2">
+                        <p class="text-muted text-uppercase small mb-1 fw-bold px-1">Sous-menus</p>
+                    </div>
+                    <div class="d-none d-lg-block text-center mb-3">
                         <h5 class="text-primary fw-bold mb-0">
                             <i class="fas fa-list-ul me-2"></i>
                             Sous-menus
@@ -711,6 +749,12 @@
                     <ul class="nav flex-column" id="submenuContainer">
                         <!-- Le contenu sera chargé dynamiquement via JavaScript -->
                     </ul>
+
+                    <div class="d-lg-none px-3 mt-2">
+                        <hr class="my-2" style="border-color: #667eea; opacity: 0.3;">
+                        <p class="text-muted text-uppercase small mb-1 fw-bold px-1">Navigation</p>
+                        <ul class="nav flex-column" id="mobileMainMenu"></ul>
+                    </div>
                 </div>
             </nav>
 
@@ -741,27 +785,70 @@
             // Charger le compteur de notifications
             loadNotificationCounter();
             
-            // Gestion du sidebar mobile
+            // Gestion du sidebar mobile (un seul hamburger)
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar');
             const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const mobileMainMenu = document.getElementById('mobileMainMenu');
+
+            function closeSidebar() {
+                if (!sidebar) return;
+                sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+                document.body.classList.remove('sidebar-open');
+                if (sidebarToggle) {
+                    sidebarToggle.setAttribute('aria-expanded', 'false');
+                    sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+                }
+            }
+
+            function openSidebar() {
+                if (!sidebar) return;
+                sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+                document.body.classList.add('sidebar-open');
+                if (sidebarToggle) {
+                    sidebarToggle.setAttribute('aria-expanded', 'true');
+                    sidebarToggle.innerHTML = '<i class="fas fa-times"></i>';
+                }
+            }
+
+            function toggleSidebar() {
+                if (sidebar && sidebar.classList.contains('show')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            }
+
+            if (mobileMainMenu) {
+                document.querySelectorAll('#topNavbar [data-menu]').forEach(function(link) {
+                    const li = document.createElement('li');
+                    li.className = 'nav-item';
+                    const clone = link.cloneNode(true);
+                    clone.classList.add('nav-link');
+                    li.appendChild(clone);
+                    mobileMainMenu.appendChild(li);
+                });
+            }
             
             if (sidebarToggle && sidebar && sidebarOverlay) {
                 sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('show');
-                    sidebarOverlay.classList.toggle('show');
+                    toggleSidebar();
                 });
                 
-                sidebarOverlay.addEventListener('click', function() {
-                    sidebar.classList.remove('show');
-                    sidebarOverlay.classList.remove('show');
-                });
+                sidebarOverlay.addEventListener('click', closeSidebar);
                 
-                // Fermer le sidebar lors du clic sur un lien
                 sidebar.addEventListener('click', function(e) {
-                    if (e.target.tagName === 'A') {
-                        sidebar.classList.remove('show');
-                        sidebarOverlay.classList.remove('show');
+                    const link = e.target.closest('a');
+                    if (link && link.getAttribute('href') && link.getAttribute('href') !== '#') {
+                        closeSidebar();
+                    }
+                });
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeSidebar();
                     }
                 });
             }
@@ -851,7 +938,7 @@
                     // Si c'est un lien direct (pas de sous-menu), ne pas empêcher le comportement par défaut
                     if (this.getAttribute('href') && this.getAttribute('href') !== '#') {
                         // Retirer la classe active de tous les liens
-                        document.querySelectorAll('.top-navbar .nav-link').forEach(l => l.classList.remove('active'));
+                        document.querySelectorAll('[data-menu]').forEach(l => l.classList.remove('active'));
                         
                         // Ajouter la classe active au lien cliqué
                         this.classList.add('active');
@@ -867,7 +954,7 @@
                     e.preventDefault();
                     
                     // Retirer la classe active de tous les liens
-                    document.querySelectorAll('.top-navbar .nav-link').forEach(l => l.classList.remove('active'));
+                    document.querySelectorAll('[data-menu]').forEach(l => l.classList.remove('active'));
                     
                     // Ajouter la classe active au lien cliqué
                     this.classList.add('active');
@@ -929,7 +1016,7 @@
                     const menuLink = document.querySelector(`[data-menu="${savedMenu}"]`);
                     if (menuLink) {
                         // Retirer la classe active de tous les liens
-                        document.querySelectorAll('.top-navbar .nav-link').forEach(l => l.classList.remove('active'));
+                        document.querySelectorAll('[data-menu]').forEach(l => l.classList.remove('active'));
                         
                         // Ajouter la classe active au menu sauvegardé
                         menuLink.classList.add('active');
@@ -961,90 +1048,6 @@
         // Auto-refresh du compteur toutes les 30 secondes
         setInterval(loadNotificationCounter, 30000);
 
-        // Ajuster le padding-top du main-content selon l'état de la navbar
-        document.addEventListener('DOMContentLoaded', function() {
-            const navbar = document.querySelector('.top-navbar');
-            const navbarCollapse = document.getElementById('topNavbar');
-            const mainContent = document.querySelector('.main-content');
-            
-            if (navbarCollapse && mainContent) {
-                function adjustMainContentPadding() {
-                    if (window.innerWidth <= 768) {
-                        const navbarHeight = navbar.offsetHeight;
-                        // Ne considérer que le collapse de la navbar principale, pas les dropdowns
-                        const isExpanded = navbarCollapse.classList.contains('show') || navbarCollapse.classList.contains('collapsing');
-                        
-                        if (isExpanded) {
-                            // Calculer la hauteur totale de la navbar dépliée
-                            const totalHeight = navbarHeight + navbarCollapse.scrollHeight;
-                            mainContent.style.paddingTop = (totalHeight + 20) + 'px';
-                        } else {
-                            // Hauteur normale de la navbar
-                            mainContent.style.paddingTop = (navbarHeight + 20) + 'px';
-                        }
-                    } else {
-                        // Sur desktop, utiliser le padding normal
-                        mainContent.style.paddingTop = '70px';
-                    }
-                }
-                
-                // Écouter uniquement les événements de collapse Bootstrap de la navbar principale
-                // Mais empêcher que les clics sur le dropdown déclenchent le collapse
-                navbarCollapse.addEventListener('show.bs.collapse', function(e) {
-                    // Vérifier si l'événement vient du dropdown du profil
-                    const profileDropdown = document.getElementById('profileDropdown');
-                    if (profileDropdown && (e.target === profileDropdown || profileDropdown.contains(e.target))) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                    adjustMainContentPadding();
-                });
-                
-                navbarCollapse.addEventListener('shown.bs.collapse', adjustMainContentPadding);
-                navbarCollapse.addEventListener('hide.bs.collapse', function(e) {
-                    // Vérifier si l'événement vient du dropdown du profil
-                    const profileDropdown = document.getElementById('profileDropdown');
-                    if (profileDropdown && (e.target === profileDropdown || profileDropdown.contains(e.target))) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                    adjustMainContentPadding();
-                });
-                navbarCollapse.addEventListener('hidden.bs.collapse', adjustMainContentPadding);
-                
-                // Ajuster au chargement et au redimensionnement
-                adjustMainContentPadding();
-                window.addEventListener('resize', adjustMainContentPadding);
-                
-                // Empêcher les dropdowns d'affecter le padding et le collapse
-                document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-                    toggle.addEventListener('click', function(e) {
-                        // Ne pas empêcher le comportement par défaut du dropdown
-                        // Mais empêcher la propagation vers d'autres gestionnaires
-                        e.stopPropagation();
-                        
-                        // Si c'est le dropdown du profil, empêcher le collapse
-                        if (this.id === 'profileDropdownToggle' || this.closest('#profileDropdown')) {
-                            e.stopImmediatePropagation();
-                            
-                            // Empêcher que le collapse se déclenche
-                            if (window.innerWidth <= 992 && navbarCollapse.classList.contains('show')) {
-                                // Ne pas fermer le collapse sur mobile/tablette
-                                const clickEvent = new MouseEvent('click', {
-                                    bubbles: false,
-                                    cancelable: true
-                                });
-                                e.preventDefault();
-                            }
-                        }
-                    });
-                });
-            }
-        });
-
-        // Gestion de la déconnexion
         document.addEventListener('DOMContentLoaded', function() {
             const logoutBtn = document.getElementById('logoutBtn');
             const logoutForm = document.getElementById('logoutForm');
@@ -1052,88 +1055,7 @@
             if (logoutBtn && logoutForm) {
                 logoutBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Tentative de déconnexion...');
                     logoutForm.submit();
-                });
-            }
-            
-            // Empêcher le clic sur le dropdown du profil d'affecter le sidebar et le collapse de la navbar
-            const profileDropdown = document.getElementById('profileDropdown');
-            const profileDropdownToggle = document.getElementById('profileDropdownToggle');
-            const profileDropdownMenu = document.getElementById('profileDropdownMenu');
-            const navbarCollapse = document.getElementById('topNavbar');
-            
-            if (profileDropdown && profileDropdownToggle && navbarCollapse) {
-                // Empêcher spécifiquement que le toggle déclenche le collapse
-                profileDropdownToggle.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                }, true);
-                
-                // Permettre les clics sur les liens du menu dropdown sans empêcher la navigation
-                if (profileDropdownMenu) {
-                    // Permettre les clics sur les liens (pas de stopPropagation pour les liens)
-                    profileDropdownMenu.addEventListener('click', function(e) {
-                        // Si c'est un lien ou un bouton dans un formulaire, permettre la navigation
-                        const link = e.target.closest('a.dropdown-item');
-                        const button = e.target.closest('button.dropdown-item');
-                        
-                        if (link || button) {
-                            // Laisser le lien/bouton fonctionner normalement
-                            // Ne pas empêcher la propagation pour permettre la navigation
-                            return true;
-                        }
-                        
-                        // Pour les autres éléments, empêcher la propagation
-                        e.stopPropagation();
-                    }, false); // false = bubbling phase (après la phase de capture)
-                }
-                
-                // Intercepter les clics sur le conteneur dropdown (mais pas sur les liens)
-                profileDropdown.addEventListener('click', function(e) {
-                    // Si c'est un lien ou un bouton, ne pas empêcher
-                    if (e.target.closest('a.dropdown-item') || e.target.closest('button.dropdown-item')) {
-                        return true;
-                    }
-                    
-                    // Si c'est le toggle, empêcher la propagation
-                    if (e.target === profileDropdownToggle || profileDropdownToggle.contains(e.target)) {
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
-                    }
-                }, true);
-                
-                // Empêcher que les clics en dehors du dropdown ferment le collapse
-                // mais seulement si le collapse est ouvert à cause du dropdown
-                document.addEventListener('click', function(e) {
-                    // Si on clique sur le dropdown ou ses enfants, ne pas fermer le collapse
-                    if (profileDropdown.contains(e.target)) {
-                        // Empêcher que le collapse se ferme
-                        if (window.innerWidth <= 992 && navbarCollapse.classList.contains('show')) {
-                            e.stopPropagation();
-                        }
-                    }
-                }, true);
-                
-                // Empêcher que le collapse se ferme quand le dropdown est ouvert
-                let isDropdownOpen = false;
-                
-                profileDropdown.addEventListener('show.bs.dropdown', function() {
-                    isDropdownOpen = true;
-                });
-                
-                profileDropdown.addEventListener('hidden.bs.dropdown', function() {
-                    isDropdownOpen = false;
-                });
-                
-                // Intercepter l'événement hide.bs.collapse pour empêcher la fermeture si le dropdown est ouvert
-                navbarCollapse.addEventListener('hide.bs.collapse', function(e) {
-                    if (isDropdownOpen && window.innerWidth <= 992) {
-                        // Empêcher que le collapse se ferme si le dropdown est ouvert
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
                 });
             }
         });
