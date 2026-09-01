@@ -10,10 +10,10 @@ class ImageHelper
      * Génère l'URL complète d'une image stockée
      *
      * @param string|null $path
-     * @param string $default
+     * @param string|null $default
      * @return string
      */
-    public static function getImageUrl(?string $path, string $default = null): string
+    public static function getImageUrl(?string $path, ?string $default = null): string
     {
         if (empty($path)) {
             return $default ?? asset('images/default-avatar.svg');
