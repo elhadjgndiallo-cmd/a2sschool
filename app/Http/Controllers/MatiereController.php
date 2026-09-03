@@ -18,13 +18,11 @@ class MatiereController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à voir les matières.');
         }
         
-        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
         $matieres = Matiere::with(['enseignants.utilisateur'])
-            ->when($anneeScolaireActive, fn ($q) => $q->pourAnneeScolaire($anneeScolaireActive->id))
             ->orderBy('nom')
             ->paginate(20);
-            
-        return view('matieres.index', compact('matieres', 'anneeScolaireActive'));
+
+        return view('matieres.index', compact('matieres'));
     }
 
     /**

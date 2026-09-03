@@ -7,9 +7,6 @@
     <h1 class="h2">
         <i class="fas fa-book me-2"></i>
         Gestion des Matières
-        @if(!empty($anneeScolaireActive))
-            <small class="text-muted fs-6">— année {{ $anneeScolaireActive->nom }}</small>
-        @endif
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">

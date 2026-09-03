@@ -96,18 +96,12 @@ class Matiere extends Model
     }
 
     /**
-     * Liste triée pour les listes déroulantes (actives, année scolaire active).
+     * Liste triée pour les listes déroulantes (matières actives).
+     * Le catalogue n'est pas filtré par année : une matière fraîchement créée
+     * n'a pas encore d'EDT/notes et doit quand même pouvoir être choisie.
      */
     public static function listeDeroulante(?int $anneeScolaireId = null): \Illuminate\Support\Collection
     {
-        $query = static::query()->actif()->orderBy('nom');
-
-        if ($anneeScolaireId) {
-            $query->pourAnneeScolaire($anneeScolaireId);
-        } else {
-            $query->pourAnneeActive();
-        }
-
-        return $query->get();
+        return static::query()->actif()->orderBy('nom')->get();
     }
 }

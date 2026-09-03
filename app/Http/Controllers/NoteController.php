@@ -2241,8 +2241,7 @@ class NoteController extends Controller
                 ->get();
         }
 
-        // Matières de l'année scolaire active
-        $matieres = \App\Models\Matiere::actif()->pourAnneeActive()->orderBy('nom')->get();
+        $matieres = \App\Models\Matiere::listeDeroulante();
 
         // Récupérer les tests existants pour éviter les doublons
         $testsExistants = TestMensuel::parClasse($classe->id)
@@ -2978,7 +2977,7 @@ class NoteController extends Controller
             $enseignants = collect();
         }
         
-        $matieres = Matiere::actif()->pourAnneeActive()->orderBy('nom')->get();
+        $matieres = Matiere::listeDeroulante();
         
         return view('notes.fiche-selection', compact('classes', 'enseignants', 'matieres', 'anneeScolaireActive'));
     }
