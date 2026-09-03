@@ -104,6 +104,7 @@
                             // Frais de réinscription configurés ou 50% de l'inscription si non défini
                             $fraisReinscription = $tarif->frais_reinscription > 0 ? $tarif->frais_reinscription : ($tarif->frais_inscription * 0.5);
                         @endphp
+                        <tr class="table-row-clickable" data-href="{{ route('tarifs.show', $tarif) }}" role="button" tabindex="0">
                             <td class="col-sticky">
                                 @if($tarif->classe)
                                     <strong class="text-primary">{{ $tarif->classe->nom }}</strong>
