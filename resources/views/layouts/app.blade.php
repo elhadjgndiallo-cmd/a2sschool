@@ -703,6 +703,7 @@
                             <span class="badge bg-light text-dark ms-2">{{ ucfirst(auth()->user()->role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" id="profileDropdownMenu">
+                            <li><a class="dropdown-item" href="{{ route('profil.edit') }}"><i class="fas fa-user-edit me-2"></i>Mon profil</a></li>
                             @if(auth()->user()->canAccessAdmin() && auth()->user()->hasPermission('etablissement.view'))
                             <li><a class="dropdown-item" href="{{ route('etablissement.informations') }}"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
                             @endif

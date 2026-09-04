@@ -18,7 +18,7 @@ class AdminAccountController extends Controller
     {
         $adminAccounts = PersonnelAdministration::with('utilisateur')
             ->whereHas('utilisateur', function($query) {
-                $query->where('role', 'personnel_admin');
+                $query->whereIn('role', ['admin', 'personnel_admin']);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
@@ -145,8 +145,8 @@ class AdminAccountController extends Controller
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|unique:utilisateurs,email,' . $adminAccount->utilisateur_id,
             'telephone' => 'nullable|string|max:20',
-            'sexe' => 'required|in:M,F',
-            'date_naissance' => 'required|date',
+            'sexe' => 'nullable|in:M,F',
+            'date_naissance' => 'nullable|date',
             'adresse' => 'nullable|string|max:500',
             'poste' => 'required|string|max:255',
             'departement' => 'nullable|string|max:255',

@@ -80,7 +80,11 @@ use Illuminate\Support\Facades\Storage;
                         <td>
                             <strong>{{ $account->utilisateur->nom }} {{ $account->utilisateur->prenom }}</strong>
                             <br>
-                            <small class="text-muted">{{ $account->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}</small>
+                            @if($account->utilisateur->role === 'admin')
+                                <span class="badge bg-danger">Administrateur principal</span>
+                            @else
+                                <small class="text-muted">{{ $account->utilisateur->sexe == 'M' ? 'Masculin' : ($account->utilisateur->sexe == 'F' ? 'Féminin' : '') }}</small>
+                            @endif
                         </td>
                         <td>{{ $account->utilisateur->email }}</td>
                         <td>{{ $account->utilisateur->telephone }}</td>

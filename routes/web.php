@@ -178,8 +178,10 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// Routes pour le changement de mot de passe
+// Routes pour le profil et le changement de mot de passe
 Route::middleware('auth')->group(function () {
+    Route::get('/profil', [\App\Http\Controllers\ProfilController::class, 'edit'])->name('profil.edit');
+    Route::put('/profil', [\App\Http\Controllers\ProfilController::class, 'update'])->name('profil.update');
     Route::get('/change-password', [\App\Http\Controllers\PasswordController::class, 'showChangePasswordForm'])->name('password.change.form');
     Route::post('/change-password', [\App\Http\Controllers\PasswordController::class, 'changePassword'])->name('password.change');
 });

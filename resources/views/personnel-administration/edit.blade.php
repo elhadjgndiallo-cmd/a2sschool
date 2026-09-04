@@ -103,8 +103,8 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="sexe" class="form-label">Sexe <span class="text-danger">*</span></label>
-                                    <select class="form-select @error('sexe') is-invalid @enderror" id="sexe" name="sexe" required>
+                                    <label for="sexe" class="form-label">Sexe</label>
+                                    <select class="form-select @error('sexe') is-invalid @enderror" id="sexe" name="sexe">
                                         <option value="">Sélectionner</option>
                                         <option value="M" {{ old('sexe', $personnelAdministration->utilisateur->sexe) == 'M' ? 'selected' : '' }}>Masculin</option>
                                         <option value="F" {{ old('sexe', $personnelAdministration->utilisateur->sexe) == 'F' ? 'selected' : '' }}>Féminin</option>
@@ -116,9 +116,9 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="date_naissance" class="form-label">Date de naissance <span class="text-danger">*</span></label>
+                                    <label for="date_naissance" class="form-label">Date de naissance</label>
                                     <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" 
-                                           id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $personnelAdministration->utilisateur->date_naissance->format('Y-m-d')) }}" required>
+                                           id="date_naissance" name="date_naissance" value="{{ old('date_naissance', optional($personnelAdministration->utilisateur->date_naissance)->format('Y-m-d')) }}">
                                     @error('date_naissance')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -167,7 +167,7 @@
                                 <div class="mb-3">
                                     <label for="date_embauche" class="form-label">Date d'embauche <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control @error('date_embauche') is-invalid @enderror" 
-                                           id="date_embauche" name="date_embauche" value="{{ old('date_embauche', $personnelAdministration->date_embauche->format('Y-m-d')) }}" required>
+                                           id="date_embauche" name="date_embauche" value="{{ old('date_embauche', optional($personnelAdministration->date_embauche)->format('Y-m-d')) }}" required>
                                     @error('date_embauche')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
