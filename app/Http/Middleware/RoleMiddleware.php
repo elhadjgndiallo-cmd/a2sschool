@@ -20,7 +20,11 @@ class RoleMiddleware
         }
 
         $user = auth()->user();
-        
+
+        if ($user->isSuperAdmin() && (in_array('admin', $roles, true) || in_array('personnel_admin', $roles, true) || in_array('super_admin', $roles, true))) {
+            return $next($request);
+        }
+
         if (!in_array($user->role, $roles)) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }

@@ -18,9 +18,7 @@ class CheckAdminExists
     public function handle(Request $request, Closure $next)
     {
         // Vérifier si au moins un administrateur existe
-        $adminExists = Utilisateur::where('role', 'admin')
-            ->orWhere('role', 'personnel_admin')
-            ->exists();
+        $adminExists = Utilisateur::whereIn('role', ['super_admin', 'admin', 'personnel_admin'])->exists();
 
         // Si aucun admin n'existe et qu'on n'est pas déjà sur la page de setup
         if (!$adminExists && !$request->is('setup*') && !$request->is('admin/setup*')) {

@@ -35,8 +35,7 @@ Route::get('/', function () {
     }
     
     // Vérifier si un admin existe
-    $adminExists = \App\Models\Utilisateur::where('role', 'admin')
-        ->orWhere('role', 'personnel_admin')
+    $adminExists = \App\Models\Utilisateur::whereIn('role', ['super_admin', 'admin', 'personnel_admin'])
         ->exists();
     
     if (!$adminExists) {

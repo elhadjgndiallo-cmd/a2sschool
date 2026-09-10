@@ -34,6 +34,7 @@ class DashboardController extends Controller
         
         // Rediriger vers le dashboard approprié selon le rôle
         switch ($user->role) {
+            case 'super_admin':
             case 'admin':
             case 'personnel_admin':
                 return $this->adminDashboard();

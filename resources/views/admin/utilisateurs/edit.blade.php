@@ -57,7 +57,6 @@
                                 <div class="form-group">
                                     <label for="role">Rôle</label>
                                     <select id="role" class="form-control @error('role') is-invalid @enderror" name="role" required>
-                                        <option value="admin" {{ old('role', $utilisateur->role) == 'admin' ? 'selected' : '' }}>Administrateur</option>
                                         <option value="teacher" {{ old('role', $utilisateur->role) == 'teacher' ? 'selected' : '' }}>Enseignant</option>
                                         <option value="student" {{ old('role', $utilisateur->role) == 'student' ? 'selected' : '' }}>Élève</option>
                                         <option value="parent" {{ old('role', $utilisateur->role) == 'parent' ? 'selected' : '' }}>Parent</option>

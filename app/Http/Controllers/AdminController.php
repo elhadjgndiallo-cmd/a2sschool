@@ -53,7 +53,9 @@ class AdminController extends Controller
      */
     public function utilisateurs()
     {
-        $utilisateurs = Utilisateur::paginate(20);
+        $utilisateurs = Utilisateur::masquerSysteme()
+            ->when(!auth()->user()?->isSuperAdmin(), fn ($q) => $q->where('role', '!=', 'admin'))
+            ->paginate(20);
         return view('admin.utilisateurs.index', compact('utilisateurs'));
     }
     
@@ -75,7 +77,7 @@ class AdminController extends Controller
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|unique:utilisateurs,email|max:191',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:admin,teacher,student,parent',
+            'role' => 'required|in:teacher,student,parent',
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
@@ -209,6 +211,7 @@ class AdminController extends Controller
      */
     public function editUtilisateur(Utilisateur $utilisateur)
     {
+        Utilisateur::abortIfSystemAdmin($utilisateur);
         return view('admin.utilisateurs.edit', compact('utilisateur'));
     }
     
@@ -217,11 +220,13 @@ class AdminController extends Controller
      */
     public function updateUtilisateur(Request $request, Utilisateur $utilisateur)
     {
+        Utilisateur::abortIfSystemAdmin($utilisateur);
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|max:191|unique:utilisateurs,email,' . $utilisateur->id,
-            'role' => 'required|in:admin,teacher,student,parent',
+            'role' => 'required|in:teacher,student,parent',
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
@@ -259,12 +264,8 @@ class AdminController extends Controller
      */
     public function destroyUtilisateur(Utilisateur $utilisateur)
     {
-        // Vérifier que l'utilisateur n'est pas l'administrateur actuel
-        if (auth()->id() === $utilisateur->id && $utilisateur->role === 'admin') {
-            return redirect()->route('admin.utilisateurs')
-                ->with('error', 'Vous ne pouvez pas supprimer votre propre compte administrateur');
-        }
-        
+        Utilisateur::abortIfSystemAdmin($utilisateur);
+
         try {
             // Gérer les contraintes de clés étrangères avant suppression
             DB::beginTransaction();
@@ -346,11 +347,7 @@ class AdminController extends Controller
      */
     public function toggleUtilisateur(Utilisateur $utilisateur)
     {
-        // Vérifier que l'utilisateur n'est pas l'administrateur actuel
-        if (auth()->id() === $utilisateur->id && $utilisateur->role === 'admin') {
-            return redirect()->route('admin.utilisateurs')
-                ->with('error', 'Vous ne pouvez pas désactiver votre propre compte administrateur');
-        }
+        Utilisateur::abortIfSystemAdmin($utilisateur);
         
         $utilisateur->actif = !$utilisateur->actif;
         $utilisateur->save();

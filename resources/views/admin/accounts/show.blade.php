@@ -291,12 +291,10 @@ use Illuminate\Support\Facades\Storage;
             <button type="button" class="btn btn-secondary" onclick="resetPassword({{ $adminAccount->id }})">
                 <i class="fas fa-lock me-1"></i> Réinitialiser mot de passe
             </button>
-            @if($adminAccount->utilisateur->email !== 'admin@gmail.com')
-                <button type="button" class="btn btn-{{ $adminAccount->statut === 'actif' ? 'danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
+            <button type="button" class="btn btn-{{ $adminAccount->statut === 'actif' ? 'danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
                     <i class="fas fa-{{ $adminAccount->statut === 'actif' ? 'ban' : 'check' }} me-1"></i>
                     {{ $adminAccount->statut === 'actif' ? 'Désactiver' : 'Activer' }} le compte
                 </button>
-            @endif
         </div>
     </div>
 </div>

@@ -122,7 +122,7 @@
                                     <label for="createur_id">Créateur</label>
                                     <select name="createur_id" id="createur_id" class="form-control">
                                         <option value="">Tous les créateurs</option>
-                                        @foreach(\App\Models\Utilisateur::whereIn('role', ['admin', 'personnel_admin', 'teacher'])->get() as $createur)
+                                        @foreach(\App\Models\Utilisateur::masquerSysteme()->whereIn('role', ['personnel_admin', 'teacher'])->get() as $createur)
                                             <option value="{{ $createur->id }}" {{ request('createur_id') == $createur->id ? 'selected' : '' }}>
                                                 {{ $createur->nom ?? $createur->name }}
                                             </option>

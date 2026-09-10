@@ -51,6 +51,24 @@ class PersonnelAdministration extends Model
     }
 
     /**
+     * Exclure l'administrateur système des listes visibles.
+     */
+    public function scopeVisibleAuxAdmins($query)
+    {
+        return $query->whereHas('utilisateur', function ($q) {
+            $q->where('role', '!=', 'super_admin');
+        });
+    }
+
+    /**
+     * Interdire l'accès si ce profil est lié à l'administrateur système.
+     */
+    public function abortIfSystemAdmin(): void
+    {
+        Utilisateur::abortIfSystemAdmin($this->utilisateur);
+    }
+
+    /**
      * Vérifier si le personnel a une permission spécifique
      */
     public function hasPermission(string $permission): bool

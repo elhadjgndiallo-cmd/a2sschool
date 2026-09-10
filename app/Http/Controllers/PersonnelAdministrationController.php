@@ -16,8 +16,16 @@ class PersonnelAdministrationController extends Controller
      */
     public function index()
     {
-        $personnel = PersonnelAdministration::with('utilisateur')
+        $personnelQuery = PersonnelAdministration::with('utilisateur')
+            ->visibleAuxAdmins()
             ->join('utilisateurs', 'personnel_administration.utilisateur_id', '=', 'utilisateurs.id')
+            ->where('utilisateurs.role', '!=', 'super_admin');
+
+        if (!auth()->user()?->isSuperAdmin()) {
+            $personnelQuery->where('utilisateurs.role', '!=', 'admin');
+        }
+
+        $personnel = $personnelQuery
             ->orderBy('utilisateurs.prenom', 'asc')
             ->orderBy('utilisateurs.nom', 'asc')
             ->select('personnel_administration.*')
@@ -112,6 +120,7 @@ class PersonnelAdministrationController extends Controller
     public function show(PersonnelAdministration $personnelAdministration)
     {
         $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
         return view('personnel-administration.show', compact('personnelAdministration'));
     }
 
@@ -121,6 +130,7 @@ class PersonnelAdministrationController extends Controller
     public function edit(PersonnelAdministration $personnelAdministration)
     {
         $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
         return view('personnel-administration.edit', compact('personnelAdministration'));
     }
 
@@ -129,6 +139,9 @@ class PersonnelAdministrationController extends Controller
      */
     public function update(Request $request, PersonnelAdministration $personnelAdministration)
     {
+        $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -194,7 +207,8 @@ class PersonnelAdministrationController extends Controller
      */
     public function destroy($id)
     {
-        $personnelAdministration = PersonnelAdministration::findOrFail($id);
+        $personnelAdministration = PersonnelAdministration::with('utilisateur')->findOrFail($id);
+        $personnelAdministration->abortIfSystemAdmin();
         
         DB::transaction(function() use ($personnelAdministration) {
             // Désactiver au lieu de supprimer
@@ -211,7 +225,8 @@ class PersonnelAdministrationController extends Controller
      */
     public function deletePermanently($id)
     {
-        $personnelAdministration = PersonnelAdministration::findOrFail($id);
+        $personnelAdministration = PersonnelAdministration::with('utilisateur')->findOrFail($id);
+        $personnelAdministration->abortIfSystemAdmin();
         
         DB::transaction(function() use ($personnelAdministration) {
             // Supprimer les cartes associées
@@ -243,6 +258,7 @@ class PersonnelAdministrationController extends Controller
     public function managePermissions(PersonnelAdministration $personnelAdministration)
     {
         $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
         $permissions = $this->getAvailablePermissions();
         
         // Debug: vérifier les permissions actuelles
@@ -261,6 +277,9 @@ class PersonnelAdministrationController extends Controller
      */
     public function updatePermissions(Request $request, PersonnelAdministration $personnelAdministration)
     {
+        $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
+
         // Debug simple
         \Log::info('=== UPDATE PERMISSIONS ===');
         \Log::info('Données reçues:', $request->all());
@@ -325,7 +344,8 @@ class PersonnelAdministrationController extends Controller
      */
     public function reactivate($id)
     {
-        $personnel = PersonnelAdministration::findOrFail($id);
+        $personnel = PersonnelAdministration::with('utilisateur')->findOrFail($id);
+        $personnel->abortIfSystemAdmin();
         
         DB::transaction(function() use ($personnel) {
             $personnel->update(['statut' => 'actif']);
@@ -341,6 +361,9 @@ class PersonnelAdministrationController extends Controller
      */
     public function resetPassword(PersonnelAdministration $personnelAdministration)
     {
+        $personnelAdministration->load('utilisateur');
+        $personnelAdministration->abortIfSystemAdmin();
+
         $personnelAdministration->utilisateur->update([
             'password' => Hash::make('password123')
         ]);

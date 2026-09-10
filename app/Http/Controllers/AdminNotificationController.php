@@ -103,7 +103,7 @@ class AdminNotificationController extends Controller
         // Créer la réponse
         Message::create([
             'expediteur_id' => $user->id,
-            'expediteur_type' => $user->role === 'admin' ? 'admin' : 'personnel_admin',
+            'expediteur_type' => in_array($user->role, ['admin', 'super_admin'], true) ? 'admin' : 'personnel_admin',
             'destinataire_id' => $message->expediteur_id,
             'destinataire_type' => 'parent',
             'titre' => 'Re: ' . $message->titre,

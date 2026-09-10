@@ -29,13 +29,8 @@ class CheckPermission
 
         $user = Auth::user();
         
-        // L'administrateur principal a toutes les permissions
-        if ($user->role === 'admin' && $user->email === 'admin@gmail.com') {
-            return $next($request);
-        }
-        
         // Les administrateurs ont toutes les permissions
-        if ($user->role === 'admin') {
+        if ($user->role === 'admin' || $user->role === 'super_admin') {
             return $next($request);
         }
         

@@ -149,7 +149,7 @@ class NotificationController extends Controller
             abort(403, 'Accès non autorisé');
         }
         
-        $utilisateurs = Utilisateur::orderBy('nom')->get();
+        $utilisateurs = Utilisateur::masquerSysteme()->orderBy('nom')->get();
         
         return view('notifications.create', compact('utilisateurs'));
     }
@@ -177,6 +177,11 @@ class NotificationController extends Controller
         $notificationsCreees = 0;
         
         foreach ($request->utilisateurs as $utilisateurId) {
+            $destinataire = Utilisateur::find($utilisateurId);
+            if (!$destinataire || $destinataire->isSystemAdmin()) {
+                continue;
+            }
+
             Notification::create([
                 'utilisateur_id' => $utilisateurId,
                 'titre' => $request->titre,

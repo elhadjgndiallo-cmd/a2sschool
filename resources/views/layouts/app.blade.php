@@ -700,7 +700,7 @@
                                 <i class="fas fa-user me-1"></i>
                             @endif
                             <span class="user-fullname">{{ auth()->user()->nom }} {{ auth()->user()->prenom }}</span>
-                            <span class="badge bg-light text-dark ms-2">{{ ucfirst(auth()->user()->role) }}</span>
+                            <span class="badge bg-light text-dark ms-2">{{ auth()->user()->isSuperAdmin() ? 'Système' : ucfirst(auth()->user()->role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" id="profileDropdownMenu">
                             <li><a class="dropdown-item" href="{{ route('profil.edit') }}"><i class="fas fa-user-edit me-2"></i>Mon profil</a></li>

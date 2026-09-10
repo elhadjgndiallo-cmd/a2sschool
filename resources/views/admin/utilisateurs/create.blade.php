@@ -94,7 +94,6 @@
                                     <label for="role" class="form-label">Rôle <span class="text-danger">*</span></label>
                                     <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                                         <option value="" selected disabled>Sélectionner un rôle</option>
-                                        <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrateur</option>
                                         <option value="teacher" {{ old('role') == 'teacher' ? 'selected' : '' }}>Enseignant</option>
                                         <option value="student" {{ old('role') == 'student' ? 'selected' : '' }}>Élève</option>
                                         <option value="parent" {{ old('role') == 'parent' ? 'selected' : '' }}>Parent</option>

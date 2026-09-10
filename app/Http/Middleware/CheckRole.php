@@ -27,6 +27,10 @@ class CheckRole
         }
 
         $user = Auth::user();
+
+        if ($user->isSuperAdmin() && (in_array('admin', $roles, true) || in_array('personnel_admin', $roles, true) || in_array('super_admin', $roles, true))) {
+            return $next($request);
+        }
         
         // Si aucun rôle n'est spécifié, continuer
         if (empty($roles)) {

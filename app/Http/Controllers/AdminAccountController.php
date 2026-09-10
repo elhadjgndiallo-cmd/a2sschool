@@ -16,9 +16,15 @@ class AdminAccountController extends Controller
      */
     public function index()
     {
+        $rolesVisibles = ['personnel_admin'];
+        if (auth()->user()?->isSuperAdmin()) {
+            $rolesVisibles[] = 'admin';
+        }
+
         $adminAccounts = PersonnelAdministration::with('utilisateur')
-            ->whereHas('utilisateur', function($query) {
-                $query->whereIn('role', ['admin', 'personnel_admin']);
+            ->visibleAuxAdmins()
+            ->whereHas('utilisateur', function ($query) use ($rolesVisibles) {
+                $query->whereIn('role', $rolesVisibles);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
@@ -120,6 +126,7 @@ class AdminAccountController extends Controller
     public function show(PersonnelAdministration $adminAccount)
     {
         $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
         $permissions = $this->getAvailablePermissions();
         return view('admin.accounts.show', compact('adminAccount', 'permissions'));
     }
@@ -130,7 +137,8 @@ class AdminAccountController extends Controller
     public function edit(PersonnelAdministration $adminAccount)
     {
         $adminAccount->load('utilisateur');
-        
+        $adminAccount->abortIfSystemAdmin();
+
         return view('admin.accounts.edit', compact('adminAccount'));
     }
 
@@ -139,7 +147,9 @@ class AdminAccountController extends Controller
      */
     public function update(Request $request, PersonnelAdministration $adminAccount)
     {
-        
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -209,12 +219,10 @@ class AdminAccountController extends Controller
      */
     public function destroy(PersonnelAdministration $adminAccount)
     {
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
+
         try {
-            // Empêcher la suppression de l'administrateur principal
-            if ($adminAccount->utilisateur->email === 'admin@gmail.com') {
-                return redirect()->back()
-                    ->with('error', 'Impossible de supprimer l\'administrateur principal.');
-            }
 
             // Supprimer la photo de profil
             if ($adminAccount->utilisateur->photo_profil) {
@@ -249,6 +257,7 @@ class AdminAccountController extends Controller
         }
         
         $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
         $permissions = $this->getAvailablePermissions();
         return view('admin.accounts.permissions', compact('adminAccount', 'permissions'));
     }
@@ -267,6 +276,9 @@ class AdminAccountController extends Controller
         if (!auth()->user()->hasPermission('admin.accounts.edit')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à modifier les permissions.');
         }
+
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
         
         // Gérer l'erreur CSRF 419
         if ($request->session()->has('errors') && $request->session()->get('errors')->has('_token')) {
@@ -323,6 +335,9 @@ class AdminAccountController extends Controller
      */
     public function resetPassword(PersonnelAdministration $adminAccount)
     {
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
+
         $newPassword = 'admin123';
         $adminAccount->utilisateur->update([
             'password' => Hash::make($newPassword)
@@ -337,6 +352,9 @@ class AdminAccountController extends Controller
      */
     public function toggleStatus(PersonnelAdministration $adminAccount)
     {
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
+
         $newStatus = $adminAccount->statut === 'actif' ? 'inactif' : 'actif';
         $adminAccount->update(['statut' => $newStatus]);
         $adminAccount->utilisateur->update(['actif' => $newStatus === 'actif']);

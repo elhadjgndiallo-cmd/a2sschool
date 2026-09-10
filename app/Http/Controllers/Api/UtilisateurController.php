@@ -20,7 +20,8 @@ class UtilisateurController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Utilisateur::query();
+        $query = Utilisateur::masquerSysteme()
+            ->when(!auth()->user()?->isSuperAdmin(), fn ($q) => $q->where('role', '!=', 'admin'));
         
         // Filtrage par nom
         if ($request->has('nom')) {
@@ -77,7 +78,7 @@ class UtilisateurController extends Controller
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
             'genre' => 'required|string|in:M,F',
-            'role' => 'required|string|in:admin,enseignant,parent,eleve',
+            'role' => 'required|string|in:enseignant,parent,eleve',
             'photo_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'password' => 'required|string|min:8'
         ]);
@@ -129,6 +130,8 @@ class UtilisateurController extends Controller
      */
     public function show(Utilisateur $utilisateur)
     {
+        Utilisateur::abortIfSystemAdmin($utilisateur);
+
         // Charger les relations en fonction du rôle
         switch ($utilisateur->role) {
             case 'enseignant':
@@ -158,6 +161,8 @@ class UtilisateurController extends Controller
      */
     public function update(Request $request, Utilisateur $utilisateur)
     {
+        Utilisateur::abortIfSystemAdmin($utilisateur);
+
         $validator = Validator::make($request->all(), [
             'nom' => 'sometimes|required|string|max:100',
             'prenom' => 'sometimes|required|string|max:100',
@@ -166,7 +171,7 @@ class UtilisateurController extends Controller
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
             'genre' => 'sometimes|required|string|in:M,F',
-            'role' => 'sometimes|required|string|in:admin,enseignant,parent,eleve',
+            'role' => 'sometimes|required|string|in:enseignant,parent,eleve',
             'photo_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'password' => 'nullable|string|min:8'
         ]);
@@ -247,6 +252,8 @@ class UtilisateurController extends Controller
      */
     public function destroy(Utilisateur $utilisateur)
     {
+        Utilisateur::abortIfSystemAdmin($utilisateur);
+
         try {
             DB::beginTransaction();
             

