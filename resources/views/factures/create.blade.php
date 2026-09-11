@@ -128,7 +128,7 @@
                             </div>
                             <div class="mb-0">
                                 <label class="form-label">Observations</label>
-                                <textarea name="observations" class="form-control" rows="3"></textarea>
+                                <textarea name="observations" class="form-control" rows="3" placeholder="Texte saisi manuellement, visible sur la facture">{{ old('observations') }}</textarea>
                             </div>
                         </div>
                         <div class="col-md-6 col-lg-5 ms-lg-auto">

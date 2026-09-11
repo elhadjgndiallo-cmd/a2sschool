@@ -52,7 +52,7 @@
                         <span class="d-none d-sm-inline">Impayés mensuels par classe</span>
                         <span class="d-sm-none">Impayés mensuels</span>
                     </h3>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         <a href="{{ route('comptabilite.index') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i>
                             <span class="d-none d-sm-inline">Retour</span>
@@ -63,6 +63,27 @@
                                 <span class="d-none d-sm-inline">Imprimer</span>
                                 <span class="d-sm-none">Print</span>
                             </button>
+                        @endif
+                        @if($aRecherche && $resultats->count() > 0 && auth()->user()->hasPermission('paiements.create'))
+                            <form method="POST"
+                                  action="{{ route('recus-rappel.lot-depuis-impayes') }}"
+                                  target="_blank"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Générer et imprimer {{ $resultats->count() }} reçu(s) de rappel de la liste affichée ?\n\nDeux reçus seront imprimés par page A4.');">
+                                @csrf
+                                <input type="hidden" name="annee_scolaire_id" value="{{ $anneeScolaire->id }}">
+                                <input type="hidden" name="classe_id" value="{{ $classeId }}">
+                                <input type="hidden" name="type_frais" value="{{ $typeFrais }}">
+                                @foreach($moisSelectionnes as $mois)
+                                    <input type="hidden" name="mois[]" value="{{ $mois }}">
+                                @endforeach
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-bell me-1"></i>
+                                    <span class="d-none d-sm-inline">Tous les reçus de rappel</span>
+                                    <span class="d-sm-none">Reçus</span>
+                                    <span class="badge bg-dark text-warning ms-1">{{ $resultats->count() }}</span>
+                                </button>
+                            </form>
                         @endif
                     </div>
                 </div>

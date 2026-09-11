@@ -155,4 +155,28 @@ class Facture extends Model
             default => 'secondary',
         };
     }
+
+    /**
+     * Texte d'observation saisi manuellement (sans les mentions automatiques).
+     */
+    public function observationsManuelles(): ?string
+    {
+        $texte = trim((string) ($this->observations ?? ''));
+        if ($texte === '') {
+            return null;
+        }
+
+        $texte = preg_replace('/\s*\|\s*Paiement multi-lignes\s*—.*$/u', '', $texte) ?? $texte;
+        $texte = preg_replace('/\s*\|\s*Encaissement\s+.*répartition automatique.*$/u', '', $texte) ?? $texte;
+        $texte = trim($texte);
+
+        if ($texte === ''
+            || str_starts_with($texte, 'Paiement multi-lignes')
+            || str_starts_with($texte, 'Encaissement')
+        ) {
+            return null;
+        }
+
+        return $texte;
+    }
 }

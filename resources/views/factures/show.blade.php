@@ -60,8 +60,8 @@
                     <p class="mb-1">Mode : {{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}</p>
                     <p class="mb-1">Statut : <span class="badge bg-{{ $facture->statutBadgeClass() }}">{{ $facture->statutLibelle() }}</span></p>
                     <p class="mb-1">Émis par : {{ $facture->generePar->prenom ?? '' }} {{ $facture->generePar->nom ?? '' }}</p>
-                    @if($facture->observations)
-                        <p class="mb-0"><em>{{ $facture->observations }}</em></p>
+                    @if($facture->observationsManuelles())
+                        <p class="mb-0"><strong>Observations :</strong> {{ $facture->observationsManuelles() }}</p>
                     @endif
                 </div>
             </div>

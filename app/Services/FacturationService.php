@@ -857,7 +857,8 @@ class FacturationService
             $this->assurerFraisEleve($eleve, $anneeScolaire, $tarif);
         }
         $reference = $data['reference_paiement'] ?? null;
-        $observations = $data['observations'] ?? null;
+        $observations = trim((string) ($data['observations'] ?? ''));
+        $observations = $observations !== '' ? $observations : null;
 
         if ($mode === 'montant') {
             $montantVerse = round((float) ($data['montant_verse'] ?? 0), 2);
@@ -882,8 +883,6 @@ class FacturationService
                 ]), $lignesSelection),
             ];
 
-            $suffixe = 'Encaissement ' . number_format($montantVerse, 0, ',', ' ') . ' GNF — répartition automatique';
-            $observations = $observations ? $observations . ' | ' . $suffixe : $suffixe;
         } else {
             $lignesDisponibles = collect(
                 $factureEdition
@@ -929,31 +928,6 @@ class FacturationService
                 (float) ($data['remise_valeur'] ?? 0),
                 $montantVerse
             );
-
-            if (count($lignesSelection) > 1) {
-                // Grouper les lignes par type de frais
-                $parType = collect($lignesSelection)->groupBy('type_frais');
-                
-                $parties = [];
-                foreach ($parType as $typeFrais => $lignesType) {
-                    if (in_array($typeFrais, ['inscription', 'reinscription', 'uniforme', 'livres', 'autre', 'autres'])) {
-                        // Pour les frais uniques, juste mentionner le type
-                        $parties[] = ucfirst($typeFrais);
-                    } else {
-                        // Pour scolarité/cantine/transport, lister les mois courts
-                        $moisCourts = $lignesType->map(function($l) {
-                            $mois = Carbon::parse($l['mois']);
-                            return $this->libelleMoisCourt($mois);
-                        })->implode(', ');
-                        
-                        $typeLabel = $typeFrais === 'scolarite' ? 'Scolarités' : ucfirst($typeFrais);
-                        $parties[] = $typeLabel . ' : ' . $moisCourts;
-                    }
-                }
-                
-                $suffixe = 'Paiement multi-lignes — ' . implode(' + ', $parties);
-                $observations = $observations ? $observations . ' | ' . $suffixe : $suffixe;
-            }
         }
 
         return [
@@ -1122,34 +1096,43 @@ class FacturationService
     }
 
     /**
-     * Montant dû sur un mois couvert par la facture = reste actuel + crédit déjà appliqué par cette facture.
+     * Montant dû sur un mois déjà présent sur la facture.
+     * On additionne le reste encore dû et le crédit (cash + remise) de CETTE facture,
+     * sans reprendre le montant brut du mois (sinon le reste est compté deux fois).
      */
     private function montantLigneFacturePourEdition(FactureLigne $ligne, ?array $ligneDisponible = null): float
     {
-        $creditFacture = round((float) $ligne->montant_brut, 2);
+        $creditFacture = round((float) $ligne->montant_net + (float) $ligne->montant_remise, 2);
 
         if ($ligneDisponible !== null) {
-            return round((float) $ligneDisponible['montant'] + $creditFacture, 2);
+            $montant = round((float) $ligneDisponible['montant'] + $creditFacture, 2);
+            $plafond = round((float) ($ligneDisponible['montant_du_mois'] ?? 0), 2);
+
+            return $plafond > 0 ? min($montant, $plafond) : $montant;
         }
 
         $ligne->loadMissing('tranchePaiement');
         $tranche = $ligne->tranchePaiement;
 
         if ($tranche) {
-            $reste = max(0, round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2));
+            $reste = $this->resteEffectifTranche($tranche);
+            $montant = round($reste + $creditFacture, 2);
+            $plafond = round((float) $tranche->montant_tranche, 2);
 
-            return round($reste + $creditFacture, 2);
+            return $plafond > 0 ? min($montant, $plafond) : $montant;
         }
 
         $ligne->loadMissing('fraisScolarite');
         $frais = $ligne->fraisScolarite;
         if ($frais) {
             $reste = max(0, round((float) $frais->montant_restant, 2));
+            $montant = round($reste + $creditFacture, 2);
+            $plafond = round((float) $frais->montant, 2);
 
-            return round($reste + $creditFacture, 2);
+            return $plafond > 0 ? min($montant, $plafond) : $montant;
         }
 
-        return $creditFacture;
+        return $creditFacture > 0 ? $creditFacture : round((float) $ligne->montant_brut, 2);
     }
 
     private function resoudreTranche(

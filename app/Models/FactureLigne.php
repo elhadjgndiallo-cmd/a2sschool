@@ -66,13 +66,22 @@ class FactureLigne extends Model
 
     /**
      * Montant affiché sur la facture (montant BRUT du mois, SANS la remise).
-     * La remise s'applique au niveau du total global, pas ligne par ligne.
+     * Sur un reçu de reste, on affiche le montant restant réellement payé.
      */
     public function montantAffiche(): float
     {
+        if ($this->factureParent()?->estFactureComplement()) {
+            $montantReste = (float) $this->montant_net;
+            if ($montantReste > 0.01) {
+                return $montantReste;
+            }
+
+            return (float) $this->montant_brut;
+        }
+
         // Toujours afficher le montant brut (tarif du mois complet)
         // La remise est affichée séparément dans le total
-        
+
         if ($this->tranche_paiement_id) {
             $tranche = $this->relationLoaded('tranchePaiement')
                 ? $this->tranchePaiement

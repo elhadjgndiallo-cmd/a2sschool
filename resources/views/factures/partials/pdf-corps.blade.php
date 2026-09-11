@@ -68,4 +68,11 @@
         <strong>Mode de paiement :</strong> {{ ucfirst(str_replace('_', ' ', $facture->mode_paiement)) }}
         — <strong>Statut :</strong> {{ $facture->statutLibelle() }}
     </p>
+
+    @if($facture->observationsManuelles())
+        <div class="observations">
+            <strong>Observations :</strong>
+            {{ $facture->observationsManuelles() }}
+        </div>
+    @endif
 </div>

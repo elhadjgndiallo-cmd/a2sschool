@@ -271,43 +271,16 @@ class RecuRappelController extends Controller
             return redirect()->back()->with('error', 'Aucun impayé trouvé pour cet élève sur les mois sélectionnés.');
         }
 
-        $frais = FraisScolarite::where('eleve_id', $eleve->id)
-            ->where('type_frais', $typeFrais)
-            ->where('statut', '!=', 'annule')
-            ->first();
-
-        if (!$frais) {
-            return redirect()->back()->with('error', 'Frais introuvables pour cet élève.');
-        }
-
-        $moisLabels = collect($ligneEleve['mois_impayes'])
-            ->pluck('libelle_mois')
-            ->implode(', ');
-
         $typesFrais = [
             'scolarite' => 'Scolarité',
             'cantine' => 'Cantine',
             'transport' => 'Transport',
         ];
 
-        $montantDu = round((float) $ligneEleve['total_du'], 2);
-
         try {
             DB::beginTransaction();
 
-            $recuRappel = RecuRappel::create([
-                'eleve_id' => $eleve->id,
-                'frais_scolarite_id' => $frais->id,
-                'montant_total_du' => $montantDu,
-                'montant_paye' => 0,
-                'montant_restant' => $montantDu,
-                'montant_a_payer' => $montantDu,
-                'date_rappel' => now()->toDateString(),
-                'date_echeance' => now()->addDays(15)->toDateString(),
-                'observations' => 'Rappel de paiement — ' . ($typesFrais[$typeFrais] ?? $typeFrais)
-                    . ' | Mois impayés : ' . $moisLabels,
-                'genere_par' => auth()->id(),
-            ]);
+            $recuRappel = $this->creerRecuDepuisLigneImpaye($ligneEleve, $typeFrais, $typesFrais);
 
             DB::commit();
 
@@ -317,6 +290,114 @@ class RecuRappelController extends Controller
 
             return redirect()->back()->with('error', 'Erreur lors de la création du reçu : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Générer tous les reçus de rappel de la liste des impayés mensuels (2 par page A4).
+     */
+    public function creerLotDepuisImpayes(Request $request, FacturationService $facturationService)
+    {
+        if (!auth()->user()->hasPermission('paiements.create')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé à créer des reçus de rappel.');
+        }
+
+        $request->validate([
+            'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
+            'classe_id' => 'required|exists:classes,id',
+            'type_frais' => 'required|in:scolarite,cantine,transport',
+            'mois' => 'required|array|min:1',
+            'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
+        ], [
+            'classe_id.required' => 'Veuillez sélectionner une classe.',
+            'mois.required' => 'Veuillez cocher au moins un mois.',
+        ]);
+
+        set_time_limit(180);
+
+        $anneeScolaire = AnneeScolaire::findOrFail($request->annee_scolaire_id);
+        $moisSelectionnes = array_values($request->input('mois', []));
+        $typeFrais = $request->type_frais;
+
+        $resultats = $facturationService->rechercherElevesImpayes(
+            $anneeScolaire,
+            $moisSelectionnes,
+            (int) $request->classe_id,
+            $typeFrais
+        );
+
+        if ($resultats->isEmpty()) {
+            return redirect()->back()->with('error', 'Aucun élève impayé sur la liste affichée.');
+        }
+
+        $typesFrais = [
+            'scolarite' => 'Scolarité',
+            'cantine' => 'Cantine',
+            'transport' => 'Transport',
+        ];
+
+        $recus = collect();
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($resultats as $ligneEleve) {
+                $recus->push($this->creerRecuDepuisLigneImpaye($ligneEleve, $typeFrais, $typesFrais));
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()->with('error', 'Erreur lors de la génération des reçus : ' . $e->getMessage());
+        }
+
+        $recus->each(function (RecuRappel $recuRappel) {
+            $recuRappel->load(['eleve.utilisateur', 'eleve.classe', 'fraisScolarite', 'generePar']);
+        });
+
+        $schoolInfo = SchoolHelper::getDocumentInfo();
+        $html = view('recus-rappel.pdf-lot', compact('recus', 'schoolInfo'))->render();
+
+        return response($html)
+            ->header('Content-Type', 'text/html; charset=utf-8')
+            ->header('Content-Disposition', 'inline; filename="recus_rappel_lot.html"');
+    }
+
+    /**
+     * Créer un reçu de rappel à partir d'une ligne d'impayés mensuels.
+     */
+    private function creerRecuDepuisLigneImpaye(array $ligneEleve, string $typeFrais, array $typesFrais): RecuRappel
+    {
+        $eleve = $ligneEleve['eleve'];
+
+        $frais = FraisScolarite::where('eleve_id', $eleve->id)
+            ->where('type_frais', $typeFrais)
+            ->where('statut', '!=', 'annule')
+            ->first();
+
+        if (!$frais) {
+            throw new \Exception('Frais introuvables pour ' . trim(($eleve->utilisateur->prenom ?? '') . ' ' . ($eleve->utilisateur->nom ?? 'cet élève')) . '.');
+        }
+
+        $moisLabels = collect($ligneEleve['mois_impayes'])
+            ->pluck('libelle_mois')
+            ->implode(', ');
+
+        $montantDu = round((float) $ligneEleve['total_du'], 2);
+
+        return RecuRappel::create([
+            'eleve_id' => $eleve->id,
+            'frais_scolarite_id' => $frais->id,
+            'montant_total_du' => $montantDu,
+            'montant_paye' => 0,
+            'montant_restant' => $montantDu,
+            'montant_a_payer' => $montantDu,
+            'date_rappel' => now()->toDateString(),
+            'date_echeance' => now()->addDays(15)->toDateString(),
+            'observations' => 'Rappel de paiement — ' . ($typesFrais[$typeFrais] ?? $typeFrais)
+                . ' | Mois impayés : ' . $moisLabels,
+            'genere_par' => auth()->id(),
+        ]);
     }
 
     /**

@@ -1139,6 +1139,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/recus-rappel/search-eleves', [\App\Http\Controllers\RecuRappelController::class, 'searchEleves'])->name('recus-rappel.search-eleves')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/eleve/{eleve}/frais', [\App\Http\Controllers\RecuRappelController::class, 'getFraisEleve'])->name('recus-rappel.frais-eleve')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/depuis-impayes', [\App\Http\Controllers\RecuRappelController::class, 'creerDepuisImpayes'])->name('recus-rappel.depuis-impayes')->middleware('check.permission:paiements.create');
+        Route::post('/recus-rappel/lot-depuis-impayes', [\App\Http\Controllers\RecuRappelController::class, 'creerLotDepuisImpayes'])->name('recus-rappel.lot-depuis-impayes')->middleware('check.permission:paiements.create');
         Route::get('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'show'])->name('recus-rappel.show')->middleware('check.permission:paiements.view');
         Route::get('/recus-rappel/{recuRappel}/edit', [\App\Http\Controllers\RecuRappelController::class, 'edit'])->name('recus-rappel.edit')->middleware('check.permission:paiements.edit');
         Route::put('/recus-rappel/{recuRappel}', [\App\Http\Controllers\RecuRappelController::class, 'update'])->name('recus-rappel.update')->middleware('check.permission:paiements.edit');

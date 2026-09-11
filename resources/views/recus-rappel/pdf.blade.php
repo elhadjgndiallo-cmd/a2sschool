@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -310,6 +310,44 @@
             background: #d4edda;
             color: #155724;
         }
+
+        .alerte-box {
+            border-radius: 1px;
+            padding: 2px;
+            text-align: center;
+        }
+
+        .alerte-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alerte-warning p {
+            color: #856404;
+            margin: 0;
+            font-size: 8px;
+        }
+
+        .alerte-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alerte-success p {
+            color: #155724;
+            margin: 0;
+            font-size: 8px;
+        }
+
+        .observations-box p {
+            background: #f8f9fa;
+            padding: 2px;
+            border-radius: 1px;
+            border-left: 1px solid #dc3545;
+            font-size: 8px;
+            margin: 0;
+            line-height: 1.2;
+        }
         
         @media print {
             @page {
@@ -575,231 +613,8 @@
     </style>
 </head>
 <body>
-    <div class="recu-container">
-        <!-- En-tête -->
-        <div class="header">
-            <div class="header-row">
-                <div class="header-logo-col">
-                    @if(!empty($schoolInfo['logo_url']))
-                        <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo de l'école">
-                    @endif
-                </div>
-                <div class="header-center-col">
-                    <h1 class="school-name">{{ $schoolInfo['school_name'] ?? 'École' }}</h1>
-                    @if(!empty($schoolInfo['school_slogan']))
-                        <p class="school-slogan">{{ $schoolInfo['school_slogan'] }}</p>
-                    @endif
-                    @if(!empty($schoolInfo['year_name']))
-                        <p class="school-year">Année scolaire : {{ $schoolInfo['year_name'] }}</p>
-                    @endif
-                    <h2 class="doc-title">Reçu de rappel de paiement</h2>
-                    <p class="doc-num">N° {{ $recuRappel->numero_recu_rappel }}</p>
-                </div>
-                <div class="header-right-col">
-                    @if(!empty($schoolInfo['school_address']))
-                        <p>{{ $schoolInfo['school_address'] }}</p>
-                    @endif
-                    @if(!empty($schoolInfo['school_phone']))
-                        <p>Tél : {{ $schoolInfo['school_phone'] }}</p>
-                    @endif
-                    @if(!empty($schoolInfo['school_email']))
-                        <p>{{ $schoolInfo['school_email'] }}</p>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        <div class="print-controls">
-            <button onclick="imprimerRecu()" class="btn-print">
-                <i class="fas fa-print"></i> Imprimer
-            </button>
-            <button onclick="retourPage()" class="btn-print" style="margin-left: 10px; background: #6c757d; border-color: #6c757d;">
-                <i class="fas fa-arrow-left"></i> Retour
-            </button>
-        </div>
-        
-        <!-- Contenu principal -->
-        <div class="content">
-            <!-- Informations de l'élève -->
-            <div class="info-section">
-                <h3>Informations de l'Élève</h3>
-                <div class="info-grid">
-                    <div>
-                        <div class="info-item">
-                            <span class="info-label">Nom complet :</span>
-                            <span class="info-value">{{ $recuRappel->eleve->utilisateur->nom }} {{ $recuRappel->eleve->utilisateur->prenom }}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Matricule :</span>
-                            <span class="info-value"><strong>{{ $recuRappel->eleve->numero_etudiant ?? 'N/A' }}</strong></span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="info-item">
-                            <span class="info-label">Classe :</span>
-                            <span class="info-value">{{ $recuRappel->eleve->classe->nom ?? 'Non assignée' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Année scolaire :</span>
-                            <span class="info-value">{{ $recuRappel->fraisScolarite->annee_scolaire ?? date('Y') . '/' . (date('Y') + 1) }}</span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="info-item">
-                            <span class="info-label">Date de naissance :</span>
-                            <span class="info-value">{{ $recuRappel->eleve->utilisateur->date_naissance ? \Carbon\Carbon::parse($recuRappel->eleve->utilisateur->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Statut du rappel :</span>
-                            <span class="info-value">
-                                <span class="status-badge status-{{ $recuRappel->statut }}">
-                                    @if($recuRappel->statut == 'actif')
-                                        Actif
-                                    @elseif($recuRappel->statut == 'expire')
-                                        Expiré
-                                    @else
-                                        {{ ucfirst($recuRappel->statut) }}
-                                    @endif
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Détails du rappel -->
-            <div class="info-section">
-                <h3>Détails du Rappel</h3>
-                <div class="paiement-details">
-                    <div class="info-item">
-                        <span class="info-label">Date de rappel :</span>
-                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_rappel)->format('d/m/Y') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Date d'échéance :</span>
-                        <span class="info-value">{{ \Carbon\Carbon::parse($recuRappel->date_echeance)->format('d/m/Y') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Frais concerné :</span>
-                        <span class="info-value">{{ $recuRappel->fraisScolarite->libelle }}</span>
-                    </div>
-                    @if($recuRappel->generePar)
-                    <div class="info-item">
-                        <span class="info-label">Généré par :</span>
-                        <span class="info-value">{{ $recuRappel->generePar->nom }} {{ $recuRappel->generePar->prenom }}</span>
-                    </div>
-                    @endif
-                </div>
-            </div>
-            
-            <!-- Section principale : Détails à gauche, Montant à droite -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 3px; margin-top: 2px;">
-                <!-- Colonne gauche : Détails du rappel -->
-                <div>
-                    <!-- Détails financiers -->
-                    <div class="info-section">
-                        <h3>Détails Financiers</h3>
-                        <div class="paiement-details">
-                            <div class="info-item">
-                                <span class="info-label">Montant total des frais :</span>
-                                <span class="info-value"><strong>{{ number_format($recuRappel->montant_total_du, 0, ',', ' ') }} GNF</strong></span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Montant déjà payé :</span>
-                                <span class="info-value"><strong>{{ number_format($recuRappel->montant_paye, 0, ',', ' ') }} GNF</strong></span>
-                            </div>
-                            <div class="info-item" style="border-top: 1px solid #007bff; padding-top: 2px; margin-top: 2px;">
-                                <span class="info-label" style="font-size: 7px;">Montant restant à payer :</span>
-                                <span class="info-value" style="font-size: 7px; color: {{ $recuRappel->montant_restant > 0 ? '#dc3545' : '#28a745' }};">
-                                    <strong>{{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF</strong>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    
-                </div>
-                
-                <!-- Colonne droite : Montant à payer -->
-                <div>
-                    <div class="montant-total">
-                        <h2>MONTANT À PAYER</h2>
-                        <div class="montant-box" style="border: 2px solid #007bff; background: #f8f9ff;">
-                            <div class="montant-box-label" style="color: #007bff; font-size: 6px;">Montant à payer</div>
-                            @if($recuRappel->montant_a_payer)
-                                <div class="montant-value" style="color: #007bff; font-size: 10px;">
-                                    {{ number_format($recuRappel->montant_a_payer, 0, ',', ' ') }} GNF
-                                </div>
-                            @else
-                                <div class="montant-placeholder" style="border: 2px dashed #007bff; background: white; padding: 4px;">
-                                    <div style="font-size: 8px; font-weight: bold; color: #007bff; margin-bottom: 2px;">
-                                        CASE VIDE
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Message d'information compact -->
-            @if($recuRappel->montant_restant > 0)
-            <div class="info-section" style="margin-bottom: 1px;">
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 1px; padding: 1px; text-align: center;">
-                    <p style="color: #856404; margin: 0; font-size: 6px;">
-                        <strong>Paiement Partiel</strong> - Reste: {{ number_format($recuRappel->montant_restant, 0, ',', ' ') }} GNF
-                    </p>
-                </div>
-            </div>
-            @else
-            <div class="info-section" style="margin-bottom: 1px;">
-                <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 1px; padding: 1px; text-align: center;">
-                    <p style="color: #155724; margin: 0; font-size: 6px;">
-                        <strong>Paiement Complet</strong>
-                    </p>
-                </div>
-            </div>
-            @endif
-
-            
-            <!-- Informations complémentaires (observations) -->
-            @if($recuRappel->observations && trim($recuRappel->observations) != '')
-            <div class="info-section" style="margin-bottom: 1px;">
-                <h3 style="font-size: 7px;">Observations</h3>
-                <div class="observations-box">
-                    <p style="background: #f8f9fa; padding: 2px; border-radius: 1px; border-left: 1px solid #dc3545; font-size: 6px; margin: 0; line-height: 1.1;">
-                        {{ $recuRappel->observations }}
-                    </p>
-                </div>
-            </div>
-            @endif
-            
-            <!-- Signatures -->
-            <div class="signature-section">
-                <div class="signature-box">
-                    <div class="signature-line"></div>
-                    <p><strong>Signature du Comptable</strong></p>
-                </div>
-                <div class="signature-box">
-                    <div class="signature-line"></div>
-                    <p><strong>Signature du Parent/Responsable</strong></p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pied de page -->
-        <div class="footer">
-            <p><strong>{{ $schoolInfo['school_name'] ?? 'École' }}</strong></p>
-            <p>
-                {{ $schoolInfo['school_address'] ?? 'Adresse de l\'école' }}
-                | Tél: {{ $schoolInfo['school_phone'] ?? 'Téléphone de l\'école' }}
-            </p>
-            <p>
-                Reçu généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }}
-                | Ce reçu de rappel fait foi de notification. Conservez-le précieusement.
-            </p>
-        </div>
-    </div>
+        @include('recus-rappel._recu-body')
+    
     
     <script>
         // Fonction pour imprimer le reçu

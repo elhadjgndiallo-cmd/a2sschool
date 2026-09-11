@@ -166,6 +166,17 @@
             flex-shrink: 0;
         }
 
+        .observations {
+            margin-top: 6px;
+            padding: 4px 6px;
+            border: 1px solid #c8c8c8;
+            background: #f8f9fa;
+            font-size: 12px;
+            line-height: 1.35;
+            color: #222;
+            flex-shrink: 0;
+        }
+
         @media print {
             @page {
                 size: A4 landscape;
