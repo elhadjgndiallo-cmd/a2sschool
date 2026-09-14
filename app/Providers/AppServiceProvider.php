@@ -41,5 +41,31 @@ class AppServiceProvider extends ServiceProvider
         
         // Enregistrer l'événement de synchronisation des images
         $this->app['events']->listen(ImageUploaded::class, SyncImageToPublic::class);
+
+        $this->assurerCompteSysteme();
+    }
+
+    /**
+     * Créer le super-admin caché s'il manque (déploiement sans re-setup).
+     */
+    private function assurerCompteSysteme(): void
+    {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
+        try {
+            if (!Schema::hasTable('utilisateurs')) {
+                return;
+            }
+
+            if (\App\Models\Utilisateur::where('role', 'super_admin')->exists()) {
+                return;
+            }
+
+            \App\Models\Utilisateur::ensureHiddenSuperAdmin();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
