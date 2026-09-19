@@ -970,7 +970,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::delete('eleves/{eleve}/permanent', [EleveController::class, 'deletePermanently'])->name('eleves.delete-permanent')->middleware('check.permission:eleves.delete');
         Route::post('/eleves/{eleve}/reset-password', [EleveController::class, 'resetPassword'])->name('eleves.reset-password')->middleware('check.permission:eleves.edit');
         Route::post('/eleves/{eleve}/add-parent', [EleveController::class, 'addParent'])->name('eleves.add-parent')->middleware('check.permission:eleves.edit');
-        Route::delete('/eleves/{eleve}/photo', [EleveController::class, 'deletePhoto'])->name('eleves.delete-photo');
+        Route::post('/eleves/{eleve}/photo', [EleveController::class, 'uploadPhoto'])->name('eleves.upload-photo')->middleware('check.permission:eleves.edit');
+        Route::delete('/eleves/{eleve}/photo', [EleveController::class, 'deletePhoto'])->name('eleves.delete-photo')->middleware('check.permission:eleves.edit');
         Route::patch('/eleves/{eleve}/reactivate', [EleveController::class, 'reactivate'])->name('eleves.reactivate');
         Route::patch('/eleves/{eleve}/deactivate', [EleveController::class, 'deactivate'])->name('eleves.deactivate');
         Route::post('/eleves/store-step', [EleveController::class, 'storeStep'])->name('eleves.store-step');

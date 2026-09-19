@@ -500,6 +500,55 @@ class EleveController extends Controller
         
         return redirect()->back()->with('error', 'Aucune photo de profil à supprimer');
     }
+
+    /**
+     * Changer uniquement la photo de profil depuis la fiche élève.
+     */
+    public function uploadPhoto(Request $request, Eleve $eleve)
+    {
+        $eleve->load('utilisateur');
+
+        if (!$eleve->utilisateur) {
+            return redirect()->back()->with('error', 'Aucun utilisateur associé à cet élève.');
+        }
+
+        $request->validate([
+            'photo_profil' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ], [
+            'photo_profil.required' => 'Veuillez sélectionner une photo.',
+            'photo_profil.image' => 'Le fichier doit être une image.',
+            'photo_profil.mimes' => 'Formats acceptés : JPG, PNG, GIF ou WEBP.',
+            'photo_profil.max' => 'La photo ne doit pas dépasser 2 Mo.',
+        ]);
+
+        try {
+            if ($eleve->utilisateur->photo_profil) {
+                $this->imageService->deleteImage($eleve->utilisateur->photo_profil);
+            }
+
+            $photoPath = $this->imageService->resizeAndSaveImage(
+                $request->file('photo_profil'),
+                'profile_images',
+                300,
+                300
+            );
+
+            $eleve->utilisateur->photo_profil = $photoPath;
+            $eleve->utilisateur->save();
+
+            \App\Helpers\ImageSyncHelper::syncImage($photoPath);
+
+            return redirect()->route('eleves.show', $eleve)
+                ->with('success', 'Photo de profil mise à jour avec succès.');
+        } catch (\Throwable $e) {
+            \Log::error('Erreur upload photo élève', [
+                'eleve_id' => $eleve->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Impossible d\'enregistrer la photo. Veuillez réessayer.');
+        }
+    }
     
     /**
      * Mettre à jour un élève

@@ -101,6 +101,13 @@
 </div>
 @endif
 
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
 @php
     $parent = $eleve->parents->first();
     $parentUser = $parent && isset($parent->utilisateur) ? $parent->utilisateur : null;
@@ -622,33 +629,55 @@
     </div>
 </div>
 
-<!-- Modal pour upload de photo -->
-<div class="modal fade" id="uploadPhotoModal" tabindex="-1">
-    <div class="modal-dialog">
+@push('styles')
+<style>
+@media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    .no-print, .top-navbar, .sidebar, .btn, .btn-toolbar, .navbar, .sidebar-overlay { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    .container-fluid { padding: 0 !important; }
+    .main-content .container-fluid > *:not(.fiche-impression) { display: none !important; }
+    .fiche-impression { display: block !important; }
+    .card, .card-header { box-shadow: none !important; border: none !important; background: transparent !important; }
+}
+.table td, .table th { vertical-align: middle; }
+.photo-dropzone {
+    border: 2px dashed #0d6efd;
+    border-radius: 10px;
+    background: #f8fbff;
+    cursor: pointer;
+}
+.photo-dropzone:hover { background: #eef6ff; }
+</style>
+@endpush
+@endsection
+
+@push('modals')
+<div class="modal fade" id="uploadPhotoModal" tabindex="-1" aria-labelledby="uploadPhotoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-camera me-2"></i>
-                    Ajouter une photo de profil
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('eleves.update', $eleve->id) }}" method="POST" enctype="multipart/form-data">
+            <form id="uploadPhotoForm" action="{{ route('eleves.upload-photo', $eleve) }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                @method('PUT')
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadPhotoModalLabel">
+                        <i class="fas fa-camera me-2"></i>
+                        Ajouter une photo de profil
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="photo_profil" class="form-label">Sélectionner une photo</label>
-                        <input type="file" class="form-control" id="photo_profil" name="photo_profil" accept="image/*" required>
-                        <div class="form-text">
-                            Formats acceptés : JPG, PNG, GIF. Taille maximale : 2MB.
-                            Recommandé : 300x300 pixels.
-                        </div>
-                    </div>
-                    
-                    <!-- Prévisualisation -->
-                    <div id="preview" class="text-center" style="display: none;">
-                        <img id="preview-image" src="" alt="Prévisualisation" class="img-thumbnail rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                    <label for="photo_profil" class="photo-dropzone d-block text-center p-4 mb-2">
+                        <i class="fas fa-image fa-2x mb-2 d-block text-primary"></i>
+                        <span class="fw-semibold">Cliquer pour choisir une photo</span>
+                        <span id="photo_profil_name" class="d-block small text-muted mt-1">Aucun fichier sélectionné</span>
+                    </label>
+                    <input type="file" class="d-none" id="photo_profil" name="photo_profil" accept="image/*" required>
+                    <div class="form-text text-center">Formats acceptés : JPG, PNG, GIF, WEBP. Taille maximale : 2 Mo.</div>
+                    @error('photo_profil')
+                        <div class="invalid-feedback d-block text-center">{{ $message }}</div>
+                    @enderror
+                    <div id="preview" class="text-center mt-3" style="display: none;">
+                        <img id="preview-image" src="" alt="Prévisualisation" class="img-thumbnail rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -662,41 +691,46 @@
         </div>
     </div>
 </div>
+@endpush
 
 @push('scripts')
 <script>
-document.getElementById('photo_profil').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('photo_profil');
+    const nameEl = document.getElementById('photo_profil_name');
+    const preview = document.getElementById('preview');
+    const previewImage = document.getElementById('preview-image');
+    const form = document.getElementById('uploadPhotoForm');
+
+    input?.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) {
+            if (nameEl) nameEl.textContent = 'Aucun fichier sélectionné';
+            if (preview) preview.style.display = 'none';
+            return;
+        }
+        if (nameEl) nameEl.textContent = file.name;
         const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('preview-image').src = e.target.result;
-            document.getElementById('preview').style.display = 'block';
+        reader.onload = function (e) {
+            if (previewImage) previewImage.src = e.target.result;
+            if (preview) preview.style.display = 'block';
         };
         reader.readAsDataURL(file);
-    } else {
-        document.getElementById('preview').style.display = 'none';
+    });
+
+    form?.addEventListener('submit', function (e) {
+        if (!input || !input.files || !input.files[0]) {
+            e.preventDefault();
+            alert('Veuillez d’abord choisir une photo.');
+        }
+    });
+
+    @if($errors->has('photo_profil'))
+    const modalEl = document.getElementById('uploadPhotoModal');
+    if (modalEl && window.bootstrap) {
+        new bootstrap.Modal(modalEl).show();
     }
+    @endif
 });
 </script>
 @endpush
-
-@push('styles')
-<style>
-/* Styles d'impression A4 pour la page Élève */
-@media print {
-    @page { size: A4 portrait; margin: 12mm; }
-    .no-print, .top-navbar, .sidebar, .btn, .btn-toolbar, .navbar, .sidebar-overlay { display: none !important; }
-    .main-content { margin: 0 !important; padding: 0 !important; }
-    .container-fluid { padding: 0 !important; }
-    /* N'afficher que la fiche d'impression */
-    .main-content .container-fluid > *:not(.fiche-impression) { display: none !important; }
-    .fiche-impression { display: block !important; }
-    /* Nettoyage visuel */
-    .card, .card-header { box-shadow: none !important; border: none !important; background: transparent !important; }
-}
-/* Garder le style existant et ajouter un léger resserrement pour la table paiements */
-.table td, .table th { vertical-align: middle; }
-</style>
-@endpush
-@endsection

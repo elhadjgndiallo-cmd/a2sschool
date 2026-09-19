@@ -365,12 +365,26 @@
             /* Ne pas fermer le collapse si le dropdown est ouvert */
         }
         
-        /* Laisser Bootstrap gérer la position/z-index des modals */
-        
-        /* Désactiver l'assombrissement (gris) du fond quand un modal s'affiche */
+        /* Modals au-dessus du menu fixe et du sidebar */
+        .modal {
+            z-index: 2000 !important;
+        }
+        .modal-backdrop {
+            z-index: 1990 !important;
+        }
+        .modal-dialog {
+            margin-top: 5.5rem;
+        }
+        @media (min-width: 576px) {
+            .modal-dialog {
+                margin-top: 5.5rem;
+            }
+        }
+
+        /* Fond léger pour que les clics restent sur la fenêtre */
         .modal-backdrop.show {
-            opacity: 0 !important; /* pas d'opacité -> pas de gris */
-            background: transparent !important;
+            opacity: 0.45 !important;
+            background: #000 !important;
         }
         
         .card {
