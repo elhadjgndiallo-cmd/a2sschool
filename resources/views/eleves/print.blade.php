@@ -3,602 +3,444 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste des Élèves</title>
+    <title>Liste des élèves</title>
     <style>
-        /* Styles pour l'impression */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111;
+            background: #e9ecef;
+        }
+
+        .no-print { }
+
+        .toolbar {
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 14px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #0d6efd;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover { background: #0b5ed7; }
+        .btn-success { background: #198754; }
+        .btn-success:hover { background: #157347; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5c636a; }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 10px;
+            max-width: 960px;
+            margin: 0 auto;
+            align-items: end;
+        }
+
+        .filters label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #495057;
+        }
+
+        .filters select,
+        .filters button {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 16px auto 32px;
+            background: #fff;
+            padding: 12mm 12mm 18mm;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header-logo {
+            flex: 0 0 70px;
+            text-align: left;
+        }
+
+        .header-logo img {
+            max-width: 68px;
+            max-height: 68px;
+            object-fit: contain;
+        }
+
+        .header-center {
+            flex: 1;
+            text-align: center;
+        }
+
+        .school-name {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .school-slogan,
+        .school-year {
+            margin: 2px 0 0;
+            font-size: 11px;
+            color: #555;
+        }
+
+        .header-right {
+            flex: 0 0 28%;
+            text-align: right;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #333;
+        }
+
+        .header-right p { margin: 0 0 3px; }
+
+        .header-separator {
+            border: 0;
+            border-top: 2px solid #222;
+            margin: 8px 0 10px;
+        }
+
+        .doc-title {
+            text-align: center;
+            margin: 0 0 4px;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .doc-meta {
+            text-align: center;
+            margin: 0 0 12px;
+            font-size: 11px;
+            color: #555;
+        }
+
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .summary span {
+            border: 1px solid #ccc;
+            padding: 3px 8px;
+            background: #f8f8f8;
+        }
+
+        .class-section {
+            margin-bottom: 16px;
+            page-break-inside: auto;
+        }
+
+        .class-banner {
+            background: #f0f0f0;
+            border: 1px solid #222;
+            border-bottom: none;
+            padding: 5px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .class-banner .effectif {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        table.students-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        .students-table thead {
+            display: table-header-group;
+        }
+
+        .students-table th,
+        .students-table td {
+            border: 1px solid #222;
+            padding: 5px 7px;
+            vertical-align: middle;
+        }
+
+        .students-table th {
+            background: #f5f5f5;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .students-table td.col-num,
+        .students-table td.col-mat {
+            text-align: center;
+        }
+
+        .students-table td.col-nom {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 24px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .footer {
+            margin-top: 14px;
+            padding-top: 6px;
+            border-top: 1px solid #999;
+            font-size: 10px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0.8cm;
+                margin: 10mm 10mm 12mm;
             }
-            
-            body {
+
+            html, body {
+                background: #fff !important;
                 margin: 0;
-                padding: 0 0 40px 0;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-                line-height: 1.4;
-                color: #000;
-                background: white;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            
-            .no-print {
-                display: none !important;
-            }
-            
-            .page-break {
-                page-break-before: always;
-            }
-            
-            .header {
-                margin-bottom: 5px;
-                border-bottom: 1px solid #000;
-                padding-bottom: 3px;
-            }
-            
-            .header-content {
-                text-align: center;
-            }
-            
-            .school-info {
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                margin-bottom: 5px;
-                gap: 15px;
-            }
-            
-            .school-logo {
-                flex-shrink: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .logo-image {
-                max-width: 50px;
-                max-height: 50px;
-                object-fit: contain;
-                background: white;
-                padding: 3px;
-                border-radius: 3px;
-                border: 1px solid #ddd;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            
-            .school-details {
-                text-align: center;
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                margin-right: 60px; /* Équilibrer l'espace pour que le texte reste centré */
-            }
-            
-            .school-name {
+
+            .no-print { display: none !important; }
+
+            .sheet {
+                width: auto;
+                min-height: 0;
                 margin: 0;
-                font-size: 20px;
-                font-weight: bold;
-                color: #000;
-                line-height: 1.2;
-                text-align: center;
+                padding: 0;
+                box-shadow: none;
             }
-            
-            .school-slogan {
-                margin: 2px 0 0 0;
-                font-size: 12px;
-                color: #666;
-                font-style: italic;
-                text-align: center;
-            }
-            
-            .document-title {
-                margin-bottom: 3px;
-            }
-            
-            .document-title h2 {
-                margin: 0;
-                font-size: 16px;
-                font-weight: bold;
-                color: #000;
-            }
-            
-            .class-title {
-                margin: 1px 0 0 0;
-                font-size: 14px;
-                font-weight: bold;
-                color: #007bff;
-            }
-            
-            .document-info {
-                margin-top: 3px;
-            }
-            
-            .generation-info {
-                margin: 0;
-                font-size: 12px;
-                color: #666;
-            }
-            
-            .info-section {
-                margin-bottom: 8px;
-                font-size: 14px;
-            }
-            
-            .info-section .label {
-                font-weight: bold;
-                display: inline-block;
-                width: 120px;
-            }
-            
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 5px;
-                font-size: 11px;
-            }
-            
-            table th {
-                background-color: #f5f5f5;
-                border: 1px solid #000;
-                padding: 2px 4px;
-                text-align: center;
-                font-weight: bold;
-                font-size: 10px;
-                height: 20px;
-            }
-            
-            table td {
-                border: 1px solid #000;
-                padding: 1px 4px;
-                text-align: left;
-                vertical-align: middle;
-                font-size: 10px;
-                height: 18px;
-            }
-            
-            .student-number {
-                font-weight: bold;
-                text-align: center;
-            }
-            
-            .student-name {
-                font-weight: bold;
-            }
-            
-            .class-info {
-                text-align: center;
-            }
-            
-            .status-badge {
-                text-align: center;
-                font-weight: bold;
-            }
-            
-            .fees-info {
-                text-align: center;
-                font-size: 11px;
-            }
-            
-            .footer {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                font-size: 10px;
-                color: #666;
-                padding: 5px;
-                background-color: white;
-                border-top: 1px solid #ccc;
-            }
-            
-            .footer-content {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 5px;
-            }
-            
-            .footer-school-info {
-                flex: 1;
-                min-width: 150px;
-            }
-            
-            .footer-document-info {
-                flex: 1;
-                text-align: right;
-                min-width: 150px;
-            }
-            
-            .school-address,
-            .school-phone {
-                margin: 0;
-                font-size: 9px;
-                line-height: 1.1;
-            }
-            
-            .footer-document-info p {
-                margin: 0;
-                font-size: 9px;
-                color: #666;
-                font-style: italic;
-            }
-            
-            .summary {
-                margin-bottom: 5px;
-                padding: 4px;
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 2px;
-                font-size: 11px;
-            }
-            
-            .summary-content {
-                display: flex;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-            
-            .summary-icon {
-                font-size: 12px;
-                margin-right: 3px;
-            }
-            
-            .summary-item {
-                padding: 2px 4px;
-                background-color: #e9ecef;
-                border-radius: 2px;
-                font-size: 11px;
-            }
-            
+
             .class-section {
-                margin-bottom: 5px;
-            }
-            
-            .class-header {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 2px;
-                margin-bottom: 5px;
-                overflow: hidden;
-            }
-            
-            .class-title {
-                background-color: #e9ecef;
-                padding: 3px 6px;
-                border-bottom: 1px solid #dee2e6;
-                display: flex;
-                align-items: center;
-            }
-            
-            .class-icon {
-                font-size: 10px;
-                margin-right: 4px;
-            }
-            
-            .class-name {
-                font-size: 12px;
-                font-weight: bold;
-                color: #495057;
-            }
-            
-            .class-stats {
-                padding: 3px 6px;
-                background-color: #ffffff;
-                display: flex;
-                flex-wrap: wrap;
-                gap: 6px;
-                font-size: 10px;
-            }
-            
-            .stat-item {
-                padding: 2px 4px;
-                background-color: #f8f9fa;
-                border-radius: 2px;
-                color: #495057;
-            }
-            
-            .students-table {
-                margin-bottom: 5px;
-            }
-            
-            /* Forcer le contenu à commencer immédiatement après l'en-tête */
-            .class-section:first-of-type {
-                page-break-before: avoid;
-            }
-            
-            /* Limiter à 30 élèves par page A4 */
-            .students-table tbody tr:nth-child(31) {
-                page-break-before: always;
-            }
-            
-            /* Éviter les sauts de page dans les tableaux */
-            .students-table {
                 page-break-inside: auto;
             }
-            
-            .students-table tbody tr {
+
+            .students-table tr {
                 page-break-inside: avoid;
             }
-            
-            /* Optimiser l'espace pour 30 lignes par page */
-            .students-table tbody tr {
-                height: 18px;
-                line-height: 1.2;
+
+            .class-banner,
+            .students-table th,
+            .summary span {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            
         }
-        
-        /* Styles pour l'aperçu à l'écran */
-        @media screen {
-            body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                background-color: #f5f5f5;
-            }
-            
-            .print-container {
-                background: white;
-                padding: 20px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                max-width: 1000px;
-                margin: 0 auto;
-            }
-            
-            .print-actions {
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            
-            .btn {
-                display: inline-block;
-                padding: 10px 20px;
-                margin: 0 5px;
-                background-color: #007bff;
-                color: white;
-                text-decoration: none;
-                border-radius: 4px;
-                border: none;
-                cursor: pointer;
-            }
-            
-            .btn:hover {
-                background-color: #0056b3;
-            }
-            
-            .btn-success {
-                background-color: #28a745;
-            }
-            
-            .btn-success:hover {
-                background-color: #1e7e34;
-            }
-            
-            .filters-section {
-                background-color: #f8f9fa;
-                padding: 20px;
-                margin-bottom: 20px;
-                border: 1px solid #dee2e6;
-                border-radius: 5px;
-            }
-            
-            .filters-section h4 {
-                margin-bottom: 15px;
-                color: #495057;
-            }
-            
-            .form-label {
-                font-weight: bold;
-                color: #495057;
-                margin-bottom: 5px;
-            }
-            
-            .form-control {
-                width: 100%;
-                padding: 8px 12px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            
-            .form-control:focus {
-                border-color: #007bff;
-                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-            }
+
+        @media (max-width: 900px) {
+            .filters { grid-template-columns: 1fr 1fr; }
+            .sheet { width: auto; margin: 12px; padding: 16px; }
         }
     </style>
 </head>
 <body>
-    <div class="print-container">
-        <!-- Actions d'impression (masquées lors de l'impression) -->
-        <div class="print-actions no-print">
-            <button onclick="window.print()" class="btn btn-success">🖨️ Imprimer</button>
-            <a href="{{ route('eleves.index') }}" class="btn">← Retour à la liste</a>
+@php
+    $classeSelectionnee = request('classe_id') ? $classes->firstWhere('id', (int) request('classe_id')) : null;
+    $elevesParClasse = $eleves
+        ->sortBy(function ($eleve) {
+            return mb_strtolower(trim(($eleve->utilisateur->nom ?? '') . ' ' . ($eleve->utilisateur->prenom ?? '')));
+        })
+        ->groupBy(function ($eleve) {
+            return $eleve->classe->nom ?? 'Sans classe';
+        })
+        ->sortKeys();
+@endphp
+
+<div class="toolbar no-print">
+    <div class="toolbar-actions">
+        <button type="button" class="btn btn-success" onclick="window.print()">Imprimer</button>
+        <a href="{{ route('eleves.index', request()->query()) }}" class="btn btn-secondary">Retour à la liste</a>
+    </div>
+    <form method="GET" action="{{ route('eleves.print') }}" class="filters">
+        <div>
+            <label for="classe_id">Classe</label>
+            <select name="classe_id" id="classe_id">
+                <option value="">Toutes les classes</option>
+                @foreach($classes as $classe)
+                    <option value="{{ $classe->id }}" {{ (string) request('classe_id') === (string) $classe->id ? 'selected' : '' }}>
+                        {{ $classe->nom }}
+                    </option>
+                @endforeach
+            </select>
         </div>
-
-        <!-- Filtres pour l'impression -->
-        <div class="filters-section no-print">
-            <h4>🔍 Filtres d'impression</h4>
-            <form method="GET" action="{{ route('eleves.print') }}" class="row g-3">
-                <div class="col-md-4">
-                    <label for="classe_id" class="form-label">Classe :</label>
-                    <select name="classe_id" id="classe_id" class="form-control">
-                        <option value="">Toutes les classes</option>
-                        @foreach($classes as $classe)
-                            <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                {{ $classe->nom }} {{ $classe->niveau ? '(' . $classe->niveau . ')' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="statut" class="form-label">Statut :</label>
-                    <select name="statut" id="statut" class="form-control">
-                        <option value="">Tous les statuts</option>
-                        <option value="actif" {{ request('statut') == 'actif' ? 'selected' : '' }}>Actifs</option>
-                        <option value="inactif" {{ request('statut') == 'inactif' ? 'selected' : '' }}>Inactifs</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="annee_scolaire_id" class="form-label">Année scolaire :</label>
-                    <select name="annee_scolaire_id" id="annee_scolaire_id" class="form-control">
-                        <option value="">Toutes les années</option>
-                        @foreach($anneesScolarires as $annee)
-                            <option value="{{ $annee->id }}" {{ request('annee_scolaire_id') == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->nom }} ({{ $annee->date_debut->format('Y') }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <div>
-                        <button type="submit" class="btn btn-primary w-100">🔍 Filtrer</button>
-                    </div>
-                </div>
-            </form>
+        <div>
+            <label for="statut">Statut</label>
+            <select name="statut" id="statut">
+                <option value="">Tous les statuts</option>
+                <option value="actif" {{ request('statut') === 'actif' ? 'selected' : '' }}>Actifs</option>
+                <option value="inactif" {{ request('statut') === 'inactif' ? 'selected' : '' }}>Inactifs</option>
+            </select>
         </div>
-
-        <!-- En-tête -->
-        <div class="header">
-            <div class="header-content">
-                <!-- Logo et nom de l'école -->
-                <div class="school-info">
-                    @if($schoolInfo['logo_url'])
-                        <div class="school-logo">
-                            <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo" class="logo-image">
-                        </div>
-                    @endif
-                    <div class="school-details">
-                        <h1 class="school-name">{{ $schoolInfo['school_name'] ?? config('app.name') }}</h1>
-                        @if($schoolInfo['school_slogan'])
-                            <p class="school-slogan">"{{ $schoolInfo['school_slogan'] }}"</p>
-                        @endif
-                    </div>
-                </div>
-                
-                <!-- Titre du document -->
-                <div class="document-title">
-                    @if(request('classe_id'))
-                        @php $classe = $classes->find(request('classe_id')); @endphp
-                        @if($classe)
-                            <h2 class="class-title">CLASSE: {{ $classe->nom }}</h2>
-                        @else
-                            <h2>LISTE DES ÉLÈVES</h2>
-                        @endif
-                    @else
-                        <h2>LISTE DES ÉLÈVES</h2>
-                    @endif
-                </div>
-                
-                <!-- Informations de génération -->
-                <div class="document-info">
-                    <p class="generation-info">
-                        Généré le {{ now()->format('d/m/Y à H:i') }}
-                        @if(request('statut'))
-                            | {{ request('statut') == 'actif' ? 'Élèves actifs' : 'Élèves inactifs' }}
-                        @endif
-                    </p>
-                </div>
-            </div>
+        <div>
+            <label for="annee_scolaire_id">Année scolaire</label>
+            <select name="annee_scolaire_id" id="annee_scolaire_id">
+                <option value="">Année active</option>
+                @foreach($anneesScolarires as $annee)
+                    <option value="{{ $annee->id }}" {{ (string) request('annee_scolaire_id') === (string) $annee->id ? 'selected' : '' }}>
+                        {{ $annee->nom }}
+                    </option>
+                @endforeach
+            </select>
         </div>
-
-        <!-- Informations de résumé -->
-        <div class="summary">
-            <div class="summary-content">
-                <span class="summary-icon">📊</span>
-                <strong>Résumé :</strong>
-                <span class="summary-item">Total d'élèves : <strong>{{ $eleves->count() }}</strong></span>
-                <span class="summary-item">Actifs : <strong>{{ $eleves->where('actif', true)->count() }}</strong></span>
-                <span class="summary-item">Inactifs : <strong>{{ $eleves->where('actif', false)->count() }}</strong></span>
-            </div>
+        <div>
+            <button type="submit" class="btn">Filtrer</button>
         </div>
+    </form>
+</div>
 
-
-        <!-- Liste organisée par classe -->
-        @php
-            $elevesParClasse = $eleves->groupBy(function($eleve) {
-                return $eleve->classe ? $eleve->classe->nom : 'Sans classe';
-            });
-        @endphp
-
-        @foreach($elevesParClasse as $nomClasse => $elevesClasse)
-            <div class="class-section">
-                <div class="class-header">
-                    <div class="class-title">
-                        <span class="class-icon">📚</span>
-                        <span class="class-name">CLASSE: {{ $nomClasse }}</span>
-                    </div>
-                    <div class="class-stats">
-                        <span class="stat-item">Effectif : <strong>{{ $elevesClasse->count() }}</strong> élève(s)</span>
-                        <span class="stat-item">Actifs : <strong>{{ $elevesClasse->where('actif', true)->count() }}</strong></span>
-                        <span class="stat-item">Inactifs : <strong>{{ $elevesClasse->where('actif', false)->count() }}</strong></span>
-                    </div>
-                </div>
-                
-                <table class="students-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 8%;">N°</th>
-                            <th style="width: 20%;">MATRICULE</th>
-                            <th style="width: 36%;">PRENOMS</th>
-                            <th style="width: 36%;">NOM</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($elevesClasse as $index => $eleve)
-                            <tr>
-                                <td class="student-number">{{ $index + 1 }}</td>
-                                <td class="student-number">{{ $eleve->numero_etudiant ?? 'N/A' }}</td>
-                                <td class="student-name">{{ $eleve->utilisateur->prenom ?? 'N/A' }}</td>
-                                <td class="student-name">{{ $eleve->utilisateur->nom ?? 'N/A' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endforeach
-
-        @if($eleves->count() === 0)
-            <div class="no-students">
-                <p style="text-align: center; padding: 20px; font-style: italic;">
-                    Aucun élève trouvé
-                </p>
-            </div>
-        @endif
-
-        <!-- Pied de page -->
-        <div class="footer">
-            <div class="footer-content">
-                <div class="footer-school-info">
-                    @if($schoolInfo['school_address'])
-                        <p class="school-address">
-                            <strong>Adresse :</strong> {{ $schoolInfo['school_address'] }}
-                        </p>
-                    @endif
-                    @if($schoolInfo['school_phone'])
-                        <p class="school-phone">
-                            <strong>Téléphone :</strong> {{ $schoolInfo['school_phone'] }}
-                        </p>
-                    @endif
-                </div>
-                <div class="footer-document-info">
-                    <p><em>{{ $schoolInfo['school_name'] ?? config('app.name') }} - Système de Gestion Scolaire</em></p>
-                </div>
-            </div>
+<div class="sheet">
+    <div class="header-row">
+        <div class="header-logo">
+            @if(!empty($schoolInfo['logo_url']))
+                <img src="{{ $schoolInfo['logo_url'] }}" alt="Logo">
+            @endif
+        </div>
+        <div class="header-center">
+            <h1 class="school-name">{{ $schoolInfo['school_name'] ?? 'École' }}</h1>
+            @if(!empty($schoolInfo['school_slogan']))
+                <p class="school-slogan">{{ $schoolInfo['school_slogan'] }}</p>
+            @endif
+            @if(!empty($schoolInfo['year_name']))
+                <p class="school-year">Année scolaire : {{ $schoolInfo['year_name'] }}</p>
+            @endif
+        </div>
+        <div class="header-right">
+            @if(!empty($schoolInfo['school_address']))
+                <p>{{ $schoolInfo['school_address'] }}</p>
+            @endif
+            @if(!empty($schoolInfo['school_phone']))
+                <p>Tél : {{ $schoolInfo['school_phone'] }}</p>
+            @endif
+            @if(!empty($schoolInfo['school_email']))
+                <p>{{ $schoolInfo['school_email'] }}</p>
+            @endif
         </div>
     </div>
+    <hr class="header-separator">
 
-    <script>
-        // Auto-impression optionnelle (décommentez si souhaité)
-        // window.onload = function() {
-        //     setTimeout(function() {
-        //         window.print();
-        //     }, 1000);
-        // };
-    </script>
+    <h2 class="doc-title">
+        Liste des élèves
+        @if($classeSelectionnee)
+            — {{ $classeSelectionnee->nom }}
+        @endif
+    </h2>
+    <p class="doc-meta">
+        Généré le {{ now()->format('d/m/Y à H:i') }}
+        @if(request('statut') === 'actif') — Élèves actifs
+        @elseif(request('statut') === 'inactif') — Élèves inactifs
+        @endif
+    </p>
+
+    <div class="summary">
+        <span>Total : <strong>{{ $eleves->count() }}</strong></span>
+        <span>Actifs : <strong>{{ $eleves->where('actif', true)->count() }}</strong></span>
+        <span>Inactifs : <strong>{{ $eleves->where('actif', false)->count() }}</strong></span>
+        <span>Classes : <strong>{{ $elevesParClasse->count() }}</strong></span>
+    </div>
+
+    @forelse($elevesParClasse as $nomClasse => $elevesClasse)
+        <div class="class-section">
+            @unless($classeSelectionnee)
+                <div class="class-banner">
+                    <span>Classe : {{ $nomClasse }}</span>
+                    <span class="effectif">Effectif : {{ $elevesClasse->count() }} élève(s)</span>
+                </div>
+            @endunless
+
+            <table class="students-table">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">N°</th>
+                        <th style="width: 22%;">Matricule</th>
+                        <th style="width: 38%;">Prénoms</th>
+                        <th style="width: 30%;">Nom</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($elevesClasse as $index => $eleve)
+                        <tr>
+                            <td class="col-num">{{ $index + 1 }}</td>
+                            <td class="col-mat">{{ $eleve->numero_etudiant ?? '—' }}</td>
+                            <td>{{ $eleve->utilisateur->prenom ?? '—' }}</td>
+                            <td class="col-nom">{{ $eleve->utilisateur->nom ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @empty
+        <p class="empty">Aucun élève trouvé pour ces filtres.</p>
+    @endforelse
+
+    <div class="footer">
+        <div>
+            @if(!empty($schoolInfo['school_address']))
+                {{ $schoolInfo['school_address'] }}
+            @endif
+            @if(!empty($schoolInfo['school_phone']))
+                — Tél. {{ $schoolInfo['school_phone'] }}
+            @endif
+        </div>
+        <div>{{ $schoolInfo['school_name'] ?? 'École' }}</div>
+    </div>
+</div>
 </body>
 </html>
