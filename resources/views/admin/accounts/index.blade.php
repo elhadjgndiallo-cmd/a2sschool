@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\Storage;
             <i class="fas fa-id-card me-1"></i>
             Cartes Administrateurs
         </a>
+        @if(auth()->user()?->canCreatePrincipalAdmin())
+        <a href="{{ route('admin.accounts.create-principal') }}" class="btn btn-danger me-2">
+            <i class="fas fa-user-shield me-1"></i>
+            Créer l'administrateur principal
+        </a>
+        @endif
         <a href="{{ route('admin.accounts.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>
             Créer un Compte Administrateur

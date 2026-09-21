@@ -114,6 +114,7 @@ class PermissionHelper
                 ['href' => $getRoute('evenements.index'), 'icon' => 'fas fa-calendar-check', 'text' => 'Événements', 'permission' => 'evenements.view'],
                 ['href' => $getRoute('evenements.create'), 'icon' => 'fas fa-plus', 'text' => 'Créer Événement', 'permission' => 'evenements.create'],
                 ['href' => $getRoute('admin.accounts.index'), 'icon' => 'fas fa-user-shield', 'text' => 'Comptes Administrateurs', 'permission' => 'admin.accounts.view'],
+                ['href' => $getRoute('admin.accounts.create-principal'), 'icon' => 'fas fa-user-plus', 'text' => 'Créer admin principal', 'permission' => 'admin.accounts.create', 'super_admin_only' => true],
                 ['href' => $getRoute('parametres.couleurs.index'), 'icon' => 'fas fa-palette', 'text' => 'Personnalisation des couleurs', 'permission' => 'etablissement.view']
             ]
         ];
@@ -125,6 +126,10 @@ class PermissionHelper
         $filteredSubmenus = [];
         
         foreach ($allSubmenus[$menuType] as $submenu) {
+            if (!empty($submenu['super_admin_only']) && !$user->isSuperAdmin()) {
+                continue;
+            }
+
             // Si pas de permission requise ou si l'utilisateur a la permission ou est admin
             if (!$submenu['permission'] || $user->hasPermission($submenu['permission']) || $user->isAdmin()) {
                 $filteredSubmenus[] = $submenu;

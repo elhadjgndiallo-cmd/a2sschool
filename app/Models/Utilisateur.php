@@ -254,6 +254,33 @@ class Utilisateur extends Authenticatable
     }
 
     /**
+     * Administrateur principal (visible) : tous les droits sauf le compte système.
+     */
+    public function isPrincipalAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Seul l'administrateur système peut créer un administrateur principal.
+     */
+    public function canCreatePrincipalAdmin(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    /**
+     * Interdire la création d'un administrateur principal hors compte système.
+     */
+    public static function abortUnlessCanCreatePrincipalAdmin(): void
+    {
+        $acteur = auth()->user();
+        if (!$acteur || !$acteur->canCreatePrincipalAdmin()) {
+            abort(403, 'Seul l\'administrateur système peut créer un compte administrateur principal.');
+        }
+    }
+
+    /**
      * Ancien nom : le compte caché est désormais super_admin.
      */
     public function isSystemAdmin(): bool

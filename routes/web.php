@@ -899,6 +899,8 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         // Gestion des comptes administrateurs
         Route::get('accounts', [\App\Http\Controllers\AdminAccountController::class, 'index'])->name('admin.accounts.index')->middleware('check.permission:admin.accounts.view');
         Route::get('accounts/create', [\App\Http\Controllers\AdminAccountController::class, 'create'])->name('admin.accounts.create')->middleware('check.permission:admin.accounts.create');
+        Route::get('accounts/create-principal', [\App\Http\Controllers\AdminAccountController::class, 'createPrincipal'])->name('admin.accounts.create-principal');
+        Route::post('accounts/store-principal', [\App\Http\Controllers\AdminAccountController::class, 'storePrincipal'])->name('admin.accounts.store-principal');
         Route::post('accounts', [\App\Http\Controllers\AdminAccountController::class, 'store'])->name('admin.accounts.store')->middleware('check.permission:admin.accounts.create');
         Route::get('accounts/{adminAccount}', [\App\Http\Controllers\AdminAccountController::class, 'show'])->name('admin.accounts.show')->middleware('check.permission:admin.accounts.view');
         Route::get('accounts/{adminAccount}/edit', [\App\Http\Controllers\AdminAccountController::class, 'edit'])->name('admin.accounts.edit')->middleware('check.permission:admin.accounts.edit');
@@ -1265,6 +1267,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
     Route::middleware('role:admin,personnel_admin')->group(function () {
         // Routes spécifiques AVANT les routes resource pour éviter les conflits
         Route::get('/cartes-scolaires/imprimer-plusieurs', [CarteScolaireController::class, 'imprimerPlusieurs'])->name('cartes-scolaires.imprimer-plusieurs');
+        Route::post('/cartes-scolaires/renouveler-plusieurs', [CarteScolaireController::class, 'renouvelerPlusieurs'])->name('cartes-scolaires.renouveler-plusieurs');
         Route::get('/cartes-scolaires/{cartes_scolaire}/imprimer', [CarteScolaireController::class, 'imprimer'])->name('cartes-scolaires.imprimer');
         Route::get('/cartes-scolaires/{cartes_scolaire}/renouveler', [CarteScolaireController::class, 'renouveler'])->name('cartes-scolaires.renouveler');
         Route::post('/cartes-scolaires/{cartes_scolaire}/traiter-renouvellement', [CarteScolaireController::class, 'traiterRenouvellement'])->name('cartes-scolaires.traiter-renouvellement');

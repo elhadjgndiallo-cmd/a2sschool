@@ -57,6 +57,12 @@
                                 <div class="form-group">
                                     <label for="role">Rôle</label>
                                     <select id="role" class="form-control @error('role') is-invalid @enderror" name="role" required>
+                                        @if(auth()->user()?->canCreatePrincipalAdmin() || $utilisateur->role === 'admin')
+                                        <option value="admin" {{ old('role', $utilisateur->role) == 'admin' ? 'selected' : '' }}>Administrateur principal</option>
+                                        @endif
+                                        @if($utilisateur->role === 'personnel_admin')
+                                        <option value="personnel_admin" {{ old('role', $utilisateur->role) == 'personnel_admin' ? 'selected' : '' }}>Personnel admin</option>
+                                        @endif
                                         <option value="teacher" {{ old('role', $utilisateur->role) == 'teacher' ? 'selected' : '' }}>Enseignant</option>
                                         <option value="student" {{ old('role', $utilisateur->role) == 'student' ? 'selected' : '' }}>Élève</option>
                                         <option value="parent" {{ old('role', $utilisateur->role) == 'parent' ? 'selected' : '' }}>Parent</option>

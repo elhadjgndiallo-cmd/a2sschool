@@ -94,10 +94,16 @@
                                     <label for="role" class="form-label">Rôle <span class="text-danger">*</span></label>
                                     <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                                         <option value="" selected disabled>Sélectionner un rôle</option>
+                                        @if(auth()->user()?->canCreatePrincipalAdmin())
+                                        <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrateur principal</option>
+                                        @endif
                                         <option value="teacher" {{ old('role') == 'teacher' ? 'selected' : '' }}>Enseignant</option>
                                         <option value="student" {{ old('role') == 'student' ? 'selected' : '' }}>Élève</option>
                                         <option value="parent" {{ old('role') == 'parent' ? 'selected' : '' }}>Parent</option>
                                     </select>
+                                    @if(auth()->user()?->canCreatePrincipalAdmin())
+                                    <div class="form-text">L'administrateur principal a tous les droits, sauf voir le compte système et créer un autre administrateur principal.</div>
+                                    @endif
                                     @error('role')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

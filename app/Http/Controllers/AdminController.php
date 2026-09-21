@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Utilisateur;
+use App\Models\PersonnelAdministration;
 use App\Models\Eleve;
 use App\Models\Enseignant;
 use App\Models\ParentModel;
@@ -72,25 +73,30 @@ class AdminController extends Controller
      */
     public function storeUtilisateur(Request $request)
     {
+        $rolesAutorises = $this->rolesUtilisateurAutorises();
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|unique:utilisateurs,email|max:191',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:teacher,student,parent',
+            'role' => 'required|in:' . implode(',', $rolesAutorises),
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
             'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'nullable|in:M,F',
         ]);
+
+        if ($request->role === 'admin') {
+            Utilisateur::abortUnlessCanCreatePrincipalAdmin();
+        }
         
-        Utilisateur::create([
-            'name' => $request->prenom . ' ' . $request->nom,
+        $utilisateur = Utilisateur::create([
             'nom' => $request->nom,
             'prenom' => $request->prenom,
             'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'password' => $request->password,
             'role' => $request->role,
             'telephone' => $request->telephone,
             'adresse' => $request->adresse,
@@ -99,9 +105,15 @@ class AdminController extends Controller
             'sexe' => $request->sexe,
             'actif' => true,
         ]);
+
+        if ($request->role === 'admin') {
+            $this->assurerProfilAdminPrincipal($utilisateur);
+        }
         
         return redirect()->route('admin.utilisateurs')
-            ->with('success', 'Utilisateur créé avec succès');
+            ->with('success', $request->role === 'admin'
+                ? 'Compte administrateur principal créé avec succès'
+                : 'Utilisateur créé avec succès');
     }
     
     /**
@@ -182,6 +194,46 @@ class AdminController extends Controller
     }
     
     /**
+     * Rôles autorisés à la création / modification d'un utilisateur.
+     */
+    private function rolesUtilisateurAutorises(?Utilisateur $utilisateur = null): array
+    {
+        $roles = ['teacher', 'student', 'parent'];
+
+        if ($utilisateur && in_array($utilisateur->role, ['personnel_admin', 'admin'], true)) {
+            $roles[] = $utilisateur->role;
+        }
+
+        if (auth()->user()?->canCreatePrincipalAdmin()) {
+            $roles[] = 'admin';
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    /**
+     * Associer le profil d'administration avec tous les droits à un admin principal.
+     */
+    private function assurerProfilAdminPrincipal(Utilisateur $utilisateur): void
+    {
+        if ($utilisateur->personnelAdministration) {
+            return;
+        }
+
+        $permissions = (new AdminAccountController())->getAllPermissionKeys();
+
+        PersonnelAdministration::create([
+            'utilisateur_id' => $utilisateur->id,
+            'poste' => 'Administrateur Principal',
+            'departement' => 'Direction',
+            'date_embauche' => now(),
+            'statut' => 'actif',
+            'permissions' => $permissions,
+            'observations' => 'Administrateur principal : tous les droits, sauf voir le compte système et créer un autre administrateur principal.',
+        ]);
+    }
+
+    /**
      * Mettre à jour le fichier .env
      */
     private function updateEnv($data)
@@ -222,17 +274,23 @@ class AdminController extends Controller
     {
         Utilisateur::abortIfSystemAdmin($utilisateur);
 
+        $rolesAutorises = $this->rolesUtilisateurAutorises($utilisateur);
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email' => 'required|email|max:191|unique:utilisateurs,email,' . $utilisateur->id,
-            'role' => 'required|in:teacher,student,parent',
+            'role' => 'required|in:' . implode(',', $rolesAutorises),
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
             'date_naissance' => 'nullable|date',
             'lieu_naissance' => 'nullable|string|max:255',
             'sexe' => 'nullable|in:M,F',
         ]);
+
+        if ($request->role === 'admin' && !$utilisateur->isPrincipalAdmin()) {
+            Utilisateur::abortUnlessCanCreatePrincipalAdmin();
+        }
         
         // Si un nouveau mot de passe est fourni
         if ($request->filled('password')) {
@@ -240,10 +298,9 @@ class AdminController extends Controller
                 'password' => 'required|string|min:8|confirmed',
             ]);
             
-            $utilisateur->password = bcrypt($request->password);
+            $utilisateur->password = $request->password;
         }
         
-        $utilisateur->name = $request->prenom . ' ' . $request->nom;
         $utilisateur->nom = $request->nom;
         $utilisateur->prenom = $request->prenom;
         $utilisateur->email = $request->email;
@@ -254,6 +311,10 @@ class AdminController extends Controller
         $utilisateur->lieu_naissance = $request->lieu_naissance;
         $utilisateur->sexe = $request->sexe;
         $utilisateur->save();
+
+        if ($utilisateur->isPrincipalAdmin()) {
+            $this->assurerProfilAdminPrincipal($utilisateur);
+        }
         
         return redirect()->route('admin.utilisateurs')
             ->with('success', 'Utilisateur mis à jour avec succès');

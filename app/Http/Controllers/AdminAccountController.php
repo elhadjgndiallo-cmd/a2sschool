@@ -42,6 +42,89 @@ class AdminAccountController extends Controller
     }
 
     /**
+     * Formulaire de création de l'administrateur principal (compte système uniquement).
+     */
+    public function createPrincipal()
+    {
+        Utilisateur::abortUnlessCanCreatePrincipalAdmin();
+
+        return view('admin.accounts.create-principal');
+    }
+
+    /**
+     * Enregistrer l'administrateur principal (tous les droits sauf le compte système).
+     */
+    public function storePrincipal(Request $request)
+    {
+        Utilisateur::abortUnlessCanCreatePrincipalAdmin();
+
+        $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenom' => 'required|string|max:255',
+            'email' => 'required|email|unique:utilisateurs,email',
+            'telephone' => 'nullable|string|max:20',
+            'sexe' => 'nullable|in:M,F',
+            'date_naissance' => 'nullable|date',
+            'adresse' => 'nullable|string|max:500',
+            'poste' => 'nullable|string|max:255',
+            'departement' => 'nullable|string|max:255',
+            'date_embauche' => 'nullable|date',
+            'salaire' => 'nullable|numeric|min:0',
+            'observations' => 'nullable|string|max:1000',
+            'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $utilisateur = Utilisateur::create([
+                'nom' => $request->nom,
+                'prenom' => $request->prenom,
+                'email' => $request->email,
+                'password' => $request->password,
+                'telephone' => $request->telephone,
+                'sexe' => $request->sexe,
+                'date_naissance' => $request->date_naissance,
+                'adresse' => $request->adresse,
+                'role' => 'admin',
+                'actif' => true,
+            ]);
+
+            $utilisateur->email_verified_at = now();
+            $utilisateur->save();
+
+            if ($request->hasFile('photo_profil')) {
+                $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
+                $utilisateur->update(['photo_profil' => $photoPath]);
+            }
+
+            PersonnelAdministration::create([
+                'utilisateur_id' => $utilisateur->id,
+                'poste' => $request->filled('poste') ? $request->poste : 'Administrateur Principal',
+                'departement' => $request->filled('departement') ? $request->departement : 'Direction',
+                'date_embauche' => $request->date_embauche ?: now(),
+                'salaire' => $request->salaire,
+                'statut' => 'actif',
+                'permissions' => $this->getAllPermissionKeys(),
+                'observations' => $request->observations
+                    ?: 'Administrateur principal : tous les droits, sauf voir le compte système et créer un autre administrateur principal.',
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.accounts.index')
+                ->with('success', 'Compte administrateur principal créé avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la création: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Store a newly created admin account.
      */
     public function store(Request $request)
@@ -506,7 +589,7 @@ class AdminAccountController extends Controller
     /**
      * Obtenir toutes les clés de permissions pour la validation
      */
-    private function getAllPermissionKeys()
+    public function getAllPermissionKeys()
     {
         $permissions = $this->getAvailablePermissions();
         $keys = [];

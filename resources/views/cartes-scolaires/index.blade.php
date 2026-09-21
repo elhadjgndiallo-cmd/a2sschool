@@ -10,16 +10,53 @@
                         <i class="fas fa-id-card text-primary me-2"></i>
                         Gestion des Cartes Scolaires
                     </h3>
-                    <div class="card-tools">
-                        <button type="button" id="btnImprimerPlusieurs" class="btn btn-info me-2" style="display: none;" onclick="imprimerPlusieurs()">
-                            <i class="fas fa-print me-2"></i>Imprimer les sélectionnées (10 par page)
+                    <div class="card-tools d-flex flex-wrap gap-2">
+                        <button type="button" id="btnImprimerPlusieurs" class="btn btn-info" style="display: none;" onclick="imprimerPlusieurs()">
+                            <i class="fas fa-print me-2"></i>Imprimer la sélection
                         </button>
+                        <button type="button" id="btnRenouvelerSelection" class="btn btn-success" style="display: none;" onclick="ouvrirRenouvellement(false)">
+                            <i class="fas fa-sync me-2"></i>Renouveler la sélection
+                        </button>
+                        @if(request('classe_id'))
+                            <button type="button" class="btn btn-outline-success" onclick="ouvrirRenouvellement(true)">
+                                <i class="fas fa-sync me-2"></i>Renouveler toute la classe
+                            </button>
+                        @endif
                         <a href="{{ route('cartes-scolaires.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Nouvelle Carte
                         </a>
                     </div>
                 </div>
                 <div class="card-body">
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show">
+                            {{ session('success') }}
+                            @if(session('nouvelles_cartes'))
+                                <div class="mt-2">
+                                    <a class="btn btn-sm btn-outline-success" target="_blank"
+                                       href="{{ route('cartes-scolaires.imprimer-plusieurs', ['cartes' => implode(',', session('nouvelles_cartes'))]) }}">
+                                        <i class="fas fa-print me-1"></i>Imprimer les nouvelles cartes
+                                    </a>
+                                </div>
+                            @endif
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                    @if($errors->any())
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                     <!-- Filtres -->
                     <form method="GET" action="{{ route('cartes-scolaires.index') }}" class="mb-3">
                         <div class="row g-2">
@@ -40,7 +77,17 @@
                                     <option value="remplacement" {{ request('type_carte') == 'remplacement' ? 'selected' : '' }}>Remplacement</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-2">
+                                <select class="form-select" id="classe_id" name="classe_id" title="Classe">
+                                    <option value="">Toutes les classes</option>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}" {{ (string) request('classe_id') === (string) $classe->id ? 'selected' : '' }}>
+                                            {{ $classe->nom }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-2">
                                 <select class="form-select" id="eleve_id" name="eleve_id" title="Élève">
                                     <option value="">Tous les élèves</option>
                                     @foreach($eleves as $eleve)
@@ -50,13 +97,13 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-2">
                                 <input type="text"
                                        class="form-control"
                                        id="numero_carte"
                                        name="numero_carte"
                                        value="{{ request('numero_carte') }}"
-                                       placeholder="Rechercher par numéro">
+                                       placeholder="N° carte">
                             </div>
                             <div class="col-12 col-sm-6 col-md-2">
                                 <div class="d-flex gap-1">
@@ -196,18 +243,56 @@ function toggleSelectAll() {
 function updateImprimerButton() {
     const checked = document.querySelectorAll('.carte-checkbox:checked');
     const btnImprimer = document.getElementById('btnImprimerPlusieurs');
+    const btnRenouveler = document.getElementById('btnRenouvelerSelection');
     
     if (checked.length > 0) {
         btnImprimer.style.display = 'inline-block';
-        btnImprimer.innerHTML = `<i class="fas fa-print me-2"></i>Imprimer les sélectionnées (${checked.length} carte${checked.length > 1 ? 's' : ''})`;
+        btnImprimer.innerHTML = `<i class="fas fa-print me-2"></i>Imprimer (${checked.length})`;
+        if (btnRenouveler) {
+            btnRenouveler.style.display = 'inline-block';
+            btnRenouveler.innerHTML = `<i class="fas fa-sync me-2"></i>Renouveler (${checked.length})`;
+        }
     } else {
         btnImprimer.style.display = 'none';
+        if (btnRenouveler) btnRenouveler.style.display = 'none';
     }
     
     // Mettre à jour la checkbox "Tout sélectionner"
     const selectAll = document.getElementById('selectAll');
     const allCheckboxes = document.querySelectorAll('.carte-checkbox');
     selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+}
+
+function ouvrirRenouvellement(touteClasse) {
+    const form = document.getElementById('formRenouvelerPlusieurs');
+    const idsWrap = document.getElementById('renouvelerCartesIds');
+    const touteClasseInput = document.getElementById('renouvelerTouteClasse');
+    idsWrap.innerHTML = '';
+
+    if (touteClasse) {
+        touteClasseInput.value = '1';
+    } else {
+        touteClasseInput.value = '0';
+        const checked = document.querySelectorAll('.carte-checkbox:checked');
+        if (checked.length === 0) {
+            alert('Veuillez sélectionner au moins une carte.');
+            return;
+        }
+        checked.forEach(function (checkbox) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'cartes[]';
+            input.value = checkbox.value;
+            idsWrap.appendChild(input);
+        });
+    }
+
+    const modalEl = document.getElementById('renouvelerPlusieursModal');
+    if (window.bootstrap) {
+        new bootstrap.Modal(modalEl).show();
+    } else {
+        form.submit();
+    }
 }
 
 function imprimerPlusieurs() {
@@ -232,9 +317,59 @@ function imprimerPlusieurs() {
 // Mettre à jour le bouton au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
     updateImprimerButton();
+
+    const dateExpirationInput = document.getElementById('date_expiration_lot');
+    if (dateExpirationInput && !dateExpirationInput.value) {
+        const today = new Date();
+        const oneYearFromNow = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+        dateExpirationInput.value = oneYearFromNow.toISOString().split('T')[0];
+    }
 });
 </script>
-
 @endsection
+
+@push('modals')
+<div class="modal fade" id="renouvelerPlusieursModal" tabindex="-1" aria-labelledby="renouvelerPlusieursModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formRenouvelerPlusieurs" method="POST" action="{{ route('cartes-scolaires.renouveler-plusieurs') }}">
+                @csrf
+                <input type="hidden" name="classe_id" value="{{ request('classe_id') }}">
+                <input type="hidden" name="toute_classe" id="renouvelerTouteClasse" value="0">
+                <div id="renouvelerCartesIds"></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renouvelerPlusieursModalLabel">
+                        <i class="fas fa-sync me-2"></i>Renouveler les cartes
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Chaque nouvelle carte reprendra les <strong>informations actuelles de l’élève</strong>
+                        (nom, prénom, photo, classe, matricule). L’ancienne carte sera annulée.
+                    </p>
+                    <div class="mb-3">
+                        <label for="date_expiration_lot" class="form-label">Date d’expiration des nouvelles cartes <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="date_expiration_lot" name="date_expiration"
+                               min="{{ now()->addDay()->format('Y-m-d') }}" required>
+                    </div>
+                    <div class="mb-0">
+                        <label for="observations_lot" class="form-label">Observations (optionnel)</label>
+                        <textarea class="form-control" id="observations_lot" name="observations" rows="3"
+                                  placeholder="Ex. Renouvellement après réinscription / changement de classe"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success"
+                            onclick="return confirm('Renouveler les cartes sélectionnées avec les informations actuelles des élèves ?');">
+                        <i class="fas fa-sync me-1"></i>Confirmer le renouvellement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endpush
 
 

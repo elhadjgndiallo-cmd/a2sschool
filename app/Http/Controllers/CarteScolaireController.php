@@ -16,7 +16,7 @@ class CarteScolaireController extends Controller
      */
     public function index(Request $request)
     {
-        $query = CarteScolaire::with(['eleve.utilisateur', 'emisePar', 'valideePar']);
+        $query = CarteScolaire::with(['eleve.utilisateur', 'eleve.classe', 'emisePar', 'valideePar']);
 
         // Filtres
         if ($request->filled('statut')) {
@@ -31,16 +31,22 @@ class CarteScolaireController extends Controller
             $query->where('eleve_id', $request->eleve_id);
         }
 
+        if ($request->filled('classe_id')) {
+            $query->whereHas('eleve', function ($q) use ($request) {
+                $q->where('classe_id', $request->classe_id);
+            });
+        }
+
         if ($request->filled('numero_carte')) {
             $query->where('numero_carte', 'like', '%' . $request->numero_carte . '%');
         }
 
         $cartes = $query->orderBy('created_at', 'desc')->paginate(20);
-        
-        // Pour les filtres
+
         $eleves = Eleve::with('utilisateur')->where('actif', true)->get();
-        
-        return view('cartes-scolaires.index', compact('cartes', 'eleves'));
+        $classes = \App\Models\Classe::actif()->orderBy('nom')->get();
+
+        return view('cartes-scolaires.index', compact('cartes', 'eleves', 'classes'));
     }
 
     /**
@@ -75,26 +81,16 @@ class CarteScolaireController extends Controller
 
         try {
             DB::transaction(function() use ($request) {
-                $eleve = Eleve::with('utilisateur')->findOrFail($request->eleve_id);
+                $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($request->eleve_id);
                 
                 // Générer le numéro de carte
                 $numeroCarte = CarteScolaire::genererNumeroCarte();
-                
-                // Générer le QR code (temporairement désactivé)
-                $qrCodeData = [
-                    'numero_carte' => $numeroCarte,
-                    'eleve_nom' => $eleve->utilisateur->nom,
-                    'eleve_prenom' => $eleve->utilisateur->prenom,
-                    'classe' => $eleve->classe->nom ?? 'Non assigné',
-                    'date_emission' => $request->date_emission,
-                    'date_expiration' => $request->date_expiration
-                ];
-                
-                // QR Code généré via API en ligne (optimisé pour carte 86x54mm)
-                $qrCodeDataString = json_encode($qrCodeData);
-                $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($qrCodeDataString);
-                $qrCode = '<img src="' . $qrCodeUrl . '" alt="QR Code" style="width: 100%; height: 100%;" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">';
-                $qrCode .= '<div style="width: 100%; height: 100%; border: 1px solid #d4af37; display: none; align-items: center; justify-content: center; background: #f8f9fa; text-align: center; padding: 2px; font-size: 8px; border-radius: 2px;">QR<br/>Code<br/><small>' . substr($numeroCarte, -4) . '</small></div>';
+                $qrCode = $this->genererQrCodeCarte(
+                    $numeroCarte,
+                    $eleve,
+                    $request->date_emission,
+                    $request->date_expiration
+                );
 
                 // Créer la carte scolaire
                 $carte = CarteScolaire::create([
@@ -104,6 +100,7 @@ class CarteScolaireController extends Controller
                     'date_expiration' => $request->date_expiration,
                     'statut' => 'active',
                     'type_carte' => $request->type_carte,
+                    'photo_path' => $eleve->utilisateur->photo_profil ?? null,
                     'qr_code' => $qrCode,
                     'observations' => $request->observations,
                     'emise_par' => auth()->id()
@@ -269,32 +266,139 @@ class CarteScolaireController extends Controller
         ]);
 
         try {
-            DB::transaction(function() use ($request, $cartes_scolaire) {
-                // Désactiver l'ancienne carte
-                $cartes_scolaire->update([
-                    'statut' => 'annulee',
-                    'observations' => $cartes_scolaire->observations . "\nRenouvelée le " . now()->format('d/m/Y')
-                ]);
-
-                // Créer une nouvelle carte
-                $nouvelleCarte = CarteScolaire::create([
-                    'eleve_id' => $cartes_scolaire->eleve_id,
-                    'numero_carte' => CarteScolaire::genererNumeroCarte(),
-                    'date_emission' => now()->toDateString(),
-                    'date_expiration' => $request->date_expiration,
-                    'statut' => 'active',
-                    'type_carte' => 'remplacement',
-                    'observations' => $request->observations,
-                    'emise_par' => auth()->id()
-                ]);
+            DB::transaction(function () use ($request, $cartes_scolaire) {
+                $this->creerCarteRenouvelee(
+                    $cartes_scolaire,
+                    $request->date_expiration,
+                    $request->observations
+                );
             });
 
             return redirect()->route('cartes-scolaires.index')
-                ->with('success', 'Carte scolaire renouvelée avec succès.');
+                ->with('success', 'Carte scolaire renouvelée avec les informations actuelles de l\'élève.');
 
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Erreur lors du renouvellement : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Renouveler plusieurs cartes à la fois (données actuelles des élèves).
+     */
+    public function renouvelerPlusieurs(Request $request)
+    {
+        $request->validate([
+            'cartes' => 'nullable|array',
+            'cartes.*' => 'integer|exists:cartes_scolaires,id',
+            'classe_id' => 'required_if:toute_classe,1|nullable|exists:classes,id',
+            'toute_classe' => 'nullable|boolean',
+            'date_expiration' => 'required|date|after:today',
+            'observations' => 'nullable|string|max:500',
+        ], [
+            'cartes.required_without' => 'Sélectionnez au moins une carte, ou une classe entière.',
+            'date_expiration.after' => 'La date d\'expiration doit être postérieure à aujourd\'hui.',
+        ]);
+
+        $query = CarteScolaire::with(['eleve.utilisateur', 'eleve.classe'])
+            ->whereIn('statut', ['active', 'expiree', 'suspendue']);
+
+        if ($request->boolean('toute_classe') && $request->filled('classe_id')) {
+            $query->whereHas('eleve', function ($q) use ($request) {
+                $q->where('classe_id', $request->classe_id)->where('actif', true);
+            });
+        } else {
+            $ids = array_filter((array) $request->input('cartes', []));
+            if ($ids === []) {
+                return redirect()->back()->with('error', 'Veuillez sélectionner au moins une carte.');
+            }
+            $query->whereIn('id', $ids);
+        }
+
+        $cartes = $query->orderByDesc('date_emission')->get()->unique('eleve_id');
+
+        if ($cartes->isEmpty()) {
+            return redirect()->back()->with('error', 'Aucune carte renouvelable dans la sélection (déjà annulées).');
+        }
+
+        $nouvellesIds = [];
+
+        try {
+            DB::transaction(function () use ($request, $cartes, &$nouvellesIds) {
+                foreach ($cartes as $carte) {
+                    $nouvelle = $this->creerCarteRenouvelee(
+                        $carte,
+                        $request->date_expiration,
+                        $request->observations
+                    );
+                    $nouvellesIds[] = $nouvelle->id;
+                }
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Erreur lors du renouvellement groupé : ' . $e->getMessage());
+        }
+
+        $count = count($nouvellesIds);
+
+        return redirect()->route('cartes-scolaires.index', ['statut' => 'active'])
+            ->with('success', $count . ' carte' . ($count > 1 ? 's' : '') . ' renouvelée' . ($count > 1 ? 's' : '') . ' avec les informations actuelles des élèves.')
+            ->with('nouvelles_cartes', $nouvellesIds);
+    }
+
+    /**
+     * Annule l'ancienne carte et en crée une nouvelle avec les infos à jour de l'élève.
+     */
+    private function creerCarteRenouvelee(
+        CarteScolaire $ancienne,
+        string $dateExpiration,
+        ?string $observations
+    ): CarteScolaire {
+        $ancienne->loadMissing(['eleve.utilisateur', 'eleve.classe']);
+        $eleve = $ancienne->eleve;
+
+        if (!$eleve || !$eleve->utilisateur) {
+            throw new \RuntimeException('Élève introuvable pour la carte ' . $ancienne->numero_carte . '.');
+        }
+
+        $note = trim((string) $ancienne->observations);
+        $ancienne->update([
+            'statut' => 'annulee',
+            'observations' => trim($note . "\nRenouvelée le " . now()->format('d/m/Y') . ' (données actualisées)'),
+        ]);
+
+        $numeroCarte = CarteScolaire::genererNumeroCarte();
+        $dateEmission = now()->toDateString();
+
+        return CarteScolaire::create([
+            'eleve_id' => $eleve->id,
+            'numero_carte' => $numeroCarte,
+            'date_emission' => $dateEmission,
+            'date_expiration' => $dateExpiration,
+            'statut' => 'active',
+            'type_carte' => 'remplacement',
+            'photo_path' => $eleve->utilisateur->photo_profil ?? null,
+            'qr_code' => $this->genererQrCodeCarte($numeroCarte, $eleve, $dateEmission, $dateExpiration),
+            'observations' => $observations,
+            'emise_par' => auth()->id(),
+        ]);
+    }
+
+    private function genererQrCodeCarte(string $numeroCarte, Eleve $eleve, string $dateEmission, string $dateExpiration): string
+    {
+        $qrCodeData = json_encode([
+            'numero_carte' => $numeroCarte,
+            'eleve_nom' => $eleve->utilisateur->nom ?? '',
+            'eleve_prenom' => $eleve->utilisateur->prenom ?? '',
+            'matricule' => $eleve->numero_etudiant,
+            'classe' => $eleve->classe->nom ?? 'Non assigné',
+            'date_emission' => $dateEmission,
+            'date_expiration' => $dateExpiration,
+        ]);
+
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($qrCodeData);
+        $qrCode = '<img src="' . $qrCodeUrl . '" alt="QR Code" style="width: 100%; height: 100%;" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">';
+        $qrCode .= '<div style="width: 100%; height: 100%; border: 1px solid #d4af37; display: none; align-items: center; justify-content: center; background: #f8f9fa; text-align: center; padding: 2px; font-size: 8px; border-radius: 2px;">QR<br/>Code<br/><small>' . substr($numeroCarte, -4) . '</small></div>';
+
+        return $qrCode;
     }
 }

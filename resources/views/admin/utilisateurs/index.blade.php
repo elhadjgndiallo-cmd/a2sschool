@@ -10,6 +10,11 @@
                 <h4 class="page-title mb-0 font-size-18">Gestion des utilisateurs</h4>
 
                 <div class="page-title-right">
+                    @if(auth()->user()?->canCreatePrincipalAdmin())
+                    <a href="{{ route('admin.accounts.create-principal') }}" class="btn btn-danger me-2">
+                        <i class="fas fa-user-shield me-1"></i> Administrateur principal
+                    </a>
+                    @endif
                     <a href="{{ route('admin.utilisateurs.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus-circle me-1"></i> Nouvel utilisateur
                     </a>
@@ -76,7 +81,10 @@
                                     <td>
                                         @switch($utilisateur->role)
                                             @case('admin')
-                                                <span class="badge bg-danger">Administrateur</span>
+                                                <span class="badge bg-danger">Administrateur principal</span>
+                                                @break
+                                            @case('personnel_admin')
+                                                <span class="badge bg-warning text-dark">Personnel admin</span>
                                                 @break
                                             @case('teacher')
                                                 <span class="badge bg-success">Enseignant</span>
