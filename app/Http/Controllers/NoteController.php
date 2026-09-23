@@ -1338,6 +1338,105 @@ class NoteController extends Controller
         return compact('mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive');
     }
 
+    /**
+     * Classes visibles pour les tests mensuels (admin, personnel, enseignant).
+     */
+    private function classesMensuelAccessibles($anneeScolaireActive = null)
+    {
+        $anneeScolaireActive = $anneeScolaireActive ?: \App\Models\AnneeScolaire::anneeActive();
+        if (!$anneeScolaireActive) {
+            return collect();
+        }
+
+        $user = auth()->user();
+        $query = Classe::actif()
+            ->whereHas('eleves', function ($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                      ->where('actif', true);
+            });
+
+        if ($user->isTeacher()) {
+            $enseignant = $user->enseignant;
+            if (!$enseignant) {
+                return collect();
+            }
+            $query->whereHas('emploisTemps', function ($q) use ($enseignant) {
+                $q->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
+            });
+        } elseif (!($user->isAdmin() || $user->isSuperAdmin() || $user->role === 'personnel_admin')) {
+            return collect();
+        }
+
+        return $query->with(['eleves' => function ($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id)
+                      ->where('actif', true)
+                      ->with('utilisateur')
+                      ->orderBy('id', 'asc');
+            }])
+            ->orderBy('id', 'asc')
+            ->get();
+    }
+
+    /**
+     * Calcule moyennes et rangs mensuels (1er, 2ème, 3ème…) pour une collection d'élèves.
+     */
+    private function classerResultatsMensuels($eleves, int $mois, int $annee): array
+    {
+        $resultats = [];
+        foreach ($eleves as $eleve) {
+            $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
+            if ($moyenne === null) {
+                $moyenne = 0.00;
+            }
+            $resultats[] = [
+                'eleve' => $eleve,
+                'moyenne' => $moyenne,
+            ];
+        }
+
+        usort($resultats, function ($a, $b) {
+            return $b['moyenne'] <=> $a['moyenne'];
+        });
+
+        $rang = 1;
+        foreach ($resultats as &$resultat) {
+            $resultat['rang'] = $rang++;
+        }
+        unset($resultat);
+
+        return $resultats;
+    }
+
+    /**
+     * Résout et valide la sélection de classes pour la fusion (au moins 2, déjà accessibles).
+     */
+    private function resoudreClassesFusion(Request $request)
+    {
+        $classeIds = collect((array) $request->input('classes', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $redirect = redirect()->route('notes.mensuel.fusion')
+            ->withInput()
+            ->with('error', 'Veuillez sélectionner au moins deux classes.');
+
+        if ($classeIds->count() < 2) {
+            return [null, $redirect];
+        }
+
+        $accessibles = $this->classesMensuelAccessibles();
+        $classes = $accessibles->whereIn('id', $classeIds->all())->values();
+
+        if ($classes->count() !== $classeIds->count() || $classes->count() < 2) {
+            return [null, redirect()->route('notes.mensuel.fusion')
+                ->withInput()
+                ->with('error', 'Une ou plusieurs classes sélectionnées ne sont pas accessibles.')];
+        }
+
+        return [$classes, null];
+    }
 
     /**
      * Afficher les statistiques des notes par classe
@@ -2066,52 +2165,14 @@ class NoteController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
         }
 
-        $user = auth()->user();
-        
-        // Récupérer l'année scolaire active
-        $anneeScolaireActive = \App\Models\AnneeScolaire::where('active', true)->first();
-        
+        $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive()
+            ?? \App\Models\AnneeScolaire::where('active', true)->first();
+
         if (!$anneeScolaireActive) {
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
         }
-        
-        if ($user->isAdmin() || $user->role === 'personnel_admin') {
-            // Admin et Personnel Admin voient toutes les classes avec élèves de l'année active
-            $classes = Classe::actif()
-                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
-                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
-                          ->where('actif', true);
-                })
-                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
-                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
-                          ->where('actif', true)
-                          ->with('utilisateur')
-                          ->orderBy('id', 'asc');
-                }])
-                ->orderBy('id', 'asc')
-                ->get();
-        } else if ($user->isTeacher()) {
-            // Enseignant voit seulement ses classes avec élèves de l'année active
-            $enseignant = $user->enseignant;
-            $classes = Classe::actif()
-                ->whereHas('emploisTemps', function($query) use ($enseignant) {
-                    $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
-                })
-                ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
-                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
-                          ->where('actif', true);
-                })
-                ->with(['eleves' => function($query) use ($anneeScolaireActive) {
-                    $query->where('annee_scolaire_id', $anneeScolaireActive->id)
-                          ->where('actif', true)
-                          ->with('utilisateur')
-                          ->orderBy('id', 'asc');
-                }])
-                ->orderBy('id', 'asc')
-                ->get();
-        } else {
-            $classes = collect();
-        }
+
+        $classes = $this->classesMensuelAccessibles($anneeScolaireActive);
 
         // Mettre à jour l'effectif actuel de chaque classe
         foreach ($classes as $classe) {
@@ -2583,29 +2644,7 @@ class NoteController extends Controller
         // Mettre à jour l'effectif actuel de la classe
         $classe->updateEffectifActuel();
 
-        // Calculer les moyennes et rangs - inclure tous les élèves même sans note
-        $resultats = [];
-        foreach ($eleves as $eleve) {
-            $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
-            // Si l'élève n'a pas de note, lui attribuer 0.00
-            if ($moyenne === null) {
-                $moyenne = 0.00;
-            }
-            $resultats[] = [
-                'eleve' => $eleve,
-                'moyenne' => $moyenne
-            ];
-        }
-
-        // Trier par moyenne décroissante et calculer les rangs
-        usort($resultats, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
-        });
-
-        $rang = 1;
-        foreach ($resultats as &$resultat) {
-            $resultat['rang'] = $rang++;
-        }
+        $resultats = $this->classerResultatsMensuels($eleves, $mois, $annee);
 
         return view('notes.mensuel.resultats', compact(
             'classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive'
@@ -2655,29 +2694,7 @@ class NoteController extends Controller
         // Mettre à jour l'effectif actuel de la classe
         $classe->updateEffectifActuel();
 
-        // Calculer les moyennes et rangs - inclure tous les élèves même sans note
-        $resultats = [];
-        foreach ($eleves as $eleve) {
-            $moyenne = TestMensuel::calculerMoyenneMensuelle($eleve->id, $mois, $annee);
-            // Si l'élève n'a pas de note, lui attribuer 0.00
-            if ($moyenne === null) {
-                $moyenne = 0.00;
-            }
-            $resultats[] = [
-                'eleve' => $eleve,
-                'moyenne' => $moyenne
-            ];
-        }
-
-        // Trier par moyenne décroissante et calculer les rangs
-        usort($resultats, function($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
-        });
-
-        $rang = 1;
-        foreach ($resultats as &$resultat) {
-            $resultat['rang'] = $rang++;
-        }
+        $resultats = $this->classerResultatsMensuels($eleves, $mois, $annee);
 
         // Calcul des statistiques
         $effectifTotal = $eleves->count();
@@ -2761,6 +2778,111 @@ class NoteController extends Controller
         ];
 
         return view('notes.mensuel.resultats-imprimer', compact('classe', 'tests', 'resultats', 'mois', 'annee', 'moisListe', 'stats'));
+    }
+
+    /**
+     * Formulaire de fusion : sélection de deux classes ou plus.
+     */
+    public function mensuelFusion(Request $request)
+    {
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        extract($this->resolvePeriodeMensuelle($request));
+
+        if (!$anneeScolaireActive) {
+            return redirect()->back()->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $classes = $this->classesMensuelAccessibles($anneeScolaireActive);
+        $classesSelectionnees = collect((array) $request->input('classes', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->all();
+
+        return view('notes.mensuel.fusion', compact(
+            'classes', 'mois', 'annee', 'moisListe', 'anneesDisponibles', 'anneeScolaireActive', 'classesSelectionnees'
+        ));
+    }
+
+    /**
+     * Classement global des élèves des classes fusionnées.
+     */
+    public function mensuelResultatsFusion(Request $request)
+    {
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        [$classes, $errorRedirect] = $this->resoudreClassesFusion($request);
+        if ($errorRedirect) {
+            return $errorRedirect;
+        }
+
+        extract($this->resolvePeriodeMensuelle($request));
+
+        if (!$anneeScolaireActive) {
+            return redirect()->route('notes.mensuel.fusion')->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $eleves = Eleve::actif()
+            ->whereIn('classe_id', $classes->pluck('id'))
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with(['utilisateur', 'classe'])
+            ->get();
+
+        $resultats = $this->classerResultatsMensuels($eleves, $mois, $annee);
+        $nomsClasses = $classes->pluck('nom')->implode(', ');
+        $queryFusion = http_build_query([
+            'classes' => $classes->pluck('id')->all(),
+            'mois' => $mois,
+            'annee' => $annee,
+        ]);
+
+        return view('notes.mensuel.resultats-fusion', compact(
+            'classes', 'resultats', 'mois', 'annee', 'moisListe', 'anneesDisponibles',
+            'anneeScolaireActive', 'nomsClasses', 'queryFusion'
+        ));
+    }
+
+    /**
+     * Version imprimable du classement fusionné.
+     */
+    public function mensuelResultatsFusionImprimer(Request $request)
+    {
+        if (!auth()->user()->hasPermission('notes.view')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
+
+        [$classes, $errorRedirect] = $this->resoudreClassesFusion($request);
+        if ($errorRedirect) {
+            return $errorRedirect;
+        }
+
+        extract($this->resolvePeriodeMensuelle($request));
+
+        if (!$anneeScolaireActive) {
+            return redirect()->route('notes.mensuel.fusion')->with('error', 'Aucune année scolaire active trouvée.');
+        }
+
+        $eleves = Eleve::actif()
+            ->whereIn('classe_id', $classes->pluck('id'))
+            ->where('annee_scolaire_id', $anneeScolaireActive->id)
+            ->with(['utilisateur', 'classe'])
+            ->get();
+
+        $resultats = $this->classerResultatsMensuels($eleves, $mois, $annee);
+        $nomsClasses = $classes->pluck('nom')->implode(', ');
+        $queryFusion = http_build_query([
+            'classes' => $classes->pluck('id')->all(),
+            'mois' => $mois,
+            'annee' => $annee,
+        ]);
+
+        return view('notes.mensuel.resultats-fusion-imprimer', compact(
+            'classes', 'resultats', 'mois', 'annee', 'moisListe', 'nomsClasses', 'queryFusion'
+        ));
     }
 
     /**

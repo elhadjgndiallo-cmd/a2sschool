@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Résultats Tests Mensuels - {{ $classe->nom }}</title>
+    <title>Classement fusionné - {{ $nomsClasses }}</title>
     <style>
         @page {
             size: A4 portrait;
             margin: 1cm;
         }
-        
+
         body {
             font-family: Arial, sans-serif;
             font-size: 12px;
@@ -17,7 +17,7 @@
             margin: 0;
             padding: 0;
         }
-        
+
         .header {
             margin-bottom: 16px;
             border-bottom: 2px solid #333;
@@ -62,66 +62,62 @@
             font-style: italic;
             color: #555;
         }
-        
+
         .header h1 {
             margin: 8px 0 0 0;
             font-size: 16px;
             font-weight: bold;
             text-align: center;
         }
-        
+
         .header h2 {
             margin: 4px 0 0 0;
             font-size: 13px;
             color: #666;
             text-align: center;
         }
-        
+
         .info-section {
             margin-bottom: 15px;
         }
-        
+
         .info-section h3 {
             margin: 0 0 5px 0;
             font-size: 14px;
             font-weight: bold;
         }
-        
+
         .info-section p {
             margin: 2px 0;
             font-size: 11px;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-        
+
         th, td {
             border: 1px solid #333;
             padding: 4px;
             text-align: center;
             font-size: 10px;
         }
-        
+
         th {
             background-color: #f5f5f5;
             font-weight: bold;
         }
-        
+
         .text-left {
             text-align: left;
         }
-        
-        .text-right {
-            text-align: right;
-        }
-        
+
         .bold {
             font-weight: bold;
         }
-        
+
         .footer {
             margin-top: 30px;
             border-top: 1px solid #333;
@@ -135,25 +131,25 @@
             margin: 0 0 4px 0;
             font-size: 11px;
         }
-        
+
         .no-data {
             text-align: center;
             padding: 20px;
             color: #666;
             font-style: italic;
         }
-        
+
         @media print {
             body {
                 -webkit-print-color-adjust: exact;
                 color-adjust: exact;
             }
-            
+
             .no-print {
                 display: none !important;
             }
         }
-        
+
         .btn-retour {
             position: fixed;
             top: 20px;
@@ -171,7 +167,7 @@
             display: inline-flex;
             align-items: center;
         }
-        
+
         .btn-retour:hover {
             background-color: #0b5ed7;
             color: white;
@@ -184,11 +180,11 @@
     @php
         $school = \App\Helpers\SchoolHelper::getDocumentInfo();
     @endphp
-    <a href="{{ route('notes.mensuel.resultats', $classe->id) }}?mois={{ $mois }}&annee={{ $annee }}" class="btn-retour no-print">
+    <a href="{{ route('notes.mensuel.resultats-fusion') }}?{{ $queryFusion }}" class="btn-retour no-print">
         <i class="fas fa-arrow-left" style="margin-right: 5px;"></i>
         Retour
     </a>
-    
+
     <div class="header">
         <div class="school-header">
             <div class="logo-slot">
@@ -209,81 +205,30 @@
             </div>
         </div>
         <h1>RÉSULTATS DES TESTS MENSUELS</h1>
-        <h2>Classe: {{ $classe->nom }} - {{ $moisListe[$mois] }} {{ $annee }}</h2>
+        <h2>Fusion de classes — {{ $moisListe[$mois] }} {{ $annee }}</h2>
     </div>
-    
+
     <div class="info-section">
         <h3>Informations générales</h3>
-        <p><strong>Classe:</strong> {{ $classe->nom }}</p>
-        <p><strong>Niveau:</strong> {{ $classe->niveau }}</p>
+        <p><strong>Classes:</strong> {{ $nomsClasses }}</p>
         <p><strong>Période:</strong> {{ $moisListe[$mois] }} {{ $annee }}</p>
         <p><strong>Effectif:</strong> {{ count($resultats) }} élèves classés</p>
         <p><strong>Date d'impression:</strong> {{ date('d/m/Y à H:i') }}</p>
     </div>
-    
+
     @if(count($resultats) > 0)
     <div class="info-section">
-        <h3>Tableau statistique</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th rowspan="2" class="text-left">Statistiques</th>
-                    <th colspan="2">Effectifs</th>
-                    <th colspan="2">Composés</th>
-                    <th colspan="2">Non composés</th>
-                    <th colspan="4">Moyennant</th>
-                    <th colspan="4">Non moyennant</th>
-                </tr>
-                <tr>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>% Total</th>
-                    <th>% Filles</th>
-                    <th>Total</th>
-                    <th>Filles</th>
-                    <th>% Total</th>
-                    <th>% Filles</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-left bold">Classe</td>
-                    <td>{{ $stats['effectifs']['total'] }}</td>
-                    <td>{{ $stats['effectifs']['filles'] }}</td>
-                    <td>{{ $stats['composes']['total'] }}</td>
-                    <td>{{ $stats['composes']['filles'] }}</td>
-                    <td>{{ $stats['non_composes']['total'] }}</td>
-                    <td>{{ $stats['non_composes']['filles'] }}</td>
-                    <td>{{ $stats['moyennant']['total'] }}</td>
-                    <td>{{ $stats['moyennant']['filles'] }}</td>
-                    <td>{{ $stats['moyennant']['pct_total'] }}%</td>
-                    <td>{{ $stats['moyennant']['pct_filles'] }}%</td>
-                    <td>{{ $stats['non_moyennant']['total'] }}</td>
-                    <td>{{ $stats['non_moyennant']['filles'] }}</td>
-                    <td>{{ $stats['non_moyennant']['pct_total'] }}%</td>
-                    <td>{{ $stats['non_moyennant']['pct_filles'] }}%</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="info-section">
-        <h3>Classement des élèves</h3>
+        <h3>Classement global</h3>
         <table>
             <thead>
                 <tr>
                     <th style="width: 8%;">Rang</th>
-                    <th style="width: 15%;">Matricule</th>
-                    <th style="width: 25%;">Nom</th>
-                    <th style="width: 25%;">Prénom</th>
+                    <th style="width: 14%;">Matricule</th>
+                    <th style="width: 20%;">Nom</th>
+                    <th style="width: 20%;">Prénom</th>
+                    <th style="width: 14%;">Classe</th>
                     <th style="width: 12%;">Moyenne</th>
-                    <th style="width: 15%;">Mention</th>
+                    <th style="width: 12%;">Appréciation</th>
                 </tr>
             </thead>
             <tbody>
@@ -292,8 +237,9 @@
                     $eleve = $resultat['eleve'];
                     $moyenne = $resultat['moyenne'];
                     $rang = $resultat['rang'];
-                    
-                    // Déterminer l'appréciation selon la moyenne
+                    $classeEleve = $eleve->classe;
+                    $noteMax = $classeEleve->note_max ?? 20;
+
                     if ($moyenne >= 16) {
                         $appreciation = 'Excellent';
                     } elseif ($moyenne >= 14) {
@@ -310,14 +256,15 @@
                 @endphp
                 <tr>
                     <td class="bold">{{ $rang }}{{ $rang == 1 ? 'er' : 'ème' }}</td>
-                    <td class="bold">{{ $eleve->matricule }}</td>
+                    <td class="bold">{{ $eleve->matricule ?: $eleve->numero_etudiant }}</td>
                     <td class="text-left">{{ $eleve->nom }}</td>
                     <td class="text-left">{{ $eleve->prenom }}</td>
+                    <td>{{ $classeEleve->nom ?? '—' }}</td>
                     <td class="bold">
                         @if($moyenne == 0.00)
-                            00/{{ $classe->note_max }}
+                            00/{{ $noteMax }}
                         @else
-                            {{ number_format($moyenne, 2) }}/{{ $classe->note_max }}
+                            {{ number_format($moyenne, 2) }}/{{ $noteMax }}
                         @endif
                     </td>
                     <td>{{ $appreciation }}</td>
@@ -328,10 +275,10 @@
     </div>
     @else
     <div class="no-data">
-        <p>Aucun test mensuel enregistré pour {{ $moisListe[$mois] }} {{ $annee }}</p>
+        <p>Aucun élève trouvé pour les classes sélectionnées ({{ $moisListe[$mois] }} {{ $annee }})</p>
     </div>
     @endif
-    
+
     <div class="footer">
         @if(!empty($school['school_address']) || !empty($school['school_phone']))
         <p class="school-contact">
@@ -348,20 +295,13 @@
         @endif
         <p>Document généré le {{ date('d/m/Y à H:i') }}</p>
     </div>
-    
+
     <script>
-        // Auto-print when page loads (only if not already printed)
         window.onload = function() {
-            // Attendre un peu avant d'imprimer pour permettre le chargement complet
             setTimeout(function() {
                 window.print();
             }, 500);
         };
-        
-        // Si l'utilisateur annule l'impression, permettre de revenir en arrière
-        window.addEventListener('afterprint', function() {
-            // L'utilisateur peut maintenant utiliser le bouton retour
-        });
     </script>
 </body>
 </html>

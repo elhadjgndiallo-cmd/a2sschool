@@ -115,6 +115,7 @@ class AdminSetupController extends Controller
             'classes.view', 'classes.create', 'classes.edit', 'classes.delete',
             'matieres.view', 'matieres.create', 'matieres.edit', 'matieres.delete',
             'absences.view', 'absences.create', 'absences.edit', 'absences.delete',
+            'absences-enseignants.view', 'absences-enseignants.create', 'absences-enseignants.edit', 'absences-enseignants.delete',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete',
             'rapports.view', 'rapports.financiers', 'rapports.eleves', 'rapports.enseignants',
             'cartes-scolaires.view', 'cartes-scolaires.create', 'cartes-scolaires.edit', 'cartes-scolaires.delete',

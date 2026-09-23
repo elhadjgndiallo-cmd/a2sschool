@@ -161,7 +161,7 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 12px;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .summary span {
@@ -180,7 +180,7 @@
             border: 1px solid #222;
             border-bottom: none;
             padding: 5px 8px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             display: flex;
             justify-content: space-between;
@@ -189,14 +189,14 @@
 
         .class-banner .effectif {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         table.students-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .students-table thead {
@@ -213,7 +213,7 @@
         .students-table th {
             background: #f5f5f5;
             text-align: center;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 700;
         }
 
@@ -223,7 +223,6 @@
         }
 
         .students-table td.col-nom {
-            font-weight: 700;
             text-transform: uppercase;
         }
 

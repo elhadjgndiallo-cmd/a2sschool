@@ -49,7 +49,7 @@
                                     <label for="periode_debut">Période Début <span class="text-danger">*</span></label>
                                     <input type="date" name="periode_debut" id="periode_debut" 
                                            class="form-control @error('periode_debut') is-invalid @enderror" 
-                                           value="{{ old('periode_debut') }}" required>
+                                           value="{{ old('periode_debut', $periodeDebut) }}" required>
                                 </div>
                             </div>
                             
@@ -58,7 +58,7 @@
                                     <label for="periode_fin">Période Fin <span class="text-danger">*</span></label>
                                     <input type="date" name="periode_fin" id="periode_fin" 
                                            class="form-control @error('periode_fin') is-invalid @enderror" 
-                                           value="{{ old('periode_fin') }}" required>
+                                           value="{{ old('periode_fin', $periodeFin) }}" required>
                                 </div>
                             </div>
                         </div>
@@ -72,8 +72,8 @@
                                     <label for="nombre_heures">Nombre d'Heures</label>
                                     <input type="number" name="nombre_heures" id="nombre_heures" 
                                            class="form-control @error('nombre_heures') is-invalid @enderror" 
-                                           value="{{ old('nombre_heures', 80) }}" min="0">
-                                    <small class="form-text text-muted">Nombre d'heures enseignées dans la période</small>
+                                           value="{{ old('nombre_heures') }}" min="0">
+                                    <small class="form-text text-muted" id="nombre_heures_aide">Heures restantes selon l’emploi du temps, après absences du mois.</small>
                                 </div>
                             </div>
                             
@@ -247,6 +247,61 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Calcul initial
     calculerApercu();
+
+    const enseignantSelect = document.getElementById('enseignant_id');
+    const periodeDebut = document.getElementById('periode_debut');
+    const periodeFin = document.getElementById('periode_fin');
+    const heuresAide = document.getElementById('nombre_heures_aide');
+    const heuresUrl = @json(route('salaires.heures-restantes'));
+
+    function chargerHeuresRestantes() {
+        const enseignantId = enseignantSelect.value;
+        const debut = periodeDebut.value;
+        const fin = periodeFin.value;
+
+        if (!enseignantId || !debut || !fin) {
+            return;
+        }
+
+        if (fin < debut) {
+            heuresAide.textContent = 'La date de fin doit être après la date de début.';
+            return;
+        }
+
+        heuresAide.textContent = 'Chargement des heures restantes…';
+
+        const params = new URLSearchParams({
+            enseignant_id: enseignantId,
+            periode_debut: debut,
+            periode_fin: fin
+        });
+
+        fetch(heuresUrl + '?' + params.toString(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Erreur');
+                return response.json();
+            })
+            .then(function (data) {
+                nombreHeures.value = data.nombre_heures ?? 0;
+                heuresAide.textContent = 'Restantes : ' + (data.heures_restantes || '0h')
+                    + ' (prévues ' + (data.heures_prevues || '0h')
+                    + ' − absences ' + (data.heures_absences || '0h') + ')';
+                calculerApercu();
+            })
+            .catch(function () {
+                heuresAide.textContent = 'Impossible de récupérer les heures restantes.';
+            });
+    }
+
+    enseignantSelect.addEventListener('change', chargerHeuresRestantes);
+    periodeDebut.addEventListener('change', chargerHeuresRestantes);
+    periodeFin.addEventListener('change', chargerHeuresRestantes);
+
+    if (enseignantSelect.value && !@json(old('nombre_heures') !== null && old('nombre_heures') !== '')) {
+        chargerHeuresRestantes();
+    }
 });
 </script>
 @endsection

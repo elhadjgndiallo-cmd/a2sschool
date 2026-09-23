@@ -666,6 +666,11 @@
                                 <i class="fas fa-clipboard-list me-1"></i>Mes Classes
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('teacher.mes-absences') }}" data-menu="mes-absences">
+                                <i class="fas fa-user-clock me-1"></i>Mes absences
+                            </a>
+                        </li>
                     @endif
                     
                     @if(auth()->user()->isParent())
@@ -915,6 +920,10 @@
                 'saisir-absences': [
                     { href: '{{ route("teacher.classes") }}', icon: 'fas fa-calendar-times', text: 'Saisir Absences' },
                     { href: '{{ route("teacher.classes") }}', icon: 'fas fa-history', text: 'Historique Absences' }
+                ],
+                'mes-absences': [
+                    { href: '{{ route("teacher.mes-absences") }}', icon: 'fas fa-list', text: 'Mon historique' },
+                    { href: '{{ route("teacher.mes-absences.declarer") }}', icon: 'fas fa-plus', text: 'Déclarer une absence' }
                 ],
                 'parent-notes': [
                     { href: '{{ route("parent.notes.index") }}', icon: 'fas fa-list', text: 'Toutes les Notes' },

@@ -17,6 +17,11 @@
                 <span class="d-none d-sm-inline">Emploi du Temps</span>
                 <span class="d-sm-none">EDT</span>
             </a>
+            <a href="{{ route('teacher.mes-absences') }}" class="btn btn-sm btn-warning">
+                <i class="fas fa-user-clock me-1"></i>
+                <span class="d-none d-sm-inline">Mes absences</span>
+                <span class="d-sm-none">Absences</span>
+            </a>
         </div>
     </div>
 </div>

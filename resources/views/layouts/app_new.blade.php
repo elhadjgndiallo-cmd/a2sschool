@@ -238,6 +238,11 @@
                                 <i class="fas fa-user-times me-1"></i>Saisir Absences
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('teacher.mes-absences') }}" data-menu="mes-absences">
+                                <i class="fas fa-user-clock me-1"></i>Mes absences
+                            </a>
+                        </li>
                     @endif
                 </ul>
                 

@@ -76,6 +76,7 @@ class VerifyAdminSetup extends Command
                 
                 // Absences (4)
                 'absences.view', 'absences.create', 'absences.edit', 'absences.delete',
+                'absences-enseignants.view', 'absences-enseignants.create', 'absences-enseignants.edit', 'absences-enseignants.delete',
                 
                 // Paiements (4)
                 'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete',
@@ -130,11 +131,11 @@ class VerifyAdminSetup extends Command
             $this->newLine();
             $this->info("📊 Résumé des Permissions:");
             $this->info("==========================");
-            $this->info("✅ Permissions accordées: {$permissionsGranted}/79");
-            $this->info("❌ Permissions refusées: {$permissionsDenied}/79");
+            $this->info("✅ Permissions accordées: {$permissionsGranted}/" . count($allPermissions));
+            $this->info("❌ Permissions refusées: {$permissionsDenied}/" . count($allPermissions));
 
-            if ($permissionsGranted === 79) {
-                $this->info("🎉 PARFAIT! L'administrateur principal a TOUTES les permissions (79/79)");
+            if ($permissionsDenied === 0) {
+                $this->info("🎉 PARFAIT! L'administrateur principal a TOUTES les permissions ({$permissionsGranted}/" . count($allPermissions) . ")");
                 $this->info("🚀 L'administrateur peut accéder à toutes les fonctionnalités de l'application");
             } else {
                 $this->error("⚠️  ATTENTION! L'administrateur n'a pas toutes les permissions");

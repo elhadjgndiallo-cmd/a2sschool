@@ -95,6 +95,10 @@ class CheckAllPermissions extends Command
                 'absences.create' => 'Créer des absences',
                 'absences.edit' => 'Modifier les absences',
                 'absences.delete' => 'Supprimer les absences',
+                'absences-enseignants.view' => 'Voir les absences enseignants',
+                'absences-enseignants.create' => 'Saisir les absences enseignants',
+                'absences-enseignants.edit' => 'Justifier / valider les absences enseignants',
+                'absences-enseignants.delete' => 'Supprimer les absences enseignants',
                 
                 // Paiements
                 'paiements.view' => 'Voir les paiements',

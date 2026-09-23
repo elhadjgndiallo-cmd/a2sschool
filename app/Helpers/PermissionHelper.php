@@ -73,8 +73,9 @@ class PermissionHelper
             'enseignants' => [
                 ['href' => $getRoute('enseignants.create'), 'icon' => 'fas fa-user-plus', 'text' => 'Inscription', 'permission' => 'enseignants.create'],
                 ['href' => $getRoute('enseignants.index'), 'icon' => 'fas fa-list', 'text' => 'Liste', 'permission' => 'enseignants.view'],
+                ['href' => $getRoute('absences-enseignants.index'), 'icon' => 'fas fa-user-clock', 'text' => 'Absence', 'permission' => 'absences-enseignants.view'],
                 ['href' => $getRoute('salaires.index'), 'icon' => 'fas fa-coins', 'text' => 'Salaire', 'permission' => 'salaires.view'],
-                ['href' => $getRoute('cartes-enseignants.index'), 'icon' => 'fas fa-id-badge', 'text' => 'Cartes Enseignants', 'permission' => 'cartes-enseignants.view']
+                ['href' => $getRoute('cartes-enseignants.index'), 'icon' => 'fas fa-id-badge', 'text' => 'Carte', 'permission' => 'cartes-enseignants.view']
             ],
             'eleves' => [
                 ['href' => $getRoute('eleves.index'), 'icon' => 'fas fa-list', 'text' => 'Liste', 'permission' => 'eleves.view'],

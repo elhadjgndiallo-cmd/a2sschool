@@ -7,6 +7,8 @@ use App\Models\BonSalaireEnseignant;
 use App\Models\SalaireEnseignant;
 use App\Models\Enseignant;
 use App\Models\Depense;
+use App\Services\HeuresEnseignantService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 // use Barryvdh\DomPDF\Facade\Pdf;
@@ -51,7 +53,27 @@ class SalaireEnseignantController extends Controller
     public function create()
     {
         $enseignants = Enseignant::listeDeroulante();
-        return view('salaires.create', compact('enseignants'));
+        $periodeDebut = now()->copy()->startOfMonth()->toDateString();
+        $periodeFin = now()->copy()->endOfMonth()->toDateString();
+
+        return view('salaires.create', compact('enseignants', 'periodeDebut', 'periodeFin'));
+    }
+
+    public function heuresRestantes(Request $request, HeuresEnseignantService $heuresService)
+    {
+        $request->validate([
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'periode_debut' => 'required|date',
+            'periode_fin' => 'required|date|after_or_equal:periode_debut',
+        ]);
+
+        $recap = $heuresService->recapitulatif(
+            (int) $request->enseignant_id,
+            Carbon::parse($request->periode_debut)->startOfDay(),
+            Carbon::parse($request->periode_fin)->startOfDay()
+        );
+
+        return response()->json($recap);
     }
 
     /**

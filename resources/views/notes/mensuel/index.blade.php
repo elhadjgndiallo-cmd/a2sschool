@@ -8,6 +8,14 @@
         <i class="fas fa-calendar-alt me-2"></i>
         Tests Mensuels
     </h1>
+    @if($classes->count() >= 2)
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ route('notes.mensuel.fusion') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-object-group me-1"></i>
+            Fusionner les classes
+        </a>
+    </div>
+    @endif
 </div>
 
 @if(session('success'))

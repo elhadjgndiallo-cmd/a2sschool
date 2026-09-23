@@ -409,6 +409,11 @@ use Illuminate\Support\Facades\Storage;
             <a href="{{ route('enseignants.edit-simple', $enseignant->id) }}" class="btn btn-warning">
                 <i class="fas fa-edit me-1"></i> Modifier
             </a>
+            @if(auth()->user()->hasPermission('absences-enseignants.view'))
+            <a href="{{ route('absences-enseignants.fiche', $enseignant) }}" class="btn btn-outline-danger">
+                <i class="fas fa-user-clock me-1"></i> Absences
+            </a>
+            @endif
             <button type="button" class="btn btn-secondary" onclick="resetPassword({{ $enseignant->id }})">
                 <i class="fas fa-key me-1"></i> Réinitialiser mot de passe
             </button>

@@ -63,6 +63,35 @@ class EmploiTemps extends Model
         return $this->belongsTo(AnneeScolaire::class, 'annee_scolaire_id');
     }
 
+    public function dureeMinutes(): int
+    {
+        $debut = $this->heureEnMinutes($this->heure_debut);
+        $fin = $this->heureEnMinutes($this->heure_fin);
+
+        if ($debut === null || $fin === null || $fin <= $debut) {
+            return 0;
+        }
+
+        return $fin - $debut;
+    }
+
+    private function heureEnMinutes($value): ?int
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $texte = is_object($value) && method_exists($value, 'format')
+            ? $value->format('H:i')
+            : substr((string) $value, 0, 5);
+
+        if (!preg_match('/^(\d{1,2}):(\d{2})/', $texte, $matches)) {
+            return null;
+        }
+
+        return ((int) $matches[1]) * 60 + (int) $matches[2];
+    }
+
     /**
      * Scope pour les emplois du temps actifs
      */

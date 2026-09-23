@@ -58,7 +58,7 @@
             position: absolute;
             top: 3mm;
             right: 5mm;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
             color: #666;
             text-transform: uppercase;
@@ -94,14 +94,14 @@
         }
 
         .school-meta {
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.2;
             color: #555;
         }
 
         .facture-ref {
             text-align: center;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.3;
         }
 
@@ -112,7 +112,7 @@
 
         .meta {
             margin-bottom: 5px;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.3;
             flex-shrink: 0;
         }
@@ -130,7 +130,7 @@
         .lignes-table th,
         .lignes-table td {
             border: 1px solid #dee2e6;
-            padding: 4px 6px;
+            padding: 10px 8px;
             text-align: left;
         }
 
@@ -147,11 +147,11 @@
 
         .totaux td {
             border: none;
-            padding: 2px 4px;
+            padding: 6px 4px;
         }
 
         .total-row {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             color: #28a745;
             border-top: 1px solid #28a745 !important;
@@ -160,7 +160,7 @@
         .footer-info {
             margin-top: auto;
             padding-top: 3px;
-            font-size: 11px;
+            font-size: 14px;
             color: #444;
             line-height: 1.25;
             flex-shrink: 0;
@@ -171,7 +171,7 @@
             padding: 4px 6px;
             border: 1px solid #c8c8c8;
             background: #f8f9fa;
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.35;
             color: #222;
             flex-shrink: 0;

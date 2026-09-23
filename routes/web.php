@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\AbsenceController;
+use App\Http\Controllers\AbsenceEnseignantController;
 use App\Http\Controllers\EnseignantController;
 use App\Http\Controllers\EleveController;
 use App\Http\Controllers\MatiereController;
@@ -269,6 +270,9 @@ Route::middleware('auth')->group(function () {
         
         // Routes pour les tests mensuels
         Route::get('/notes/mensuel', [NoteController::class, 'mensuelIndex'])->name('notes.mensuel.index')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/fusion', [NoteController::class, 'mensuelFusion'])->name('notes.mensuel.fusion')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/resultats-fusion', [NoteController::class, 'mensuelResultatsFusion'])->name('notes.mensuel.resultats-fusion')->middleware('check.permission:notes.view');
+        Route::get('/notes/mensuel/resultats-fusion/imprimer', [NoteController::class, 'mensuelResultatsFusionImprimer'])->name('notes.mensuel.resultats-fusion.imprimer')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/classe/{classe}', [NoteController::class, 'mensuelClasse'])->name('notes.mensuel.classe')->middleware('check.permission:notes.view');
         Route::get('/notes/mensuel/saisir/{classe}', [NoteController::class, 'mensuelSaisir'])->name('notes.mensuel.saisir')->middleware('check.permission:notes.create');
         Route::post('/notes/mensuel', [NoteController::class, 'mensuelStore'])->name('notes.mensuel.store')->middleware('check.permission:notes.create');
@@ -302,6 +306,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/absences/rapport/{classe}', [AbsenceController::class, 'rapportClasse'])->name('absences.rapport');
         Route::post('/absences/{absence}/notifier', [AbsenceController::class, 'notifierParents'])->name('absences.notifier');
         Route::get('/absences/statistiques', [AbsenceController::class, 'statistiques'])->name('absences.statistiques');
+    });
+
+    // Absences des enseignants (admin / personnel)
+    Route::middleware('role:admin,personnel_admin')->group(function () {
+        Route::get('/absences-enseignants', [AbsenceEnseignantController::class, 'index'])->name('absences-enseignants.index')->middleware('check.permission:absences-enseignants.view');
+        Route::get('/absences-enseignants/statistiques', [AbsenceEnseignantController::class, 'statistiques'])->name('absences-enseignants.statistiques')->middleware('check.permission:absences-enseignants.view');
+        Route::get('/absences-enseignants/saisir', [AbsenceEnseignantController::class, 'saisir'])->name('absences-enseignants.saisir')->middleware('check.permission:absences-enseignants.create');
+        Route::post('/absences-enseignants', [AbsenceEnseignantController::class, 'store'])->name('absences-enseignants.store')->middleware('check.permission:absences-enseignants.create');
+        Route::post('/absences-enseignants/journee', [AbsenceEnseignantController::class, 'storeJournee'])->name('absences-enseignants.journee')->middleware('check.permission:absences-enseignants.create');
+        Route::get('/absences-enseignants/enseignant/{enseignant}', [AbsenceEnseignantController::class, 'ficheEnseignant'])->name('absences-enseignants.fiche')->middleware('check.permission:absences-enseignants.view');
+        Route::get('/absences-enseignants/{absenceEnseignant}', [AbsenceEnseignantController::class, 'show'])->name('absences-enseignants.show')->middleware('check.permission:absences-enseignants.view');
+        Route::post('/absences-enseignants/{absenceEnseignant}/justifier', [AbsenceEnseignantController::class, 'justifier'])->name('absences-enseignants.justifier')->middleware('check.permission:absences-enseignants.edit');
+        Route::post('/absences-enseignants/{absenceEnseignant}/valider', [AbsenceEnseignantController::class, 'valider'])->name('absences-enseignants.valider')->middleware('check.permission:absences-enseignants.edit');
+        Route::post('/absences-enseignants/{absenceEnseignant}/refuser', [AbsenceEnseignantController::class, 'refuser'])->name('absences-enseignants.refuser')->middleware('check.permission:absences-enseignants.edit');
+        Route::delete('/absences-enseignants/{absenceEnseignant}', [AbsenceEnseignantController::class, 'destroy'])->name('absences-enseignants.destroy')->middleware('check.permission:absences-enseignants.delete');
     });
     
     // Routes pour la gestion des enseignants (Admin seulement)
@@ -1223,6 +1242,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/salaires/bons/{bon}', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'show'])->name('salaires.bons.show')->middleware('check.permission:salaires.view');
         Route::delete('/salaires/bons/{bon}', [\App\Http\Controllers\BonSalaireEnseignantController::class, 'destroy'])->name('salaires.bons.destroy')->middleware('check.permission:salaires.delete');
         Route::get('/salaires/create', [SalaireEnseignantController::class, 'create'])->name('salaires.create')->middleware('check.permission:salaires.create');
+        Route::get('/salaires/heures-restantes', [SalaireEnseignantController::class, 'heuresRestantes'])->name('salaires.heures-restantes')->middleware('check.permission:salaires.create');
         Route::post('/salaires', [SalaireEnseignantController::class, 'store'])->name('salaires.store')->middleware('check.permission:salaires.create');
         Route::get('/salaires/{salaire}', [SalaireEnseignantController::class, 'show'])->name('salaires.show')->middleware('check.permission:salaires.view');
         Route::get('/salaires/{salaire}/edit', [SalaireEnseignantController::class, 'edit'])->name('salaires.edit')->middleware('check.permission:salaires.edit');
@@ -1363,6 +1383,11 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher'])
         Route::get('/classes/{classe}/saisir-absences', [\App\Http\Controllers\TeacherController::class, 'saisirAbsences'])->name('saisir-absences');
         Route::post('/classes/{classe}/enregistrer-absences', [\App\Http\Controllers\TeacherController::class, 'enregistrerAbsences'])->name('enregistrer-absences');
         Route::get('/classes/{classe}/historique-absences', [\App\Http\Controllers\TeacherController::class, 'historiqueAbsences'])->name('historique-absences');
+
+        Route::get('/mes-absences', [AbsenceEnseignantController::class, 'mesAbsences'])->name('mes-absences');
+        Route::get('/mes-absences/declarer', [AbsenceEnseignantController::class, 'createDeclaration'])->name('mes-absences.declarer');
+        Route::post('/mes-absences', [AbsenceEnseignantController::class, 'storeDeclaration'])->name('mes-absences.store');
+        Route::delete('/mes-absences/{absenceEnseignant}', [AbsenceEnseignantController::class, 'annulerDeclaration'])->name('mes-absences.annuler');
         
         // Notes (nouvelles routes)
         Route::get('/notes/classe/{classe}', [\App\Http\Controllers\TeacherController::class, 'saisirNotes'])->name('notes.classe');

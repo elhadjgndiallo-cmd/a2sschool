@@ -70,6 +70,11 @@ class Enseignant extends Model
         return $this->hasMany(BonSalaireEnseignant::class);
     }
 
+    public function absencesEnseignants()
+    {
+        return $this->hasMany(AbsenceEnseignant::class);
+    }
+
     public function totalAvancesActives(): float
     {
         return (float) $this->bonsSalaire()->actifs()->sum('montant');
