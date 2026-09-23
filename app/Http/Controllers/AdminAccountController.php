@@ -410,7 +410,7 @@ class AdminAccountController extends Controller
         ]);
 
         return redirect()->route('admin.accounts.index')
-            ->with('success', 'Permissions mises à jour avec succès');
+            ->with('success', 'Permissions mises à jour pour ' . $adminAccount->utilisateur->nom . ' ' . $adminAccount->utilisateur->prenom . '.');
     }
 
     /**

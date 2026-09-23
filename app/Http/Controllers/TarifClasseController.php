@@ -204,19 +204,29 @@ class TarifClasseController extends Controller
      */
     public function tableau(Request $request)
     {
-        $anneeScolaire = $request->get('annee_scolaire', now()->year . '-' . (now()->year + 1));
-        
-        $tarifs = TarifClasse::with('classe')
-            ->where('annee_scolaire', $anneeScolaire)
+        $anneeActive = \App\Models\AnneeScolaire::anneeActive();
+        $anneeScolaire = $request->get('annee_scolaire');
+
+        $query = TarifClasse::with('classe')
             ->orderBy('classe_id')
-            ->get();
+            ->orderBy('annee_scolaire', 'desc');
+
+        if ($request->filled('annee_scolaire')) {
+            $query->where('annee_scolaire', $anneeScolaire);
+        }
+
+        $tarifs = $query->get();
 
         $classes = Classe::orderBy('nom')->get();
-        
+
         $anneesScolaires = TarifClasse::select('annee_scolaire')
             ->distinct()
             ->orderBy('annee_scolaire', 'desc')
             ->pluck('annee_scolaire');
+
+        if ($anneeActive && !$anneesScolaires->contains($anneeActive->nom)) {
+            $anneesScolaires = $anneesScolaires->prepend($anneeActive->nom);
+        }
 
         return view('tarifs.tableau', compact('tarifs', 'classes', 'anneesScolaires', 'anneeScolaire'));
     }

@@ -2,230 +2,235 @@
 
 @section('title', 'Personnalisation des couleurs')
 
+@php
+    $all = array_merge(
+        $couleurs['general'] ?? [],
+        $couleurs['bulletin'] ?? [],
+        $couleurs['resultat'] ?? [],
+        $couleurs['document'] ?? []
+    );
+    $val = fn (string $cle, string $def) => $all[$cle] ?? $def;
+
+    $groupes = [
+        [
+            'titre' => 'Couleurs générales',
+            'icon' => 'fas fa-cog',
+            'items' => [
+                ['cle' => 'header_bg', 'label' => "Couleur d'en-tête", 'defaut' => '#34495e'],
+                ['cle' => 'header_text', 'label' => "Texte d'en-tête", 'defaut' => '#ffffff'],
+                ['cle' => 'primary_color', 'label' => 'Couleur principale', 'defaut' => '#007bff'],
+                ['cle' => 'secondary_color', 'label' => 'Couleur secondaire', 'defaut' => '#6c757d'],
+                ['cle' => 'success_color', 'label' => 'Couleur de succès', 'defaut' => '#28a745'],
+                ['cle' => 'danger_color', 'label' => 'Couleur de danger', 'defaut' => '#dc3545'],
+            ],
+        ],
+        [
+            'titre' => 'Bulletins',
+            'icon' => 'fas fa-file-alt',
+            'items' => [
+                ['cle' => 'bulletin_header_bg', 'label' => 'En-tête du bulletin', 'defaut' => '#34495e'],
+                ['cle' => 'bulletin_table_header_bg', 'label' => 'En-tête des tableaux', 'defaut' => '#34495e'],
+                ['cle' => 'bulletin_table_border', 'label' => 'Bordures des tableaux', 'defaut' => '#2c3e50'],
+                ['cle' => 'bulletin_success_text', 'label' => 'Texte de succès', 'defaut' => '#28a745'],
+                ['cle' => 'bulletin_danger_text', 'label' => 'Texte de danger', 'defaut' => '#dc3545'],
+            ],
+        ],
+        [
+            'titre' => 'Résultats',
+            'icon' => 'fas fa-chart-bar',
+            'items' => [
+                ['cle' => 'resultat_header_bg', 'label' => 'En-tête des résultats', 'defaut' => '#34495e'],
+                ['cle' => 'resultat_moyenne_text', 'label' => 'Texte des moyennes', 'defaut' => '#28a745'],
+                ['cle' => 'resultat_rang_text', 'label' => 'Texte des rangs', 'defaut' => '#007bff'],
+            ],
+        ],
+        [
+            'titre' => 'Documents',
+            'icon' => 'fas fa-file',
+            'items' => [
+                ['cle' => 'document_header_bg', 'label' => 'En-tête des documents', 'defaut' => '#34495e'],
+                ['cle' => 'document_title_bg', 'label' => 'Titres des documents', 'defaut' => '#6c757d'],
+                ['cle' => 'document_border', 'label' => 'Bordures des documents', 'defaut' => '#2c3e50'],
+            ],
+        ],
+    ];
+@endphp
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-palette"></i>
-                        Personnalisation des couleurs
-                    </h5>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-palette me-2"></i>
+        Personnalisation des couleurs
+    </h1>
+</div>
+
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if($errors->any())
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ $errors->first() }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+<form action="{{ route('parametres.couleurs.update') }}" method="POST" id="form-couleurs">
+    @csrf
+    @method('PUT')
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Aperçu</h5>
                 </div>
-                <div class="card-body">
-                    <form action="{{ route('parametres.couleurs.update') }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                        
-                        <!-- Général -->
-                        <div class="mb-4">
-                            <h6 class="text-primary mb-3">
-                                <i class="fas fa-cog"></i>
-                                Couleurs générales
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="header_bg" class="form-label">Couleur d'en-tête</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="header_bg" name="couleurs[header_bg]" value="{{ $couleurs['general']['header_bg'] ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['header_bg'] ?? '#34495e' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="header_text" class="form-label">Texte d'en-tête</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="header_text" name="couleurs[header_text]" value="{{ $couleurs['general']['header_text'] ?? '#ffffff' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['header_text'] ?? '#ffffff' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="primary_color" class="form-label">Couleur principale</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="primary_color" name="couleurs[primary_color]" value="{{ $couleurs['general']['primary_color'] ?? '#007bff' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['primary_color'] ?? '#007bff' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="secondary_color" class="form-label">Couleur secondaire</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="secondary_color" name="couleurs[secondary_color]" value="{{ $couleurs['general']['secondary_color'] ?? '#6c757d' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['secondary_color'] ?? '#6c757d' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="success_color" class="form-label">Couleur de succès</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="success_color" name="couleurs[success_color]" value="{{ $couleurs['general']['success_color'] ?? '#28a745' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['success_color'] ?? '#28a745' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="danger_color" class="form-label">Couleur de danger</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="danger_color" name="couleurs[danger_color]" value="{{ $couleurs['general']['danger_color'] ?? '#dc3545' }}">
-                                        <input type="text" class="form-control" value="{{ $couleurs['general']['danger_color'] ?? '#dc3545' }}" readonly>
-                                    </div>
-                                </div>
+                <div class="card-body p-0">
+                    <div id="preview-header" class="px-3 py-3" style="background: {{ $val('header_bg', '#34495e') }}; color: {{ $val('header_text', '#ffffff') }};">
+                        <div class="fw-bold">En-tête de l’application</div>
+                        <div class="small opacity-75">Nom de l’école</div>
+                    </div>
+                    <div class="p-3">
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span id="preview-primary" class="badge" style="background: {{ $val('primary_color', '#007bff') }};">Principal</span>
+                            <span id="preview-secondary" class="badge" style="background: {{ $val('secondary_color', '#6c757d') }};">Secondaire</span>
+                            <span id="preview-success" class="badge" style="background: {{ $val('success_color', '#28a745') }};">Succès</span>
+                            <span id="preview-danger" class="badge" style="background: {{ $val('danger_color', '#dc3545') }};">Danger</span>
+                        </div>
+                        <div id="preview-bulletin" class="border rounded overflow-hidden mb-2" style="border-color: {{ $val('bulletin_table_border', '#2c3e50') }} !important;">
+                            <div id="preview-bulletin-head" class="px-2 py-1 small text-white" style="background: {{ $val('bulletin_header_bg', '#34495e') }};">Bulletin</div>
+                            <div class="px-2 py-2 small">
+                                <span id="preview-bulletin-ok" style="color: {{ $val('bulletin_success_text', '#28a745') }};">Réussi</span>
+                                &nbsp;·&nbsp;
+                                <span id="preview-bulletin-ko" style="color: {{ $val('bulletin_danger_text', '#dc3545') }};">Échec</span>
                             </div>
                         </div>
-
-                        <!-- Bulletins -->
-                        <div class="mb-4">
-                            <h6 class="text-primary mb-3">
-                                <i class="fas fa-file-alt"></i>
-                                Couleurs des bulletins
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="bulletin_header_bg" class="form-label">En-tête du bulletin</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_header_bg" name="couleurs[bulletin_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_header_bg') ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_header_bg') ?? '#34495e' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="bulletin_table_header_bg" class="form-label">En-tête des tableaux</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_table_header_bg" name="couleurs[bulletin_table_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_header_bg') ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_header_bg') ?? '#34495e' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="bulletin_table_border" class="form-label">Bordures des tableaux</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_table_border" name="couleurs[bulletin_table_border]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_border') ?? '#2c3e50' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_table_border') ?? '#2c3e50' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="bulletin_success_text" class="form-label">Texte de succès</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_success_text" name="couleurs[bulletin_success_text]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_success_text') ?? '#28a745' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_success_text') ?? '#28a745' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="bulletin_danger_text" class="form-label">Texte de danger</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="bulletin_danger_text" name="couleurs[bulletin_danger_text]" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_danger_text') ?? '#dc3545' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('bulletin_danger_text') ?? '#dc3545' }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Résultats -->
-                        <div class="mb-4">
-                            <h6 class="text-primary mb-3">
-                                <i class="fas fa-chart-bar"></i>
-                                Couleurs des résultats
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="resultat_header_bg" class="form-label">En-tête des résultats</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_header_bg" name="couleurs[resultat_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_header_bg') ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_header_bg') ?? '#34495e' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="resultat_moyenne_text" class="form-label">Texte des moyennes</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_moyenne_text" name="couleurs[resultat_moyenne_text]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_moyenne_text') ?? '#28a745' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_moyenne_text') ?? '#28a745' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="resultat_rang_text" class="form-label">Texte des rangs</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="resultat_rang_text" name="couleurs[resultat_rang_text]" value="{{ App\Models\CouleurParametre::getCouleur('resultat_rang_text') ?? '#007bff' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('resultat_rang_text') ?? '#007bff' }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Documents -->
-                        <div class="mb-4">
-                            <h6 class="text-primary mb-3">
-                                <i class="fas fa-file"></i>
-                                Couleurs des documents
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="document_header_bg" class="form-label">En-tête des documents</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_header_bg" name="couleurs[document_header_bg]" value="{{ App\Models\CouleurParametre::getCouleur('document_header_bg') ?? '#34495e' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_header_bg') ?? '#34495e' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="document_title_bg" class="form-label">Titres des documents</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_title_bg" name="couleurs[document_title_bg]" value="{{ App\Models\CouleurParametre::getCouleur('document_title_bg') ?? '#6c757d' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_title_bg') ?? '#6c757d' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <label for="document_border" class="form-label">Bordures des documents</label>
-                                    <div class="input-group">
-                                        <input type="color" class="form-control form-control-color" id="document_border" name="couleurs[document_border]" value="{{ App\Models\CouleurParametre::getCouleur('document_border') ?? '#2c3e50' }}">
-                                        <input type="text" class="form-control" value="{{ App\Models\CouleurParametre::getCouleur('document_border') ?? '#2c3e50' }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ route('parametres.couleurs.reset') }}" class="btn btn-warning" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les couleurs aux valeurs par défaut ?')">
-                                <i class="fas fa-undo"></i>
-                                Réinitialiser par défaut
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i>
-                                Enregistrer les couleurs
-                            </button>
-                        </div>
-                    </form>
+                        <div class="small text-muted">Les changements s’affichent ici avant l’enregistrement.</div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <div class="col-lg-8">
+            @foreach($groupes as $groupe)
+            <div class="card mb-3">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="{{ $groupe['icon'] }} me-2 text-primary"></i>
+                        {{ $groupe['titre'] }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach($groupe['items'] as $item)
+                        @php $hex = strtoupper($val($item['cle'], $item['defaut'])); @endphp
+                        <div class="col-md-6">
+                            <label for="{{ $item['cle'] }}" class="form-label">{{ $item['label'] }}</label>
+                            <div class="input-group color-field">
+                                <input type="color"
+                                       class="form-control form-control-color color-picker"
+                                       id="{{ $item['cle'] }}"
+                                       name="couleurs[{{ $item['cle'] }}]"
+                                       value="{{ $hex }}"
+                                       data-preview="{{ $item['cle'] }}">
+                                <input type="text"
+                                       class="form-control color-hex"
+                                       value="{{ $hex }}"
+                                       maxlength="7"
+                                       spellcheck="false"
+                                       aria-label="Code hexadécimal {{ $item['label'] }}">
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endforeach
+
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+                <button type="submit" form="form-reset-couleurs" class="btn btn-outline-warning"
+                        onclick="return confirm('Réinitialiser toutes les couleurs aux valeurs par défaut ?')">
+                    <i class="fas fa-undo me-1"></i>
+                    Réinitialiser
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>
+                    Enregistrer
+                </button>
+            </div>
+        </div>
     </div>
-</div>
+</form>
+
+<form id="form-reset-couleurs" action="{{ route('parametres.couleurs.reset') }}" method="POST" class="d-none">
+    @csrf
+</form>
 @endsection
 
 @push('styles')
 <style>
-.input-group .form-control-color {
-    width: 50px;
-    height: 38px;
-}
-
-.input-group .form-control:not(.form-control-color) {
-    font-family: monospace;
-    background-color: #f8f9fa;
-}
-
-.card-header {
-    background: linear-gradient(135deg, {{ $couleurs['general']['primary_color'] ?? '#007bff' }} 0%, {{ $couleurs['general']['secondary_color'] ?? '#6c757d' }} 100%);
-}
-
-.text-primary {
-    color: {{ $couleurs['general']['primary_color'] ?? '#007bff' }} !important;
-}
+    .color-field .form-control-color {
+        width: 52px;
+        min-width: 52px;
+        height: 38px;
+        padding: 4px;
+        cursor: pointer;
+    }
+    .color-field .color-hex {
+        font-family: Consolas, Monaco, monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Synchroniser les inputs color avec les inputs text
-    document.querySelectorAll('input[type="color"]').forEach(function(colorInput) {
-        colorInput.addEventListener('input', function() {
-            const textInput = this.parentElement.querySelector('input[type="text"]');
-            if (textInput) {
-                textInput.value = this.value.toUpperCase();
+document.addEventListener('DOMContentLoaded', function () {
+    const preview = {
+        header_bg: (v) => { const el = document.getElementById('preview-header'); if (el) el.style.background = v; },
+        header_text: (v) => { const el = document.getElementById('preview-header'); if (el) el.style.color = v; },
+        primary_color: (v) => { const el = document.getElementById('preview-primary'); if (el) el.style.background = v; },
+        secondary_color: (v) => { const el = document.getElementById('preview-secondary'); if (el) el.style.background = v; },
+        success_color: (v) => { const el = document.getElementById('preview-success'); if (el) el.style.background = v; },
+        danger_color: (v) => { const el = document.getElementById('preview-danger'); if (el) el.style.background = v; },
+        bulletin_header_bg: (v) => { const el = document.getElementById('preview-bulletin-head'); if (el) el.style.background = v; },
+        bulletin_table_border: (v) => { const el = document.getElementById('preview-bulletin'); if (el) el.style.borderColor = v; },
+        bulletin_success_text: (v) => { const el = document.getElementById('preview-bulletin-ok'); if (el) el.style.color = v; },
+        bulletin_danger_text: (v) => { const el = document.getElementById('preview-bulletin-ko'); if (el) el.style.color = v; },
+    };
+
+    function applyPreview(key, value) {
+        if (preview[key]) preview[key](value);
+    }
+
+    document.querySelectorAll('.color-field').forEach(function (field) {
+        const picker = field.querySelector('.color-picker');
+        const hex = field.querySelector('.color-hex');
+        if (!picker || !hex) return;
+
+        picker.addEventListener('input', function () {
+            hex.value = this.value.toUpperCase();
+            applyPreview(this.dataset.preview, this.value);
+        });
+
+        hex.addEventListener('input', function () {
+            let value = this.value.trim();
+            if (value && value.charAt(0) !== '#') value = '#' + value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                picker.value = value;
+                this.value = value.toUpperCase();
+                applyPreview(picker.dataset.preview, value);
             }
         });
     });

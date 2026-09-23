@@ -1,218 +1,189 @@
 @extends('layouts.app')
 
-@section('title', 'Tableau des Tarifs par Classe')
+@section('title', 'Tableau des tarifs par classe')
+
+@php
+    $gnf = fn ($montant) => ((float) $montant > 0)
+        ? number_format($montant, 0, ',', ' ') . ' GNF'
+        : '—';
+    $nombreTranches = $tarifs->max('nombre_tranches') ?: 9;
+@endphp
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-table mr-2"></i>
-                        Tableau des Tarifs par Classe
-                    </h3>
-                    <div>
-                        <form method="GET" action="{{ route('tarifs.tableau') }}" class="d-inline">
-                            <select name="annee_scolaire" class="form-control d-inline-block" style="width: auto;" onchange="this.form.submit()">
-                                @foreach($anneesScolaires as $annee)
-                                    <option value="{{ $annee }}" {{ $anneeScolaire == $annee ? 'selected' : '' }}>
-                                        {{ $annee }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </form>
-                        <a href="{{ route('tarifs.index') }}" class="btn btn-primary ml-2">
-                            <i class="fas fa-cog mr-1"></i>
-                            Gérer les Tarifs
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    @if($tarifs->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th rowspan="2" class="text-center align-middle">Classe</th>
-                                        <th colspan="3" class="text-center">Frais Uniques</th>
-                                        <th colspan="3" class="text-center">Frais Mensuels</th>
-                                        <th rowspan="2" class="text-center align-middle">Total Mensuel</th>
-                                        <th rowspan="2" class="text-center align-middle">Total Annuel</th>
-                                        <th rowspan="2" class="text-center align-middle">Statut</th>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-center">Inscription</th>
-                                        <th class="text-center">Uniforme</th>
-                                        <th class="text-center">Livres</th>
-                                        <th class="text-center">Scolarité</th>
-                                        <th class="text-center">Cantine</th>
-                                        <th class="text-center">Transport</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($tarifs as $tarif)
-                                        <tr>
-                                            <td class="text-center">
-                                                <strong>{{ $tarif->classe->nom }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ $tarif->annee_scolaire }}</small>
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_inscription > 0)
-                                                    <span class="badge bg-primary text-white">{{ number_format($tarif->frais_inscription, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_uniforme > 0)
-                                                    <span class="badge bg-dark text-white">{{ number_format($tarif->frais_uniforme, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_livres > 0)
-                                                    <span class="badge bg-warning text-dark">{{ number_format($tarif->frais_livres, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_scolarite_mensuel > 0)
-                                                    <span class="badge bg-info text-white">{{ number_format($tarif->frais_scolarite_mensuel, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_cantine_mensuel > 0)
-                                                    <span class="badge bg-success text-white">{{ number_format($tarif->frais_cantine_mensuel, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                @if($tarif->frais_transport_mensuel > 0)
-                                                    <span class="badge bg-secondary text-white">{{ number_format($tarif->frais_transport_mensuel, 0, ',', ' ') }} GNF</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-right">
-                                                <strong class="text-primary">{{ number_format($tarif->total_mensuel, 0, ',', ' ') }} GNF</strong>
-                                            </td>
-                                            <td class="text-right">
-                                                <strong class="text-success">{{ number_format($tarif->total_annuel, 0, ',', ' ') }} GNF</strong>
-                                            </td>
-                                            <td class="text-center">
-                                                @if($tarif->actif)
-                                                    <span class="badge bg-success text-white">Actif</span>
-                                                @else
-                                                    <span class="badge bg-danger text-white">Inactif</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="table-dark">
-                                    <tr>
-                                        <th colspan="7" class="text-right">TOTAUX</th>
-                                        <th class="text-right">
-                                            <strong>{{ number_format($tarifs->sum('total_mensuel'), 0, ',', ' ') }} GNF</strong>
-                                        </th>
-                                        <th class="text-right">
-                                            <strong>{{ number_format($tarifs->sum('total_annuel'), 0, ',', ' ') }} GNF</strong>
-                                        </th>
-                                        <th></th>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-table me-2"></i>
+        Tableau des tarifs
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ route('tarifs.index') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-cog me-1"></i>
+            Gérer les tarifs
+        </a>
+    </div>
+</div>
 
-                        <!-- Statistiques -->
-                        <div class="row mt-4">
-                            <div class="col-md-3">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body text-center">
-                                        <h4>{{ $tarifs->count() }}</h4>
-                                        <p class="mb-0">Classes</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body text-center">
-                                        <h4>{{ $tarifs->where('actif', true)->count() }}</h4>
-                                        <p class="mb-0">Tarifs Actifs</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-info text-white">
-                                    <div class="card-body text-center">
-                                        <h4>{{ number_format($tarifs->sum('total_mensuel') / 1000, 0) }}K</h4>
-                                        <p class="mb-0">Total Mensuel (GNF)</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-warning text-white">
-                                    <div class="card-body text-center">
-                                        <h4>{{ number_format($tarifs->sum('total_annuel') / 1000, 0) }}K</h4>
-                                        <p class="mb-0">Total Annuel (GNF)</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<form method="GET" action="{{ route('tarifs.tableau') }}" class="mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-4">
+            <select name="annee_scolaire" class="form-select" title="Année scolaire">
+                <option value="">Toutes les années</option>
+                @foreach($anneesScolaires as $annee)
+                    <option value="{{ $annee }}" {{ (string) $anneeScolaire === (string) $annee ? 'selected' : '' }}>
+                        {{ $annee }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="fas fa-search me-1"></i>
+                    Filtrer
+                </button>
+                <a href="{{ route('tarifs.tableau') }}" class="btn btn-outline-secondary" title="Réinitialiser">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
 
-                        <!-- Légende -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <h6 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Légende</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>Frais Uniques :</h6>
-                                        <ul class="list-unstyled">
-                                            <li><span class="badge bg-primary text-white">Inscription</span> - Frais d'inscription (payable une fois)</li>
-                                            <li><span class="badge bg-dark text-white">Uniforme</span> - Frais d'uniforme scolaire</li>
-                                            <li><span class="badge bg-warning text-dark">Livres</span> - Frais de manuels scolaires</li>
-                                        </ul>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Frais Mensuels :</h6>
-                                        <ul class="list-unstyled">
-                                            <li><span class="badge bg-info text-white">Scolarité</span> - Frais de scolarité mensuels</li>
-                                            <li><span class="badge bg-success text-white">Cantine</span> - Frais de restauration</li>
-                                            <li><span class="badge bg-secondary text-white">Transport</span> - Frais de transport scolaire</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <hr>
-                                <div class="alert alert-info">
-                                    <i class="fas fa-lightbulb mr-2"></i>
-                                    <strong>Note :</strong> Les frais mensuels sont payables par tranches ({{ $tarif->nombre_tranches }} mois). 
-                                    Le total annuel inclut tous les frais pour l'année scolaire complète.
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-table fa-3x mb-3"></i>
-                            <h5>Aucun tarif trouvé</h5>
-                            <p>Commencez par créer des tarifs pour les classes.</p>
-                            <a href="{{ route('tarifs.create') }}" class="btn btn-primary">
-                                <i class="fas fa-plus mr-1"></i>
-                                Créer un Tarif
-                            </a>
-                        </div>
-                    @endif
-                </div>
+@if($tarifs->count() > 0)
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Classes</div>
+                <div class="fs-4 fw-bold">{{ $tarifs->count() }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Tarifs actifs</div>
+                <div class="fs-4 fw-bold">{{ $tarifs->where('actif', true)->count() }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total mensuel</div>
+                <div class="fs-5 fw-bold">{{ number_format($tarifs->sum('total_mensuel'), 0, ',', ' ') }} GNF</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total annuel</div>
+                <div class="fs-5 fw-bold">{{ number_format($tarifs->sum('total_annuel'), 0, ',', ' ') }} GNF</div>
             </div>
         </div>
     </div>
 </div>
+
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Liste des tarifs{{ $anneeScolaire ? ' — ' . $anneeScolaire : '' }}</h5>
+        <span class="badge bg-primary">{{ $tarifs->count() }} classes</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th rowspan="2" class="text-center align-middle">Classe</th>
+                        <th colspan="3" class="text-center">Frais uniques</th>
+                        <th colspan="3" class="text-center">Frais mensuels</th>
+                        <th rowspan="2" class="text-end align-middle">Total mensuel</th>
+                        <th rowspan="2" class="text-end align-middle">Total annuel</th>
+                        <th rowspan="2" class="text-center align-middle">Statut</th>
+                    </tr>
+                    <tr>
+                        <th class="text-end">Inscription</th>
+                        <th class="text-end">Uniforme</th>
+                        <th class="text-end">Livres</th>
+                        <th class="text-end">Scolarité</th>
+                        <th class="text-end">Cantine</th>
+                        <th class="text-end">Transport</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($tarifs as $tarif)
+                    <tr class="table-row-clickable" data-href="{{ route('tarifs.show', $tarif) }}" role="button" tabindex="0">
+                        <td>
+                            <strong>{{ $tarif->classe->nom ?? '—' }}</strong>
+                            <div class="small text-muted">{{ $tarif->annee_scolaire }}</div>
+                        </td>
+                        <td class="text-end">{{ $gnf($tarif->frais_inscription) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_uniforme) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_livres) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_scolarite_mensuel) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_cantine_mensuel) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_transport_mensuel) }}</td>
+                        <td class="text-end fw-bold">{{ $gnf($tarif->total_mensuel) }}</td>
+                        <td class="text-end fw-bold">{{ $gnf($tarif->total_annuel) }}</td>
+                        <td class="text-center">
+                            @if($tarif->actif)
+                                <span class="badge bg-success">Actif</span>
+                            @else
+                                <span class="badge bg-secondary">Inactif</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="7" class="text-end">Totaux</th>
+                        <th class="text-end">{{ number_format($tarifs->sum('total_mensuel'), 0, ',', ' ') }} GNF</th>
+                        <th class="text-end">{{ number_format($tarifs->sum('total_annuel'), 0, ',', ' ') }} GNF</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Légende</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Frais uniques</h6>
+                <ul class="mb-md-0">
+                    <li>Inscription — payable une fois</li>
+                    <li>Uniforme — uniforme scolaire</li>
+                    <li>Livres — manuels scolaires</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Frais mensuels</h6>
+                <ul class="mb-0">
+                    <li>Scolarité, cantine, transport — payables par mois</li>
+                    <li>Le total annuel est calculé sur {{ $nombreTranches }} mois</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+@else
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-table fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Aucun tarif trouvé</h5>
+        <p class="text-muted">Créez des tarifs pour les classes.</p>
+        <a href="{{ route('tarifs.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>
+            Créer un tarif
+        </a>
+    </div>
+</div>
+@endif
 @endsection
