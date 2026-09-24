@@ -241,6 +241,7 @@ class PersonnelAdministrationController extends Controller
             
             // Supprimer l'utilisateur associé
             if ($personnelAdministration->utilisateur) {
+                $personnelAdministration->utilisateur->detacherReferencesAvantSuppression();
                 $personnelAdministration->utilisateur->delete();
             }
             

@@ -313,6 +313,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/absences-enseignants', [AbsenceEnseignantController::class, 'index'])->name('absences-enseignants.index')->middleware('check.permission:absences-enseignants.view');
         Route::get('/absences-enseignants/statistiques', [AbsenceEnseignantController::class, 'statistiques'])->name('absences-enseignants.statistiques')->middleware('check.permission:absences-enseignants.view');
         Route::get('/absences-enseignants/saisir', [AbsenceEnseignantController::class, 'saisir'])->name('absences-enseignants.saisir')->middleware('check.permission:absences-enseignants.create');
+        Route::get('/absences-enseignants/cours', [AbsenceEnseignantController::class, 'cours'])->name('absences-enseignants.cours')->middleware('check.permission:absences-enseignants.view');
         Route::post('/absences-enseignants', [AbsenceEnseignantController::class, 'store'])->name('absences-enseignants.store')->middleware('check.permission:absences-enseignants.create');
         Route::post('/absences-enseignants/journee', [AbsenceEnseignantController::class, 'storeJournee'])->name('absences-enseignants.journee')->middleware('check.permission:absences-enseignants.create');
         Route::get('/absences-enseignants/enseignant/{enseignant}', [AbsenceEnseignantController::class, 'ficheEnseignant'])->name('absences-enseignants.fiche')->middleware('check.permission:absences-enseignants.view');

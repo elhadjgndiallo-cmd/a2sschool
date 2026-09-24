@@ -30,13 +30,37 @@
 @section('content')
 @php use Illuminate\Support\Facades\Storage; @endphp
 
-<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom flex-wrap gap-3">
     <h1 class="h4 mb-0">
         <i class="fas fa-user-clock me-2"></i>
         Absences des enseignants
         <small class="text-muted fw-normal">— {{ $moisLabel }}</small>
     </h1>
-    <div class="dropdown ae-stats-dropdown">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <form method="GET" action="{{ route('absences-enseignants.index') }}" class="d-flex align-items-center gap-2">
+            @if($datePrecedente)
+                <a href="{{ route('absences-enseignants.index', ['date' => $datePrecedente]) }}" class="btn btn-outline-secondary" title="Jour précédent">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            @else
+                <button type="button" class="btn btn-outline-secondary" disabled><i class="fas fa-chevron-left"></i></button>
+            @endif
+            <label class="form-label mb-0 small text-muted" for="filtre_date">Date</label>
+            <input type="date" name="date" id="filtre_date" class="form-control" style="width:auto"
+                   value="{{ $dateSelectionnee }}" min="{{ $dateMin }}" max="{{ $aujourdhui }}"
+                   onchange="this.form.submit()">
+            @if($dateSuivante)
+                <a href="{{ route('absences-enseignants.index', ['date' => $dateSuivante]) }}" class="btn btn-outline-secondary" title="Jour suivant">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            @else
+                <button type="button" class="btn btn-outline-secondary" disabled><i class="fas fa-chevron-right"></i></button>
+            @endif
+            @if($dateSelectionnee !== $aujourdhui)
+                <a href="{{ route('absences-enseignants.index') }}" class="btn btn-outline-primary">Aujourd'hui</a>
+            @endif
+        </form>
+        <div class="dropdown ae-stats-dropdown">
         <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
             <i class="fas fa-chart-bar me-1"></i>
             Statistiques
@@ -59,6 +83,7 @@
                 </a>
             </li>
         </ul>
+        </div>
     </div>
 </div>
 
@@ -79,7 +104,7 @@
                         <th>Spécialité</th>
                         <th>Heures du mois <small class="fw-normal text-muted">(emploi du temps)</small></th>
                         <th>Heures d'absence</th>
-                        <th>Statut du jour</th>
+                        <th>Statut @if($dateSelectionnee !== $aujourdhui) du {{ $dateLabel }} @else du jour @endif</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,6 +190,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="absence_date" class="form-label">Date <span class="text-danger">*</span></label>
+                        <input type="date" name="date" id="absence_date" class="form-control"
+                               value="{{ $dateSelectionnee }}" min="{{ $dateMin }}" max="{{ $aujourdhui }}" required>
+                        <div class="form-text">Choisissez un jour passé ou aujourd’hui pour saisir l’absence.</div>
+                    </div>
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="absence" value="1" id="absence_check">
@@ -177,11 +208,11 @@
                         @endif
                     </div>
                     <div class="mb-3">
-                        <label for="absence_classe_id" class="form-label">Classe du jour <span class="text-danger">*</span></label>
+                        <label for="absence_classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
                         <select name="classe_id" id="absence_classe_id" class="form-select" required>
                             <option value="">Choisir la classe…</option>
                         </select>
-                        <div class="form-text" id="absence_cours_aide">Selon l’emploi du temps d’aujourd’hui.</div>
+                        <div class="form-text" id="absence_cours_aide">Selon l’emploi du temps de la date choisie.</div>
                     </div>
                     <div class="table-responsive mb-3" id="absence_cours_wrap">
                         <table class="table table-sm table-bordered mb-0">
@@ -220,6 +251,7 @@
             <form method="POST" action="{{ route('absences-enseignants.journee') }}" id="formAbsenceJournee" class="d-none">
                 @csrf
                 <input type="hidden" name="enseignant_id" id="absence_journee_enseignant_id">
+                <input type="hidden" name="date" id="absence_journee_date" value="{{ $dateSelectionnee }}">
                 <input type="hidden" name="motif" id="absence_journee_motif">
             </form>
         </div>
@@ -230,6 +262,17 @@
 @push('scripts')
 <script>
 const coursParEnseignant = @json($coursDuJour);
+const datePage = @json($dateSelectionnee);
+const dateAujourdhui = @json($aujourdhui);
+const urlCours = @json(route('absences-enseignants.cours'));
+
+function formatDateFr(date) {
+    if (!date) return '';
+    if (date === dateAujourdhui) return 'aujourd’hui';
+    const parts = date.split('-');
+    if (parts.length !== 3) return date;
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
 
 function heureLabel(h) {
     return (h || '').replace(':', 'h');
@@ -252,13 +295,14 @@ function appliquerCreneau(option) {
     }
 }
 
-function remplirCoursDuJour(cours) {
+function remplirCoursDuJour(cours, date) {
     const select = document.getElementById('absence_classe_id');
     const tbody = document.getElementById('absence_cours_tbody');
     const wrap = document.getElementById('absence_cours_wrap');
     const aide = document.getElementById('absence_cours_aide');
     const submit = document.getElementById('absence_submit');
     const journeeBtn = document.getElementById('absence_journee_btn');
+    const libelle = formatDateFr(date || document.getElementById('absence_date').value || datePage);
 
     select.innerHTML = '<option value="">Choisir la classe…</option>';
     tbody.innerHTML = '';
@@ -267,7 +311,7 @@ function remplirCoursDuJour(cours) {
         wrap.style.display = 'none';
         select.disabled = true;
         select.required = false;
-        aide.textContent = 'Aucun cours prévu aujourd’hui pour cet enseignant.';
+        aide.textContent = 'Aucun cours prévu ' + (libelle === 'aujourd’hui' ? 'aujourd’hui' : 'le ' + libelle) + ' pour cet enseignant.';
         if (submit) submit.disabled = true;
         if (journeeBtn) journeeBtn.disabled = true;
         appliquerCreneau(null);
@@ -277,7 +321,7 @@ function remplirCoursDuJour(cours) {
     wrap.style.display = '';
     select.disabled = false;
     select.required = true;
-    aide.textContent = 'Classes de l’emploi du temps d’aujourd’hui.';
+    aide.textContent = 'Classes de l’emploi du temps du ' + (libelle === 'aujourd’hui' ? 'jour' : libelle) + '.';
     if (submit) submit.disabled = false;
     if (journeeBtn) journeeBtn.disabled = false;
 
@@ -286,10 +330,10 @@ function remplirCoursDuJour(cours) {
         opt.value = item.classe_id;
         opt.dataset.debut = item.heure_debut || '';
         opt.dataset.fin = item.heure_fin || '';
-        let libelle = item.classe || 'Classe';
-        if (item.matiere) libelle += ' — ' + item.matiere;
-        if (item.heure_debut) libelle += ' (' + heureLabel(item.heure_debut) + '-' + heureLabel(item.heure_fin) + ')';
-        opt.textContent = libelle;
+        let libelleOpt = item.classe || 'Classe';
+        if (item.matiere) libelleOpt += ' — ' + item.matiere;
+        if (item.heure_debut) libelleOpt += ' (' + heureLabel(item.heure_debut) + '-' + heureLabel(item.heure_fin) + ')';
+        opt.textContent = libelleOpt;
         select.appendChild(opt);
 
         const tr = document.createElement('tr');
@@ -305,12 +349,49 @@ function remplirCoursDuJour(cours) {
     }
 }
 
+function chargerCoursPourDate(enseignantId, date) {
+    const aide = document.getElementById('absence_cours_aide');
+    aide.textContent = 'Chargement de l’emploi du temps…';
+
+    const params = new URLSearchParams({
+        enseignant_id: enseignantId,
+        date: date
+    });
+
+    fetch(urlCours + '?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            remplirCoursDuJour(data.cours || [], data.date || date);
+        })
+        .catch(function () {
+            aide.textContent = 'Impossible de charger les cours pour cette date.';
+            remplirCoursDuJour([], date);
+        });
+}
+
 document.getElementById('absence_classe_id').addEventListener('change', function () {
     appliquerCreneau(this.options[this.selectedIndex]);
 });
 
+document.getElementById('absence_date').addEventListener('change', function () {
+    const date = this.value;
+    document.getElementById('absence_journee_date').value = date;
+    const enseignantId = document.getElementById('absence_enseignant_id').value;
+    if (!enseignantId || !date) return;
+
+    if (date === datePage) {
+        remplirCoursDuJour(coursDe(enseignantId), date);
+        return;
+    }
+
+    chargerCoursPourDate(enseignantId, date);
+});
+
 document.getElementById('formAbsenceJournee').addEventListener('submit', function () {
     document.getElementById('absence_journee_motif').value = document.getElementById('absence_motif').value;
+    document.getElementById('absence_journee_date').value = document.getElementById('absence_date').value;
 });
 
 const journeeBtnEl = document.getElementById('absence_journee_btn');
@@ -318,6 +399,7 @@ if (journeeBtnEl) {
     journeeBtnEl.addEventListener('click', function () {
         if (this.disabled) return;
         document.getElementById('absence_journee_motif').value = document.getElementById('absence_motif').value;
+        document.getElementById('absence_journee_date').value = document.getElementById('absence_date').value;
         document.getElementById('formAbsenceJournee').submit();
     });
 }
@@ -328,8 +410,10 @@ document.querySelectorAll('.ae-row-enseignant').forEach(function (row) {
         document.getElementById('absence_enseignant_nom').textContent = this.dataset.nom;
         document.getElementById('absence_check').checked = false;
         document.getElementById('absence_motif').value = '';
+        document.getElementById('absence_date').value = datePage;
         document.getElementById('absence_journee_enseignant_id').value = this.dataset.id;
-        remplirCoursDuJour(coursDe(this.dataset.id));
+        document.getElementById('absence_journee_date').value = datePage;
+        remplirCoursDuJour(coursDe(this.dataset.id), datePage);
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAbsenceEnseignant')).show();
     });

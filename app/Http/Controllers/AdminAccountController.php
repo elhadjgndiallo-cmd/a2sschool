@@ -316,8 +316,16 @@ class AdminAccountController extends Controller
             DB::transaction(function () use ($adminAccount) {
                 $utilisateur = $adminAccount->utilisateur;
 
-                if ($utilisateur && $utilisateur->photo_profil) {
-                    Storage::disk('public')->delete($utilisateur->photo_profil);
+                if (method_exists($adminAccount, 'cartesPersonnelAdministration')) {
+                    $adminAccount->cartesPersonnelAdministration()->delete();
+                }
+
+                if ($utilisateur) {
+                    $utilisateur->detacherReferencesAvantSuppression();
+
+                    if ($utilisateur->photo_profil) {
+                        Storage::disk('public')->delete($utilisateur->photo_profil);
+                    }
                 }
 
                 $adminAccount->delete();

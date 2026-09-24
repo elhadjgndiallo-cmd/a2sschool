@@ -20,10 +20,22 @@ class AbsenceEnseignantController extends Controller
         }
 
         $aujourdhui = now()->toDateString();
+        $dateSelectionnee = $this->dateSaisie($request->query('date'));
+        $dateCarbon = Carbon::parse($dateSelectionnee);
         $enseignants = Enseignant::listeDeroulante();
-        $debutMois = now()->copy()->startOfMonth()->toDateString();
-        $finMois = now()->copy()->endOfMonth()->toDateString();
-        $moisLabel = ucfirst(now()->locale('fr')->translatedFormat('F Y'));
+        $debutMois = $dateCarbon->copy()->startOfMonth()->toDateString();
+        $finMois = $dateCarbon->copy()->endOfMonth()->toDateString();
+        $moisLabel = ucfirst($dateCarbon->locale('fr')->translatedFormat('F Y'));
+        $dateLabel = $dateCarbon->locale('fr')->translatedFormat('d/m/Y');
+        $dateMin = now()->copy()->subYear()->toDateString();
+        $datePrecedente = $dateCarbon->copy()->subDay()->toDateString();
+        $dateSuivante = $dateCarbon->copy()->addDay()->toDateString();
+        if ($dateSuivante > $aujourdhui) {
+            $dateSuivante = null;
+        }
+        if ($datePrecedente < $dateMin) {
+            $datePrecedente = null;
+        }
 
         $absencesDuMois = AbsenceEnseignant::with('classe')
             ->duMois($debutMois, $finMois)
@@ -32,16 +44,16 @@ class AbsenceEnseignantController extends Controller
             ->get()
             ->groupBy(fn ($absence) => (int) $absence->enseignant_id);
 
-        $absencesDuJour = $absencesDuMois->map(function ($absences) use ($aujourdhui) {
-            return $absences->filter(function ($absence) use ($aujourdhui) {
+        $absencesDuJour = $absencesDuMois->map(function ($absences) use ($dateSelectionnee) {
+            return $absences->filter(function ($absence) use ($dateSelectionnee) {
                 $debut = $absence->date_debut?->toDateString();
                 $fin = $absence->date_fin?->toDateString();
 
-                return $debut && $fin && $debut <= $aujourdhui && $fin >= $aujourdhui;
+                return $debut && $fin && $debut <= $dateSelectionnee && $fin >= $dateSelectionnee;
             })->values();
         });
 
-        $jour = $this->jourSemaineAujourdhui();
+        $jour = $this->jourSemainePourDate($dateSelectionnee);
 
         $coursDuJour = [];
         if ($jour && $enseignants->isNotEmpty()) {
@@ -79,9 +91,37 @@ class AbsenceEnseignantController extends Controller
             'absencesDuMois',
             'heuresPrevuesMois',
             'aujourdhui',
+            'dateSelectionnee',
+            'dateLabel',
+            'dateMin',
+            'datePrecedente',
+            'dateSuivante',
             'moisLabel',
             'coursDuJour'
         ));
+    }
+
+    public function cours(Request $request)
+    {
+        if (!auth()->user()->hasPermission('absences-enseignants.view')
+            && !auth()->user()->hasPermission('absences-enseignants.create')) {
+            return response()->json(['error' => 'Non autorisé.'], 403);
+        }
+
+        $request->validate([
+            'enseignant_id' => 'required|exists:enseignants,id',
+            'date' => 'nullable|date',
+        ]);
+
+        $date = $this->dateSaisie($request->query('date', $request->input('date')));
+        $cours = $this->serialiserCours(
+            $this->coursPourDate((int) $request->enseignant_id, $date)
+        );
+
+        return response()->json([
+            'date' => $date,
+            'cours' => $cours,
+        ]);
     }
 
     public function statistiques(Request $request)
@@ -165,6 +205,7 @@ class AbsenceEnseignantController extends Controller
 
         $request->validate([
             'enseignant_id' => 'required|exists:enseignants,id',
+            'date' => 'nullable|date|before_or_equal:today',
             'absence' => 'accepted',
             'classe_id' => 'required|exists:classes,id',
             'heure_debut' => 'required',
@@ -176,10 +217,11 @@ class AbsenceEnseignantController extends Controller
             'heure_debut.required' => 'Indiquez l\'heure de début.',
             'heure_fin.required' => 'Indiquez l\'heure de fin.',
             'heure_fin.after' => 'L\'heure de fin doit être après l\'heure de début.',
+            'date.before_or_equal' => 'Impossible de saisir une absence pour une date future.',
         ]);
 
-        $date = now()->toDateString();
-        $jour = $this->jourSemaineAujourdhui();
+        $date = $this->dateSaisie($request->input('date'));
+        $jour = $this->jourSemainePourDate($date);
 
         $dansEdt = $jour && EmploiTemps::actif()
             ->pourAnneeActive()
@@ -189,8 +231,8 @@ class AbsenceEnseignantController extends Controller
             ->exists();
 
         if (!$dansEdt) {
-            return redirect()->route('absences-enseignants.index')
-                ->with('error', 'Cette classe n\'est pas dans l\'emploi du temps de l\'enseignant aujourd\'hui.');
+            return redirect()->route('absences-enseignants.index', ['date' => $date])
+                ->with('error', 'Cette classe n\'est pas dans l\'emploi du temps de l\'enseignant à cette date.');
         }
 
         $heureDebut = substr((string) $request->heure_debut, 0, 5);
@@ -204,7 +246,7 @@ class AbsenceEnseignantController extends Controller
         )->exists();
 
         if ($existe) {
-            return redirect()->route('absences-enseignants.index')
+            return redirect()->route('absences-enseignants.index', ['date' => $date])
                 ->with('error', 'Un créneau d\'absence se chevauche déjà pour cet enseignant.');
         }
 
@@ -222,7 +264,7 @@ class AbsenceEnseignantController extends Controller
             'saisi_par' => auth()->id(),
         ]);
 
-        return redirect()->route('absences-enseignants.index')
+        return redirect()->route('absences-enseignants.index', ['date' => $date])
             ->with('success', 'Absence enregistrée pour ce créneau.');
     }
 
@@ -234,17 +276,20 @@ class AbsenceEnseignantController extends Controller
 
         $request->validate([
             'enseignant_id' => 'required|exists:enseignants,id',
+            'date' => 'nullable|date|before_or_equal:today',
             'motif' => 'nullable|string|max:1000',
+        ], [
+            'date.before_or_equal' => 'Impossible de saisir une absence pour une date future.',
         ]);
 
-        $cours = $this->coursAujourdhui((int) $request->enseignant_id);
+        $date = $this->dateSaisie($request->input('date'));
+        $cours = $this->coursPourDate((int) $request->enseignant_id, $date);
 
         if ($cours->isEmpty()) {
-            return redirect()->route('absences-enseignants.index')
-                ->with('error', 'Aucun cours prévu aujourd\'hui pour cet enseignant.');
+            return redirect()->route('absences-enseignants.index', ['date' => $date])
+                ->with('error', 'Aucun cours prévu à cette date pour cet enseignant.');
         }
 
-        $date = now()->toDateString();
         $crees = 0;
 
         foreach ($cours as $creneau) {
@@ -284,11 +329,11 @@ class AbsenceEnseignantController extends Controller
         }
 
         if ($crees === 0) {
-            return redirect()->route('absences-enseignants.index')
-                ->with('error', 'Tous les créneaux du jour sont déjà marqués absents.');
+            return redirect()->route('absences-enseignants.index', ['date' => $date])
+                ->with('error', 'Tous les créneaux de cette date sont déjà marqués absents.');
         }
 
-        return redirect()->route('absences-enseignants.index')
+        return redirect()->route('absences-enseignants.index', ['date' => $date])
             ->with('success', 'Absence enregistrée pour toute la journée (' . $crees . ' créneau' . ($crees > 1 ? 'x' : '') . ').');
     }
 
@@ -551,7 +596,28 @@ class AbsenceEnseignantController extends Controller
         return $mois;
     }
 
-    private function jourSemaineAujourdhui(): ?string
+    private function dateSaisie(?string $date): string
+    {
+        $aujourdhui = now()->toDateString();
+
+        if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return $aujourdhui;
+        }
+
+        try {
+            $parsed = Carbon::parse($date)->startOfDay();
+        } catch (\Throwable $e) {
+            return $aujourdhui;
+        }
+
+        if ($parsed->gt(now()->startOfDay())) {
+            return $aujourdhui;
+        }
+
+        return $parsed->toDateString();
+    }
+
+    private function jourSemainePourDate(string $date): ?string
     {
         return [
             1 => 'lundi',
@@ -560,18 +626,24 @@ class AbsenceEnseignantController extends Controller
             4 => 'jeudi',
             5 => 'vendredi',
             6 => 'samedi',
-        ][now()->dayOfWeekIso] ?? null;
+        ][Carbon::parse($date)->dayOfWeekIso] ?? null;
     }
 
-    private function coursAujourdhui(int $enseignantId)
+    private function jourSemaineAujourdhui(): ?string
     {
-        $jour = $this->jourSemaineAujourdhui();
+        return $this->jourSemainePourDate(now()->toDateString());
+    }
+
+    private function coursPourDate(int $enseignantId, string $date)
+    {
+        $jour = $this->jourSemainePourDate($date);
 
         if (!$jour) {
             return collect();
         }
 
-        return EmploiTemps::actif()
+        return EmploiTemps::with(['classe', 'matiere'])
+            ->actif()
             ->pourAnneeActive()
             ->jour($jour)
             ->where('enseignant_id', $enseignantId)
@@ -585,6 +657,24 @@ class AbsenceEnseignantController extends Controller
                 ]);
             })
             ->values();
+    }
+
+    private function coursAujourdhui(int $enseignantId)
+    {
+        return $this->coursPourDate($enseignantId, now()->toDateString());
+    }
+
+    private function serialiserCours($cours): array
+    {
+        return $cours->map(function ($c) {
+            return [
+                'classe_id' => $c->classe_id,
+                'classe' => $c->classe->nom ?? '',
+                'matiere' => $c->matiere->nom ?? '',
+                'heure_debut' => $this->formatHeureCourt($c->heure_debut),
+                'heure_fin' => $this->formatHeureCourt($c->heure_fin),
+            ];
+        })->values()->all();
     }
 
     private function formatHeureCourt($value): string

@@ -6,6 +6,8 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class Utilisateur extends Authenticatable
 {
@@ -475,6 +477,72 @@ class Utilisateur extends Authenticatable
     public function getNomCompletAttribute()
     {
         return trim($this->prenom . ' ' . $this->nom);
+    }
+
+    /**
+     * Libère les clés étrangères pointant vers cet utilisateur (dépenses, factures, etc.)
+     * afin de permettre une suppression définitive sans contrainte 1451.
+     */
+    public function detacherReferencesAvantSuppression(?int $remplacantId = null): void
+    {
+        $utilisateurId = (int) $this->id;
+        $remplacant = $remplacantId && $remplacantId !== $utilisateurId
+            ? $remplacantId
+            : (auth()->id() && auth()->id() !== $utilisateurId ? (int) auth()->id() : null);
+
+        $colonnes = [
+            ['depenses', 'approuve_par'],
+            ['depenses', 'paye_par'],
+            ['salaires_enseignants', 'calcule_par'],
+            ['salaires_enseignants', 'valide_par'],
+            ['salaires_enseignants', 'paye_par'],
+            ['cartes_scolaires', 'emise_par'],
+            ['cartes_scolaires', 'validee_par'],
+            ['cartes_enseignants', 'emise_par'],
+            ['cartes_enseignants', 'validee_par'],
+            ['cartes_personnel_administration', 'emise_par'],
+            ['cartes_personnel_administration', 'validee_par'],
+            ['absences_enseignants', 'traite_par'],
+            ['bons_salaire_enseignants', 'cree_par'],
+            ['entrees', 'enregistre_par'],
+            ['paiements', 'encaisse_par'],
+            ['absences', 'saisi_par'],
+            ['recus_rappel', 'genere_par'],
+            ['absences_enseignants', 'saisi_par'],
+            ['factures', 'genere_par'],
+            ['test_mensuels', 'created_by'],
+            ['documents', 'createur_id'],
+            ['evenements', 'createur_id'],
+        ];
+
+        foreach ($colonnes as [$table, $column]) {
+            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) {
+                continue;
+            }
+
+            try {
+                DB::table($table)->where($column, $utilisateurId)->update([$column => null]);
+            } catch (\Throwable $e) {
+                if ($remplacant) {
+                    DB::table($table)->where($column, $utilisateurId)->update([$column => $remplacant]);
+                }
+            }
+        }
+
+        if (Schema::hasTable('messages')) {
+            DB::table('messages')->where(function ($q) use ($utilisateurId) {
+                $q->where('expediteur_id', $utilisateurId)
+                  ->orWhere('destinataire_id', $utilisateurId);
+            })->delete();
+        }
+
+        if (Schema::hasTable('notifications') && Schema::hasColumn('notifications', 'utilisateur_id')) {
+            DB::table('notifications')->where('utilisateur_id', $utilisateurId)->delete();
+        }
+
+        if (Schema::hasTable('sessions') && Schema::hasColumn('sessions', 'user_id')) {
+            DB::table('sessions')->where('user_id', $utilisateurId)->delete();
+        }
     }
 
 }

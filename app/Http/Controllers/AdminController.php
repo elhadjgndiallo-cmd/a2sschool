@@ -328,68 +328,16 @@ class AdminController extends Controller
         Utilisateur::abortIfSystemAdmin($utilisateur);
 
         try {
-            // Gérer les contraintes de clés étrangères avant suppression
             DB::beginTransaction();
-            
-            // Mettre à jour les dépenses qui référencent cet utilisateur
-            DB::table('depenses')
-                ->where('approuve_par', $utilisateur->id)
-                ->update(['approuve_par' => null]);
-                
-            DB::table('depenses')
-                ->where('paye_par', $utilisateur->id)
-                ->update(['paye_par' => null]);
-            
-            // Mettre à jour les entrées qui référencent cet utilisateur
-            DB::table('entrees')
-                ->where('enregistre_par', $utilisateur->id)
-                ->update(['enregistre_par' => null]);
-            
-            // Mettre à jour les paiements qui référencent cet utilisateur
-            DB::table('paiements')
-                ->where('encaisse_par', $utilisateur->id)
-                ->update(['encaisse_par' => null]);
-            
-            // Mettre à jour les absences qui référencent cet utilisateur
-            DB::table('absences')
-                ->where('saisi_par', $utilisateur->id)
-                ->update(['saisi_par' => null]);
-            
-            // Mettre à jour les salaires qui référencent cet utilisateur
-            DB::table('salaires_enseignants')
-                ->where('calcule_par', $utilisateur->id)
-                ->update(['calcule_par' => null]);
-                
-            DB::table('salaires_enseignants')
-                ->where('valide_par', $utilisateur->id)
-                ->update(['valide_par' => null]);
-                
-            DB::table('salaires_enseignants')
-                ->where('paye_par', $utilisateur->id)
-                ->update(['paye_par' => null]);
-            
-            // Mettre à jour les cartes scolaires qui référencent cet utilisateur
-            DB::table('cartes_scolaires')
-                ->where('emise_par', $utilisateur->id)
-                ->update(['emise_par' => null]);
-                
-            DB::table('cartes_scolaires')
-                ->where('validee_par', $utilisateur->id)
-                ->update(['validee_par' => null]);
-            
-            // Supprimer les messages envoyés et reçus par cet utilisateur
-            DB::table('messages')
-                ->where('expediteur_id', $utilisateur->id)
-                ->orWhere('destinataire_id', $utilisateur->id)
-                ->delete();
-            
-            // Supprimer la photo de profil si elle existe
+
+            $utilisateur->detacherReferencesAvantSuppression();
+
             if ($utilisateur->photo_profil) {
                 Storage::disk('public')->delete($utilisateur->photo_profil);
             }
-            
+
             $utilisateur->delete();
-            
+
             DB::commit();
             
             return redirect()->route('admin.utilisateurs')
