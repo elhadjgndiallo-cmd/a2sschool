@@ -592,24 +592,10 @@
                             </a>
                         </li>
                         @endif
-                        @if(auth()->user()->hasPermission('classes.view'))
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('classes.index') }}" data-menu="classes">
-                                <i class="fas fa-school me-1"></i>Classes
-                            </a>
-                        </li>
-                        @endif
                         @if(auth()->user()->hasPermission('eleves.view'))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('eleves.index') }}" data-menu="eleves">
                                 <i class="fas fa-user-graduate me-1"></i>Élèves
-                            </a>
-                        </li>
-                        @endif
-                        @if(auth()->user()->hasPermission('matieres.view'))
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('matieres.index') }}" data-menu="matieres">
-                                <i class="fas fa-book me-1"></i>Matières
                             </a>
                         </li>
                         @endif
@@ -641,18 +627,16 @@
                             </a>
                         </li>
                         @endif
-                        @if(auth()->user()->hasPermission('messages.view'))
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('admin.notifications.index') }}" data-menu="admin-messages">
-                                <i class="fas fa-envelope me-1"></i>Messages Parents
-                            </a>
-                        </li>
-                        @endif
                     @endif
                     
                     
                     <!-- Menu Profil visible pour tous les utilisateurs avec permissions -->
-                    @if(auth()->user()->canAccessAdmin() && auth()->user()->hasPermission('etablissement.view'))
+                    @if(auth()->user()->canAccessAdmin() && (
+                        auth()->user()->hasPermission('etablissement.view')
+                        || auth()->user()->hasPermission('classes.view')
+                        || auth()->user()->hasPermission('matieres.view')
+                        || auth()->user()->hasPermission('messages.view')
+                    ))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('etablissement.informations') }}" data-menu="parametres">
                                 <i class="fas fa-cog me-1"></i>Paramètres
@@ -1035,7 +1019,10 @@
             
             // Restaurer l'état du menu actif depuis le localStorage
             function restoreActiveMenu() {
-                const savedMenu = localStorage.getItem('activeMenu');
+                let savedMenu = localStorage.getItem('activeMenu');
+                if (['classes', 'matieres', 'admin-messages'].includes(savedMenu)) {
+                    savedMenu = 'parametres';
+                }
                 if (savedMenu && submenus[savedMenu]) {
                     const menuLink = document.querySelector(`[data-menu="${savedMenu}"]`);
                     if (menuLink) {
