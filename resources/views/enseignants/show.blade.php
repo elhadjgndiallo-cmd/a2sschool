@@ -93,7 +93,7 @@ use Illuminate\Support\Facades\Storage;
                         @endif
                     </div>
                     <div><strong>Statut:</strong></div><div>{{ ucfirst($enseignant->statut ?? 'N/A') }}</div>
-                    <div><strong>Mot de passe enseignant:</strong></div><div>password1234</div>
+                    <div><strong>Mot de passe enseignant:</strong></div><div>password123</div>
                 </div>
                 <div style="margin-top:10px;">
                     <div><strong>Matières enseignées:</strong></div>
@@ -125,165 +125,154 @@ use Illuminate\Support\Facades\Storage;
 <!-- Mot de passe par défaut pour impression et rappel -->
 <div class="alert alert-info py-2 px-3 mb-3">
     <i class="fas fa-key me-2"></i>
-    Mot de passe par défaut de l'enseignant: <strong>password1234</strong>
-    <span class="text-muted">(à modifier après première connexion)</span>
-    <span class="d-inline d-print-inline ms-2"><i class="fas fa-info-circle me-1"></i>Cette information sera imprimée.</span>
-    <span class="d-inline d-print-none ms-2">Cette information sera incluse lors de l'impression.</span>
+    Mot de passe par défaut de l'enseignant: <strong>password123</strong>
 </div>
 
-<div class="row">
-    <!-- Informations personnelles -->
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Informations Personnelles</h5>
+@php
+    $utilisateur = $enseignant->utilisateur;
+    $photoUrl = ($photo && Storage::disk('public')->exists($photo))
+        ? asset('storage/' . $photo)
+        : null;
+    $initiales = strtoupper(substr($utilisateur->prenom ?? '', 0, 1) . substr($utilisateur->nom ?? '', 0, 1));
+    $affiche = fn ($valeur) => filled($valeur) ? $valeur : '—';
+@endphp
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Profil</h5>
             </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-12 text-center mb-4">
-                        @if($enseignant->utilisateur->photo_profil && Storage::disk('public')->exists($enseignant->utilisateur->photo_profil))
-                            <div class="mb-3">
-                                <img src="{{ asset('storage/' . $enseignant->utilisateur->photo_profil) }}" alt="Photo de profil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-                                <form action="{{ route('enseignants.delete-photo', $enseignant->id) }}" method="POST" class="mt-2">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette photo de profil ?')">
-                                        <i class="fas fa-trash-alt me-1"></i> Supprimer la photo
-                                    </button>
-                                </form>
-                            </div>
-                        @else
-                            <div class="avatar-lg mx-auto">
-                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 100px; height: 100px; font-size: 2.5rem;">
-                                    {{ substr($enseignant->utilisateur->prenom, 0, 1) }}{{ substr($enseignant->utilisateur->nom, 0, 1) }}
-                                </div>
-                            </div>
-                        @endif
-                        <h4 class="mt-3">{{ $enseignant->utilisateur->nom }} {{ $enseignant->utilisateur->prenom }}</h4>
-                        <p class="text-muted">
-                            <span class="badge bg-{{ $enseignant->actif ? 'success' : 'danger' }}">
-                                {{ $enseignant->actif ? 'Actif' : 'Inactif' }}
-                            </span>
-                            <span class="badge bg-info ms-2">{{ ucfirst($enseignant->statut) }}</span>
-                        </p>
+            <div class="card-body text-center">
+                @if($photoUrl)
+                    <img src="{{ $photoUrl }}" alt="Photo" class="rounded-circle mb-3"
+                         style="width: 140px; height: 140px; object-fit: cover;">
+                    <form action="{{ route('enseignants.delete-photo', $enseignant->id) }}" method="POST" class="mb-3 no-print">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Supprimer cette photo de profil ?')">
+                            <i class="fas fa-trash-alt me-1"></i> Supprimer la photo
+                        </button>
+                    </form>
+                @else
+                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto mb-3"
+                         style="width: 140px; height: 140px; font-size: 2.4rem;">
+                        {{ $initiales }}
                     </div>
+                @endif
+                <h4 class="mb-1">{{ $utilisateur->nom }} {{ $utilisateur->prenom }}</h4>
+                <p class="text-muted mb-2">{{ $affiche($enseignant->specialite) }}</p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <span class="badge bg-{{ $enseignant->actif ? 'success' : 'secondary' }}">
+                        {{ $enseignant->actif ? 'Actif' : 'Inactif' }}
+                    </span>
+                    <span class="badge bg-info">{{ ucfirst($enseignant->statut ?? '') }}</span>
                 </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Numéro Employé:</div>
-                    <div class="col-md-8">{{ $enseignant->numero_employe }}</div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Email:</div>
-                    <div class="col-md-8">{{ $enseignant->utilisateur->email }}</div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Téléphone:</div>
-                    <div class="col-md-8">{{ $enseignant->utilisateur->telephone }}</div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Adresse:</div>
-                    <div class="col-md-8">{{ $enseignant->utilisateur->adresse }}</div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Date de naissance:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->utilisateur->date_naissance)
-                            {{ \Carbon\Carbon::parse($enseignant->utilisateur->date_naissance)->format('d/m/Y') }}
-                        @else
-                            <span class="text-muted">Non renseignée</span>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Lieu de naissance:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->utilisateur->lieu_naissance)
-                            {{ $enseignant->utilisateur->lieu_naissance }}
-                        @else
-                            <span class="text-muted">Non renseigné</span>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Sexe:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->utilisateur->sexe)
-                            {{ $enseignant->utilisateur->sexe == 'M' ? 'Masculin' : 'Féminin' }}
-                        @else
-                            <span class="text-muted">Non renseigné</span>
-                        @endif
-                    </div>
-                </div>
+                <p class="small text-muted mt-3 mb-0">N° employé : <strong>{{ $affiche($enseignant->numero_employe) }}</strong></p>
             </div>
         </div>
     </div>
-    
-    <!-- Informations professionnelles -->
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">Informations Professionnelles</h5>
+
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2 text-primary"></i>
+                    Informations personnelles
+                </h5>
             </div>
             <div class="card-body">
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Spécialité:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->specialite)
-                            {{ $enseignant->specialite }}
-                        @else
-                            <span class="text-muted">Non renseignée</span>
-                        @endif
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Nom</div>
+                        <div>{{ $affiche($utilisateur->nom) }}</div>
                     </div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Diplôme:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->diplome)
-                            {{ $enseignant->diplome }}
-                        @else
-                            <span class="text-muted">Non renseigné</span>
-                        @endif
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Prénom</div>
+                        <div>{{ $affiche($utilisateur->prenom) }}</div>
                     </div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Date d'embauche:</div>
-                    <div class="col-md-8">
-                        @if($enseignant->date_embauche)
-                            {{ \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') }}
-                        @else
-                            <span class="text-muted">Non renseignée</span>
-                        @endif
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Email</div>
+                        <div>{{ $affiche($utilisateur->email) }}</div>
                     </div>
-                </div>
-                
-                <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Statut:</div>
-                    <div class="col-md-8">
-                        <span class="badge bg-info">{{ ucfirst($enseignant->statut) }}</span>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Téléphone</div>
+                        <div>{{ $affiche($utilisateur->telephone) }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Sexe</div>
+                        <div>
+                            @if($utilisateur->sexe == 'M')
+                                Masculin
+                            @elseif($utilisateur->sexe == 'F')
+                                Féminin
+                            @else
+                                —
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Date de naissance</div>
+                        <div>
+                            {{ $utilisateur->date_naissance ? \Carbon\Carbon::parse($utilisateur->date_naissance)->format('d/m/Y') : '—' }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Lieu de naissance</div>
+                        <div>{{ $affiche($utilisateur->lieu_naissance) }}</div>
+                    </div>
+                    <div class="col-12 mb-0">
+                        <div class="text-muted small">Adresse</div>
+                        <div>{{ $affiche($utilisateur->adresse) }}</div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Matières enseignées -->
-        <div class="card mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Matières Enseignées</h5>
+
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-briefcase me-2 text-primary"></i>
+                    Informations professionnelles
+                </h5>
             </div>
             <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Spécialité</div>
+                        <div>{{ $affiche($enseignant->specialite) }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Diplôme</div>
+                        <div>{{ $affiche($enseignant->diplome) }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="text-muted small">Date d'embauche</div>
+                        <div>
+                            {{ $enseignant->date_embauche ? \Carbon\Carbon::parse($enseignant->date_embauche)->format('d/m/Y') : '—' }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-0">
+                        <div class="text-muted small">Statut</div>
+                        <div>{{ ucfirst($enseignant->statut ?? '—') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-book me-2 text-primary"></i>
+                    Matières enseignées
+                </h5>
+            </div>
+            <div class="card-body p-0">
                 @if($enseignant->matieres->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-striped table-sm">
-                        <thead>
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th>Nom</th>
                                 <th>Code</th>
@@ -293,19 +282,16 @@ use Illuminate\Support\Facades\Storage;
                         <tbody>
                             @foreach($enseignant->matieres as $matiere)
                             <tr>
-                                <td>{{ $matiere->nom ?? 'N/A' }}</td>
-                                <td>{{ $matiere->code ?? 'N/A' }}</td>
-                                <td>{{ $matiere->coefficient ?? 'N/A' }}</td>
+                                <td>{{ $matiere->nom ?? '—' }}</td>
+                                <td>{{ $matiere->code ?? '—' }}</td>
+                                <td>{{ $matiere->coefficient ?? '—' }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
                 @else
-                <p class="text-muted text-center">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Aucune matière assignée à cet enseignant.
-                </p>
+                <p class="text-muted text-center py-4 mb-0">Aucune matière assignée à cet enseignant.</p>
                 @endif
             </div>
         </div>

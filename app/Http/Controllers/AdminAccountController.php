@@ -305,18 +305,30 @@ class AdminAccountController extends Controller
         $adminAccount->load('utilisateur');
         $adminAccount->abortIfSystemAdmin();
 
+        if (auth()->id() === $adminAccount->utilisateur_id) {
+            return redirect()->back()
+                ->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
         try {
+            $nom = trim(($adminAccount->utilisateur->nom ?? '') . ' ' . ($adminAccount->utilisateur->prenom ?? ''));
 
-            // Supprimer la photo de profil
-            if ($adminAccount->utilisateur->photo_profil) {
-                Storage::disk('public')->delete($adminAccount->utilisateur->photo_profil);
-            }
+            DB::transaction(function () use ($adminAccount) {
+                $utilisateur = $adminAccount->utilisateur;
 
-            // Supprimer l'utilisateur (cascade supprimera le personnel d'administration)
-            $adminAccount->utilisateur->delete();
+                if ($utilisateur && $utilisateur->photo_profil) {
+                    Storage::disk('public')->delete($utilisateur->photo_profil);
+                }
+
+                $adminAccount->delete();
+
+                if ($utilisateur) {
+                    $utilisateur->delete();
+                }
+            });
 
             return redirect()->route('admin.accounts.index')
-                ->with('success', 'Compte administrateur supprimé avec succès');
+                ->with('success', 'Le compte administrateur' . ($nom ? ' de ' . $nom : '') . ' a été supprimé définitivement.');
 
         } catch (\Exception $e) {
             return redirect()->back()

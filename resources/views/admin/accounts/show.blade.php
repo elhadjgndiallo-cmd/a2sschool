@@ -20,6 +20,20 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
 <div class="row">
     <div class="col-lg-4">
         <div class="card">
@@ -291,10 +305,27 @@ use Illuminate\Support\Facades\Storage;
             <button type="button" class="btn btn-secondary" onclick="resetPassword({{ $adminAccount->id }})">
                 <i class="fas fa-lock me-1"></i> Réinitialiser mot de passe
             </button>
-            <button type="button" class="btn btn-{{ $adminAccount->statut === 'actif' ? 'danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
-                    <i class="fas fa-{{ $adminAccount->statut === 'actif' ? 'ban' : 'check' }} me-1"></i>
-                    {{ $adminAccount->statut === 'actif' ? 'Désactiver' : 'Activer' }} le compte
+            <button type="button" class="btn btn-{{ $adminAccount->statut === 'actif' ? 'outline-danger' : 'success' }}" onclick="toggleStatus({{ $adminAccount->id }})">
+                <i class="fas fa-{{ $adminAccount->statut === 'actif' ? 'ban' : 'check' }} me-1"></i>
+                {{ $adminAccount->statut === 'actif' ? 'Désactiver' : 'Activer' }} le compte
+            </button>
+            @php
+                $peutSupprimer = auth()->user()->hasPermission('admin.accounts.delete')
+                    && auth()->id() !== $adminAccount->utilisateur_id
+                    && !($adminAccount->utilisateur && $adminAccount->utilisateur->isSuperAdmin())
+                    && !($adminAccount->utilisateur && $adminAccount->utilisateur->isPrincipalAdmin() && !auth()->user()->isSuperAdmin());
+            @endphp
+            @if($peutSupprimer)
+            <form action="{{ route('admin.accounts.destroy', $adminAccount) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Supprimer définitivement le compte de {{ $adminAccount->utilisateur->nom }} {{ $adminAccount->utilisateur->prenom }} ?\n\nCette action est irréversible : le compte et l’utilisateur seront effacés.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash me-1"></i>
+                    Supprimer définitivement
                 </button>
+            </form>
+            @endif
         </div>
     </div>
 </div>
