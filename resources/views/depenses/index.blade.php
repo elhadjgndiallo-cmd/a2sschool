@@ -110,6 +110,9 @@
                                     <th class="hide-mobile">Bénéficiaire</th>
                                     <th>Montant</th>
                                     <th>Statut</th>
+                                    @if(auth()->user()->hasPermission('depenses.delete'))
+                                    <th class="text-end no-print">Actions</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -152,10 +155,22 @@
                                                     <span class="badge badge-secondary">{{ $depense->statut }}</span>
                                             @endswitch
                                         </td>
+                                        @if(auth()->user()->hasPermission('depenses.delete'))
+                                        <td class="text-end no-print" onclick="event.stopPropagation();">
+                                            <form action="{{ route('depenses.destroy', $depense) }}" method="POST" class="d-inline"
+                                                  onsubmit="return confirm('Supprimer définitivement cette sortie ? Cette action est irréversible.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">
+                                        <td colspan="{{ auth()->user()->hasPermission('depenses.delete') ? 7 : 6 }}" class="text-center text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2"></i>
                                             <br>
                                             Aucune sortie trouvée

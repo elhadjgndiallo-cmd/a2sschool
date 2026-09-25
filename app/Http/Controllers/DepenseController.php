@@ -6,6 +6,7 @@ use App\Models\AnneeScolaire;
 use App\Models\Depense;
 use App\Models\Enseignant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DepenseController extends Controller
@@ -184,10 +185,38 @@ class DepenseController extends Controller
      */
     public function destroy(Depense $depense)
     {
-        $depense->delete();
+        if (!auth()->user()->hasPermission('depenses.delete')) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
+        }
 
-        return redirect()->route('depenses.index')
-            ->with('success', 'Dépense supprimée avec succès.');
+        try {
+            $anneeScolaireId = $depense->annee_scolaire_id;
+            $previous = (string) url()->previous();
+
+            $depense->delete();
+            $this->clearComptabiliteCache($anneeScolaireId);
+
+            $retour = str_contains($previous, 'comptabilite/sorties')
+                ? route('comptabilite.sorties')
+                : route('depenses.index');
+
+            return redirect($retour)
+                ->with('success', 'Sortie supprimée avec succès.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
+    }
+
+    private function clearComptabiliteCache(?int $anneeScolaireId): void
+    {
+        if (!$anneeScolaireId) {
+            $anneeScolaireId = AnneeScolaire::anneeActive()?->id;
+        }
+
+        if ($anneeScolaireId) {
+            Cache::forget('comptabilite_stats_' . $anneeScolaireId);
+            Cache::forget('comptabilite_sorties_stats_' . $anneeScolaireId);
+        }
     }
 
     /**

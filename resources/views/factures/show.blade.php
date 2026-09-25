@@ -10,12 +10,53 @@
             <p class="text-muted mb-0">{{ $facture->date_facture->format('d/m/Y') }} — {{ $facture->anneeScolaire->nom ?? '' }}</p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{{ route('factures.pdf', $facture) }}?print=1" class="btn btn-outline-info me-1">
-                <i class="fas fa-print me-1"></i> Imprimer
-            </a>
-            <a href="{{ route('factures.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Retour
-            </a>
+            <div class="d-inline-flex flex-wrap gap-2 justify-content-end no-print">
+                <a href="{{ route('factures.pdf', $facture) }}?print=1" class="btn btn-outline-info" title="Imprimer" aria-label="Imprimer">
+                    <i class="fas fa-print"></i>
+                </a>
+                @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01 && !$facture->estFactureComplement())
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#payerResteFacture" title="Reste" aria-label="Reste">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </button>
+                @endif
+                @if(auth()->user()->hasPermission('paiements.edit') && $facture->estModifiable())
+                    <a href="{{ route('factures.edit', $facture) }}" class="btn btn-warning" title="Modifier" aria-label="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                @endif
+                @if(auth()->user()->hasPermission('paiements.edit') && $facture->peutEtreAnnulee())
+                    <form method="POST" action="{{ route('factures.annuler', $facture) }}" class="d-inline"
+                          onsubmit="return confirm('Annuler cette facture ?\n\nLes paiements liés seront retirés, les mois concernés seront recrédités et l\'entrée comptable sera supprimée.')">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger" title="Annuler" aria-label="Annuler">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    </form>
+                @endif
+                @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
+                    <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
+                          onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront également retirés.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger" title="Supprimer" aria-label="Supprimer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                @endif
+                @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'annulee')
+                    <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
+                          onsubmit="return confirm('Supprimer définitivement cette facture annulée ?\n\nCette action est irréversible.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger" title="Supprimer définitivement" aria-label="Supprimer définitivement">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                @endif
+                <a href="{{ route('factures.index') }}" class="btn btn-outline-secondary" title="Retour" aria-label="Retour">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+            </div>
         </div>
     </div>
 
@@ -118,64 +159,6 @@
                 </tfoot>
             </table>
             <p class="text-muted small px-3 pb-3 mb-0"><em>NB : le total est le montant qui reste après la remise.</em></p>
-        </div>
-    </div>
-
-    <div class="card mb-4 no-print">
-        <div class="card-header bg-dark text-white">
-            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
-        </div>
-        <div class="card-body">
-            <div class="d-flex flex-wrap gap-2">
-                @if(auth()->user()->hasPermission('paiements.edit') && $facture->statut === 'en_cours' && $facture->resteAPayer() > 0.01 && !$facture->estFactureComplement())
-                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#payerResteFacture">
-                        <i class="fas fa-money-bill-wave me-1"></i>
-                        Payer le reste ({{ number_format($facture->resteAPayer(), 0, ',', ' ') }} GNF)
-                    </button>
-                @endif
-
-                @if(auth()->user()->hasPermission('paiements.edit') && $facture->estModifiable())
-                    <a href="{{ route('factures.edit', $facture) }}" class="btn btn-warning">
-                        <i class="fas fa-edit me-1"></i> Modifier
-                    </a>
-                @endif
-
-                <a href="{{ route('factures.pdf', $facture) }}" class="btn btn-info" target="_blank">
-                    <i class="fas fa-receipt me-1"></i> Reçu / PDF
-                </a>
-
-                @if(auth()->user()->hasPermission('paiements.edit') && $facture->peutEtreAnnulee())
-                    <form method="POST" action="{{ route('factures.annuler', $facture) }}" class="d-inline"
-                          onsubmit="return confirm('Annuler cette facture ?\n\nLes paiements liés seront retirés, les mois concernés seront recrédités et l\'entrée comptable sera supprimée.')">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="fas fa-ban me-1"></i> Annuler la facture
-                        </button>
-                    </form>
-                @endif
-
-                @if(auth()->user()->hasPermission('paiements.delete') && $facture->estModifiable())
-                    <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
-                          onsubmit="return confirm('Supprimer cette facture ? Les paiements et l\'entrée comptable seront également retirés.')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash me-1"></i> Supprimer
-                        </button>
-                    </form>
-                @endif
-
-                @if(auth()->user()->hasPermission('paiements.delete') && $facture->statut === 'annulee')
-                    <form method="POST" action="{{ route('factures.destroy', $facture) }}" class="d-inline"
-                          onsubmit="return confirm('Supprimer définitivement cette facture annulée ?\n\nCette action est irréversible.')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash-alt me-1"></i> Supprimer définitivement
-                        </button>
-                    </form>
-                @endif
-            </div>
         </div>
     </div>
 

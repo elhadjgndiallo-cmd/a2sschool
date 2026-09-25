@@ -7,15 +7,49 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-file-invoice mr-2"></i>
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-file-invoice me-2"></i>
                         Détails de la Sortie
                     </h3>
-                    <div>
-                        <a href="{{ route('depenses.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left mr-1"></i>
-                            Retour
+                    <div class="d-flex flex-wrap gap-2 no-print">
+                        @if($depense->statut === 'en_attente')
+                            <form action="{{ route('depenses.approuver', $depense) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-success" title="Approuver" aria-label="Approuver">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </form>
+                        @endif
+                        @if($depense->statut === 'approuve')
+                            <a href="{{ route('depenses.payer', $depense) }}" class="btn btn-primary" title="Payer" aria-label="Payer">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </a>
+                        @endif
+                        <a href="{{ route('depenses.edit', $depense) }}" class="btn btn-warning" title="Modifier" aria-label="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        @if(!in_array($depense->statut, ['paye', 'annule']))
+                            <form action="{{ route('depenses.annuler', $depense) }}" method="POST" class="d-inline"
+                                  onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette sortie ?')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-danger" title="Annuler" aria-label="Annuler">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                        @endif
+                        @if(auth()->user()->hasPermission('depenses.delete'))
+                            <form action="{{ route('depenses.destroy', $depense) }}" method="POST" class="d-inline"
+                                  onsubmit="return confirm('Supprimer définitivement cette sortie ? Cette action est irréversible.')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger" title="Supprimer" aria-label="Supprimer">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        @endif
+                        <a href="{{ url()->previous() !== url()->current() ? url()->previous() : route('depenses.index') }}" class="btn btn-secondary" title="Retour" aria-label="Retour">
+                            <i class="fas fa-arrow-left"></i>
                         </a>
                     </div>
                 </div>
@@ -23,6 +57,14 @@
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             {{ session('success') }}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ session('error') }}
                             <button type="button" class="close" data-dismiss="alert">
                                 <span>&times;</span>
                             </button>
@@ -213,41 +255,6 @@
                                             </p>
                                         </div>
                                     </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card mb-4 no-print">
-                        <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex flex-wrap gap-2">
-                                @if($depense->statut === 'en_attente')
-                                    <form action="{{ route('depenses.approuver', $depense) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-check me-1"></i> Approuver
-                                        </button>
-                                    </form>
-                                @endif
-                                @if($depense->statut === 'approuve')
-                                    <a href="{{ route('depenses.payer', $depense) }}" class="btn btn-primary">
-                                        <i class="fas fa-money-bill-wave me-1"></i> Payer
-                                    </a>
-                                @endif
-                                <a href="{{ route('depenses.edit', $depense) }}" class="btn btn-warning">
-                                    <i class="fas fa-edit me-1"></i> Modifier
-                                </a>
-                                @if(!in_array($depense->statut, ['paye', 'annule']))
-                                    <form action="{{ route('depenses.annuler', $depense) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette sortie ?')">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline-danger">
-                                            <i class="fas fa-ban me-1"></i> Annuler
-                                        </button>
-                                    </form>
                                 @endif
                             </div>
                         </div>

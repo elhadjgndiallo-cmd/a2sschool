@@ -1204,7 +1204,7 @@ Route::post('/test-delete-emploi-temps/{id}', function($id) {
         Route::get('/depenses/{depense}', [DepenseController::class, 'show'])->name('depenses.show');
         Route::get('/depenses/{depense}/edit', [DepenseController::class, 'edit'])->name('depenses.edit');
         Route::put('/depenses/{depense}', [DepenseController::class, 'update'])->name('depenses.update');
-        Route::delete('/depenses/{depense}', [DepenseController::class, 'destroy'])->name('depenses.destroy');
+        Route::delete('/depenses/{depense}', [DepenseController::class, 'destroy'])->name('depenses.destroy')->middleware('check.permission:depenses.delete');
         Route::post('/depenses/{depense}/approuver', [DepenseController::class, 'approuver'])->name('depenses.approuver');
         Route::get('/depenses/{depense}/payer', [DepenseController::class, 'payer'])->name('depenses.payer');
         Route::post('/depenses/{depense}/enregistrer-paiement', [DepenseController::class, 'enregistrerPaiement'])->name('depenses.enregistrer-paiement');
