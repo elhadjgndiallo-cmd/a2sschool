@@ -7,11 +7,19 @@ use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\Enseignant;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Validator;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class EmploiTempsController extends Controller
+class EmploiTempsController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('classe.cycle'),
+        ];
+    }
     /**
      * Afficher la gestion générale des emplois du temps
      */
@@ -30,6 +38,7 @@ class EmploiTempsController extends Controller
         }
         
         $classes = Classe::actif()
+            ->visiblesPourUtilisateur()
             ->where(function ($q) use ($anneeScolaireActive) {
                 $q->whereHas('eleves', function ($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);

@@ -38,7 +38,10 @@ class AdminAccountController extends Controller
     public function create()
     {
         $permissions = $this->getAvailablePermissions();
-        return view('admin.accounts.create', compact('permissions'));
+        $profilsPoste = PersonnelAdministration::profils();
+        $permissionsCycle = PersonnelAdministration::permissionsParDefautCycle();
+
+        return view('admin.accounts.create', compact('permissions', 'profilsPoste', 'permissionsCycle'));
     }
 
     /**
@@ -144,6 +147,7 @@ class AdminAccountController extends Controller
             'sexe' => 'required|in:M,F',
             'date_naissance' => 'required|date',
             'adresse' => 'nullable|string|max:500',
+            'profil_poste' => 'nullable|string|in:censeur,directeur_etudes,directeur_primaire,autre',
             'poste' => 'required|string|max:255',
             'departement' => 'nullable|string|max:255',
             'date_embauche' => 'required|date',
@@ -178,9 +182,14 @@ class AdminAccountController extends Controller
 
             // Créer le profil personnel d'administration avec permissions
             $permissions = $request->permissions ?? [];
+            $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
+            if ($profil['cycle'] && empty($permissions)) {
+                $permissions = PersonnelAdministration::permissionsParDefautCycle();
+            }
             PersonnelAdministration::create([
                 'utilisateur_id' => $utilisateur->id,
-                'poste' => $request->poste,
+                'poste' => $profil['poste'] ?: $request->poste,
+                'cycle' => $profil['cycle'],
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
@@ -221,8 +230,10 @@ class AdminAccountController extends Controller
     {
         $adminAccount->load('utilisateur');
         $adminAccount->abortIfSystemAdmin();
+        $profilsPoste = PersonnelAdministration::profils();
+        $permissionsCycle = PersonnelAdministration::permissionsParDefautCycle();
 
-        return view('admin.accounts.edit', compact('adminAccount'));
+        return view('admin.accounts.edit', compact('adminAccount', 'profilsPoste', 'permissionsCycle'));
     }
 
     /**
@@ -241,6 +252,7 @@ class AdminAccountController extends Controller
             'sexe' => 'nullable|in:M,F',
             'date_naissance' => 'nullable|date',
             'adresse' => 'nullable|string|max:500',
+            'profil_poste' => 'nullable|string|in:censeur,directeur_etudes,directeur_primaire,autre',
             'poste' => 'required|string|max:255',
             'departement' => 'nullable|string|max:255',
             'date_embauche' => 'required|date',
@@ -278,8 +290,10 @@ class AdminAccountController extends Controller
             }
 
             // Mettre à jour le profil personnel d'administration
+            $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
             $adminAccount->update([
-                'poste' => $request->poste,
+                'poste' => $profil['poste'] ?: $request->poste,
+                'cycle' => $profil['cycle'],
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,

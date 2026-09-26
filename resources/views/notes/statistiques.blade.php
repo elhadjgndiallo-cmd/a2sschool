@@ -38,21 +38,21 @@
         </div>
     </div>
 
-    <!-- Section Tableau Statistique Trimestriel -->
+    <!-- Section Tableau Statistique -->
     <div class="row mt-5">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-table me-2"></i>
-                        Tableau Statistique Trimestriel
+                        Tableau Statistique {{ ($typePeriode ?? 'Trimestre') === 'Semestre' ? 'Semestriel' : 'Trimestriel' }}
                     </h5>
                 </div>
                 <div class="card-body">
                     <form method="GET" action="{{ route('notes.statistiques') }}" class="mb-3">
                         <div class="row g-2">
                             <div class="col-12 col-sm-6 col-md-5">
-                                <select name="classe_id" id="classe_id" class="form-select" title="Classe">
+                                <select name="classe_id" id="classe_id" class="form-select" title="Classe" onchange="this.form.submit()">
                                     <option value="">-- Sélectionner une classe --</option>
                                     @foreach($classes as $c)
                                     <option value="{{ $c->id }}" {{ $classeId == $c->id ? 'selected' : '' }}>
@@ -63,7 +63,7 @@
                             </div>
                             <div class="col-12 col-sm-6 col-md-5">
                                 <select name="periode_id" id="periode_id" class="form-select" title="Période">
-                                    <option value="">-- Sélectionner une période --</option>
+                                    <option value="">-- Sélectionner un {{ strtolower($typePeriode ?? 'trimestre') }} --</option>
                                     @foreach($periodes as $p)
                                     <option value="{{ $p->id }}" {{ $periodeId == $p->id ? 'selected' : '' }}>
                                         {{ $p->nom }} ({{ $p->date_debut->format('d/m/Y') }} - {{ $p->date_fin->format('d/m/Y') }})

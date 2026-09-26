@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'personnel.permission' => \App\Http\Middleware\PersonnelPermissionMiddleware::class,
             'check.permission' => \App\Http\Middleware\CheckPermissionMiddleware::class,
+            'classe.cycle' => \App\Http\Middleware\EnsureClasseDuCycle::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

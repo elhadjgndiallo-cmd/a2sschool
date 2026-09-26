@@ -129,6 +129,12 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Cycle géré</label>
+                            <p class="form-control-plaintext">{{ $adminAccount->cycleLibelle() }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
                             <label class="form-label fw-bold">Département</label>
                             <p class="form-control-plaintext">{{ $adminAccount->departement ?? 'Non spécifié' }}</p>
                         </div>

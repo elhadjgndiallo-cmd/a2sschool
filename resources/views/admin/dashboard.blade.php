@@ -3,6 +3,13 @@
 @section('title', 'Tableau de Bord Administrateur')
 
 @section('content')
+@php
+    $user = $user ?? auth()->user();
+    $voirStatsFinancieres = $voirStatsFinancieres
+        ?? ($user && ($user->hasPermission('comptabilite.view') || $user->hasPermission('statistiques.financieres')));
+    $voirPaiements = $voirPaiements
+        ?? ($user && ($user->hasPermission('paiements.view') || $voirStatsFinancieres));
+@endphp
 <div class="container-fluid">
     @if(isset($error))
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -139,7 +146,8 @@
         </div>
     </div>
 
-    <!-- Statistiques financières -->
+    @if(!empty($voirStatsFinancieres))
+    <!-- Statistiques financières (comptabilité uniquement) -->
     <div class="row mb-4 g-3">
         <div class="col-12 col-sm-6 col-md-4">
             <div class="card bg-success text-white h-100">
@@ -181,6 +189,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Statistiques académiques -->
     <div class="row mb-4 g-3">
@@ -226,6 +235,7 @@
     </div>
 
     <div class="row">
+        @if(!empty($voirPaiements))
         <!-- Derniers paiements -->
         <div class="col-xl-6">
             <div class="card">
@@ -265,9 +275,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Dernières absences -->
-        <div class="col-xl-6">
+        <div class="{{ !empty($voirPaiements) ? 'col-xl-6' : 'col-12' }}">
             <div class="card">
                 <div class="card-header bg-light">
                     <h5 class="card-title mb-0">Dernières absences</h5>
@@ -366,6 +377,7 @@
                                 </div>
                             </a>
                         </div>
+                        @if(auth()->user()->hasPermission('paiements.view'))
                         <div class="col-md-3 col-6 mb-4">
                             <a href="{{ route('paiements.index') }}" class="text-decoration-none">
                                 <div class="p-3 rounded bg-light-success">
@@ -374,6 +386,7 @@
                                 </div>
                             </a>
                         </div>
+                        @endif
                         <div class="col-md-3 col-6 mb-4">
                             <a href="{{ route('notes.index') }}" class="text-decoration-none">
                                 <div class="p-3 rounded bg-light-primary">

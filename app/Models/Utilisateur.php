@@ -228,6 +228,44 @@ class Utilisateur extends Authenticatable
     }
 
     /**
+     * Cycle géré par ce compte (personnel limité), sinon null.
+     */
+    public function cycleGere(): ?string
+    {
+        if ($this->isAdmin() || $this->isSuperAdmin()) {
+            return null;
+        }
+
+        if ($this->role !== 'personnel_admin') {
+            return null;
+        }
+
+        return $this->personnelAdministration?->cycle();
+    }
+
+    public function estLimiteParCycle(): bool
+    {
+        return $this->cycleGere() !== null;
+    }
+
+    public function peutGererClasse(?Classe $classe): bool
+    {
+        $cycle = $this->cycleGere();
+        if (!$cycle) {
+            return true;
+        }
+
+        return $classe && $classe->cycle() === $cycle;
+    }
+
+    public function abortSiHorsCycle(?Classe $classe): void
+    {
+        if (!$this->peutGererClasse($classe)) {
+            abort(403, 'Cette classe n\'appartient pas à votre cycle.');
+        }
+    }
+
+    /**
      * Vérifier si l'utilisateur a un rôle spécifique
      */
     public function hasRole($role)

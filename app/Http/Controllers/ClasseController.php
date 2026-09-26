@@ -4,10 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Classe;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Validator;
 
-class ClasseController extends Controller
+class ClasseController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('classe.cycle'),
+        ];
+    }
+
     /**
      * Afficher la liste des classes
      */
@@ -20,6 +29,7 @@ class ClasseController extends Controller
         $anneeScolaireActive = \App\Models\AnneeScolaire::anneeActive();
 
         $classes = Classe::query()
+            ->visiblesPourUtilisateur()
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
                 $q->where(function ($inner) use ($search) {
@@ -53,8 +63,11 @@ class ClasseController extends Controller
         // Vérifier les permissions
         if (!auth()->user()->hasPermission('classes.create')) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas autorisé, veuillez contacter l\'administrateur.');
-        }        
-        return view('classes.create');
+        }
+
+        $niveaux = Classe::niveauxPourCycle(auth()->user()?->cycleGere());
+
+        return view('classes.create', compact('niveaux'));
     }
 
     /**
@@ -73,6 +86,13 @@ class ClasseController extends Controller
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
+                ->withInput();
+        }
+
+        $niveauxAutorises = Classe::niveauxPourCycle(auth()->user()?->cycleGere());
+        if (auth()->user()?->estLimiteParCycle() && !in_array($request->niveau, $niveauxAutorises, true)) {
+            return redirect()->back()
+                ->withErrors(['niveau' => 'Vous ne pouvez créer qu\'une classe de votre cycle.'])
                 ->withInput();
         }
 
@@ -159,8 +179,10 @@ class ClasseController extends Controller
      * Afficher le formulaire d'édition
      */
     public function edit(Classe $classe)
-    {        
-        return view('classes.edit', compact('classe'));
+    {
+        $niveaux = Classe::niveauxPourCycle(auth()->user()?->cycleGere());
+
+        return view('classes.edit', compact('classe', 'niveaux'));
     }
 
     /**
@@ -183,6 +205,13 @@ class ClasseController extends Controller
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
+                ->withInput();
+        }
+
+        $niveauxAutorises = Classe::niveauxPourCycle(auth()->user()?->cycleGere());
+        if (auth()->user()?->estLimiteParCycle() && !in_array($request->niveau, $niveauxAutorises, true)) {
+            return redirect()->back()
+                ->withErrors(['niveau' => 'Vous ne pouvez modifier une classe que vers votre cycle.'])
                 ->withInput();
         }
 

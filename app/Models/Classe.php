@@ -100,7 +100,122 @@ class Classe extends Model
             $query->pourAnneeActive();
         }
 
+        $query->visiblesPourUtilisateur();
+
         return $query->get();
+    }
+
+    /**
+     * Cycle pédagogique : primaire, college ou lycee.
+     */
+    public function cycle(): ?string
+    {
+        $niveau = $this->normaliserCycleTexte($this->niveau ?? '');
+        $nom = $this->normaliserCycleTexte($this->nom ?? '');
+
+        if (in_array($niveau, ['prescolaire', 'primaire'], true)) {
+            return 'primaire';
+        }
+        if ($niveau === 'college') {
+            return 'college';
+        }
+        if (in_array($niveau, ['lycee', 'superieur'], true)) {
+            return 'lycee';
+        }
+
+        $haystack = $nom . ' ' . $niveau;
+
+        if (preg_match('/\b([1-6])\s*(ere|er|eme).*\bann/', $haystack)
+            || preg_match('/\bann.*\b([1-6])\s*(ere|er|eme)/', $haystack)) {
+            return 'primaire';
+        }
+
+        $lyceeMotifs = ['terminale', 'tle', '2nde', 'seconde', '11eme', '12eme', '13eme'];
+        foreach ($lyceeMotifs as $motif) {
+            if (str_contains($haystack, $motif)) {
+                return 'lycee';
+            }
+        }
+        if (preg_match('/\b1\s*(ere|er)\b/', $haystack) && !str_contains($haystack, 'ann')) {
+            return 'lycee';
+        }
+
+        $collegeMotifs = [
+            '6eme', 'sixieme', '5eme', 'cinquieme', '4eme', 'quatrieme', '3eme', 'troisieme',
+            '7eme', 'septieme', '8eme', '9eme', '10eme',
+        ];
+        foreach ($collegeMotifs as $motif) {
+            if (str_contains($haystack, $motif)) {
+                return 'college';
+            }
+        }
+
+        if ($this->isPrimaire()) {
+            return 'primaire';
+        }
+        if ($this->isSecondaire()) {
+            return 'lycee';
+        }
+
+        return null;
+    }
+
+    /**
+     * Filtrer les classes visibles selon le cycle de l'utilisateur connecté.
+     */
+    public function scopeVisiblesPourUtilisateur($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        $cycle = $user?->cycleGere();
+
+        if (!$cycle) {
+            return $query;
+        }
+
+        return $query->pourCycle($cycle);
+    }
+
+    /**
+     * Restreindre aux classes d'un cycle (primaire, college, lycee).
+     */
+    public function scopePourCycle($query, ?string $cycle)
+    {
+        if (!$cycle) {
+            return $query;
+        }
+
+        $ids = static::query()
+            ->select(['id', 'nom', 'niveau'])
+            ->get()
+            ->filter(fn (self $classe) => $classe->cycle() === $cycle)
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($query->getModel()->getQualifiedKeyName(), $ids);
+    }
+
+    public static function niveauxPourCycle(?string $cycle): array
+    {
+        return match ($cycle) {
+            'primaire' => ['Préscolaire', 'Primaire'],
+            'college' => ['Collège'],
+            'lycee' => ['Lycée', 'Supérieur'],
+            default => ['Préscolaire', 'Primaire', 'Collège', 'Lycée', 'Supérieur'],
+        };
+    }
+
+    private function normaliserCycleTexte(string $texte): string
+    {
+        $texte = mb_strtolower(trim($texte));
+        $texte = strtr($texte, [
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'à' => 'a', 'ù' => 'u', 'ç' => 'c',
+        ]);
+
+        return $texte;
     }
 
     /**

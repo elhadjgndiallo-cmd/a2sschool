@@ -35,7 +35,39 @@ class PeriodeHelper
             return 'Trimestre/Semestre';
         }
 
-        return $classe->isPrimaire() ? 'Trimestre' : 'Semestre';
+        return self::utiliseSemestres($classe) ? 'Semestre' : 'Trimestre';
+    }
+
+    /**
+     * Collège / lycée : 2 semestres. Primaire : 3 trimestres.
+     */
+    public static function utiliseSemestres(?Classe $classe = null, ?string $cycle = null): bool
+    {
+        if ($classe) {
+            return !$classe->isPrimaire();
+        }
+
+        return in_array($cycle, ['college', 'lycee'], true);
+    }
+
+    /**
+     * Décider Trimestre / Semestre pour le tableau statistique (classe, cycle, ou ensemble des classes).
+     */
+    public static function utiliseSemestresPourListe($classes = null, ?Classe $classeSelectionnee = null, ?string $cycle = null): bool
+    {
+        if ($classeSelectionnee) {
+            return self::utiliseSemestres($classeSelectionnee);
+        }
+
+        if ($cycle) {
+            return self::utiliseSemestres(null, $cycle);
+        }
+
+        if ($classes && method_exists($classes, 'isNotEmpty') && $classes->isNotEmpty()) {
+            return $classes->every(fn (Classe $classe) => self::utiliseSemestres($classe));
+        }
+
+        return false;
     }
 
     /**

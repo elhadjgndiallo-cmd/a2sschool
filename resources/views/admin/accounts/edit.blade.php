@@ -191,7 +191,28 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="poste" class="form-label">Poste <span class="text-danger">*</span></label>
+                            <label for="profil_poste" class="form-label">Type de poste <span class="text-danger">*</span></label>
+                            <select class="form-select @error('profil_poste') is-invalid @enderror" id="profil_poste" name="profil_poste">
+                                @php
+                                    $profilActuel = old('profil_poste', \App\Models\PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste));
+                                    if ($adminAccount->cycle && $profilActuel === 'autre') {
+                                        $profilActuel = collect(\App\Models\PersonnelAdministration::profils())
+                                            ->search(fn ($p) => $p['cycle'] === $adminAccount->cycle) ?: 'autre';
+                                    }
+                                @endphp
+                                <option value="autre" @selected($profilActuel === 'autre')>Autre (poste libre)</option>
+                                @foreach($profilsPoste as $cle => $profil)
+                                    <option value="{{ $cle }}" data-poste="{{ $profil['poste'] }}" @selected($profilActuel === $cle)>
+                                        {{ $profil['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('profil_poste')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="poste" class="form-label">Intitulé du poste <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('poste') is-invalid @enderror"
                                    id="poste" name="poste" value="{{ old('poste', $adminAccount->poste) }}" required>
                             @error('poste')
@@ -271,6 +292,18 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const profilSelect = document.getElementById('profil_poste');
+    const posteInput = document.getElementById('poste');
+    function appliquerProfil() {
+        if (!profilSelect || !posteInput) return;
+        const option = profilSelect.options[profilSelect.selectedIndex];
+        const posteProfil = option ? option.getAttribute('data-poste') : '';
+        if (profilSelect.value !== 'autre' && posteProfil) {
+            posteInput.value = posteProfil;
+        }
+    }
+    profilSelect?.addEventListener('change', appliquerProfil);
+
     const input = document.getElementById('photo_profil');
     const preview = document.getElementById('photo-preview');
     const fallback = document.getElementById('photo-fallback');

@@ -178,7 +178,22 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="poste" class="form-label">Poste <span class="text-danger">*</span></label>
+                            <label for="profil_poste" class="form-label">Type de poste <span class="text-danger">*</span></label>
+                            <select class="form-select @error('profil_poste') is-invalid @enderror" id="profil_poste" name="profil_poste">
+                                <option value="autre" @selected(old('profil_poste', 'autre') === 'autre')>Autre (poste libre)</option>
+                                @foreach($profilsPoste as $cle => $profil)
+                                    <option value="{{ $cle }}" data-poste="{{ $profil['poste'] }}" @selected(old('profil_poste') === $cle)>
+                                        {{ $profil['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">Censeur, Directeur d’études et Directeur du primaire ne gèrent que leur cycle.</div>
+                            @error('profil_poste')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="poste" class="form-label">Intitulé du poste <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('poste') is-invalid @enderror"
                                    id="poste" name="poste" value="{{ old('poste') }}" required>
                             @error('poste')
@@ -342,6 +357,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     updateCounts();
+
+    const permissionsCycle = @json($permissionsCycle ?? []);
+    const profilSelect = document.getElementById('profil_poste');
+    const posteInput = document.getElementById('poste');
+
+    function appliquerProfil() {
+        if (!profilSelect || !posteInput) return;
+        const option = profilSelect.options[profilSelect.selectedIndex];
+        const posteProfil = option ? option.getAttribute('data-poste') : '';
+        if (profilSelect.value !== 'autre' && posteProfil) {
+            posteInput.value = posteProfil;
+            boxes().forEach(function (cb) {
+                if (permissionsCycle.indexOf(cb.value) !== -1) {
+                    cb.checked = true;
+                }
+            });
+            updateCounts();
+        }
+    }
+
+    profilSelect?.addEventListener('change', appliquerProfil);
+    if (profilSelect && profilSelect.value !== 'autre') {
+        appliquerProfil();
+    }
 });
 </script>
 @endpush

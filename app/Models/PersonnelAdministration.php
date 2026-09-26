@@ -17,9 +17,12 @@ class PersonnelAdministration extends Model
      */
     protected $table = 'personnel_administration';
 
+    public const CYCLES = ['primaire', 'college', 'lycee'];
+
     protected $fillable = [
         'utilisateur_id',
         'poste',
+        'cycle',
         'departement',
         'date_embauche',
         'salaire',
@@ -143,5 +146,96 @@ class PersonnelAdministration extends Model
     public function getNomCompletAttribute(): string
     {
         return $this->utilisateur->nom . ' ' . $this->utilisateur->prenom;
+    }
+
+    public static function profils(): array
+    {
+        return [
+            'censeur' => [
+                'poste' => 'Censeur',
+                'cycle' => 'lycee',
+                'label' => 'Censeur (Lycée)',
+            ],
+            'directeur_etudes' => [
+                'poste' => 'Directeur d\'études',
+                'cycle' => 'college',
+                'label' => 'Directeur d\'études (Collège)',
+            ],
+            'directeur_primaire' => [
+                'poste' => 'Directeur du primaire',
+                'cycle' => 'primaire',
+                'label' => 'Directeur du primaire',
+            ],
+        ];
+    }
+
+    public static function resoudreProfil(?string $profil, ?string $posteLibre = null): array
+    {
+        $profils = self::profils();
+        if ($profil && isset($profils[$profil])) {
+            return $profils[$profil];
+        }
+
+        return [
+            'poste' => $posteLibre ?: '',
+            'cycle' => null,
+            'label' => 'Autre',
+        ];
+    }
+
+    public static function cleProfilDepuisPoste(?string $poste): string
+    {
+        foreach (self::profils() as $cle => $profil) {
+            if (mb_strtolower(trim((string) $poste)) === mb_strtolower($profil['poste'])) {
+                return $cle;
+            }
+        }
+
+        return 'autre';
+    }
+
+    public static function permissionsParDefautCycle(): array
+    {
+        return [
+            'classes.view',
+            'classes.create',
+            'classes.edit',
+            'classes.delete',
+            'notes.view',
+            'notes.create',
+            'notes.edit',
+            'notes.delete',
+            'notes.bulletins',
+            'emplois_temps.view',
+            'emplois_temps.create',
+            'emplois_temps.edit',
+            'emplois_temps.delete',
+            'emplois-temps.view',
+            'emplois-temps.create',
+            'emplois-temps.edit',
+            'emplois-temps.delete',
+        ];
+    }
+
+    public function cycle(): ?string
+    {
+        $cycle = $this->attributes['cycle'] ?? null;
+
+        return in_array($cycle, self::CYCLES, true) ? $cycle : null;
+    }
+
+    public function estLimiteParCycle(): bool
+    {
+        return $this->cycle() !== null;
+    }
+
+    public function cycleLibelle(): string
+    {
+        return match ($this->cycle()) {
+            'primaire' => 'Primaire',
+            'college' => 'Collège',
+            'lycee' => 'Lycée',
+            default => '—',
+        };
     }
 }

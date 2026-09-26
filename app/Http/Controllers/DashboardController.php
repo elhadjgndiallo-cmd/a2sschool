@@ -61,6 +61,9 @@ class DashboardController extends Controller
     {
         try {
             $user = Auth::user();
+            $voirStatsFinancieres = $user->hasPermission('comptabilite.view')
+                || $user->hasPermission('statistiques.financieres');
+            $voirPaiements = $voirStatsFinancieres || $user->hasPermission('paiements.view');
             
             // Mettre en cache les statistiques pour 5 minutes (par année scolaire active)
             $anneeScolaireActive = AnneeScolaire::anneeActive();
@@ -114,10 +117,12 @@ class DashboardController extends Controller
             });
             
             // Derniers paiements (pas de cache pour les données récentes)
-            $derniersPaiements = Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
+            $derniersPaiements = $voirPaiements
+                ? Paiement::with(['fraisScolarite.eleve.utilisateur', 'encaissePar'])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get()
+                : collect();
             
             // Dernières absences
             $dernieresAbsences = Absence::with(['eleve.utilisateur', 'matiere'])
@@ -132,13 +137,15 @@ class DashboardController extends Controller
                 ->get();
 
             // Statistiques par mois (pour les graphiques) - cache de 1 heure
-            $paiementsParMois = Cache::remember('paiements_par_mois', 3600, function () {
-                return Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
-                    ->whereYear('created_at', now()->year)
-                    ->groupBy('mois')
-                    ->orderBy('mois')
-                    ->get();
-            });
+            $paiementsParMois = $voirPaiements
+                ? Cache::remember('paiements_par_mois', 3600, function () {
+                    return Paiement::selectRaw('MONTH(created_at) as mois, SUM(montant_paye) as total')
+                        ->whereYear('created_at', now()->year)
+                        ->groupBy('mois')
+                        ->orderBy('mois')
+                        ->get();
+                })
+                : collect();
 
             $absencesParMois = Cache::remember('absences_par_mois', 3600, function () {
                 return Absence::selectRaw('MONTH(date_absence) as mois, COUNT(*) as total')
@@ -155,7 +162,9 @@ class DashboardController extends Controller
                 'dernieresNotes',
                 'paiementsParMois',
                 'absencesParMois',
-                'user'
+                'user',
+                'voirStatsFinancieres',
+                'voirPaiements'
             ));
         } catch (\Exception $e) {
             // Log l'erreur pour debugging
@@ -178,6 +187,8 @@ class DashboardController extends Controller
                 'notes_total' => 0,
             ];
 
+            $userErreur = Auth::user();
+
             return view('admin.dashboard', [
                 'stats' => $stats,
                 'derniersPaiements' => collect(),
@@ -185,7 +196,9 @@ class DashboardController extends Controller
                 'dernieresNotes' => collect(),
                 'paiementsParMois' => collect(),
                 'absencesParMois' => collect(),
-                'user' => Auth::user(),
+                'user' => $userErreur,
+                'voirStatsFinancieres' => $userErreur?->hasPermission('comptabilite.view') || $userErreur?->hasPermission('statistiques.financieres'),
+                'voirPaiements' => $userErreur?->hasPermission('comptabilite.view') || $userErreur?->hasPermission('paiements.view'),
                 'error' => 'Une erreur est survenue lors du chargement du tableau de bord. Veuillez réessayer.'
             ]);
         }

@@ -9,13 +9,21 @@ use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\Enseignant;
 use App\Models\TestMensuel;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class NoteController extends Controller
+class NoteController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('classe.cycle'),
+        ];
+    }
     /**
      * Afficher la liste des classes pour sélection
      */
@@ -32,7 +40,7 @@ class NoteController extends Controller
         
         if ($user->isAdmin() || $user->role === 'personnel_admin') {
             // Admin et Personnel Admin voient toutes les classes de l'année active
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     if ($anneeScolaireActive) {
                         $query->where('annee_scolaire_id', $anneeScolaireActive->id);
@@ -47,7 +55,7 @@ class NoteController extends Controller
         } else if ($user->isTeacher()) {
             // Enseignant voit seulement ses classes de l'année active (via emplois du temps)
             $enseignant = $user->enseignant;
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
@@ -788,12 +796,14 @@ class NoteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
         
-        // Filtrer les classes pour ne montrer que celles qui ont des élèves de l'année scolaire active
-        $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        })->with(['eleves' => function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        }])->get();
+        // Filtrer les classes du cycle de l'utilisateur, avec des élèves de l'année scolaire active
+        $classes = Classe::query()
+            ->visiblesPourUtilisateur()
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }])->orderBy('niveau')->orderBy('nom')->get();
         
         return view('notes.bulletins', compact('classes', 'anneeScolaireActive'));
     }
@@ -996,7 +1006,7 @@ class NoteController extends Controller
         $user = auth()->user();
         
         if ($user->isAdmin()) {
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);
                 })
@@ -1006,7 +1016,7 @@ class NoteController extends Controller
                 ->get();
         } else {
             $enseignant = $user->enseignant;
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
@@ -1349,7 +1359,7 @@ class NoteController extends Controller
         }
 
         $user = auth()->user();
-        $query = Classe::actif()
+        $query = Classe::actif()->visiblesPourUtilisateur()
             ->whereHas('eleves', function ($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id)
                       ->where('actif', true);
@@ -1450,18 +1460,25 @@ class NoteController extends Controller
             return redirect()->back()->with('error', 'Aucune année scolaire active trouvée. Veuillez activer une année scolaire.');
         }
         
-        // Filtrer les classes pour ne montrer que celles qui ont des élèves de l'année scolaire active
-        $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        })->with(['eleves' => function($query) use ($anneeScolaireActive) {
-            $query->where('annee_scolaire_id', $anneeScolaireActive->id);
-        }])->get();
-        
-        // Récupérer/Créer les périodes scolaires (trimestres)
-        $periodes = $this->ensurePeriodesTrimestrielles($anneeScolaireActive);
+        // Filtrer les classes du cycle de l'utilisateur, avec des élèves de l'année scolaire active
+        $classes = Classe::query()
+            ->visiblesPourUtilisateur()
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            })->with(['eleves' => function($query) use ($anneeScolaireActive) {
+                $query->where('annee_scolaire_id', $anneeScolaireActive->id);
+            }])->orderBy('niveau')->orderBy('nom')->get();
         
         $classeId = $request->get('classe_id');
         $periodeId = $request->get('periode_id');
+        $classeSelectionnee = $classeId ? ($classes->firstWhere('id', (int) $classeId) ?? Classe::find($classeId)) : null;
+        $useSemestres = \App\Helpers\PeriodeHelper::utiliseSemestresPourListe(
+            $classes,
+            $classeSelectionnee instanceof Classe ? $classeSelectionnee : null,
+            auth()->user()?->cycleGere()
+        );
+        $typePeriode = $useSemestres ? 'Semestre' : 'Trimestre';
+        $periodes = $this->periodesPourTableauStatistique($anneeScolaireActive, $useSemestres);
         
         $stats = [];
         $periode = null;
@@ -1477,6 +1494,7 @@ class NoteController extends Controller
                     // Si une classe spécifique est sélectionnée, ne traiter que celle-ci
                     $classeSpecifique = Classe::find($classeId);
                     if ($classeSpecifique) {
+                        auth()->user()?->abortSiHorsCycle($classeSpecifique);
                         $classesATraiter = collect([$classeSpecifique]);
                     }
                 }
@@ -1612,7 +1630,7 @@ class NoteController extends Controller
             }
         }
         
-        return view('notes.statistiques', compact('classes', 'anneeScolaireActive', 'stats', 'periodes', 'periode', 'classeId', 'periodeId'));
+        return view('notes.statistiques', compact('classes', 'anneeScolaireActive', 'stats', 'periodes', 'periode', 'classeId', 'periodeId', 'typePeriode'));
     }
     
     /**
@@ -1635,6 +1653,7 @@ class NoteController extends Controller
         }
         
         $classe = Classe::findOrFail($classeId);
+        auth()->user()?->abortSiHorsCycle($classe);
         $periode = \App\Models\PeriodeScolaire::findOrFail($periodeId);
         
         // Vider le cache pour s'assurer que les données sont à jour
@@ -1765,7 +1784,9 @@ class NoteController extends Controller
         // Récupérer les informations de l'établissement
         $etablissement = \App\Models\Etablissement::principal();
         
-        return view('notes.statistiques-imprimer', compact('classe', 'stats', 'periode', 'etablissement'));
+        $typePeriode = \App\Helpers\PeriodeHelper::type($classe);
+
+        return view('notes.statistiques-imprimer', compact('classe', 'stats', 'periode', 'etablissement', 'typePeriode'));
     }
 
     public function statistiquesClasse(Request $request, $classeId)
@@ -1778,6 +1799,7 @@ class NoteController extends Controller
         }
         
         $classe = Classe::findOrFail($classeId);
+        auth()->user()?->abortSiHorsCycle($classe);
         $periode = $request->input('periode', 'trimestre1');
         
         // Filtrer les élèves par année scolaire active
@@ -1835,6 +1857,7 @@ class NoteController extends Controller
         }
         
         $classe = Classe::findOrFail($classeId);
+        auth()->user()?->abortSiHorsCycle($classe);
         
         // Filtrer les élèves par année scolaire active
         $eleves = Eleve::where('classe_id', $classeId)
@@ -3077,7 +3100,7 @@ class NoteController extends Controller
         
         // Récupérer les classes selon le rôle
         if ($user->isAdmin() || $user->role === 'personnel_admin') {
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                     $query->where('annee_scolaire_id', $anneeScolaireActive->id);
                 })
@@ -3085,7 +3108,7 @@ class NoteController extends Controller
             $enseignants = Enseignant::listeDeroulante();
         } else if ($user->isTeacher()) {
             $enseignant = $user->enseignant;
-            $classes = Classe::actif()
+            $classes = Classe::actif()->visiblesPourUtilisateur()
                 ->whereHas('emploisTemps', function($query) use ($enseignant) {
                     $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
                 })
@@ -3388,6 +3411,72 @@ class NoteController extends Controller
         }
 
         return 'trimestre1';
+    }
+
+    /**
+     * Périodes du tableau statistique : 2 semestres (collège/lycée) ou 3 trimestres (primaire).
+     */
+    private function periodesPourTableauStatistique($anneeScolaire, bool $useSemestres)
+    {
+        if ($useSemestres) {
+            return $this->ensurePeriodesSemestrielles($anneeScolaire);
+        }
+
+        return $this->ensurePeriodesTrimestrielles($anneeScolaire);
+    }
+
+    /**
+     * S'assurer que les 2 semestres existent pour l'année scolaire.
+     */
+    private function ensurePeriodesSemestrielles($anneeScolaire)
+    {
+        if (!$anneeScolaire) {
+            return collect();
+        }
+
+        $dateDebutAnnee = \Carbon\Carbon::parse($anneeScolaire->date_debut);
+        $dateFinAnnee = \Carbon\Carbon::parse($anneeScolaire->date_fin);
+        $milieu = $dateDebutAnnee->copy()->addDays((int) floor($dateDebutAnnee->diffInDays($dateFinAnnee) / 2));
+
+        $semestre1Debut = $dateDebutAnnee->copy();
+        $semestre1Fin = $milieu->copy();
+        $semestre1Conseil = $semestre1Fin->copy()->addDays(5);
+
+        $semestre2Debut = $semestre1Fin->copy()->addDay();
+        $semestre2Fin = $dateFinAnnee->copy();
+        $semestre2Conseil = $semestre2Fin->copy()->addDays(5);
+
+        $periodesData = [
+            [
+                'nom' => 'Semestre 1',
+                'date_debut' => $semestre1Debut->format('Y-m-d'),
+                'date_fin' => $semestre1Fin->format('Y-m-d'),
+                'date_conseil' => $semestre1Conseil->format('Y-m-d'),
+                'couleur' => 'primary',
+                'actif' => true,
+                'ordre' => 1,
+            ],
+            [
+                'nom' => 'Semestre 2',
+                'date_debut' => $semestre2Debut->format('Y-m-d'),
+                'date_fin' => $semestre2Fin->format('Y-m-d'),
+                'date_conseil' => $semestre2Conseil->format('Y-m-d'),
+                'couleur' => 'success',
+                'actif' => true,
+                'ordre' => 2,
+            ],
+        ];
+
+        foreach ($periodesData as $periodeData) {
+            \App\Models\PeriodeScolaire::updateOrCreate(
+                ['nom' => $periodeData['nom']],
+                $periodeData
+            );
+        }
+
+        return \App\Models\PeriodeScolaire::whereIn('nom', ['Semestre 1', 'Semestre 2'])
+            ->orderBy('ordre')
+            ->get();
     }
 
     /**
@@ -3949,7 +4038,9 @@ class NoteController extends Controller
         if ($user->isTeacher()) {
             // Pour les enseignants, uniquement les classes qu'ils enseignent
             $enseignant = $user->enseignant;
-            $classes = Classe::whereHas('emploisTemps', function($query) use ($enseignant) {
+            $classes = Classe::query()
+            ->visiblesPourUtilisateur()
+            ->whereHas('emploisTemps', function($query) use ($enseignant) {
                 $query->where('enseignant_id', $enseignant->id)->actif()->pourAnneeActive();
             })
             ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
@@ -3961,8 +4052,9 @@ class NoteController extends Controller
             ->orderBy('nom')
             ->get();
         } else {
-            // Pour les admins, toutes les classes ayant des élèves de l'année active
-            $classes = Classe::whereHas('eleves', function($query) use ($anneeScolaireActive) {
+            $classes = Classe::query()
+            ->visiblesPourUtilisateur()
+            ->whereHas('eleves', function($query) use ($anneeScolaireActive) {
                 $query->where('annee_scolaire_id', $anneeScolaireActive->id);
             })
             ->with(['eleves' => function($query) use ($anneeScolaireActive) {

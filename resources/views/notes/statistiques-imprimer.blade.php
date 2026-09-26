@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Statistiques Trimestrielles - ' . $classe->nom)
+@section('title', 'Statistiques ' . ($typePeriode === 'Semestre' ? 'Semestrielles' : 'Trimestrielles') . ' - ' . $classe->nom)
 
 @push('styles')
 <style>
@@ -46,7 +46,7 @@
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom no-print">
         <h1 class="h2">
             <i class="fas fa-chart-bar me-2"></i>
-            Statistiques Trimestrielles - {{ $classe->nom }}
+            Statistiques {{ $typePeriode === 'Semestre' ? 'Semestrielles' : 'Trimestrielles' }} - {{ $classe->nom }}
         </h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <button onclick="window.print()" class="btn btn-primary me-2">
@@ -329,7 +329,7 @@
     <div class="print-container">
         <div class="header">
             <div style="text-align: center; margin-bottom: 15px;">
-                <h1>STATISTIQUES TRIMESTRIELLES</h1>
+                <h1>STATISTIQUES {{ $typePeriode === 'Semestre' ? 'SEMESTRIELLES' : 'TRIMESTRIELLES' }}</h1>
                 <h2>{{ $classe->nom }} - {{ $periode->nom }}</h2>
             </div>
             <div class="header-top">
