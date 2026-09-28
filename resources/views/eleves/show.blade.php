@@ -488,52 +488,46 @@
 </div>
 <!-- Fin de la section Parents / Tuteurs -->
 
-<!-- Paiements et Frais de Scolarité - En dessous de la section Parents / Tuteurs -->
+<!-- Factures de l'élève -->
 <div class="card mb-4">
 	<div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
 		<h5 class="mb-0">Paiements et Frais de Scolarité</h5>
-		<a href="{{ route('paiements.index') }}" class="btn btn-sm btn-light">
-			<i class="fas fa-receipt me-1"></i> Aller aux paiements
-		</a>
+		@if(auth()->user()?->hasPermission('paiements.view'))
+			<a href="{{ route('factures.index') }}" class="btn btn-sm btn-light">
+				<i class="fas fa-file-invoice me-1"></i> Aller aux factures
+			</a>
+		@endif
 	</div>
 	<div class="card-body">
-		@if($eleve->fraisScolarite && $eleve->fraisScolarite->count() > 0)
+		@if(($facturesEleve ?? collect())->count() > 0)
 			<div class="table-responsive">
 				<table class="table table-striped align-middle">
 					<thead class="table-light">
 						<tr>
-							<th>Libellé</th>
+							<th>N° facture</th>
+							<th>Date</th>
 							<th class="text-end">Montant</th>
-							<th class="text-end">Payé</th>
-							<th class="text-end">Restant</th>
-							<th>Échéance</th>
-							<th>Paiements</th>
+							<th>Statut</th>
+							<th class="text-end">Action</th>
 						</tr>
 					</thead>
 					<tbody>
-					@foreach($eleve->fraisScolarite as $frais)
-						@php
-							$montantPaye = $frais->paiements->sum('montant_paye');
-							$restant = max(0, ($frais->montant ?? 0) - $montantPaye);
-						@endphp
+					@foreach($facturesEleve as $facture)
 						<tr>
-							<td>{{ $frais->libelle ?? 'Frais' }}</td>
-                            <td class="text-end">{{ number_format($frais->montant ?? 0, 0, ',', ' ') }} GNF</td>
-                            <td class="text-end text-success fw-semibold">{{ number_format($montantPaye, 0, ',', ' ') }} GNF</td>
-                            <td class="text-end {{ $restant > 0 ? 'text-danger' : 'text-success' }} fw-semibold">{{ number_format($restant, 0, ',', ' ') }} GNF</td>
-							<td>{{ optional($frais->date_echeance)->format('d/m/Y') }}</td>
+							<td><span class="fw-semibold">{{ $facture->numero_facture }}</span></td>
+							<td>{{ optional($facture->date_facture)->format('d/m/Y') ?: '—' }}</td>
+							<td class="text-end fw-semibold">{{ number_format($facture->total, 0, ',', ' ') }} GNF</td>
 							<td>
-								@if($frais->paiements->count() > 0)
-									<ul class="mb-0 ps-3">
-										@foreach($frais->paiements as $paie)
-											<li>
-                                                <strong>{{ number_format($paie->montant_paye, 0, ',', ' ') }} GNF</strong>
-												<small class="text-muted">— {{ optional($paie->date_paiement)->format('d/m/Y') }} @if($paie->numero_recu) • Reçu {{ $paie->numero_recu }} @endif</small>
-											</li>
-										@endforeach
-									</ul>
-								@else
-									<span class="text-muted">Aucun paiement</span>
+								<span class="badge bg-{{ $facture->statutBadgeClass() }}">
+									{{ $facture->statutLibelle() }}
+								</span>
+							</td>
+							<td class="text-end">
+								@if(auth()->user()?->hasPermission('paiements.view'))
+									<a href="{{ route('factures.pdf', $facture) }}"
+									   class="btn btn-sm btn-outline-primary" target="_blank">
+										<i class="fas fa-eye me-1"></i> Voir
+									</a>
 								@endif
 							</td>
 						</tr>
@@ -544,7 +538,7 @@
 		@else
 			<p class="text-muted mb-0">
 				<i class="fas fa-info-circle me-1"></i>
-				Aucun frais de scolarité enregistré pour cet élève.
+				Aucune facture pour cet élève.
 			</p>
 		@endif
 	</div>

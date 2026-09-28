@@ -203,6 +203,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('eleve_search_results');
     const selectedEleveDiv = document.getElementById('selected_eleve');
     const eleves = @json($eleves);
+    const elevesUniques = [];
+    const utilisateursVus = new Set();
+    eleves.forEach(eleve => {
+        const cle = eleve.utilisateur_id || eleve.id;
+        if (utilisateursVus.has(cle)) {
+            return;
+        }
+        utilisateursVus.add(cle);
+        elevesUniques.push(eleve);
+    });
 
     let searchTimeout;
 
@@ -216,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         searchTimeout = setTimeout(() => {
-            const filtered = eleves.filter(eleve => {
+            const filtered = elevesUniques.filter(eleve => {
                 const nom = (eleve.utilisateur?.nom || '').toLowerCase();
                 const prenom = (eleve.utilisateur?.prenom || '').toLowerCase();
                 const matricule = (eleve.numero_etudiant || '').toLowerCase();

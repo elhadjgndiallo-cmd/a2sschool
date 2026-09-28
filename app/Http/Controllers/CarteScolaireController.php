@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AnneeScolaire;
 use App\Models\CarteScolaire;
 use App\Models\Eleve;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class CarteScolaireController extends Controller
 
         $cartes = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        $eleves = Eleve::with('utilisateur')->where('actif', true)->get();
+        $eleves = $this->elevesAnneeActive();
         $classes = \App\Models\Classe::actif()->orderBy('nom')->get();
 
         return view('cartes-scolaires.index', compact('cartes', 'eleves', 'classes'));
@@ -54,11 +55,7 @@ class CarteScolaireController extends Controller
      */
     public function create(Request $request)
     {
-        // Récupérer tous les élèves actifs (pas seulement ceux sans carte)
-        // pour permettre la création même si une carte existe déjà (remplacement)
-        $eleves = Eleve::with(['utilisateur', 'classe'])
-            ->where('actif', true)
-            ->get();
+        $eleves = $this->elevesAnneeActive();
 
         // Si un eleve_id est passé, pré-sélectionner cet élève
         $selectedEleveId = $request->get('eleve_id');
@@ -400,5 +397,20 @@ class CarteScolaireController extends Controller
         $qrCode .= '<div style="width: 100%; height: 100%; border: 1px solid #d4af37; display: none; align-items: center; justify-content: center; background: #f8f9fa; text-align: center; padding: 2px; font-size: 8px; border-radius: 2px;">QR<br/>Code<br/><small>' . substr($numeroCarte, -4) . '</small></div>';
 
         return $qrCode;
+    }
+
+    /**
+     * Élèves de l'année scolaire en cours, sans doublon (réinscription = une ligne par année).
+     */
+    private function elevesAnneeActive()
+    {
+        $query = Eleve::with(['utilisateur', 'classe'])->where('actif', true);
+
+        $anneeActive = AnneeScolaire::anneeActive();
+        if ($anneeActive) {
+            $query->where('annee_scolaire_id', $anneeActive->id);
+        }
+
+        return $query->get()->unique('utilisateur_id')->values();
     }
 }

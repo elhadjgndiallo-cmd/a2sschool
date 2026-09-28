@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Eleve;
+use App\Models\Facture;
 use App\Models\Utilisateur;
 use App\Models\ParentModel;
 use App\Models\Classe;
@@ -422,12 +423,17 @@ class EleveController extends Controller
             'parents.utilisateur', 
             'notes.matiere', 
             'absences',
-            'fraisScolarite.paiements',
-            'fraisScolarite.tranchesPaiement',
+            'fraisScolarite',
             'cartesScolaires',
         ])->findOrFail($id);
-        
-        return view('eleves.show', compact('eleve'));
+
+        $facturesEleve = Facture::query()
+            ->where('eleve_id', $eleve->id)
+            ->orderByDesc('date_facture')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('eleves.show', compact('eleve', 'facturesEleve'));
     }
 
     /**
