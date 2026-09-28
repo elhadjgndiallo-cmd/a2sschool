@@ -186,16 +186,16 @@ class AdminAccountController extends Controller
             if ($profil['cycle'] && empty($permissions)) {
                 $permissions = PersonnelAdministration::permissionsParDefautCycle();
             }
-            PersonnelAdministration::create([
+            $personnel = PersonnelAdministration::create([
                 'utilisateur_id' => $utilisateur->id,
                 'poste' => $profil['poste'] ?: $request->poste,
-                'cycle' => $profil['cycle'],
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'permissions' => $permissions,
-                'observations' => $request->observations
+                'observations' => $request->observations,
             ]);
+            PersonnelAdministration::appliquerCycle($personnel, $profil['cycle'] ?? null);
 
             // Mettre à jour la photo de profil si elle existe
             if ($photoPath) {
@@ -228,12 +228,88 @@ class AdminAccountController extends Controller
      */
     public function edit(PersonnelAdministration $adminAccount)
     {
-        $adminAccount->load('utilisateur');
-        $adminAccount->abortIfSystemAdmin();
-        $profilsPoste = PersonnelAdministration::profils();
-        $permissionsCycle = PersonnelAdministration::permissionsParDefautCycle();
+        try {
+            $adminAccount->load('utilisateur');
+            $adminAccount->abortIfSystemAdmin();
 
-        return view('admin.accounts.edit', compact('adminAccount', 'profilsPoste', 'permissionsCycle'));
+            $utilisateur = $adminAccount->utilisateur;
+            if (!$utilisateur) {
+                return redirect()->route('admin.accounts.index')
+                    ->with('error', 'Ce compte administrateur n’est plus lié à un utilisateur.');
+            }
+
+            $profilsPoste = PersonnelAdministration::profils();
+            $permissionsCycle = PersonnelAdministration::permissionsParDefautCycle();
+            $attrs = $adminAccount->getAttributes();
+            $cycleActuel = $attrs['cycle'] ?? null;
+            $profilActuel = old(
+                'profil_poste',
+                PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste)
+            );
+            if ($cycleActuel && $profilActuel === 'autre') {
+                foreach ($profilsPoste as $cle => $profil) {
+                    if (($profil['cycle'] ?? null) === $cycleActuel) {
+                        $profilActuel = $cle;
+                        break;
+                    }
+                }
+            }
+
+            $photoUrl = null;
+            $photoPath = $utilisateur->getRawOriginal('photo_profil') ?: $utilisateur->photo_profil;
+            if ($photoPath) {
+                try {
+                    if (Storage::disk('public')->exists($photoPath)) {
+                        $photoUrl = asset('storage/' . $photoPath);
+                    }
+                } catch (\Throwable $e) {
+                    $photoUrl = null;
+                }
+            }
+
+            $initiales = strtoupper(substr($utilisateur->prenom ?? '', 0, 1) . substr($utilisateur->nom ?? '', 0, 1)) ?: '?';
+            $statut = old('statut', $adminAccount->statut ?? 'actif');
+            $dateNaissance = old('date_naissance', $this->formatDateSafe($utilisateur->getRawOriginal('date_naissance')));
+            $dateEmbauche = old('date_embauche', $this->formatDateSafe($adminAccount->getRawOriginal('date_embauche')));
+
+            return view('admin.accounts.edit', compact(
+                'adminAccount',
+                'utilisateur',
+                'profilsPoste',
+                'permissionsCycle',
+                'profilActuel',
+                'photoUrl',
+                'initiales',
+                'statut',
+                'dateNaissance',
+                'dateEmbauche'
+            ));
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            \Log::error('Erreur admin.accounts.edit', [
+                'id' => $adminAccount->id ?? null,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return redirect()->route('admin.accounts.index')
+                ->with('error', 'Impossible d’ouvrir la page de modification : ' . $e->getMessage());
+        }
+    }
+
+    private function formatDateSafe($value): ?string
+    {
+        if ($value === null || $value === '' || $value === '0000-00-00') {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -293,13 +369,13 @@ class AdminAccountController extends Controller
             $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
             $adminAccount->update([
                 'poste' => $profil['poste'] ?: $request->poste,
-                'cycle' => $profil['cycle'],
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'statut' => $request->statut,
-                'observations' => $request->observations
+                'observations' => $request->observations,
             ]);
+            PersonnelAdministration::appliquerCycle($adminAccount, $profil['cycle'] ?? null);
 
             return redirect()->route('admin.accounts.index')
                 ->with('success', 'Compte administrateur mis à jour avec succès');

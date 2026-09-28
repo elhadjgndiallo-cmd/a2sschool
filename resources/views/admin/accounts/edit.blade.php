@@ -2,20 +2,42 @@
 
 @section('title', 'Modifier le compte administrateur')
 
-@php
-use Illuminate\Support\Facades\Storage;
-$utilisateur = $adminAccount->utilisateur ?? null;
-$photoPath = $utilisateur->photo_profil ?? null;
-$photoUrl = ($photoPath && Storage::disk('public')->exists($photoPath))
-    ? asset('storage/' . $photoPath)
-    : null;
-$initiales = $utilisateur
-    ? strtoupper(substr($utilisateur->prenom ?? '', 0, 1) . substr($utilisateur->nom ?? '', 0, 1))
-    : '?';
-$statut = old('statut', $adminAccount->statut ?? 'actif');
-@endphp
-
 @section('content')
+@php
+    $utilisateur = $utilisateur ?? $adminAccount->utilisateur ?? null;
+    $profilsPoste = $profilsPoste ?? \App\Models\PersonnelAdministration::profils();
+    $profilActuel = $profilActuel ?? old('profil_poste', \App\Models\PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste ?? null));
+    $statut = $statut ?? old('statut', $adminAccount->statut ?? 'actif');
+    $photoUrl = $photoUrl ?? null;
+    $initiales = $initiales ?? ($utilisateur
+        ? strtoupper(substr((string) ($utilisateur->prenom ?? ''), 0, 1) . substr((string) ($utilisateur->nom ?? ''), 0, 1))
+        : '?');
+    if (empty($initiales)) {
+        $initiales = '?';
+    }
+    if (!isset($dateNaissance)) {
+        $dateNaissance = null;
+        try {
+            $rawNaissance = $utilisateur ? $utilisateur->getRawOriginal('date_naissance') : null;
+            if ($rawNaissance && $rawNaissance !== '0000-00-00') {
+                $dateNaissance = \Carbon\Carbon::parse($rawNaissance)->format('Y-m-d');
+            }
+        } catch (\Throwable $e) {
+            $dateNaissance = null;
+        }
+    }
+    if (!isset($dateEmbauche)) {
+        $dateEmbauche = null;
+        try {
+            $rawEmbauche = $adminAccount->getRawOriginal('date_embauche');
+            if ($rawEmbauche && $rawEmbauche !== '0000-00-00') {
+                $dateEmbauche = \Carbon\Carbon::parse($rawEmbauche)->format('Y-m-d');
+            }
+        } catch (\Throwable $e) {
+            $dateEmbauche = null;
+        }
+    }
+@endphp
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="fas fa-user-edit me-2"></i>
@@ -72,12 +94,12 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <img id="photo-preview"
-                             src="{{ $photoUrl }}"
+                             src="{{ $photoUrl ?? '' }}"
                              alt="Photo"
-                             class="rounded-circle {{ $photoUrl ? '' : 'd-none' }}"
+                             class="rounded-circle {{ !empty($photoUrl) ? '' : 'd-none' }}"
                              style="width: 140px; height: 140px; object-fit: cover;">
                         <div id="photo-fallback"
-                             class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto {{ $photoUrl ? 'd-none' : '' }}"
+                             class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto {{ !empty($photoUrl) ? 'd-none' : '' }}"
                              style="width: 140px; height: 140px; font-size: 2.4rem;">
                             {{ $initiales }}
                         </div>
@@ -164,7 +186,7 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
                             <label for="date_naissance" class="form-label">Date de naissance</label>
                             <input type="date" class="form-control @error('date_naissance') is-invalid @enderror"
                                    id="date_naissance" name="date_naissance"
-                                   value="{{ old('date_naissance', optional($utilisateur->date_naissance)->format('Y-m-d')) }}">
+                                   value="{{ old('date_naissance', $dateNaissance ?? null) }}">
                             @error('date_naissance')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -193,16 +215,9 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
                         <div class="col-md-6">
                             <label for="profil_poste" class="form-label">Type de poste <span class="text-danger">*</span></label>
                             <select class="form-select @error('profil_poste') is-invalid @enderror" id="profil_poste" name="profil_poste">
-                                @php
-                                    $profilActuel = old('profil_poste', \App\Models\PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste));
-                                    if ($adminAccount->cycle && $profilActuel === 'autre') {
-                                        $profilActuel = collect(\App\Models\PersonnelAdministration::profils())
-                                            ->search(fn ($p) => $p['cycle'] === $adminAccount->cycle) ?: 'autre';
-                                    }
-                                @endphp
-                                <option value="autre" @selected($profilActuel === 'autre')>Autre (poste libre)</option>
-                                @foreach($profilsPoste as $cle => $profil)
-                                    <option value="{{ $cle }}" data-poste="{{ $profil['poste'] }}" @selected($profilActuel === $cle)>
+                                <option value="autre" @selected(($profilActuel ?? 'autre') === 'autre')>Autre (poste libre)</option>
+                                @foreach(($profilsPoste ?? []) as $cle => $profil)
+                                    <option value="{{ $cle }}" data-poste="{{ $profil['poste'] }}" @selected(($profilActuel ?? '') === $cle)>
                                         {{ $profil['label'] }}
                                     </option>
                                 @endforeach
@@ -231,7 +246,7 @@ $statut = old('statut', $adminAccount->statut ?? 'actif');
                             <label for="date_embauche" class="form-label">Date d'embauche <span class="text-danger">*</span></label>
                             <input type="date" class="form-control @error('date_embauche') is-invalid @enderror"
                                    id="date_embauche" name="date_embauche"
-                                   value="{{ old('date_embauche', optional($adminAccount->date_embauche)->format('Y-m-d')) }}" required>
+                                   value="{{ old('date_embauche', $dateEmbauche ?? null) }}" required>
                             @error('date_embauche')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

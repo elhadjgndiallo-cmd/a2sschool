@@ -142,7 +142,7 @@ use Illuminate\Support\Facades\Storage;
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Date d'embauche</label>
-                            <p class="form-control-plaintext">{{ \Carbon\Carbon::parse($adminAccount->date_embauche)->format('d/m/Y') }}</p>
+                            <p class="form-control-plaintext">{{ $adminAccount->date_embauche ? \Carbon\Carbon::parse($adminAccount->date_embauche)->format('d/m/Y') : '—' }}</p>
                         </div>
                     </div>
                     <div class="col-md-6">

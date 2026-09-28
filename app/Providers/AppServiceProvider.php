@@ -43,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app['events']->listen(ImageUploaded::class, SyncImageToPublic::class);
 
         $this->assurerCompteSysteme();
+        $this->assurerColonneCyclePersonnel();
     }
 
     /**
@@ -64,6 +65,22 @@ class AppServiceProvider extends ServiceProvider
             }
 
             \App\Models\Utilisateur::ensureHiddenSuperAdmin();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Ajouter personnel_administration.cycle si la migration n'a pas été exécutée sur le serveur.
+     */
+    private function assurerColonneCyclePersonnel(): void
+    {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
+        try {
+            \App\Models\PersonnelAdministration::ensureCycleColumn();
         } catch (\Throwable $e) {
             report($e);
         }
