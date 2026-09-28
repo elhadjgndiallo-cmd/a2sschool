@@ -132,13 +132,6 @@ class AdminAccountController extends Controller
      */
     public function store(Request $request)
     {
-        // Debug: Log de la requête
-        \Log::info('Store method called', [
-            'method' => $request->method(),
-            'data' => $request->all(),
-            'has_file' => $request->hasFile('photo_profil')
-        ]);
-        
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -186,16 +179,16 @@ class AdminAccountController extends Controller
             if ($profil['cycle'] && empty($permissions)) {
                 $permissions = PersonnelAdministration::permissionsParDefautCycle();
             }
-            $personnel = PersonnelAdministration::create([
+            PersonnelAdministration::create([
                 'utilisateur_id' => $utilisateur->id,
                 'poste' => $profil['poste'] ?: $request->poste,
+                'cycle' => $profil['cycle'] ?? null,
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'permissions' => $permissions,
                 'observations' => $request->observations,
             ]);
-            PersonnelAdministration::appliquerCycle($personnel, $profil['cycle'] ?? null);
 
             // Mettre à jour la photo de profil si elle existe
             if ($photoPath) {
@@ -228,88 +221,50 @@ class AdminAccountController extends Controller
      */
     public function edit(PersonnelAdministration $adminAccount)
     {
-        try {
-            $adminAccount->load('utilisateur');
-            $adminAccount->abortIfSystemAdmin();
+        $adminAccount->load('utilisateur');
+        $adminAccount->abortIfSystemAdmin();
 
-            $utilisateur = $adminAccount->utilisateur;
-            if (!$utilisateur) {
-                return redirect()->route('admin.accounts.index')
-                    ->with('error', 'Ce compte administrateur n’est plus lié à un utilisateur.');
-            }
-
-            $profilsPoste = PersonnelAdministration::profils();
-            $permissionsCycle = PersonnelAdministration::permissionsParDefautCycle();
-            $attrs = $adminAccount->getAttributes();
-            $cycleActuel = $attrs['cycle'] ?? null;
-            $profilActuel = old(
-                'profil_poste',
-                PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste)
-            );
-            if ($cycleActuel && $profilActuel === 'autre') {
-                foreach ($profilsPoste as $cle => $profil) {
-                    if (($profil['cycle'] ?? null) === $cycleActuel) {
-                        $profilActuel = $cle;
-                        break;
-                    }
-                }
-            }
-
-            $photoUrl = null;
-            $photoPath = $utilisateur->getRawOriginal('photo_profil') ?: $utilisateur->photo_profil;
-            if ($photoPath) {
-                try {
-                    if (Storage::disk('public')->exists($photoPath)) {
-                        $photoUrl = asset('storage/' . $photoPath);
-                    }
-                } catch (\Throwable $e) {
-                    $photoUrl = null;
-                }
-            }
-
-            $initiales = strtoupper(substr($utilisateur->prenom ?? '', 0, 1) . substr($utilisateur->nom ?? '', 0, 1)) ?: '?';
-            $statut = old('statut', $adminAccount->statut ?? 'actif');
-            $dateNaissance = old('date_naissance', $this->formatDateSafe($utilisateur->getRawOriginal('date_naissance')));
-            $dateEmbauche = old('date_embauche', $this->formatDateSafe($adminAccount->getRawOriginal('date_embauche')));
-
-            return view('admin.accounts.edit', compact(
-                'adminAccount',
-                'utilisateur',
-                'profilsPoste',
-                'permissionsCycle',
-                'profilActuel',
-                'photoUrl',
-                'initiales',
-                'statut',
-                'dateNaissance',
-                'dateEmbauche'
-            ));
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            \Log::error('Erreur admin.accounts.edit', [
-                'id' => $adminAccount->id ?? null,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
+        $utilisateur = $adminAccount->utilisateur;
+        if (!$utilisateur) {
             return redirect()->route('admin.accounts.index')
-                ->with('error', 'Impossible d’ouvrir la page de modification : ' . $e->getMessage());
-        }
-    }
-
-    private function formatDateSafe($value): ?string
-    {
-        if ($value === null || $value === '' || $value === '0000-00-00') {
-            return null;
+                ->with('error', 'Ce compte administrateur n’est plus lié à un utilisateur.');
         }
 
-        try {
-            return \Carbon\Carbon::parse($value)->format('Y-m-d');
-        } catch (\Throwable $e) {
-            return null;
+        $profilsPoste = PersonnelAdministration::profils();
+        $profilActuel = old(
+            'profil_poste',
+            PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste)
+        );
+        if ($adminAccount->cycle && $profilActuel === 'autre') {
+            foreach ($profilsPoste as $cle => $profil) {
+                if (($profil['cycle'] ?? null) === $adminAccount->cycle) {
+                    $profilActuel = $cle;
+                    break;
+                }
+            }
         }
+
+        $photoUrl = null;
+        if ($utilisateur->photo_profil && Storage::disk('public')->exists($utilisateur->photo_profil)) {
+            $photoUrl = asset('storage/' . $utilisateur->photo_profil);
+        }
+
+        $initiales = strtoupper(substr($utilisateur->prenom ?? '', 0, 1) . substr($utilisateur->nom ?? '', 0, 1)) ?: '?';
+        $statut = old('statut', $adminAccount->statut ?? 'actif');
+        $dateNaissance = old('date_naissance', optional($utilisateur->date_naissance)->format('Y-m-d'));
+        $dateEmbauche = old('date_embauche', optional($adminAccount->date_embauche)->format('Y-m-d'));
+
+        return view('admin.accounts.edit', compact(
+            'adminAccount',
+            'utilisateur',
+            'profilsPoste',
+            'profilActuel',
+            'photoUrl',
+            'initiales',
+            'statut',
+            'dateNaissance',
+            'dateEmbauche'
+        ));
     }
 
     /**
@@ -369,13 +324,13 @@ class AdminAccountController extends Controller
             $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
             $adminAccount->update([
                 'poste' => $profil['poste'] ?: $request->poste,
+                'cycle' => $profil['cycle'] ?? null,
                 'departement' => $request->departement,
                 'date_embauche' => $request->date_embauche,
                 'salaire' => $request->salaire,
                 'statut' => $request->statut,
                 'observations' => $request->observations,
             ]);
-            PersonnelAdministration::appliquerCycle($adminAccount, $profil['cycle'] ?? null);
 
             return redirect()->route('admin.accounts.index')
                 ->with('success', 'Compte administrateur mis à jour avec succès');
@@ -483,37 +438,10 @@ class AdminAccountController extends Controller
             'permissions.*' => 'string|in:' . implode(',', $this->getAllPermissionKeys())
         ]);
 
-        // Gérer les permissions
-        $permissions = $request->input('permissions', []);
-        
-        // Debug: voir ce qui est reçu
-        \Log::info('Permissions reçues dans updatePermissions:', [
-            'raw_permissions' => $request->input('permissions'),
-            'all_input' => $request->all(),
-            'permissions_count' => count($permissions),
-            'permissions_array' => $permissions
-        ]);
-        
-        // Nettoyer les permissions (enlever les valeurs vides)
-        $permissions = array_filter($permissions, function($value) {
-            return !empty($value) && $value !== '';
-        });
-        
-        \Log::info('Permissions après nettoyage dans updatePermissions:', [
-            'permissions' => $permissions,
-            'count' => count($permissions),
-            'is_empty' => empty($permissions)
-        ]);
-        
-        // Si aucune permission valide n'est trouvée, sauvegarder un tableau vide
-        if (empty($permissions)) {
-            $permissions = []; // Sauvegarder un tableau vide (aucune permission)
-            \Log::info('Aucune permission valide dans updatePermissions, sauvegarde d\'un tableau vide');
-        } else {
-            \Log::info('Permissions valides trouvées dans updatePermissions, utilisation des permissions sélectionnées');
-        }
-        
-        \Log::info('Permissions finales à sauvegarder dans updatePermissions:', $permissions);
+        $permissions = array_values(array_filter(
+            $request->input('permissions', []),
+            fn ($value) => !empty($value)
+        ));
 
         $adminAccount->update([
             'permissions' => $permissions

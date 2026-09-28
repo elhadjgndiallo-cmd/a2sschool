@@ -240,7 +240,7 @@ class Utilisateur extends Authenticatable
             return null;
         }
 
-        return $this->personnelAdministration?->cycleCode();
+        return $this->personnelAdministration?->cycle;
     }
 
     public function estLimiteParCycle(): bool

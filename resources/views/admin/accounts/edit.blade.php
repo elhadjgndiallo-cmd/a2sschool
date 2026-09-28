@@ -3,41 +3,6 @@
 @section('title', 'Modifier le compte administrateur')
 
 @section('content')
-@php
-    $utilisateur = $utilisateur ?? $adminAccount->utilisateur ?? null;
-    $profilsPoste = $profilsPoste ?? \App\Models\PersonnelAdministration::profils();
-    $profilActuel = $profilActuel ?? old('profil_poste', \App\Models\PersonnelAdministration::cleProfilDepuisPoste($adminAccount->poste ?? null));
-    $statut = $statut ?? old('statut', $adminAccount->statut ?? 'actif');
-    $photoUrl = $photoUrl ?? null;
-    $initiales = $initiales ?? ($utilisateur
-        ? strtoupper(substr((string) ($utilisateur->prenom ?? ''), 0, 1) . substr((string) ($utilisateur->nom ?? ''), 0, 1))
-        : '?');
-    if (empty($initiales)) {
-        $initiales = '?';
-    }
-    if (!isset($dateNaissance)) {
-        $dateNaissance = null;
-        try {
-            $rawNaissance = $utilisateur ? $utilisateur->getRawOriginal('date_naissance') : null;
-            if ($rawNaissance && $rawNaissance !== '0000-00-00') {
-                $dateNaissance = \Carbon\Carbon::parse($rawNaissance)->format('Y-m-d');
-            }
-        } catch (\Throwable $e) {
-            $dateNaissance = null;
-        }
-    }
-    if (!isset($dateEmbauche)) {
-        $dateEmbauche = null;
-        try {
-            $rawEmbauche = $adminAccount->getRawOriginal('date_embauche');
-            if ($rawEmbauche && $rawEmbauche !== '0000-00-00') {
-                $dateEmbauche = \Carbon\Carbon::parse($rawEmbauche)->format('Y-m-d');
-            }
-        } catch (\Throwable $e) {
-            $dateEmbauche = null;
-        }
-    }
-@endphp
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="fas fa-user-edit me-2"></i>

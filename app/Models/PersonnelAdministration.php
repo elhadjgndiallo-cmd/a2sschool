@@ -5,8 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 class PersonnelAdministration extends Model
 {
@@ -21,11 +19,10 @@ class PersonnelAdministration extends Model
 
     public const CYCLES = ['primaire', 'college', 'lycee'];
 
-    protected static ?bool $cycleColumnExists = null;
-
     protected $fillable = [
         'utilisateur_id',
         'poste',
+        'cycle',
         'departement',
         'date_embauche',
         'salaire',
@@ -39,13 +36,6 @@ class PersonnelAdministration extends Model
         'salaire' => 'decimal:2',
         'permissions' => 'array'
     ];
-
-    protected static function booted(): void
-    {
-        static::saving(function (self $model) {
-            unset($model->attributes['cycle']);
-        });
-    }
 
     public function getRouteKeyName()
     {
@@ -235,9 +225,6 @@ class PersonnelAdministration extends Model
         ];
     }
 
-    /**
-     * Accessor : $personnel->cycle ne doit jamais être pris pour une relation Eloquent.
-     */
     public function getCycleAttribute($value): ?string
     {
         return in_array($value, self::CYCLES, true) ? $value : null;
@@ -245,110 +232,16 @@ class PersonnelAdministration extends Model
 
     public function estLimiteParCycle(): bool
     {
-        return $this->cycleCode() !== null;
+        return $this->cycle !== null;
     }
 
     public function cycleLibelle(): string
     {
-        return match ($this->cycleCode()) {
+        return match ($this->cycle) {
             'primaire' => 'Primaire',
             'college' => 'Collège',
             'lycee' => 'Lycée',
             default => '—',
         };
-    }
-
-    /**
-     * Cycle pédagogique. Ne pas nommer cette méthode cycle() :
-     * sans colonne en base, Eloquent la prendrait pour une relation et ferait une erreur 500.
-     */
-    public function cycleCode(): ?string
-    {
-        $attributes = $this->getAttributes();
-        if (!array_key_exists('cycle', $attributes)) {
-            return null;
-        }
-
-        $cycle = $attributes['cycle'];
-
-        return in_array($cycle, self::CYCLES, true) ? $cycle : null;
-    }
-
-    public static function hasCycleColumn(): bool
-    {
-        if (self::$cycleColumnExists !== null) {
-            return self::$cycleColumnExists;
-        }
-
-        try {
-            self::$cycleColumnExists = Schema::hasTable((new static)->getTable())
-                && Schema::hasColumn((new static)->getTable(), 'cycle');
-        } catch (\Throwable $e) {
-            self::$cycleColumnExists = false;
-        }
-
-        return (bool) self::$cycleColumnExists;
-    }
-
-    public static function ensureCycleColumn(): void
-    {
-        try {
-            if (!Schema::hasTable((new static)->getTable())) {
-                return;
-            }
-
-            if (Schema::hasColumn((new static)->getTable(), 'cycle')) {
-                self::$cycleColumnExists = true;
-
-                return;
-            }
-
-            Schema::table((new static)->getTable(), function (Blueprint $table) {
-                $table->string('cycle', 20)->nullable();
-            });
-
-            self::$cycleColumnExists = true;
-        } catch (\Throwable $e) {
-            self::$cycleColumnExists = false;
-            \Log::warning('Impossible d\'ajouter la colonne cycle à personnel_administration', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    public static function payloadAvecCycle(array $data, ?string $cycle): array
-    {
-        unset($data['cycle']);
-
-        return $data;
-    }
-
-    /**
-     * Enregistre le cycle hors insertion Eloquent (la colonne peut manquer en production).
-     */
-    public static function appliquerCycle(self $personnel, ?string $cycle): void
-    {
-        if ($cycle === null || $cycle === '') {
-            return;
-        }
-
-        try {
-            \Illuminate\Support\Facades\DB::statement(
-                'ALTER TABLE personnel_administration ADD COLUMN cycle VARCHAR(20) NULL'
-            );
-        } catch (\Throwable $e) {
-            // Colonne déjà présente, ou droits insuffisants.
-        }
-
-        try {
-            \Illuminate\Support\Facades\DB::table('personnel_administration')
-                ->where('id', $personnel->id)
-                ->update(['cycle' => $cycle]);
-        } catch (\Throwable $e) {
-            \Log::warning('Cycle non enregistré', [
-                'personnel_id' => $personnel->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }
