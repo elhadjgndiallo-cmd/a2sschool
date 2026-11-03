@@ -1013,14 +1013,13 @@ class ComptabiliteController extends Controller
                 break;
         }
 
-        // Pour le rapport annuel, utiliser un résumé mensuel au lieu de toutes les transactions
-        if ($type === 'annee' && $anneeScolaire) {
-            $journal = $this->buildJournalMensuelResume($dateDebut, $dateFin, $anneeScolaire);
-            $isResumeMensuel = true;
-        } else {
-            $journal = $this->buildJournalRapport($dateDebut, $dateFin, $anneeScolaire);
-            $isResumeMensuel = false;
-        }
+        $journal = $this->buildJournalRapport(
+            $dateDebut,
+            $dateFin,
+            $anneeScolaire,
+            $type === 'annee'
+        );
+        $isResumeMensuel = false;
 
         // Solde de la période uniquement (pas de cumul historique)
         $soldeInitial = 0;
@@ -1033,19 +1032,9 @@ class ComptabiliteController extends Controller
             return $transaction;
         });
 
-        if ($type === 'annee' && $anneeScolaire) {
-            $statsRevenus = app(ComptabiliteEntreesStatsService::class)
-                ->calculateStats(new Request(), $anneeScolaire);
-            $statsSorties = app(ComptabiliteSortiesStatsService::class)
-                ->calculateStats(new Request(), $anneeScolaire);
-            $totalEntrees = $statsRevenus['total'];
-            $totalSorties = $statsSorties['total'];
-            $soldeFinal = $totalEntrees - $totalSorties;
-        } else {
-            $totalEntrees = (float) $journal->sum('entree');
-            $totalSorties = (float) $journal->sum('sortie');
-            $soldeFinal = $totalEntrees - $totalSorties;
-        }
+        $totalEntrees = (float) $journal->sum('entree');
+        $totalSorties = (float) $journal->sum('sortie');
+        $soldeFinal = $totalEntrees - $totalSorties;
 
         $anneesScolaires = \App\Models\AnneeScolaire::orderBy('date_debut', 'desc')->get();
         $format = $request->get('format', 'html');
@@ -1105,110 +1094,24 @@ class ComptabiliteController extends Controller
     }
 
     /**
-     * Construire un journal résumé mensuel pour les rapports annuels
-     * (au lieu de charger toutes les transactions)
-     */
-    private function buildJournalMensuelResume(Carbon $dateDebut, Carbon $dateFin, \App\Models\AnneeScolaire $anneeScolaire)
-    {
-        $journal = collect();
-        $debutStr = $dateDebut->format('Y-m-d');
-        $finStr = $dateFin->format('Y-m-d');
-        
-        // Parcourir chaque mois de l'année scolaire
-        $moisCourant = $dateDebut->copy()->startOfMonth();
-        $finAnnee = $dateFin->copy()->endOfMonth();
-        
-        while ($moisCourant->lte($finAnnee)) {
-            $moisDebut = $moisCourant->copy()->startOfMonth();
-            $moisFin = $moisCourant->copy()->endOfMonth();
-            
-            // Limiter à la période de l'année scolaire
-            if ($moisDebut->lt($dateDebut)) {
-                $moisDebut = $dateDebut->copy();
-            }
-            if ($moisFin->gt($dateFin)) {
-                $moisFin = $dateFin->copy();
-            }
-            
-            $debutMoisStr = $moisDebut->format('Y-m-d');
-            $finMoisStr = $moisFin->format('Y-m-d');
-            
-            // OPTIMISATION: Calculer les totaux directement avec SUM
-            $entreesStats = app(ComptabiliteEntreesStatsService::class);
-            
-            // Total entrées (paiements + entrées manuelles)
-            $statsMois = $entreesStats->calculateStats(
-                new Request([
-                    'date_debut' => $debutMoisStr,
-                    'date_fin' => $finMoisStr,
-                ]),
-                $anneeScolaire
-            );
-            $totalEntreesMois = $statsMois['total'];
-            
-            // Total sorties (dépenses + salaires)
-            $sortiesStatsService = app(ComptabiliteSortiesStatsService::class);
-            $dedupLookupMois = $sortiesStatsService->buildSalaryDedupLookup(
-                SalaireEnseignant::where('statut', 'payé')
-                    ->whereNotNull('date_paiement')
-                    ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id))
-                    ->whereBetween('date_paiement', [$debutMoisStr, $finMoisStr])
-                    ->get(['date_paiement', 'salaire_net'])
-            );
-
-            $totalDepensesMois = (float) Depense::where('statut', '!=', 'annule')
-                ->where('annee_scolaire_id', $anneeScolaire->id)
-                ->whereBetween('date_depense', [$debutMoisStr, $finMoisStr])
-                ->where('type_depense', '!=', 'salaire_enseignant')
-                ->sum('montant');
-
-            foreach (Depense::where('statut', '!=', 'annule')
-                ->where('annee_scolaire_id', $anneeScolaire->id)
-                ->whereBetween('date_depense', [$debutMoisStr, $finMoisStr])
-                ->where('type_depense', 'salaire_enseignant')
-                ->get() as $depenseSalaire) {
-                if (!$sortiesStatsService->depenseLieeAuModuleSalaires($depenseSalaire, $dedupLookupMois)) {
-                    $totalDepensesMois += (float) $depenseSalaire->montant;
-                }
-            }
-            
-            $totalSalairesMois = SalaireEnseignant::where('statut', 'payé')
-                ->whereNotNull('date_paiement')
-                ->whereHas('enseignant', fn ($q) => $q->where('annee_scolaire_id', $anneeScolaire->id))
-                ->whereBetween('date_paiement', [$debutMoisStr, $finMoisStr])
-                ->sum('salaire_net');
-            
-            $totalSortiesMois = $totalDepensesMois + $totalSalairesMois;
-            
-            // Ajouter le résumé mensuel au journal
-            $journal->push([
-                'date' => $moisDebut,
-                'libelle' => 'Résumé du mois de ' . $moisDebut->locale('fr')->isoFormat('MMMM YYYY'),
-                'entree' => (float) $totalEntreesMois,
-                'sortie' => (float) $totalSortiesMois,
-                'type' => 'resume_mensuel',
-                'source' => 'Résumé mensuel',
-                'enregistre_par' => null,
-                'created_at' => $moisDebut,
-            ]);
-            
-            // Passer au mois suivant
-            $moisCourant->addMonth();
-        }
-        
-        return $journal->sortBy('date')->values();
-    }
-
-    /**
      * Construire le journal des transactions pour une période donnée.
      */
-    private function buildJournalRapport(Carbon $dateDebut, Carbon $dateFin, ?\App\Models\AnneeScolaire $anneeScolaire = null)
-    {
+    private function buildJournalRapport(
+        Carbon $dateDebut,
+        Carbon $dateFin,
+        ?\App\Models\AnneeScolaire $anneeScolaire = null,
+        bool $toutesFacturesAnnee = false
+    ) {
+        $anneeScolaire = $anneeScolaire ?? \App\Models\AnneeScolaire::anneeActive();
+
+        if ($toutesFacturesAnnee && $anneeScolaire) {
+            return $this->buildJournalAnneeScolaire($anneeScolaire);
+        }
+
         $journal = collect();
         $debutStr = $dateDebut->format('Y-m-d');
         $finStr = $dateFin->format('Y-m-d');
         $entreesStats = app(ComptabiliteEntreesStatsService::class);
-        $anneeScolaire = $anneeScolaire ?? \App\Models\AnneeScolaire::anneeActive();
 
         if ($anneeScolaire) {
             foreach ($entreesStats->buildJournalEntrees($dateDebut, $dateFin, $anneeScolaire) as $ligne) {
@@ -1284,6 +1187,36 @@ class ComptabiliteController extends Controller
                 'source' => 'Salaire enseignant',
                 'enregistre_par' => $salaire->payePar,
                 'created_at' => $salaire->created_at,
+            ]);
+        }
+
+        return $journal->sortByDesc('created_at')->values();
+    }
+
+    /**
+     * Journal année scolaire : mêmes lignes et totaux que le tableau de bord.
+     */
+    private function buildJournalAnneeScolaire(\App\Models\AnneeScolaire $anneeScolaire)
+    {
+        $journal = collect();
+        $request = new Request();
+        $entreesStats = app(ComptabiliteEntreesStatsService::class);
+        $sortiesStats = app(ComptabiliteSortiesStatsService::class);
+
+        foreach ($entreesStats->buildListEntries($request, $anneeScolaire) as $entry) {
+            $journal->push($entreesStats->mapEntryToJournalLine($entry));
+        }
+
+        foreach ($sortiesStats->buildListEntries($request, $anneeScolaire) as $entry) {
+            $journal->push([
+                'date' => $entry->date,
+                'libelle' => $entry->libelle ?: ($entry->description ?? ''),
+                'entree' => 0,
+                'sortie' => (float) $entry->montant,
+                'type' => $entry->type === 'salaire' ? 'salaire_enseignant' : 'depense',
+                'source' => $entry->type_depense ?? 'Dépense',
+                'enregistre_par' => $entry->enregistre_par ?? null,
+                'created_at' => $entry->data->created_at ?? $entry->date,
             ]);
         }
 

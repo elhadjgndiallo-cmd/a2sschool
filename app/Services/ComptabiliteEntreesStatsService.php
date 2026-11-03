@@ -286,11 +286,16 @@ class ComptabiliteEntreesStatsService
     /**
      * Entrées du rapport journalier (une ligne par facture, sans double comptage).
      */
-    public function buildJournalEntrees(Carbon $dateDebut, Carbon $dateFin, AnneeScolaire $anneeScolaire): Collection
-    {
+    public function buildJournalEntrees(
+        Carbon $dateDebut,
+        Carbon $dateFin,
+        AnneeScolaire $anneeScolaire,
+        bool $toutesFacturesAnnee = false
+    ): Collection {
         $request = new Request([
             'date_debut' => $dateDebut->format('Y-m-d'),
             'date_fin' => $dateFin->format('Y-m-d'),
+            'toutes_factures_annee' => $toutesFacturesAnnee ? 1 : 0,
         ]);
 
         return $this->buildListEntries($request, $anneeScolaire)
@@ -419,9 +424,14 @@ class ComptabiliteEntreesStatsService
 
     /**
      * Ne garder que les factures dont la date comptable est dans la période (jour ou mois).
+     * Pour le rapport année scolaire, toutes les factures de l'année sont incluses.
      */
     private function shouldIncludeFactureByDate(Carbon|string $date, Request $request): bool
     {
+        if ($request->boolean('toutes_factures_annee')) {
+            return true;
+        }
+
         if (!$request->filled('date_debut') || !$request->filled('date_fin')) {
             return true;
         }
