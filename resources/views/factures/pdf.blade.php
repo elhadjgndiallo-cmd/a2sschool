@@ -22,7 +22,9 @@
 
         /*
          * Feuille A4 paysage (297 × 210 mm)
-         * Grille 2 colonnes = 2 factures A5 portrait (148 × 210 mm)
+         * Grille 2 colonnes = 2 factures A5 portrait
+         * Marges gauche / droite pour l'impression, tout tient sur une page
+         * (9 mois + inscription).
          */
         .sheet-landscape {
             width: 297mm;
@@ -31,15 +33,17 @@
             background: #fff;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 210mm;
+            grid-template-rows: 1fr;
+            padding: 6mm 12mm 5mm;
+            box-sizing: border-box;
         }
 
         .zone-a5 {
             width: 100%;
-            height: 210mm;
-            max-height: 210mm;
+            height: 100%;
+            max-height: 100%;
             overflow: hidden;
-            padding: 5mm 5mm 4mm;
+            padding: 2mm 4mm 2mm;
             position: relative;
         }
 
@@ -56,9 +60,9 @@
 
         .copy-label {
             position: absolute;
-            top: 3mm;
-            right: 5mm;
-            font-size: 14px;
+            top: 1mm;
+            right: 4mm;
+            font-size: 12px;
             font-weight: bold;
             color: #666;
             text-transform: uppercase;
@@ -67,8 +71,8 @@
 
         .header {
             border-bottom: 2px solid #28a745;
-            padding-bottom: 4px;
-            margin-bottom: 5px;
+            padding-bottom: 2px;
+            margin-bottom: 3px;
             flex-shrink: 0;
         }
 
@@ -76,12 +80,12 @@
             display: flex;
             align-items: flex-start;
             gap: 5px;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .header-logo {
-            height: 42px;
-            max-width: 60px;
+            height: 36px;
+            max-width: 52px;
             object-fit: contain;
             flex-shrink: 0;
         }
@@ -102,7 +106,7 @@
         .facture-ref {
             text-align: center;
             font-size: 14px;
-            line-height: 1.3;
+            line-height: 1.25;
         }
 
         .facture-title {
@@ -111,26 +115,27 @@
         }
 
         .meta {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             font-size: 14px;
-            line-height: 1.3;
+            line-height: 1.4;
             flex-shrink: 0;
         }
 
-        .meta div { margin-bottom: 1px; }
+        .meta div { margin-bottom: 2px; }
 
         .lignes-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 3px 0;
+            margin: 2px 0;
             font-size: 14px;
+            line-height: 1.4;
             flex-shrink: 0;
         }
 
         .lignes-table th,
         .lignes-table td {
             border: 1px solid #dee2e6;
-            padding: 10px 8px;
+            padding: 5px 6px;
             text-align: left;
         }
 
@@ -141,13 +146,14 @@
         .totaux {
             width: 100%;
             font-size: 14px;
-            margin-top: 2px;
+            margin-top: 1px;
+            line-height: 1.4;
             flex-shrink: 0;
         }
 
         .totaux td {
             border: none;
-            padding: 6px 4px;
+            padding: 3px 4px;
         }
 
         .total-row {
@@ -159,20 +165,20 @@
 
         .footer-info {
             margin-top: auto;
-            padding-top: 3px;
+            padding-top: 2px;
             font-size: 14px;
             color: #444;
-            line-height: 1.25;
+            line-height: 1.2;
             flex-shrink: 0;
         }
 
         .observations {
-            margin-top: 6px;
-            padding: 4px 6px;
+            margin-top: 3px;
+            padding: 2px 5px;
             border: 1px solid #c8c8c8;
             background: #f8f9fa;
             font-size: 14px;
-            line-height: 1.35;
+            line-height: 1.2;
             color: #222;
             flex-shrink: 0;
         }
@@ -187,6 +193,7 @@
                 width: 297mm;
                 height: 210mm;
                 background: #fff;
+                overflow: hidden;
             }
 
             .no-print { display: none !important; }
@@ -194,12 +201,16 @@
             .sheet-landscape {
                 width: 297mm;
                 height: 210mm;
+                padding: 6mm 12mm 5mm;
                 page-break-after: avoid;
                 page-break-inside: avoid;
+                break-inside: avoid;
+                break-after: avoid;
             }
 
             .zone-a5 {
                 page-break-inside: avoid;
+                break-inside: avoid;
             }
         }
 

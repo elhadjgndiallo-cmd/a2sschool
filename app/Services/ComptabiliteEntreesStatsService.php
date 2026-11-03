@@ -418,15 +418,11 @@ class ComptabiliteEntreesStatsService
     }
 
     /**
-     * Filtre par date uniquement pour le journal journalier (même jour début/fin).
+     * Ne garder que les factures dont la date comptable est dans la période (jour ou mois).
      */
     private function shouldIncludeFactureByDate(Carbon|string $date, Request $request): bool
     {
         if (!$request->filled('date_debut') || !$request->filled('date_fin')) {
-            return true;
-        }
-
-        if ($request->date_debut !== $request->date_fin) {
             return true;
         }
 
