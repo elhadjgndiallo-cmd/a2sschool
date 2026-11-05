@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\PersonnelAdministration;
 use App\Models\Utilisateur;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
@@ -132,6 +131,8 @@ class AdminAccountController extends Controller
      */
     public function store(Request $request)
     {
+        $clesPermissions = $this->getAllPermissionKeys();
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -146,54 +147,61 @@ class AdminAccountController extends Controller
             'date_embauche' => 'required|date',
             'salaire' => 'nullable|numeric|min:0',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'string|in:' . implode(',', $this->getAllPermissionKeys()),
+            'permissions.*' => 'string',
             'observations' => 'nullable|string|max:1000',
             'photo_profil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'password' => 'required|string|min:8|confirmed'
         ]);
 
         try {
-            // Créer l'utilisateur avec le rôle personnel_admin
-            $utilisateur = Utilisateur::create([
-                'nom' => $request->nom,
-                'prenom' => $request->prenom,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'telephone' => $request->telephone,
-                'sexe' => $request->sexe,
-                'date_naissance' => $request->date_naissance,
-                'adresse' => $request->adresse,
-                'role' => 'personnel_admin',
-                'actif' => true
-            ]);
+            DB::transaction(function () use ($request, $clesPermissions) {
+                $utilisateur = Utilisateur::create([
+                    'nom' => $request->nom,
+                    'prenom' => $request->prenom,
+                    'name' => trim($request->prenom . ' ' . $request->nom),
+                    'email' => $request->email,
+                    'password' => $request->password,
+                    'telephone' => $request->telephone,
+                    'sexe' => $request->sexe,
+                    'date_naissance' => $request->date_naissance,
+                    'adresse' => $request->adresse,
+                    'role' => 'personnel_admin',
+                    'actif' => true,
+                ]);
 
-            // Gérer la photo de profil
-            $photoPath = null;
-            if ($request->hasFile('photo_profil')) {
-                $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
-            }
+                $utilisateur->email_verified_at = now();
+                $utilisateur->save();
 
-            // Créer le profil personnel d'administration avec permissions
-            $permissions = $request->permissions ?? [];
-            $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
-            if ($profil['cycle'] && empty($permissions)) {
-                $permissions = PersonnelAdministration::permissionsParDefautCycle();
-            }
-            PersonnelAdministration::create([
-                'utilisateur_id' => $utilisateur->id,
-                'poste' => $profil['poste'] ?: $request->poste,
-                'cycle' => $profil['cycle'] ?? null,
-                'departement' => $request->departement,
-                'date_embauche' => $request->date_embauche,
-                'salaire' => $request->salaire,
-                'permissions' => $permissions,
-                'observations' => $request->observations,
-            ]);
+                if ($request->hasFile('photo_profil')) {
+                    $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
+                    $utilisateur->update(['photo_profil' => $photoPath]);
+                    \App\Helpers\ImageSyncHelper::syncImage($photoPath);
+                }
 
-            // Mettre à jour la photo de profil si elle existe
-            if ($photoPath) {
-                $utilisateur->update(['photo_profil' => $photoPath]);
-            }
+                $permissions = array_values(array_intersect(
+                    $request->input('permissions', []),
+                    $clesPermissions
+                ));
+                $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
+                if ($profil['cycle'] && empty($permissions)) {
+                    $permissions = array_values(array_intersect(
+                        PersonnelAdministration::permissionsParDefautCycle(),
+                        $clesPermissions
+                    ));
+                }
+
+                PersonnelAdministration::create([
+                    'utilisateur_id' => $utilisateur->id,
+                    'poste' => $profil['poste'] ?: $request->poste,
+                    'cycle' => $profil['cycle'] ?? null,
+                    'departement' => $request->departement,
+                    'date_embauche' => $request->date_embauche,
+                    'salaire' => $request->salaire,
+                    'statut' => 'actif',
+                    'permissions' => $permissions,
+                    'observations' => $request->observations,
+                ]);
+            });
 
             return redirect()->route('admin.accounts.index')
                 ->with('success', 'Compte administrateur créé avec succès.');
@@ -275,10 +283,16 @@ class AdminAccountController extends Controller
         $adminAccount->load('utilisateur');
         $adminAccount->abortIfSystemAdmin();
 
+        $utilisateur = $adminAccount->utilisateur;
+        if (!$utilisateur) {
+            return redirect()->route('admin.accounts.index')
+                ->with('error', 'Ce compte administrateur n’est plus lié à un utilisateur.');
+        }
+
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'required|email|unique:utilisateurs,email,' . $adminAccount->utilisateur_id,
+            'email' => 'required|email|unique:utilisateurs,email,' . $utilisateur->id,
             'telephone' => 'nullable|string|max:20',
             'sexe' => 'nullable|in:M,F',
             'date_naissance' => 'nullable|date',
@@ -294,43 +308,40 @@ class AdminAccountController extends Controller
         ]);
 
         try {
-            // Mettre à jour l'utilisateur
-            $adminAccount->utilisateur->update([
-                'nom' => $request->nom,
-                'prenom' => $request->prenom,
-                'email' => $request->email,
-                'telephone' => $request->telephone,
-                'sexe' => $request->sexe,
-                'date_naissance' => $request->date_naissance,
-                'adresse' => $request->adresse,
-                'actif' => $request->statut === 'actif'
-            ]);
+            DB::transaction(function () use ($request, $adminAccount, $utilisateur) {
+                $utilisateur->update([
+                    'nom' => $request->nom,
+                    'prenom' => $request->prenom,
+                    'name' => trim($request->prenom . ' ' . $request->nom),
+                    'email' => $request->email,
+                    'telephone' => $request->telephone,
+                    'sexe' => $request->sexe,
+                    'date_naissance' => $request->date_naissance,
+                    'adresse' => $request->adresse,
+                    'actif' => $request->statut === 'actif',
+                ]);
 
-            // Gérer la photo de profil
-            if ($request->hasFile('photo_profil')) {
-                // Supprimer l'ancienne photo
-                if ($adminAccount->utilisateur->photo_profil) {
-                    Storage::disk('public')->delete($adminAccount->utilisateur->photo_profil);
+                if ($request->hasFile('photo_profil')) {
+                    if ($utilisateur->photo_profil) {
+                        Storage::disk('public')->delete($utilisateur->photo_profil);
+                    }
+
+                    $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
+                    $utilisateur->update(['photo_profil' => $photoPath]);
+                    \App\Helpers\ImageSyncHelper::syncImage($photoPath);
                 }
-                
-                $photoPath = $request->file('photo_profil')->store('photos/admin', 'public');
-                $adminAccount->utilisateur->update(['photo_profil' => $photoPath]);
-                
-                // Synchroniser l'image pour XAMPP
-                \App\Helpers\ImageSyncHelper::syncImage($photoPath);
-            }
 
-            // Mettre à jour le profil personnel d'administration
-            $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
-            $adminAccount->update([
-                'poste' => $profil['poste'] ?: $request->poste,
-                'cycle' => $profil['cycle'] ?? null,
-                'departement' => $request->departement,
-                'date_embauche' => $request->date_embauche,
-                'salaire' => $request->salaire,
-                'statut' => $request->statut,
-                'observations' => $request->observations,
-            ]);
+                $profil = PersonnelAdministration::resoudreProfil($request->profil_poste, $request->poste);
+                $adminAccount->update([
+                    'poste' => $profil['poste'] ?: $request->poste,
+                    'cycle' => $profil['cycle'] ?? null,
+                    'departement' => $request->departement,
+                    'date_embauche' => $request->date_embauche,
+                    'salaire' => $request->salaire,
+                    'statut' => $request->statut,
+                    'observations' => $request->observations,
+                ]);
+            });
 
             return redirect()->route('admin.accounts.index')
                 ->with('success', 'Compte administrateur mis à jour avec succès');
@@ -461,7 +472,7 @@ class AdminAccountController extends Controller
 
         $newPassword = 'admin123';
         $adminAccount->utilisateur->update([
-            'password' => Hash::make($newPassword)
+            'password' => $newPassword
         ]);
 
         return redirect()->back()

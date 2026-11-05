@@ -27,9 +27,14 @@ class FacturationService
         'transport' => 'Transport',
         'inscription' => 'Inscription',
         'reinscription' => 'Réinscription',
+        'uniforme' => 'Uniforme',
+        'livres' => 'Livres',
+        'autre' => 'Autres frais',
     ];
 
     private const TYPES_ENTREE = ['inscription', 'reinscription'];
+
+    private const TYPES_UNITAIRES = ['uniforme', 'livres', 'autre'];
 
     public function __construct(
         private PaiementScolariteService $paiementScolariteService
@@ -68,9 +73,7 @@ class FacturationService
                 }
             }
 
-            $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais d\'uniforme', (float) $tarif->frais_uniforme);
-            $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais de livres', (float) $tarif->frais_livres);
-            $this->creerFraisUnique($eleve, $anneeScolaire, 'Autres frais', (float) $tarif->frais_autres);
+            $this->creerFraisUniquesDepuisTarif($eleve, $anneeScolaire, $tarif);
         });
     }
 
@@ -1180,6 +1183,8 @@ class FacturationService
             $frais = $this->assurerFrais($eleve, $anneeScolaire, $tarif, $type);
             $this->creerToutesTranchesMensuellesManquantes($frais, $moisFacturation, $montantMensuel, $anneeScolaire);
         }
+
+        $this->creerFraisUniquesDepuisTarif($eleve, $anneeScolaire, $tarif);
     }
 
     /**
@@ -1327,7 +1332,20 @@ class FacturationService
         }
 
         return ($ligne['source'] ?? '') === 'tarif'
-            && in_array($ligne['type_frais'] ?? '', self::TYPES_ENTREE, true);
+            && in_array($ligne['type_frais'] ?? '', array_merge(self::TYPES_ENTREE, self::TYPES_UNITAIRES), true);
+    }
+
+    private function rangTypeLigne(string $typeFrais): int
+    {
+        if (in_array($typeFrais, self::TYPES_ENTREE, true)) {
+            return 0;
+        }
+
+        if (in_array($typeFrais, self::TYPES_UNITAIRES, true)) {
+            return 1;
+        }
+
+        return 2;
     }
 
     private function resoudreFraisUnitaire(Eleve $eleve, ?TarifClasse $tarif, array $ligne): FraisScolarite
@@ -1338,12 +1356,22 @@ class FacturationService
 
         if (($ligne['source'] ?? '') === 'tarif' && $tarif) {
             $this->creerFraisEntreeInscription($eleve, $tarif, false, false);
+            $anneeScolaire = $eleve->anneeScolaire ?? \App\Models\AnneeScolaire::anneeActive();
+            if ($anneeScolaire) {
+                $this->creerFraisUniquesDepuisTarif($eleve, $anneeScolaire, $tarif);
+            }
         }
 
-        return FraisScolarite::where('eleve_id', $eleve->id)
-            ->where('type_frais', $ligne['type_frais'])
-            ->whereIn('statut', ['en_attente', 'en_retard'])
-            ->firstOrFail();
+        $query = FraisScolarite::where('eleve_id', $eleve->id)
+            ->whereIn('statut', ['en_attente', 'en_retard']);
+
+        if (!empty($ligne['libelle'])) {
+            $query->where('libelle', $ligne['libelle']);
+        } else {
+            $query->where('type_frais', $ligne['type_frais']);
+        }
+
+        return $query->firstOrFail();
     }
 
     /**
@@ -1356,7 +1384,7 @@ class FacturationService
     {
         return collect($lignes)
             ->sortBy([
-                fn (array $ligne) => in_array($ligne['type_frais'] ?? '', self::TYPES_ENTREE, true) ? 0 : 1,
+                fn (array $ligne) => $this->rangTypeLigne($ligne['type_frais'] ?? ''),
                 ['mois', 'asc'],
                 ['type_frais', 'asc'],
             ])
@@ -1732,6 +1760,16 @@ class FacturationService
         ]);
     }
 
+    private function creerFraisUniquesDepuisTarif(
+        Eleve $eleve,
+        AnneeScolaire $anneeScolaire,
+        TarifClasse $tarif
+    ): void {
+        $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais d\'uniforme', (float) $tarif->frais_uniforme);
+        $this->creerFraisUnique($eleve, $anneeScolaire, 'Frais de livres', (float) $tarif->frais_livres);
+        $this->creerFraisUnique($eleve, $anneeScolaire, 'Autres frais', (float) $tarif->frais_autres);
+    }
+
     private function creerFraisUnique(
         Eleve $eleve,
         AnneeScolaire $anneeScolaire,
@@ -1744,10 +1782,17 @@ class FacturationService
 
         $libelle = $libelleBase . ' - ' . ($eleve->classe?->nom ?? 'Classe') . ' - ' . $anneeScolaire->nom;
 
-        if (FraisScolarite::where('eleve_id', $eleve->id)
-            ->where('libelle', $libelle)
+        $dejaCree = FraisScolarite::where('eleve_id', $eleve->id)
             ->where('statut', '!=', 'annule')
-            ->exists()) {
+            ->where('paiement_par_tranches', false)
+            ->whereNotIn('type_frais', self::TYPES_MENSUELS)
+            ->where(function ($query) use ($libelle, $libelleBase) {
+                $query->where('libelle', $libelle)
+                    ->orWhere('libelle', 'like', $libelleBase . '%');
+            })
+            ->exists();
+
+        if ($dejaCree) {
             return;
         }
 

@@ -230,6 +230,11 @@ class PersonnelAdministration extends Model
         return in_array($value, self::CYCLES, true) ? $value : null;
     }
 
+    public function setCycleAttribute($value): void
+    {
+        $this->attributes['cycle'] = in_array($value, self::CYCLES, true) ? $value : null;
+    }
+
     public function estLimiteParCycle(): bool
     {
         return $this->cycle !== null;

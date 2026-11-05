@@ -81,23 +81,11 @@ class TarifClasseController extends Controller
             return back()->withInput()->with('error', 'Un tarif existe déjà pour cette classe et cette année scolaire.');
         }
 
-        // Préparer les données en gérant les valeurs nulles
-        $data = $request->all();
-        
-        // Convertir les chaînes vides en null pour les champs numériques
-        $numericFields = [
-            'frais_inscription', 'frais_reinscription', 'frais_scolarite_mensuel',
-            'frais_cantine_mensuel', 'frais_transport_mensuel', 'frais_uniforme',
-            'frais_livres', 'frais_autres'
-        ];
-        
-        foreach ($numericFields as $field) {
-            if (isset($data[$field]) && $data[$field] === '') {
-                $data[$field] = null;
-            }
+        try {
+            $tarif = TarifClasse::create($this->donneesTarif($request));
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Erreur lors de la création du tarif : ' . $e->getMessage());
         }
-        
-        $tarif = TarifClasse::create($data);
 
         return redirect()->route('tarifs.show', $tarif)
             ->with('success', 'Tarif créé avec succès.');
@@ -144,7 +132,20 @@ class TarifClasseController extends Controller
             'description' => 'nullable|string'
         ]);
 
-        $tarif->update($request->all());
+        $existingTarif = TarifClasse::where('classe_id', $request->classe_id)
+            ->where('annee_scolaire', $request->annee_scolaire)
+            ->where('id', '!=', $tarif->id)
+            ->first();
+
+        if ($existingTarif) {
+            return back()->withInput()->with('error', 'Un tarif existe déjà pour cette classe et cette année scolaire.');
+        }
+
+        try {
+            $tarif->update($this->donneesTarif($request));
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Erreur lors de la modification du tarif : ' . $e->getMessage());
+        }
 
         return redirect()->route('tarifs.show', $tarif)
             ->with('success', 'Tarif mis à jour avec succès.');
@@ -254,5 +255,39 @@ class TarifClasseController extends Controller
             ]);
 
         return response()->json($tarifs);
+    }
+
+    /**
+     * Données de tarif prêtes à enregistrer (cases à cocher et montants vides inclus).
+     */
+    private function donneesTarif(Request $request): array
+    {
+        $montants = [
+            'frais_inscription',
+            'frais_reinscription',
+            'frais_scolarite_mensuel',
+            'frais_cantine_mensuel',
+            'frais_transport_mensuel',
+            'frais_uniforme',
+            'frais_livres',
+            'frais_autres',
+        ];
+
+        $data = [
+            'classe_id' => $request->classe_id,
+            'annee_scolaire' => $request->annee_scolaire,
+            'paiement_par_tranches' => $request->boolean('paiement_par_tranches'),
+            'nombre_tranches' => (int) $request->nombre_tranches,
+            'periode_tranche' => $request->periode_tranche,
+            'actif' => $request->boolean('actif'),
+            'description' => $request->description,
+        ];
+
+        foreach ($montants as $champ) {
+            $valeur = $request->input($champ);
+            $data[$champ] = ($valeur === null || $valeur === '') ? 0 : $valeur;
+        }
+
+        return $data;
     }
 }

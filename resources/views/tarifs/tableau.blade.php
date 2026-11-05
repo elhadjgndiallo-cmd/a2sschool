@@ -96,7 +96,7 @@
                 <thead class="table-light">
                     <tr>
                         <th rowspan="2" class="text-center align-middle">Classe</th>
-                        <th colspan="3" class="text-center">Frais uniques</th>
+                        <th colspan="4" class="text-center">Frais uniques</th>
                         <th colspan="3" class="text-center">Frais mensuels</th>
                         <th rowspan="2" class="text-end align-middle">Total mensuel</th>
                         <th rowspan="2" class="text-end align-middle">Total annuel</th>
@@ -106,6 +106,7 @@
                         <th class="text-end">Inscription</th>
                         <th class="text-end">Uniforme</th>
                         <th class="text-end">Livres</th>
+                        <th class="text-end">Autres</th>
                         <th class="text-end">Scolarité</th>
                         <th class="text-end">Cantine</th>
                         <th class="text-end">Transport</th>
@@ -121,6 +122,7 @@
                         <td class="text-end">{{ $gnf($tarif->frais_inscription) }}</td>
                         <td class="text-end">{{ $gnf($tarif->frais_uniforme) }}</td>
                         <td class="text-end">{{ $gnf($tarif->frais_livres) }}</td>
+                        <td class="text-end">{{ $gnf($tarif->frais_autres) }}</td>
                         <td class="text-end">{{ $gnf($tarif->frais_scolarite_mensuel) }}</td>
                         <td class="text-end">{{ $gnf($tarif->frais_cantine_mensuel) }}</td>
                         <td class="text-end">{{ $gnf($tarif->frais_transport_mensuel) }}</td>
@@ -138,7 +140,7 @@
                 </tbody>
                 <tfoot class="table-light">
                     <tr>
-                        <th colspan="7" class="text-end">Totaux</th>
+                        <th colspan="8" class="text-end">Totaux</th>
                         <th class="text-end">{{ number_format($tarifs->sum('total_mensuel'), 0, ',', ' ') }} GNF</th>
                         <th class="text-end">{{ number_format($tarifs->sum('total_annuel'), 0, ',', ' ') }} GNF</th>
                         <th></th>
@@ -161,6 +163,7 @@
                     <li>Inscription — payable une fois</li>
                     <li>Uniforme — uniforme scolaire</li>
                     <li>Livres — manuels scolaires</li>
+                    <li>Autres — montant unique, non réparti sur les mois</li>
                 </ul>
             </div>
             <div class="col-md-6">

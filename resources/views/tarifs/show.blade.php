@@ -19,6 +19,19 @@
         </div>
     </div>
 
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <div class="row">
         <!-- Informations principales -->
         <div class="col-lg-8">
@@ -275,7 +288,7 @@
                     <div class="alert alert-light">
                         <small>
                             <i class="fas fa-calculator me-1"></i>
-                            Montant par mois: <strong>{{ number_format($totalMensuel / $tarif->nombre_tranches, 0, ',', ' ') }} GNF</strong>
+                            Montant mensuel (scolarité + cantine + transport) : <strong>{{ number_format($totalMensuel, 0, ',', ' ') }} GNF</strong>
                         </small>
                     </div>
                     @endif

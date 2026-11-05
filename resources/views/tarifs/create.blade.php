@@ -27,6 +27,23 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    @endif
+                    @if($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Veuillez corriger les erreurs du formulaire.</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    @endif
                     <form action="{{ route('tarifs.store') }}" method="POST">
                         @csrf
 
@@ -214,6 +231,7 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="form-check">
+                                    <input type="hidden" name="paiement_par_tranches" value="0">
                                     <input class="form-check-input" type="checkbox" 
                                            id="paiement_par_tranches" name="paiement_par_tranches" 
                                            value="1" {{ old('paiement_par_tranches', 1) ? 'checked' : '' }}>
@@ -270,6 +288,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <div class="form-check">
+                                    <input type="hidden" name="actif" value="0">
                                     <input class="form-check-input" type="checkbox" 
                                            id="actif" name="actif" 
                                            value="1" {{ old('actif', 1) ? 'checked' : '' }}>
@@ -326,14 +345,31 @@
                             <span id="preview-inscription" class="float-end">0 GNF</span>
                         </div>
                         <div class="mb-2">
-                            <strong>Coût mensuel total:</strong>
+                            <strong>Coût mensuel:</strong>
                             <span id="preview-mensuel" class="float-end text-primary">0 GNF</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong id="preview-mois-label">Mensuel × 9 mois:</strong>
+                            <span id="preview-mensuel-annuel" class="float-end">0 GNF</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Uniforme:</strong>
+                            <span id="preview-uniforme" class="float-end">0 GNF</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Livres:</strong>
+                            <span id="preview-livres" class="float-end">0 GNF</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Autres frais:</strong>
+                            <span id="preview-autres" class="float-end text-dark">0 GNF</span>
                         </div>
                         <hr>
                         <div class="mb-2">
                             <strong>Coût annuel estimé:</strong>
                             <span id="preview-annuel" class="float-end text-success">0 GNF</span>
                         </div>
+                        <small class="text-muted">Les autres frais sont un montant unique, pas réparti sur les mois.</small>
                     </div>
                 </div>
             </div>
@@ -478,11 +514,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const livres = parseInt(document.getElementById('frais_livres').value) || 0;
         const autres = parseInt(document.getElementById('frais_autres').value) || 0;
 
+        const nombreMois = parseInt(document.getElementById('nombre_tranches').value) || 9;
         const mensuel = scolarite + cantine + transport;
-        const annuel = inscription + (mensuel * 12) + uniforme + livres + autres;
+        const mensuelAnnuel = mensuel * nombreMois;
+        const annuel = inscription + mensuelAnnuel + uniforme + livres + autres;
 
         document.getElementById('preview-inscription').textContent = inscription.toLocaleString() + ' GNF';
         document.getElementById('preview-mensuel').textContent = mensuel.toLocaleString() + ' GNF';
+        document.getElementById('preview-mois-label').textContent = 'Mensuel × ' + nombreMois + ' mois:';
+        document.getElementById('preview-mensuel-annuel').textContent = mensuelAnnuel.toLocaleString() + ' GNF';
+        document.getElementById('preview-uniforme').textContent = uniforme.toLocaleString() + ' GNF';
+        document.getElementById('preview-livres').textContent = livres.toLocaleString() + ' GNF';
+        document.getElementById('preview-autres').textContent = autres.toLocaleString() + ' GNF';
         document.getElementById('preview-annuel').textContent = annuel.toLocaleString() + ' GNF';
     }
 
@@ -492,6 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
             input.addEventListener('input', updatePreview);
         }
     });
+    document.getElementById('nombre_tranches')?.addEventListener('change', updatePreview);
 
     updatePreview(); // Initial calculation
 });

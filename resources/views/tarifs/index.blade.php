@@ -17,6 +17,19 @@
         </a>
     </div>
 
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <!-- Filtres -->
     <form method="GET" action="{{ route('tarifs.index') }}" class="mb-3">
         <div class="row g-2">
@@ -155,7 +168,9 @@
                                 @if($tarif->frais_uniforme > 0 || $tarif->frais_livres > 0 || $tarif->frais_autres > 0)
                                 <br>
                                 <small class="text-secondary">
-                                    + frais uniques: {{ number_format($tarif->frais_uniforme + $tarif->frais_livres + $tarif->frais_autres, 0, ',', ' ') }}
+                                    @if($tarif->frais_uniforme > 0) uniforme {{ number_format($tarif->frais_uniforme, 0, ',', ' ') }} @endif
+                                    @if($tarif->frais_livres > 0) livres {{ number_format($tarif->frais_livres, 0, ',', ' ') }} @endif
+                                    @if($tarif->frais_autres > 0) autres {{ number_format($tarif->frais_autres, 0, ',', ' ') }} @endif
                                 </small>
                                 @endif
                             </td>

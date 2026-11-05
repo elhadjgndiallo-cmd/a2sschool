@@ -55,9 +55,11 @@ class TarifClasse extends Model
         parent::boot();
 
         static::saving(function ($tarif) {
-            // Valider le nombre de tranches (mois)
-            if ($tarif->nombre_tranches < 1 || $tarif->nombre_tranches > 9) {
-                throw new \InvalidArgumentException('Le nombre de mois doit être entre 1 et 9.');
+            $tranches = (int) $tarif->nombre_tranches;
+            if ($tranches < 1) {
+                $tarif->nombre_tranches = 9;
+            } elseif ($tranches > 12) {
+                $tarif->nombre_tranches = 12;
             }
         });
     }
@@ -200,25 +202,40 @@ class TarifClasse extends Model
             }
         }
 
-        // Créer les frais uniques (inscription, uniforme, livres, autres)
         $fraisUniques = [
-            'inscription' => $this->frais_inscription,
-            'uniforme' => $this->frais_uniforme,
-            'livres' => $this->frais_livres,
-            'autres' => $this->frais_autres
+            [
+                'libelle' => 'Frais d\'inscription',
+                'type' => 'inscription',
+                'montant' => $this->frais_inscription,
+            ],
+            [
+                'libelle' => 'Frais d\'uniforme',
+                'type' => 'autre',
+                'montant' => $this->frais_uniforme,
+            ],
+            [
+                'libelle' => 'Frais de livres',
+                'type' => 'autre',
+                'montant' => $this->frais_livres,
+            ],
+            [
+                'libelle' => 'Autres frais',
+                'type' => 'autre',
+                'montant' => $this->frais_autres,
+            ],
         ];
 
-        foreach ($fraisUniques as $type => $montant) {
-            if ($montant > 0) {
+        foreach ($fraisUniques as $fraisUnique) {
+            if ($fraisUnique['montant'] > 0) {
                 FraisScolarite::create([
                     'eleve_id' => $eleveId,
-                    'classe_id' => $this->classe_id,
-                    'libelle' => 'Frais ' . ucfirst($type) . ' - ' . $this->classe->nom . ' - ' . $anneeScolaire,
-                    'montant' => $montant,
-                    'type_frais' => $type,
-                    'annee_scolaire' => $anneeScolaire,
+                    'libelle' => $fraisUnique['libelle'] . ' - ' . $this->classe->nom . ' - ' . $anneeScolaire,
+                    'montant' => $fraisUnique['montant'],
+                    'date_echeance' => now()->addDays(30),
+                    'type_frais' => $fraisUnique['type'],
                     'paiement_par_tranches' => false,
-                    'statut' => 'en_attente'
+                    'statut' => 'en_attente',
+                    'actif' => true,
                 ]);
             }
         }
