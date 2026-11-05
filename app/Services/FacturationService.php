@@ -706,6 +706,8 @@ class FacturationService
             $observationsComplement
         ) {
             $facture->loadMissing('lignes');
+            $this->reparerSoldesResteHorsFacture($eleve);
+            $facture->load('lignes');
             $snapshotHorsFacture = $this->snapshotTranchesHorsFacture($eleve, $facture);
             $lignesCalculees = $this->lignesResteDepuisFacture($facture);
 
@@ -793,12 +795,19 @@ class FacturationService
 
             if ($ligne->tranche_paiement_id) {
                 $tranche = TranchePaiement::find($ligne->tranche_paiement_id);
-                if (!$tranche || $this->trancheEstPayee($tranche)) {
+                if (!$tranche) {
                     continue;
                 }
 
+                $this->normaliserMontantPayeTranche($tranche);
+                $tranche->refresh();
+
                 $place = max(0, round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2));
-                $resteLigne = min(max(0, $resteLigne), $place);
+                if ($place <= 0.01 && $resteLigne <= 0.01) {
+                    continue;
+                }
+
+                $resteLigne = $resteLigne > 0.01 ? min($resteLigne, $place) : $place;
             } elseif ($ligne->frais_scolarite_id) {
                 $frais = FraisScolarite::find($ligne->frais_scolarite_id);
                 if (!$frais || (float) $frais->montant_restant <= 0.01) {
@@ -912,6 +921,203 @@ class FacturationService
         }
     }
 
+    /**
+     * Recolle un encaissement de solde posé sur un mois non coché
+     * vers les mois de la facture d'origine, et remet l'autre mois à zéro.
+     */
+    public function reparerSoldesResteHorsFacture(Eleve $eleve): void
+    {
+        $appliquer = function () use ($eleve): void {
+            $complements = Facture::query()
+                ->with(['lignes.paiement', 'lignes.tranchePaiement', 'factureOrigine.lignes'])
+                ->where('eleve_id', $eleve->id)
+                ->whereNotNull('facture_origine_id')
+                ->where('statut', '!=', 'annulee')
+                ->get();
+
+            foreach ($complements as $complement) {
+                $this->reparerUnComplementHorsFacture($complement);
+            }
+        };
+
+        if (DB::transactionLevel() > 0) {
+            $appliquer();
+
+            return;
+        }
+
+        DB::transaction($appliquer);
+    }
+
+    private function reparerUnComplementHorsFacture(Facture $complement): void
+    {
+        $origine = $complement->factureOrigine;
+        if (!$origine) {
+            return;
+        }
+
+        $origine->loadMissing('lignes');
+        $idsOrigine = $origine->lignes
+            ->pluck('tranche_paiement_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($idsOrigine === []) {
+            return;
+        }
+
+        foreach ($idsOrigine as $trancheOrigineId) {
+            $trancheOrigine = TranchePaiement::find($trancheOrigineId);
+            if ($trancheOrigine) {
+                $this->normaliserMontantPayeTranche($trancheOrigine);
+            }
+        }
+
+        foreach ($complement->lignes as $ligne) {
+            $trancheId = (int) $ligne->tranche_paiement_id;
+            if ($trancheId <= 0 || in_array($trancheId, $idsOrigine, true)) {
+                continue;
+            }
+
+            $montant = round((float) $ligne->montant_net, 2);
+            if ($montant <= 0.01) {
+                continue;
+            }
+
+            $cible = $this->trancheOriginePourReste($origine, $montant);
+            if (!$cible) {
+                $this->remettreTrancheSansCePaiement($ligne);
+                continue;
+            }
+
+            $this->deplacerPaiementComplementVersTranche($ligne, $cible, $complement);
+        }
+    }
+
+    private function trancheOriginePourReste(Facture $origine, float $montant): ?TranchePaiement
+    {
+        $avecResteLigne = null;
+        $avecPlace = null;
+
+        foreach ($origine->lignes as $ligne) {
+            if (!$ligne->tranche_paiement_id) {
+                continue;
+            }
+
+            $resteLigne = round(
+                (float) $ligne->montant_brut - (float) $ligne->montant_net - (float) $ligne->montant_remise,
+                2
+            );
+
+            $tranche = TranchePaiement::find($ligne->tranche_paiement_id);
+            if (!$tranche) {
+                continue;
+            }
+
+            $this->normaliserMontantPayeTranche($tranche);
+            $tranche->refresh();
+
+            $place = max(0, round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2));
+            if ($place <= 0.01) {
+                continue;
+            }
+
+            if ($resteLigne > 0.01 && !$avecResteLigne) {
+                $avecResteLigne = $tranche;
+            }
+            if (!$avecPlace) {
+                $avecPlace = $tranche;
+            }
+        }
+
+        return $avecResteLigne ?? $avecPlace;
+    }
+
+    private function deplacerPaiementComplementVersTranche(
+        FactureLigne $ligne,
+        TranchePaiement $cible,
+        Facture $complement
+    ): void {
+        $source = $ligne->tranchePaiement ?: TranchePaiement::find($ligne->tranche_paiement_id);
+        $montant = round((float) $ligne->montant_net, 2);
+        if (!$source || $montant <= 0.01 || (int) $source->id === (int) $cible->id) {
+            return;
+        }
+
+        $paiement = $ligne->paiement
+            ?? Paiement::query()
+                ->where('tranche_paiement_id', $source->id)
+                ->where('reference_paiement', $complement->numero_facture)
+                ->first();
+
+        if ($paiement) {
+            $paiement->update(['tranche_paiement_id' => $cible->id]);
+        }
+
+        $ligne->update([
+            'tranche_paiement_id' => $cible->id,
+            'frais_scolarite_id' => $cible->frais_scolarite_id,
+            'mois' => Carbon::parse($cible->date_echeance)->startOfMonth()->format('Y-m-d'),
+        ]);
+
+        $this->recalculerMontantPayeDepuisPaiements($source);
+        $this->recalculerMontantPayeDepuisPaiements($cible);
+    }
+
+    private function remettreTrancheSansCePaiement(FactureLigne $ligne): void
+    {
+        $source = $ligne->tranchePaiement ?: TranchePaiement::find($ligne->tranche_paiement_id);
+        if (!$source) {
+            return;
+        }
+
+        $montant = round((float) $ligne->montant_net, 2);
+        $nouveau = max(0, round((float) $source->montant_paye - $montant, 2));
+        $source->update([
+            'montant_paye' => $nouveau,
+            'statut' => $nouveau + 0.01 >= (float) $source->montant_tranche ? 'paye' : 'en_attente',
+            'date_paiement' => $nouveau > 0.01 ? $source->date_paiement : null,
+        ]);
+    }
+
+    /**
+     * Annule un "soldé" artificiel (reste d'une facture compté comme remise)
+     * pour ne garder que le cash réellement encaissé + les vraies remises.
+     */
+    private function normaliserMontantPayeTranche(TranchePaiement $tranche): void
+    {
+        $cash = round((float) Paiement::query()
+            ->where('tranche_paiement_id', $tranche->id)
+            ->sum('montant_paye'), 2);
+        $remise = round((float) FactureLigne::query()
+            ->where('tranche_paiement_id', $tranche->id)
+            ->whereHas('facture', fn ($q) => $q->where('statut', 'payee'))
+            ->sum('montant_remise'), 2);
+
+        $attendu = min(
+            round((float) $tranche->montant_tranche, 2),
+            round($cash + $remise, 2)
+        );
+        $actuel = round((float) $tranche->montant_paye, 2);
+
+        if (abs($actuel - $attendu) <= 0.01) {
+            return;
+        }
+
+        $tranche->update([
+            'montant_paye' => $attendu,
+            'statut' => $attendu + 0.01 >= (float) $tranche->montant_tranche ? 'paye' : 'en_attente',
+            'date_paiement' => $attendu > 0.01 ? $tranche->date_paiement : null,
+        ]);
+    }
+
+    private function recalculerMontantPayeDepuisPaiements(TranchePaiement $tranche): void
+    {
+        $tranche->refresh();
+        $this->normaliserMontantPayeTranche($tranche);
+    }
+
     public function supprimerFacture(Facture $facture): void
     {
         // Permettre la suppression des factures annulées pour nettoyage
@@ -920,12 +1126,17 @@ class FacturationService
         // }
 
         DB::transaction(function () use ($facture) {
-            // Si la facture est annulée, on supprime juste l'enregistrement
-            // Si elle est active, on annule d'abord les effets
+            $facture->load(['lignes.paiement', 'lignes.tranchePaiement', 'factureOrigine.lignes']);
+            $contexteComplement = $this->contexteAnnulationComplement($facture);
+
             if ($facture->statut !== 'annulee') {
                 $this->annulerEffetsFacture($facture);
             }
             $facture->delete();
+
+            if ($contexteComplement) {
+                $this->restaurerOrigineApresComplement($contexteComplement);
+            }
         });
     }
 
@@ -939,9 +1150,82 @@ class FacturationService
         }
 
         DB::transaction(function () use ($facture) {
+            $facture->load(['lignes.paiement', 'lignes.tranchePaiement', 'factureOrigine.lignes']);
+            $contexteComplement = $this->contexteAnnulationComplement($facture);
+
             $this->annulerEffetsFacture($facture);
             $facture->update(['statut' => 'annulee']);
+
+            if ($contexteComplement) {
+                $this->restaurerOrigineApresComplement($contexteComplement);
+            }
         });
+    }
+
+    /**
+     * @return array{origine: Facture, tranche_ids: array<int, int>}|null
+     */
+    private function contexteAnnulationComplement(Facture $facture): ?array
+    {
+        if (!$facture->estFactureComplement()) {
+            return null;
+        }
+
+        $origine = $facture->factureOrigine ?: Facture::find($facture->facture_origine_id);
+        if (!$origine) {
+            return null;
+        }
+
+        $origine->loadMissing('lignes');
+        $facture->loadMissing('lignes');
+
+        $trancheIds = $origine->lignes
+            ->pluck('tranche_paiement_id')
+            ->merge($facture->lignes->pluck('tranche_paiement_id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        return [
+            'origine' => $origine,
+            'tranche_ids' => $trancheIds,
+        ];
+    }
+
+    /**
+     * Après annulation d'un reste : le mois redevient payable et le bouton Reste
+     * réapparaît sur la facture d'origine.
+     *
+     * @param  array{origine: Facture, tranche_ids: array<int, int>}  $contexte
+     */
+    private function restaurerOrigineApresComplement(array $contexte): void
+    {
+        $origine = $contexte['origine'];
+
+        foreach ($contexte['tranche_ids'] as $trancheId) {
+            $tranche = TranchePaiement::find($trancheId);
+            if ($tranche) {
+                $this->normaliserMontantPayeTranche($tranche);
+            }
+        }
+
+        $autreComplementActif = Facture::query()
+            ->where('facture_origine_id', $origine->id)
+            ->where('statut', '!=', 'annulee')
+            ->exists();
+
+        if ($autreComplementActif) {
+            return;
+        }
+
+        $totalDu = round((float) $origine->sous_total - (float) $origine->montant_remise, 2);
+        $reste = max(0, round($totalDu - (float) $origine->total, 2));
+
+        $origine->update([
+            'statut' => $reste > 0.01 ? 'en_cours' : 'payee',
+        ]);
     }
 
     private function annulerEffetsFacture(Facture $facture): void

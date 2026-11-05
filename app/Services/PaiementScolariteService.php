@@ -131,14 +131,11 @@ class PaiementScolariteService
         $ligne->loadMissing(['paiement', 'tranchePaiement', 'fraisScolarite']);
 
         $paiement = $ligne->paiement;
-        if (!$paiement) {
-            return;
-        }
+        $tranche = $ligne->tranchePaiement ?? $paiement?->tranchePaiement;
+        $creditTranche = round((float) $ligne->montant_net + (float) $ligne->montant_remise, 2);
 
-        $tranche = $ligne->tranchePaiement ?? $paiement->tranchePaiement;
-        if ($tranche) {
+        if ($tranche && $creditTranche > 0.01) {
             // Même crédit qu'à l'émission : net encaissé + remise ligne
-            $creditTranche = round((float) $ligne->montant_net + (float) $ligne->montant_remise, 2);
             $nouveauMontantPaye = max(0, round((float) $tranche->montant_paye - $creditTranche, 2));
 
             $tranche->update([
@@ -163,7 +160,7 @@ class PaiementScolariteService
             $this->recalculerStatutFrais($ligne->fraisScolarite);
         }
 
-        $paiement->delete();
+        $paiement?->delete();
     }
 
     public function recalculerStatutFrais(FraisScolarite $frais): void

@@ -132,29 +132,8 @@ class Facture extends Model
         }
 
         $totalDu = round((float) $this->sous_total - (float) $this->montant_remise, 2);
-        $depuisTotaux = max(0, round($totalDu - (float) $this->total, 2));
 
-        $lignes = $this->relationLoaded('lignes')
-            ? $this->lignes
-            : $this->lignes()->get(['montant_brut', 'montant_net', 'montant_remise']);
-
-        if ($lignes->isEmpty()) {
-            return $depuisTotaux;
-        }
-
-        $depuisLignes = round($lignes->sum(function (FactureLigne $ligne) {
-            return max(0, round(
-                (float) $ligne->montant_brut - (float) $ligne->montant_net - (float) $ligne->montant_remise,
-                2
-            ));
-        }), 2);
-
-        // Ne pas encaisser un solde sur des mois qui n'étaient pas sur la facture
-        if ($depuisLignes < $depuisTotaux - 0.01) {
-            return max(0, $depuisLignes);
-        }
-
-        return $depuisTotaux;
+        return max(0, round($totalDu - (float) $this->total, 2));
     }
 
     public function statutLibelle(): string

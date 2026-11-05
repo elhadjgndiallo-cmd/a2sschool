@@ -253,9 +253,13 @@ public function store(Request $request)
      */
     public function show(FraisScolarite $frais)
     {
-        // Supprimer les tranches créées hors période puis répartir les paiements
+        // Ne pas répartir en FIFO ici : ça bascule un reste d'un mois passé sur le mois suivant.
         $this->nettoyerTranchesHorsPeriode($frais);
-        $this->repartirPaiementsSurTranches($frais);
+        $frais->loadMissing('eleve');
+        if ($frais->eleve) {
+            $this->facturationService->reparerSoldesResteHorsFacture($frais->eleve);
+            $frais->refresh();
+        }
         $this->facturationService->reconcilierTranchesFrais($frais);
 
         $frais->load(['eleve.utilisateur', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);

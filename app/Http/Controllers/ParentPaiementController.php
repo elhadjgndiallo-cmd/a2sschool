@@ -78,6 +78,11 @@ class ParentPaiementController extends Controller
 
         $frais->load(['eleve', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
 
+        if ($frais->eleve) {
+            app(\App\Services\FacturationService::class)->reparerSoldesResteHorsFacture($frais->eleve);
+            $frais->refresh()->load(['eleve', 'eleve.classe', 'tranchesPaiement', 'paiements.encaissePar']);
+        }
+
         return view('parent.paiements.show', compact('frais'));
     }
 

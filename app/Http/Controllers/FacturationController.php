@@ -185,6 +185,21 @@ class FacturationController extends Controller
             'facturesComplement',
         ]);
 
+        if ($facture->eleve) {
+            $this->facturationService->reparerSoldesResteHorsFacture($facture->eleve);
+            $facture->refresh()->load([
+                'lignes.tranchePaiement',
+                'lignes.fraisScolarite',
+                'lignes.paiement',
+                'eleve.utilisateur',
+                'eleve.classe',
+                'generePar',
+                'anneeScolaire',
+                'factureOrigine',
+                'facturesComplement',
+            ]);
+        }
+
         return view('factures.show', compact('facture'));
     }
 
@@ -319,7 +334,13 @@ class FacturationController extends Controller
 
         try {
             $numero = $facture->numero_facture;
+            $origine = $facture->estFactureComplement() ? $facture->factureOrigine : null;
             $this->facturationService->annulerFacture($facture);
+
+            if ($origine) {
+                return redirect()->route('factures.show', $origine)
+                    ->with('success', "Facture de reste {$numero} annulée. Le bouton Reste est de nouveau disponible et le mois concerné est recrédité.");
+            }
 
             return redirect()->route('factures.show', $facture)
                 ->with('success', "Facture {$numero} annulée. Les paiements, les mois concernés et l'entrée comptable ont été remis à jour.");
