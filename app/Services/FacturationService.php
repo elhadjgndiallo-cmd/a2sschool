@@ -706,8 +706,6 @@ class FacturationService
             $observationsComplement
         ) {
             $facture->loadMissing('lignes');
-            $this->reparerSoldesResteHorsFacture($eleve);
-            $facture->load('lignes');
             $snapshotHorsFacture = $this->snapshotTranchesHorsFacture($eleve, $facture);
             $lignesCalculees = $this->lignesResteDepuisFacture($facture);
 
@@ -785,13 +783,33 @@ class FacturationService
     private function lignesResteDepuisFacture(Facture $facture): array
     {
         $facture->loadMissing('lignes');
+
+        $resteFacture = max(0, round(
+            (float) $facture->sous_total - (float) $facture->montant_remise - (float) $facture->total,
+            2
+        ));
+        if ($resteFacture <= 0.01) {
+            return [];
+        }
+
         $lignes = [];
+        $alloue = 0.0;
 
         foreach ($facture->lignes as $ligne) {
+            if ($alloue + 0.01 >= $resteFacture) {
+                break;
+            }
+
             $resteLigne = round(
                 (float) $ligne->montant_brut - (float) $ligne->montant_net - (float) $ligne->montant_remise,
                 2
             );
+            if ($resteLigne <= 0.01) {
+                continue;
+            }
+
+            $montantDuMois = $resteLigne;
+            $place = $resteLigne;
 
             if ($ligne->tranche_paiement_id) {
                 $tranche = TranchePaiement::find($ligne->tranche_paiement_id);
@@ -799,49 +817,58 @@ class FacturationService
                     continue;
                 }
 
-                $this->normaliserMontantPayeTranche($tranche);
-                $tranche->refresh();
-
                 $place = max(0, round((float) $tranche->montant_tranche - (float) $tranche->montant_paye, 2));
-                if ($place <= 0.01 && $resteLigne <= 0.01) {
+                if ($place <= 0.01) {
                     continue;
                 }
 
-                $resteLigne = $resteLigne > 0.01 ? min($resteLigne, $place) : $place;
+                $montantDuMois = round((float) $tranche->montant_tranche, 2);
+                $place = min($resteLigne, $place);
             } elseif ($ligne->frais_scolarite_id) {
                 $frais = FraisScolarite::find($ligne->frais_scolarite_id);
-                if (!$frais || (float) $frais->montant_restant <= 0.01) {
+                if (!$frais) {
                     continue;
                 }
 
-                $resteLigne = min(max(0, $resteLigne), max(0, round((float) $frais->montant_restant, 2)));
+                $place = min($resteLigne, max(0, round((float) $frais->montant_restant, 2)));
+                $montantDuMois = round((float) $frais->montant, 2);
             }
 
-            if ($resteLigne <= 0.01) {
+            $verse = min($place, round($resteFacture - $alloue, 2));
+            if ($verse <= 0.01) {
                 continue;
             }
 
-            $lignes[] = [
-                'id' => $this->ligneIdFromFactureLigne($ligne),
-                'source' => $ligne->tranche_paiement_id
-                    ? 'tranche'
-                    : ($ligne->frais_scolarite_id ? 'frais' : 'tarif'),
-                'type_frais' => $ligne->type_frais,
-                'mois' => Carbon::parse($ligne->mois)->format('Y-m-d'),
-                'libelle' => 'Reste à payer',
-                'montant' => $resteLigne,
-                'montant_brut' => $resteLigne,
-                'montant_du_mois' => $resteLigne,
-                'montant_remise' => 0,
-                'montant_net' => $resteLigne,
-                'remise_ligne' => 0,
-                'tranche_id' => $ligne->tranche_paiement_id,
-                'frais_id' => $ligne->frais_scolarite_id,
-                'partiel' => false,
-            ];
+            $lignes[] = $this->formatLigneReste($ligne, $verse, $montantDuMois);
+            $alloue = round($alloue + $verse, 2);
         }
 
         return $lignes;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatLigneReste(FactureLigne $ligne, float $verse, float $montantDuMois): array
+    {
+        return [
+            'id' => $this->ligneIdFromFactureLigne($ligne),
+            'source' => $ligne->tranche_paiement_id
+                ? 'tranche'
+                : ($ligne->frais_scolarite_id ? 'frais' : 'tarif'),
+            'type_frais' => $ligne->type_frais,
+            'mois' => Carbon::parse($ligne->mois)->format('Y-m-d'),
+            'libelle' => 'Reste à payer',
+            'montant' => $verse,
+            'montant_brut' => $verse,
+            'montant_du_mois' => $montantDuMois,
+            'montant_remise' => 0,
+            'montant_net' => $verse,
+            'remise_ligne' => 0,
+            'tranche_id' => $ligne->tranche_paiement_id,
+            'frais_id' => $ligne->frais_scolarite_id,
+            'partiel' => false,
+        ];
     }
 
     /**

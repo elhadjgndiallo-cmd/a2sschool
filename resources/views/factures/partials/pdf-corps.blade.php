@@ -1,6 +1,6 @@
 @php
     $totalApresRemise = round((float) $facture->sous_total - (float) $facture->montant_remise, 2);
-    $resteAPayer = max(0, round($totalApresRemise - (float) $facture->total, 2));
+    $resteAPayer = $facture->resteAPayer();
     $facture->lignes->each(fn ($ligne) => $ligne->setRelation('facture', $facture));
 @endphp
 
