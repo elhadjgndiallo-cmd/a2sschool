@@ -73,7 +73,6 @@
                                 @csrf
                                 <input type="hidden" name="annee_scolaire_id" value="{{ $anneeScolaire->id }}">
                                 <input type="hidden" name="classe_id" value="{{ $classeId }}">
-                                <input type="hidden" name="type_frais" value="{{ $typeFrais }}">
                                 @foreach($moisSelectionnes as $mois)
                                     <input type="hidden" name="mois[]" value="{{ $mois }}">
                                 @endforeach
@@ -90,7 +89,7 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('comptabilite.impayes-mensuels') }}" id="form-impayes" class="mb-0">
                         <div class="row g-2">
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-4">
                                 <select class="form-control" id="annee_scolaire_id" name="annee_scolaire_id" onchange="this.form.submit()" title="Année scolaire">
                                     @foreach($anneesScolaires as $annee)
                                         <option value="{{ $annee->id }}" {{ (int) $anneeScolaire->id === (int) $annee->id ? 'selected' : '' }}>
@@ -99,7 +98,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
+                            <div class="col-12 col-sm-6 col-md-5">
                                 <select class="form-control @error('classe_id') is-invalid @enderror" id="classe_id" name="classe_id" required title="Classe">
                                     <option value="">Sélectionner une classe…</option>
                                     @foreach($classes as $classe)
@@ -109,15 +108,6 @@
                                     @endforeach
                                 </select>
                                 @error('classe_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <select class="form-control" id="type_frais" name="type_frais" title="Type de frais">
-                                    @foreach($typesFrais as $value => $label)
-                                        <option value="{{ $value }}" {{ ($typeFrais ?? 'scolarite') === $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
                                 <div class="d-flex gap-1">
@@ -229,7 +219,7 @@
                                                 <td>{{ $utilisateur->prenom ?? '—' }}</td>
                                                 <td>{{ $utilisateur->nom ?? '—' }}</td>
                                                 <td class="col-mois-impayes">
-                                                    {{ collect($ligne['mois_impayes'])->pluck('libelle_mois')->implode(', ') }}
+                                                    {{ collect($ligne['mois_impayes'])->map(fn ($moisImpaye) => $moisImpaye['libelle'] ?? $moisImpaye['libelle_mois'])->implode(', ') }}
                                                 </td>
                                                 <td class="text-center">{{ $ligne['nombre_mois'] }}</td>
                                                 <td class="text-end fw-semibold">
@@ -239,7 +229,6 @@
                                                     @if(auth()->user()->hasPermission('paiements.create'))
                                                         <a href="{{ route('recus-rappel.depuis-impayes', [
                                                                 'eleve_id' => $eleve->id,
-                                                                'type_frais' => $typeFrais,
                                                                 'mois' => $moisImpayesEleve,
                                                             ]) }}"
                                                            class="btn btn-sm btn-outline-warning"

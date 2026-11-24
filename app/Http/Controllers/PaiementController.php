@@ -195,7 +195,7 @@ public function store(Request $request)
             'libelle' => 'required|string|max:255',
             'montant' => 'required|numeric|min:0',
             'date_echeance' => 'required|date',
-            'type_frais' => 'required|in:inscription,scolarite,cantine,transport,activites,autre',
+            'type_frais' => 'required|in:inscription,reinscription,scolarite,cantine,transport,activites,autre',
             'type_paiement' => 'required|in:unique,tranches',
             'paiement_par_tranches' => 'boolean',
             'nombre_tranches' => 'required_if:type_paiement,tranches|nullable|integer|min:2|max:12',

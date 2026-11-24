@@ -246,7 +246,6 @@ class RecuRappelController extends Controller
 
         $request->validate([
             'eleve_id' => 'required|exists:eleves,id',
-            'type_frais' => 'required|in:scolarite,cantine,transport',
             'mois' => 'required|array|min:1',
             'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
         ]);
@@ -258,29 +257,21 @@ class RecuRappelController extends Controller
 
         $eleve = Eleve::with(['utilisateur', 'classe'])->findOrFail($request->eleve_id);
         $moisSelectionnes = array_values($request->input('mois', []));
-        $typeFrais = $request->type_frais;
 
         $ligneEleve = $facturationService->rechercherElevesImpayes(
             $anneeScolaire,
             $moisSelectionnes,
-            $eleve->classe_id,
-            $typeFrais
+            $eleve->classe_id
         )->first(fn (array $ligne) => (int) $ligne['eleve']->id === (int) $eleve->id);
 
         if (!$ligneEleve) {
             return redirect()->back()->with('error', 'Aucun impayé trouvé pour cet élève sur les mois sélectionnés.');
         }
 
-        $typesFrais = [
-            'scolarite' => 'Scolarité',
-            'cantine' => 'Cantine',
-            'transport' => 'Transport',
-        ];
-
         try {
             DB::beginTransaction();
 
-            $recuRappel = $this->creerRecuDepuisLigneImpaye($ligneEleve, $typeFrais, $typesFrais);
+            $recuRappel = $this->creerRecuDepuisLigneImpaye($ligneEleve);
 
             DB::commit();
 
@@ -304,7 +295,6 @@ class RecuRappelController extends Controller
         $request->validate([
             'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
             'classe_id' => 'required|exists:classes,id',
-            'type_frais' => 'required|in:scolarite,cantine,transport',
             'mois' => 'required|array|min:1',
             'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
         ], [
@@ -316,24 +306,16 @@ class RecuRappelController extends Controller
 
         $anneeScolaire = AnneeScolaire::findOrFail($request->annee_scolaire_id);
         $moisSelectionnes = array_values($request->input('mois', []));
-        $typeFrais = $request->type_frais;
 
         $resultats = $facturationService->rechercherElevesImpayes(
             $anneeScolaire,
             $moisSelectionnes,
-            (int) $request->classe_id,
-            $typeFrais
+            (int) $request->classe_id
         );
 
         if ($resultats->isEmpty()) {
             return redirect()->back()->with('error', 'Aucun élève impayé sur la liste affichée.');
         }
-
-        $typesFrais = [
-            'scolarite' => 'Scolarité',
-            'cantine' => 'Cantine',
-            'transport' => 'Transport',
-        ];
 
         $recus = collect();
 
@@ -341,7 +323,7 @@ class RecuRappelController extends Controller
             DB::beginTransaction();
 
             foreach ($resultats as $ligneEleve) {
-                $recus->push($this->creerRecuDepuisLigneImpaye($ligneEleve, $typeFrais, $typesFrais));
+                $recus->push($this->creerRecuDepuisLigneImpaye($ligneEleve));
             }
 
             DB::commit();
@@ -366,13 +348,32 @@ class RecuRappelController extends Controller
     /**
      * Créer un reçu de rappel à partir d'une ligne d'impayés mensuels.
      */
-    private function creerRecuDepuisLigneImpaye(array $ligneEleve, string $typeFrais, array $typesFrais): RecuRappel
+    private function creerRecuDepuisLigneImpaye(array $ligneEleve): RecuRappel
     {
         $eleve = $ligneEleve['eleve'];
+        $labelsType = [
+            'scolarite' => 'Scolarité',
+            'cantine' => 'Cantine',
+            'transport' => 'Transport',
+        ];
 
-        $frais = FraisScolarite::where('eleve_id', $eleve->id)
-            ->where('type_frais', $typeFrais)
+        $typesImpayes = collect($ligneEleve['mois_impayes'])
+            ->pluck('types')
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->values();
+
+        $fraisQuery = FraisScolarite::where('eleve_id', $eleve->id)
             ->where('statut', '!=', 'annule')
+            ->whereIn('type_frais', ['scolarite', 'cantine', 'transport']);
+
+        if ($typesImpayes->isNotEmpty()) {
+            $fraisQuery->whereIn('type_frais', $typesImpayes->all());
+        }
+
+        $frais = $fraisQuery
+            ->orderByRaw("FIELD(type_frais, 'scolarite', 'cantine', 'transport')")
             ->first();
 
         if (!$frais) {
@@ -380,7 +381,11 @@ class RecuRappelController extends Controller
         }
 
         $moisLabels = collect($ligneEleve['mois_impayes'])
-            ->pluck('libelle_mois')
+            ->map(fn (array $moisImpaye) => $moisImpaye['libelle'] ?? $moisImpaye['libelle_mois'])
+            ->implode(', ');
+
+        $typesLabels = $typesImpayes
+            ->map(fn ($type) => $labelsType[$type] ?? $type)
             ->implode(', ');
 
         $montantDu = round((float) $ligneEleve['total_du'], 2);
@@ -394,7 +399,8 @@ class RecuRappelController extends Controller
             'montant_a_payer' => $montantDu,
             'date_rappel' => now()->toDateString(),
             'date_echeance' => now()->addDays(15)->toDateString(),
-            'observations' => 'Rappel de paiement — ' . ($typesFrais[$typeFrais] ?? $typeFrais)
+            'observations' => 'Rappel de paiement'
+                . ($typesLabels !== '' ? ' — ' . $typesLabels : '')
                 . ' | Mois impayés : ' . $moisLabels,
             'genere_par' => auth()->id(),
         ]);

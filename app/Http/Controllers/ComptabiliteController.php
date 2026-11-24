@@ -1251,15 +1251,9 @@ class ComptabiliteController extends Controller
 
         $classes = Classe::orderBy('nom')->get();
         $moisOptions = $facturationService->getMoisFacturationOptions($anneeScolaire);
-        $typesFrais = [
-            'scolarite' => 'Scolarité',
-            'cantine' => 'Cantine',
-            'transport' => 'Transport',
-        ];
 
         $moisSelectionnes = array_values(array_filter((array) $request->input('mois', [])));
         $classeId = $request->filled('classe_id') ? (int) $request->classe_id : null;
-        $typeFrais = $request->input('type_frais', 'scolarite');
         $resultats = collect();
         $aRecherche = false;
 
@@ -1268,7 +1262,6 @@ class ComptabiliteController extends Controller
                 'classe_id' => 'required|exists:classes,id',
                 'mois' => 'required|array|min:1',
                 'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
-                'type_frais' => 'in:scolarite,cantine,transport',
             ], [
                 'classe_id.required' => 'Veuillez sélectionner une classe.',
                 'mois.required' => 'Veuillez cocher au moins un mois.',
@@ -1279,8 +1272,7 @@ class ComptabiliteController extends Controller
             $resultats = $facturationService->rechercherElevesImpayes(
                 $anneeScolaire,
                 $moisSelectionnes,
-                $classeId,
-                $typeFrais
+                $classeId
             );
         }
 
@@ -1289,10 +1281,8 @@ class ComptabiliteController extends Controller
             'anneesScolaires',
             'classes',
             'moisOptions',
-            'typesFrais',
             'moisSelectionnes',
             'classeId',
-            'typeFrais',
             'resultats',
             'aRecherche'
         ));

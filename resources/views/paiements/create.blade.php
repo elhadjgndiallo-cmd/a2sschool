@@ -49,6 +49,7 @@
                                     <select name="type_frais" id="type_frais" class="form-control @error('type_frais') is-invalid @enderror" required>
                                         <option value="">Sélectionner le type</option>
                                         <option value="inscription" {{ old('type_frais') == 'inscription' ? 'selected' : '' }}>Inscription</option>
+                                        <option value="reinscription" {{ old('type_frais') == 'reinscription' ? 'selected' : '' }}>Réinscription</option>
                                         <option value="scolarite" {{ old('type_frais') == 'scolarite' ? 'selected' : '' }}>Scolarité</option>
                                         <option value="cantine" {{ old('type_frais') == 'cantine' ? 'selected' : '' }}>Cantine</option>
                                         <option value="transport" {{ old('type_frais') == 'transport' ? 'selected' : '' }}>Transport</option>
