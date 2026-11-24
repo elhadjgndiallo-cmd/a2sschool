@@ -246,11 +246,18 @@ class RecuRappelController extends Controller
 
         $request->validate([
             'eleve_id' => 'required|exists:eleves,id',
+            'annee_scolaire_id' => 'nullable|exists:annee_scolaires,id',
             'mois' => 'required|array|min:1',
             'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
+            'date_echeance' => 'required|date|after_or_equal:today',
+        ], [
+            'date_echeance.required' => 'Veuillez indiquer la date d\'échéance.',
+            'date_echeance.after_or_equal' => 'La date d\'échéance ne peut pas être antérieure à aujourd\'hui.',
         ]);
 
-        $anneeScolaire = AnneeScolaire::anneeActive();
+        $anneeScolaire = $request->filled('annee_scolaire_id')
+            ? AnneeScolaire::findOrFail($request->annee_scolaire_id)
+            : AnneeScolaire::anneeActive();
         if (!$anneeScolaire) {
             return redirect()->back()->with('error', 'Aucune année scolaire active.');
         }
@@ -271,7 +278,7 @@ class RecuRappelController extends Controller
         try {
             DB::beginTransaction();
 
-            $recuRappel = $this->creerRecuDepuisLigneImpaye($ligneEleve);
+            $recuRappel = $this->creerRecuDepuisLigneImpaye($ligneEleve, $request->date_echeance);
 
             DB::commit();
 
@@ -297,9 +304,12 @@ class RecuRappelController extends Controller
             'classe_id' => 'required|exists:classes,id',
             'mois' => 'required|array|min:1',
             'mois.*' => 'string|regex:/^\d{4}-\d{2}$/',
+            'date_echeance' => 'required|date|after_or_equal:today',
         ], [
             'classe_id.required' => 'Veuillez sélectionner une classe.',
             'mois.required' => 'Veuillez cocher au moins un mois.',
+            'date_echeance.required' => 'Veuillez indiquer la date d\'échéance.',
+            'date_echeance.after_or_equal' => 'La date d\'échéance ne peut pas être antérieure à aujourd\'hui.',
         ]);
 
         set_time_limit(180);
@@ -323,7 +333,7 @@ class RecuRappelController extends Controller
             DB::beginTransaction();
 
             foreach ($resultats as $ligneEleve) {
-                $recus->push($this->creerRecuDepuisLigneImpaye($ligneEleve));
+                $recus->push($this->creerRecuDepuisLigneImpaye($ligneEleve, $request->date_echeance));
             }
 
             DB::commit();
@@ -348,14 +358,9 @@ class RecuRappelController extends Controller
     /**
      * Créer un reçu de rappel à partir d'une ligne d'impayés mensuels.
      */
-    private function creerRecuDepuisLigneImpaye(array $ligneEleve): RecuRappel
+    private function creerRecuDepuisLigneImpaye(array $ligneEleve, string $dateEcheance): RecuRappel
     {
         $eleve = $ligneEleve['eleve'];
-        $labelsType = [
-            'scolarite' => 'Scolarité',
-            'cantine' => 'Cantine',
-            'transport' => 'Transport',
-        ];
 
         $typesImpayes = collect($ligneEleve['mois_impayes'])
             ->pluck('types')
@@ -381,11 +386,9 @@ class RecuRappelController extends Controller
         }
 
         $moisLabels = collect($ligneEleve['mois_impayes'])
-            ->map(fn (array $moisImpaye) => $moisImpaye['libelle'] ?? $moisImpaye['libelle_mois'])
-            ->implode(', ');
-
-        $typesLabels = $typesImpayes
-            ->map(fn ($type) => $labelsType[$type] ?? $type)
+            ->map(fn (array $moisImpaye) => $moisImpaye['libelle_mois'] ?? $moisImpaye['libelle'] ?? '')
+            ->filter()
+            ->unique()
             ->implode(', ');
 
         $montantDu = round((float) $ligneEleve['total_du'], 2);
@@ -398,10 +401,8 @@ class RecuRappelController extends Controller
             'montant_restant' => $montantDu,
             'montant_a_payer' => $montantDu,
             'date_rappel' => now()->toDateString(),
-            'date_echeance' => now()->addDays(15)->toDateString(),
-            'observations' => 'Rappel de paiement'
-                . ($typesLabels !== '' ? ' — ' . $typesLabels : '')
-                . ' | Mois impayés : ' . $moisLabels,
+            'date_echeance' => $dateEcheance,
+            'observations' => $moisLabels,
             'genere_par' => auth()->id(),
         ]);
     }

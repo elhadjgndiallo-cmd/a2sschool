@@ -65,24 +65,15 @@
                             </button>
                         @endif
                         @if($aRecherche && $resultats->count() > 0 && auth()->user()->hasPermission('paiements.create'))
-                            <form method="POST"
-                                  action="{{ route('recus-rappel.lot-depuis-impayes') }}"
-                                  target="_blank"
-                                  class="d-inline"
-                                  onsubmit="return confirm('Générer et imprimer {{ $resultats->count() }} reçu(s) de rappel de la liste affichée ?\n\nDeux reçus seront imprimés par page A4.');">
-                                @csrf
-                                <input type="hidden" name="annee_scolaire_id" value="{{ $anneeScolaire->id }}">
-                                <input type="hidden" name="classe_id" value="{{ $classeId }}">
-                                @foreach($moisSelectionnes as $mois)
-                                    <input type="hidden" name="mois[]" value="{{ $mois }}">
-                                @endforeach
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-bell me-1"></i>
-                                    <span class="d-none d-sm-inline">Tous les reçus de rappel</span>
-                                    <span class="d-sm-none">Reçus</span>
-                                    <span class="badge bg-dark text-warning ms-1">{{ $resultats->count() }}</span>
-                                </button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-warning"
+                                    id="btn-tous-recus-rappel"
+                                    data-nb-recus="{{ $resultats->count() }}">
+                                <i class="fas fa-bell me-1"></i>
+                                <span class="d-none d-sm-inline">Tous les reçus de rappel</span>
+                                <span class="d-sm-none">Reçus</span>
+                                <span class="badge bg-dark text-warning ms-1">{{ $resultats->count() }}</span>
+                            </button>
                         @endif
                     </div>
                 </div>
@@ -227,15 +218,14 @@
                                                 </td>
                                                 <td class="no-print text-center">
                                                     @if(auth()->user()->hasPermission('paiements.create'))
-                                                        <a href="{{ route('recus-rappel.depuis-impayes', [
-                                                                'eleve_id' => $eleve->id,
-                                                                'mois' => $moisImpayesEleve,
-                                                            ]) }}"
-                                                           class="btn btn-sm btn-outline-warning"
-                                                           title="Reçu de rappel de paiement"
-                                                           target="_blank">
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-warning btn-recu-eleve"
+                                                                title="Reçu de rappel de paiement"
+                                                                data-eleve-id="{{ $eleve->id }}"
+                                                                data-eleve-nom="{{ trim(($utilisateur->prenom ?? '') . ' ' . ($utilisateur->nom ?? '')) }}"
+                                                                data-mois="{{ implode(',', $moisImpayesEleve) }}">
                                                             <i class="fas fa-bell"></i>
-                                                        </a>
+                                                        </button>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -264,6 +254,50 @@
         </div>
     @endif
 </div>
+
+@if($aRecherche && $resultats->count() > 0 && auth()->user()->hasPermission('paiements.create'))
+@push('modals')
+<div class="modal fade" id="modalDateEcheance" tabindex="-1" aria-labelledby="modalDateEcheanceLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST"
+                  id="formRecusRappel"
+                  action="{{ route('recus-rappel.lot-depuis-impayes') }}"
+                  target="_blank">
+                @csrf
+                <input type="hidden" name="annee_scolaire_id" value="{{ $anneeScolaire->id }}">
+                <input type="hidden" name="classe_id" value="{{ $classeId }}">
+                <div id="recuMoisFields"></div>
+                <div id="recuEleveFields"></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDateEcheanceLabel">Date d'échéance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3" id="recuEcheanceHint">Indiquez la date d'échéance avant de générer les reçus.</p>
+                    <label for="date_echeance_recu" class="form-label">Date d'échéance <span class="text-danger">*</span></label>
+                    <input type="date"
+                           name="date_echeance"
+                           id="date_echeance_recu"
+                           class="form-control"
+                           min="{{ now()->toDateString() }}"
+                           required>
+                    @error('date_echeance')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-warning" id="btnGenererRecus">
+                        <i class="fas fa-bell me-1"></i> Générer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endpush
+@endif
 
 @push('scripts')
 <script>
@@ -306,6 +340,83 @@ document.addEventListener('DOMContentLoaded', function () {
             eligibles.slice(-count).forEach(cb => cb.checked = true);
         });
     });
+
+    const modalEcheanceEl = document.getElementById('modalDateEcheance');
+    const formRecus = document.getElementById('formRecusRappel');
+    if (modalEcheanceEl && formRecus && window.bootstrap) {
+        const modalEcheance = new bootstrap.Modal(modalEcheanceEl);
+        const moisFields = document.getElementById('recuMoisFields');
+        const eleveFields = document.getElementById('recuEleveFields');
+        const titreModal = document.getElementById('modalDateEcheanceLabel');
+        const hintModal = document.getElementById('recuEcheanceHint');
+        const dateInput = document.getElementById('date_echeance_recu');
+        const moisLot = @json($moisSelectionnes ?? []);
+        const urlLot = @json(route('recus-rappel.lot-depuis-impayes'));
+        const urlUn = @json(route('recus-rappel.depuis-impayes'));
+
+        function remplirMois(mois) {
+            moisFields.innerHTML = '';
+            (mois || []).forEach(function (valeur) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'mois[]';
+                input.value = valeur;
+                moisFields.appendChild(input);
+            });
+        }
+
+        function ouvrirModalEcheance() {
+            if (dateInput) {
+                dateInput.value = '';
+            }
+            modalEcheance.show();
+            setTimeout(function () {
+                dateInput?.focus();
+            }, 300);
+        }
+
+        document.getElementById('btn-tous-recus-rappel')?.addEventListener('click', function () {
+            const nb = this.dataset.nbRecus || '';
+            formRecus.action = urlLot;
+            formRecus.target = '_blank';
+            eleveFields.innerHTML = '';
+            remplirMois(moisLot);
+            titreModal.textContent = 'Tous les reçus de rappel';
+            hintModal.textContent = 'Choisissez la date d\'échéance. Elle sera inscrite sur les ' + nb + ' reçu(s).';
+            ouvrirModalEcheance();
+        });
+
+        document.querySelectorAll('.btn-recu-eleve').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const moisEleve = (this.dataset.mois || '').split(',').filter(Boolean);
+                formRecus.action = urlUn;
+                formRecus.target = '_self';
+                eleveFields.innerHTML = '';
+                const eleveInput = document.createElement('input');
+                eleveInput.type = 'hidden';
+                eleveInput.name = 'eleve_id';
+                eleveInput.value = this.dataset.eleveId;
+                eleveFields.appendChild(eleveInput);
+                remplirMois(moisEleve);
+                titreModal.textContent = 'Reçu de rappel';
+                hintModal.textContent = 'Choisissez la date d\'échéance pour ' + (this.dataset.eleveNom || 'cet élève') + '.';
+                ouvrirModalEcheance();
+            });
+        });
+
+        formRecus.addEventListener('submit', function () {
+            if (!dateInput.value) {
+                return;
+            }
+            setTimeout(function () {
+                modalEcheance.hide();
+            }, 200);
+        });
+
+        @if($errors->has('date_echeance'))
+            modalEcheance.show();
+        @endif
+    }
 });
 </script>
 @endpush
