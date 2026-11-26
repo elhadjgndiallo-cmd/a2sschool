@@ -2416,14 +2416,7 @@ class FacturationService
             ->filter()
             ->all();
 
-        $remisesParTranche = $trancheIds === []
-            ? collect()
-            : FactureLigne::query()
-                ->whereIn('tranche_paiement_id', $trancheIds)
-                ->whereHas('facture', fn ($q) => $q->where('statut', 'payee'))
-                ->selectRaw('tranche_paiement_id, SUM(montant_remise) as total_remise')
-                ->groupBy('tranche_paiement_id')
-                ->pluck('total_remise', 'tranche_paiement_id');
+        $remisesParTranche = $this->mapRemisesParTranche($trancheIds);
 
         $tarifs = TarifClasse::query()
             ->whereIn('classe_id', $eleves->pluck('classe_id')->unique()->filter())
@@ -2462,8 +2455,15 @@ class FacturationService
                     $tranche = $this->trouverTranchePourMoisRapport($tranches, $mois, $anneeScolaire);
 
                     if ($tranche) {
-                        $cash = round((float) $tranche->paiements->sum('montant_paye'), 2);
-                        $remise = round((float) ($remisesParTranche[$tranche->id] ?? 0), 2);
+                        if ($tranche->statut === 'paye') {
+                            continue;
+                        }
+
+                        $cashPaiements = round((float) $tranche->paiements->sum('montant_paye'), 2);
+                        $cash = $cashPaiements > 0.01
+                            ? $cashPaiements
+                            : round((float) $tranche->montant_paye, 2);
+                        $remise = round((float) ($remisesParTranche[(int) $tranche->id] ?? 0), 2);
                         $reste = max(0, round((float) $tranche->montant_tranche - $cash - $remise, 2));
                         if ($reste <= 0.01) {
                             continue;
@@ -2581,7 +2581,76 @@ class FacturationService
     }
 
     /**
-     * Reste dû sur une tranche en tenant compte des remises déjà accordées sur factures payées.
+     * Remises (lignes + reliquat d'en-tête) par tranche, factures payées ou en cours.
+     *
+     * @param  array<int, int|string>  $trancheIds
+     * @return array<int, float>
+     */
+    private function mapRemisesParTranche(array $trancheIds): array
+    {
+        $trancheIds = array_values(array_unique(array_filter($trancheIds)));
+        if ($trancheIds === []) {
+            return [];
+        }
+
+        $lignes = FactureLigne::query()
+            ->whereIn('tranche_paiement_id', $trancheIds)
+            ->whereHas('facture', fn ($q) => $q->whereIn('statut', ['payee', 'en_cours']))
+            ->with(['facture.lignes'])
+            ->get();
+
+        $map = [];
+        foreach ($lignes as $ligne) {
+            $tid = (int) $ligne->tranche_paiement_id;
+            $map[$tid] = round(($map[$tid] ?? 0) + max(0, (float) $ligne->montant_remise), 2);
+        }
+
+        foreach ($lignes->groupBy('facture_id') as $groupe) {
+            $facture = $groupe->first()?->facture;
+            if (!$facture) {
+                continue;
+            }
+
+            $allouee = round((float) $facture->lignes->sum(
+                fn (FactureLigne $l) => max(0, (float) $l->montant_remise)
+            ), 2);
+            $disponible = max(0, round((float) $facture->montant_remise - $allouee, 2));
+            if ($disponible <= 0.01) {
+                continue;
+            }
+
+            foreach ($groupe as $ligne) {
+                if ($disponible <= 0.01) {
+                    break;
+                }
+                $tid = (int) $ligne->tranche_paiement_id;
+                if ($tid <= 0) {
+                    continue;
+                }
+                $dejaCouvert = round((float) $ligne->montant_net + (float) $ligne->montant_remise, 2);
+                $manqueLigne = max(0, round((float) $ligne->montant_brut - $dejaCouvert, 2));
+                if ($manqueLigne <= 0.01) {
+                    continue;
+                }
+                $part = min($disponible, $manqueLigne);
+                $map[$tid] = round(($map[$tid] ?? 0) + $part, 2);
+                $disponible = round($disponible - $part, 2);
+            }
+
+            if ($disponible > 0.01) {
+                $premiere = $groupe->first(fn (FactureLigne $l) => (int) $l->tranche_paiement_id > 0);
+                if ($premiere) {
+                    $tid = (int) $premiere->tranche_paiement_id;
+                    $map[$tid] = round(($map[$tid] ?? 0) + $disponible, 2);
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Reste dû sur une tranche en tenant compte des remises (factures payées et en cours).
      */
     public function resteEffectifTranche(TranchePaiement $tranche): float
     {
@@ -2590,7 +2659,7 @@ class FacturationService
 
         $remiseFacture = (float) FactureLigne::query()
             ->where('tranche_paiement_id', $tranche->id)
-            ->whereHas('facture', fn ($q) => $q->where('statut', 'payee'))
+            ->whereHas('facture', fn ($q) => $q->whereIn('statut', ['payee', 'en_cours']))
             ->sum('montant_remise');
 
         $remiseFacture += $this->remiseGlobaleFactureSurTranche($tranche);
@@ -2605,7 +2674,7 @@ class FacturationService
     {
         $lignes = FactureLigne::query()
             ->where('tranche_paiement_id', $tranche->id)
-            ->whereHas('facture', fn ($q) => $q->where('statut', 'payee')->where('montant_remise', '>', 0))
+            ->whereHas('facture', fn ($q) => $q->whereIn('statut', ['payee', 'en_cours'])->where('montant_remise', '>', 0))
             ->with('facture.lignes')
             ->get();
 
