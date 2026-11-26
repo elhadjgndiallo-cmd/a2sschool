@@ -2478,7 +2478,9 @@ class FacturationService
                         continue;
                     }
 
-                    if ($montantTarif > 0.01) {
+                    // Scolarité obligatoire : mois sans tranche = impayé si tarif.
+                    // Transport / cantine : uniquement si l'élève a déjà ce frais (pas d'imputation tarif).
+                    if ($type === 'scolarite' && $montantTarif > 0.01) {
                         $resteMois += round($montantTarif, 2);
                         $typesImpayes[] = $type;
                     }

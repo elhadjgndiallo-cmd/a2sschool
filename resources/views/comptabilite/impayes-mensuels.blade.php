@@ -210,7 +210,11 @@
                                                 <td>{{ $utilisateur->prenom ?? '—' }}</td>
                                                 <td>{{ $utilisateur->nom ?? '—' }}</td>
                                                 <td class="col-mois-impayes">
-                                                    {{ collect($ligne['mois_impayes'])->map(fn ($moisImpaye) => $moisImpaye['libelle'] ?? $moisImpaye['libelle_mois'])->implode(', ') }}
+                                                    <div class="mois-impayes-list">
+                                                        @foreach($ligne['mois_impayes'] as $moisImpaye)
+                                                            <span class="mois-badge">{{ $moisImpaye['libelle_mois'] ?? $moisImpaye['libelle'] }}</span>
+                                                        @endforeach
+                                                    </div>
                                                 </td>
                                                 <td class="text-center">{{ $ligne['nombre_mois'] }}</td>
                                                 <td class="text-end fw-semibold">
@@ -437,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function () {
     border: 1px solid #333 !important;
     vertical-align: middle;
     padding: 0.5rem 0.6rem;
+    line-height: 1.4;
 }
 
 .impayes-table thead th {
@@ -477,9 +482,33 @@ document.addEventListener('DOMContentLoaded', function () {
     white-space: nowrap;
 }
 
-.impayes-table .col-mois-impayes {
-    white-space: normal;
-    min-width: 120px;
+.impayes-table .col-mois-impayes,
+.impayes-table td.col-mois-impayes {
+    white-space: normal !important;
+    min-width: 180px;
+    max-width: 420px;
+    overflow: visible;
+    word-break: normal;
+}
+
+.mois-impayes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    line-height: 1.35;
+}
+
+.mois-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border: 1px solid #c9a227;
+    border-radius: 4px;
+    background: #fff8e1;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.3;
 }
 
 .impayes-table .table-total-row th {
@@ -632,8 +661,21 @@ document.addEventListener('DOMContentLoaded', function () {
         color: #000 !important;
     }
 
-    .col-mois-impayes {
-        white-space: normal;
+    .col-mois-impayes,
+    .impayes-table td.col-mois-impayes {
+        white-space: normal !important;
+        max-width: none;
+    }
+
+    .mois-impayes-list {
+        gap: 3px;
+    }
+
+    .mois-badge {
+        background: #fff !important;
+        border: 1px solid #000 !important;
+        font-size: 9px;
+        padding: 1px 5px;
     }
 
     .text-danger {

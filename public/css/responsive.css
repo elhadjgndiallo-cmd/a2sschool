@@ -24,6 +24,10 @@
         white-space: nowrap;
     }
 
+    .impayes-table td.col-mois-impayes {
+        white-space: normal !important;
+    }
+
     .table th:first-child,
     .table td:first-child,
     .table th.col-sticky,
